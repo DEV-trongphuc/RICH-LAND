@@ -544,6 +544,7 @@ class ActivityController {
                    camp.name as campaign_name,
                    t.name as team_name,
                    (SELECT COUNT(*) FROM activity_comments ac WHERE ac.activity_id = a.id) as comment_count,
+                   EXISTS(SELECT 1 FROM task_hidden_users thu WHERE thu.task_id = a.id AND thu.user_id = " . (int)$auth['user_id'] . ") as is_hidden,
                    (SELECT e.image_url FROM expenses e WHERE e.tenant_id = a.tenant_id AND e.title = REPLACE(a.subject, 'Ghi nhận Chi phí: ', '') AND e.image_url IS NOT NULL AND e.image_url != '' ORDER BY e.id DESC LIMIT 1) as expense_image_url
             FROM activities a 
             LEFT JOIN users u ON a.user_id=u.id
@@ -906,6 +907,54 @@ class ActivityController {
         $stmt = $this->db->prepare("UPDATE activities SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
         $stmt->execute($params);
 
+        if (isset($b['due_date']) && $b['due_date'] !== $activity['due_date']) {
+            $visited = [$id => true];
+            $this->cascadeReschedule($id, $b['due_date'], $visited);
+        }
+
+        // Auto unhide triggers:
+        // 1. Main assignee (user_id)
+        if (isset($b['user_id']) && (int)$b['user_id'] > 0) {
+            $this->db->prepare("DELETE FROM task_hidden_users WHERE task_id = ? AND user_id = ?")->execute([$id, (int)$b['user_id']]);
+        }
+        // 2. Participants (participant_ids)
+        if (isset($b['participant_ids'])) {
+            $pIds = array_filter(array_map('intval', explode(',', $b['participant_ids'])));
+            if (!empty($pIds)) {
+                $placeholders = implode(',', array_fill(0, count($pIds), '?'));
+                $stmtDel = $this->db->prepare("DELETE FROM task_hidden_users WHERE task_id = ? AND user_id IN ($placeholders)");
+                $stmtDel->execute(array_merge([$id], $pIds));
+            }
+        }
+        // 3. Mentions in the body (checklist items or description)
+        if (isset($b['body']) && !empty($b['body'])) {
+            $mentions = [];
+            // Parse HTML data-user-id mentions
+            if (preg_match_all('/data-user-id="(\d+)"/i', $b['body'], $matches)) {
+                foreach ($matches[1] as $uid) {
+                    $mentions[(int)$uid] = true;
+                }
+            }
+            // Parse plaintext @mentions
+            if (preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $b['body'], $matches)) {
+                foreach ($matches[1] as $name) {
+                    $fullName = str_replace('_', ' ', $name);
+                    $stmtUser = $this->db->prepare("SELECT id FROM users WHERE tenant_id=? AND (full_name=? OR REPLACE(full_name, ' ', '_')=?)");
+                    $stmtUser->execute([$auth['tenant_id'], $fullName, $name]);
+                    $uid = $stmtUser->fetchColumn();
+                    if ($uid) {
+                        $mentions[(int)$uid] = true;
+                    }
+                }
+            }
+            if (!empty($mentions)) {
+                $pIds = array_keys($mentions);
+                $placeholders = implode(',', array_fill(0, count($pIds), '?'));
+                $stmtDel = $this->db->prepare("DELETE FROM task_hidden_users WHERE task_id = ? AND user_id IN ($placeholders)");
+                $stmtDel->execute(array_merge([$id], $pIds));
+            }
+        }
+
         // Update contact's last_contact whenever an activity is updated
         $checkRel = $this->db->prepare("SELECT related_type, related_id, contact_id FROM activities WHERE id=?");
         $checkRel->execute([$id]);
@@ -1111,14 +1160,19 @@ class ActivityController {
             $stmtParent->execute([$parentId]);
             $parentOwnerId = (int)$stmtParent->fetchColumn();
             
-            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id'] && !$this->isTaskMuted($id, $parentOwnerId)) {
-                require_once __DIR__ . '/../NotificationService.php';
-                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
-                    'user_id' => $parentOwnerId,
-                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
-                    'comment' => "Đã trả lời bình luận của bạn trong hoạt động: " . ($activity['subject'] ?? 'Công việc'),
-                    'link' => "/contacts?id=" . ($activity['contact_id'] ?? $activity['related_id'] ?? '') . "&highlight_comment_id=" . $commentId . ($subtaskId ? "&subtask_id={$subtaskId}" : "")
-                ]);
+            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
+                // Auto unhide task for parent owner
+                $this->db->prepare("DELETE FROM task_hidden_users WHERE task_id = ? AND user_id = ?")->execute([$id, $parentOwnerId]);
+
+                if (!$this->isTaskMuted($id, $parentOwnerId)) {
+                    require_once __DIR__ . '/../NotificationService.php';
+                    NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                        'user_id' => $parentOwnerId,
+                        'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                        'comment' => "Đã trả lời bình luận của bạn trong hoạt động: " . ($activity['subject'] ?? 'Công việc'),
+                        'link' => "/contacts?id=" . ($activity['contact_id'] ?? $activity['related_id'] ?? '') . "&highlight_comment_id=" . $commentId . ($subtaskId ? "&subtask_id={$subtaskId}" : "")
+                    ]);
+                }
             }
         }
 
@@ -1171,6 +1225,9 @@ class ActivityController {
                 }
             }
             foreach ($mentions as $uid => $userRow) {
+                // Auto unhide task for this mentioned user
+                $this->db->prepare("DELETE FROM task_hidden_users WHERE task_id = ? AND user_id = ?")->execute([$id, $uid]);
+
                 if ($this->isTaskMuted($id, $uid)) continue;
                 NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
                     'user_id' => $uid,
@@ -1569,5 +1626,297 @@ class ActivityController {
         
         $baseTimestamp = $baseDate ? strtotime($baseDate) : time();
         return date('Y-m-d H:i:s', strtotime($duration, $baseTimestamp));
+    }
+
+    public function isTaskHidden(int $taskId, int $userId): bool {
+        if ($taskId <= 0 || $userId <= 0) return false;
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM task_hidden_users WHERE task_id = ? AND user_id = ?");
+        $stmt->execute([$taskId, $userId]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    public function getHideStatus($auth, int $taskId): void {
+        $userId = (int)($auth['user_id'] ?? 0);
+        if ($userId <= 0 || $taskId <= 0) {
+            echo json_encode(['success' => true, 'is_hidden' => false]);
+            return;
+        }
+        $isHidden = $this->isTaskHidden($taskId, $userId);
+        echo json_encode(['success' => true, 'is_hidden' => $isHidden]);
+    }
+
+    public function toggleHide($auth, int $taskId): void {
+        $userId = (int)($auth['user_id'] ?? 0);
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $hide = isset($input['hide']) ? (bool)$input['hide'] : null;
+
+        if ($userId <= 0 || $taskId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Thông tin không hợp lệ']);
+            return;
+        }
+
+        if ($hide === null) {
+            $currentlyHidden = $this->isTaskHidden($taskId, $userId);
+            $hide = !$currentlyHidden;
+        }
+
+        try {
+            if ($hide) {
+                $stmt = $this->db->prepare("INSERT IGNORE INTO task_hidden_users (task_id, user_id, hidden_at) VALUES (?, ?, NOW())");
+                $stmt->execute([$taskId, $userId]);
+            } else {
+                $stmt = $this->db->prepare("DELETE FROM task_hidden_users WHERE task_id = ? AND user_id = ?");
+                $stmt->execute([$taskId, $userId]);
+            }
+
+            echo json_encode([
+                'success' => true,
+                'is_hidden' => $hide,
+                'message' => $hide ? 'Đã ẩn công việc khỏi bàn làm việc' : 'Đã hiển thị lại công việc trên bàn làm việc'
+            ]);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật trạng thái: ' . $e->getMessage()]);
+        }
+    }
+
+    public function getTimeline(array $auth, int $id): void {
+        $check = $this->db->prepare("SELECT * FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        $activity = $check->fetch(PDO::FETCH_ASSOC);
+        if (!$activity) respond(404, null, 'Không tìm thấy hoạt động', false);
+
+        if (!$this->hasAccess($auth, $activity)) {
+            respond(403, null, 'Bạn không có quyền xem hoạt động này', false);
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT l.*, u.full_name as user_name, u.avatar_url as user_avatar
+            FROM audit_logs l
+            LEFT JOIN users u ON l.user_id = u.id
+            WHERE l.tenant_id = ? 
+              AND (
+                (l.resource = 'activity' AND l.resource_id = ?)
+                OR (l.resource = 'activity_comment' AND l.resource_id IN (
+                    SELECT id FROM activity_comments WHERE activity_id = ?
+                ))
+              )
+            ORDER BY l.created_at DESC
+            LIMIT 100
+        ");
+        $stmt->execute([$auth['tenant_id'], $id, $id]);
+        $logs = array_reverse($stmt->fetchAll(PDO::FETCH_ASSOC));
+
+        respond(200, $logs);
+    }
+
+    private function cascadeReschedule(int $taskId, string $newDueDate, array &$visited): void {
+        $stmt = $this->db->prepare("
+            SELECT d.activity_id, d.lag_days, a.start_date, a.due_date, a.user_id, a.subject
+            FROM activity_dependencies d
+            JOIN activities a ON d.activity_id = a.id
+            WHERE d.predecessor_id = ? AND a.deleted_at IS NULL
+        ");
+        $stmt->execute([$taskId]);
+        $deps = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($deps as $dep) {
+            $depId = (int)$dep['activity_id'];
+            if (isset($visited[$depId])) {
+                continue;
+            }
+
+            $visited[$depId] = true;
+            $lagDays = (int)$dep['lag_days'];
+
+            // Bảo toàn giờ làm việc gốc của task sau
+            $startTimePart = !empty($dep['start_date']) ? date('H:i:s', strtotime($dep['start_date'])) : '08:00:00';
+            $dueTimePart = !empty($dep['due_date']) ? date('H:i:s', strtotime($dep['due_date'])) : '17:00:00';
+
+            // Tính số ngày duration
+            $durationDays = 0;
+            if (!empty($dep['start_date']) && !empty($dep['due_date'])) {
+                $durationDays = (int)round((strtotime(date('Y-m-d', strtotime($dep['due_date']))) - strtotime(date('Y-m-d', strtotime($dep['start_date'])))) / 86400);
+            }
+            if ($durationDays < 0) $durationDays = 0;
+
+            // Tính ngày bắt đầu mới (chỉ lấy Y-m-d) = ngày kết thúc của task trước + lag_days
+            $newStartDateOnly = date('Y-m-d', strtotime($newDueDate) + ($lagDays * 86400));
+            $newStartDate = $newStartDateOnly . ' ' . $startTimePart;
+
+            // Tính ngày kết thúc mới (chỉ lấy Y-m-d) = newStartDateOnly + durationDays
+            $newDueDateOnly = date('Y-m-d', strtotime($newStartDateOnly) + ($durationDays * 86400));
+            $newDueDateVal = $newDueDateOnly . ' ' . $dueTimePart;
+
+            $upStmt = $this->db->prepare("
+                UPDATE activities 
+                SET start_date = ?, due_date = ? 
+                WHERE id = ?
+            ");
+            $upStmt->execute([$newStartDate, $newDueDateVal, $depId]);
+
+            if (!empty($dep['user_id'])) {
+                $newStartTimestamp = strtotime($newStartDate);
+                $this->notifyUser(
+                    (int)$dep['user_id'],
+                    'Thay đổi lịch trình công việc',
+                    "Công việc \"{$dep['subject']}\" đã được dời lịch (Ngày bắt đầu mới: " . date('d/m/Y H:i', $newStartTimestamp) . ") do ảnh hưởng trễ tiến độ từ công việc tiền nhiệm.",
+                    'task_reschedule',
+                    "/activities/{$depId}"
+                );
+            }
+
+            $this->cascadeReschedule($depId, $newDueDateVal, $visited);
+        }
+    }
+
+    public function getDependencies(array $auth, int $id): void {
+        $stmt = $this->db->prepare("
+            SELECT d.predecessor_id, a.subject, a.start_date, a.due_date, d.dependency_type, d.lag_days
+            FROM activity_dependencies d
+            JOIN activities a ON d.predecessor_id = a.id
+            JOIN activities cur ON d.activity_id = cur.id
+            WHERE d.activity_id = ? AND cur.tenant_id = ?
+        ");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        respond(200, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    public function updateDependencies(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật phụ thuộc', false);
+        $b = getBody();
+        $predecessors = $b['predecessors'] ?? [];
+
+        $check = $this->db->prepare("SELECT id FROM activities WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        if (!$check->fetch()) {
+            respond(404, null, 'Không tìm thấy công việc', false);
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $delStmt = $this->db->prepare("DELETE FROM activity_dependencies WHERE activity_id = ?");
+            $delStmt->execute([$id]);
+
+            $insStmt = $this->db->prepare("
+                INSERT INTO activity_dependencies (activity_id, predecessor_id, dependency_type, lag_days)
+                VALUES (?, ?, ?, ?)
+            ");
+
+            foreach ($predecessors as $pred) {
+                $predId = (int)($pred['predecessor_id'] ?? 0);
+                $type = $pred['dependency_type'] ?? 'FS';
+                $lag = (int)($pred['lag_days'] ?? 0);
+
+                if ($predId > 0 && $predId !== $id) {
+                    $checkPred = $this->db->prepare("SELECT id FROM activities WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+                    $checkPred->execute([$predId, $auth['tenant_id']]);
+                    if ($checkPred->fetch()) {
+                        if ($this->hasCircularDependency($id, $predId)) {
+                            respond(422, null, "Không thể thiết lập quan hệ phụ thuộc tuần hoàn với công việc ID: {$predId}", false);
+                            $this->db->rollBack();
+                            return;
+                        }
+                        $insStmt->execute([$id, $predId, $type, $lag]);
+                    }
+                }
+            }
+
+            $this->db->commit();
+            respond(200, ['success' => true]);
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            respond(500, null, 'Lỗi hệ thống khi cập nhật phụ thuộc: ' . $e->getMessage(), false);
+        }
+    }
+
+    private function hasCircularDependency(int $taskId, int $predecessorId): bool {
+        $visited = [];
+        return $this->detectCycle($predecessorId, $taskId, $visited);
+    }
+
+    private function detectCycle(int $currentId, int $targetId, array &$visited): bool {
+        if ($currentId === $targetId) {
+            return true;
+        }
+        if (isset($visited[$currentId])) {
+            return false;
+        }
+        $visited[$currentId] = true;
+
+        $stmt = $this->db->prepare("SELECT predecessor_id FROM activity_dependencies WHERE activity_id = ?");
+        $stmt->execute([$currentId]);
+        $preds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        foreach ($preds as $predId) {
+            if ($this->detectCycle((int)$predId, $targetId, $visited)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function getFocusSummary(array $auth, int $id): void {
+        $check = $this->db->prepare("SELECT id FROM activities WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        if (!$check->fetch()) {
+            respond(404, null, 'Không tìm thấy công việc', false);
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) as total_sessions, SUM(duration_minutes) as total_minutes
+            FROM task_focus_logs
+            WHERE task_id = ? AND tenant_id = ?
+        ");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        $summary = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $logsStmt = $this->db->prepare("
+            SELECT f.id, f.duration_minutes, f.completed_at, u.full_name as user_name
+            FROM task_focus_logs f
+            LEFT JOIN users u ON f.user_id = u.id
+            WHERE f.task_id = ? AND f.tenant_id = ?
+            ORDER BY f.id DESC
+            LIMIT 10
+        ");
+        $logsStmt->execute([$id, $auth['tenant_id']]);
+        $logs = $logsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        respond(200, [
+            'total_sessions' => (int)($summary['total_sessions'] ?? 0),
+            'total_minutes' => (int)($summary['total_minutes'] ?? 0),
+            'recent_logs' => $logs
+        ]);
+    }
+
+    public function addFocusLog(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền lưu lượt tập trung', false);
+        $b = getBody();
+        $duration = (int)($b['duration_minutes'] ?? 25);
+
+        if ($duration <= 0) {
+            respond(422, null, 'Thời lượng tập trung không hợp lệ', false);
+        }
+
+        $check = $this->db->prepare("SELECT id, subject FROM activities WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        $task = $check->fetch();
+        if (!$task) {
+            respond(404, null, 'Không tìm thấy công việc', false);
+        }
+
+        $stmt = $this->db->prepare("
+            INSERT INTO task_focus_logs (tenant_id, task_id, user_id, duration_minutes, completed_at)
+            VALUES (?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([
+            $auth['tenant_id'],
+            $id,
+            $auth['user_id'],
+            $duration
+        ]);
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'FOCUS', 'activity', $id, "Hoàn thành {$duration} phút tập trung cho: " . $task['subject']);
+
+        respond(200, ['success' => true, 'message' => 'Lưu lượt tập trung thành công']);
     }
 }

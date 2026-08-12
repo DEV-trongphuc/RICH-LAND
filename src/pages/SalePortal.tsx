@@ -9,7 +9,7 @@ import {
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
   Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check, KeyRound, Loader2, Shield, Mail, ShieldCheck, Lock as LockIcon, Bell,
-  Play, Sparkles, ArrowRight, Eye, MapPin
+  Play, Sparkles, ArrowRight, Eye, MapPin, Pin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -845,6 +845,43 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsPriority, setWsPriority] = useState('');
   const [wsStatus, setWsStatus] = useState('planned'); // Default: hide completed
   const [wsViewMode, setWsViewMode] = useState<'grid' | 'kanban' | 'focus'>('grid');
+  const [pinnedTaskIds, setPinnedTaskIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      try {
+        const stored = localStorage.getItem(`pinned_tasks_${user.id}`);
+        if (stored) {
+          setPinnedTaskIds(JSON.parse(stored).map(Number).filter(Boolean));
+        } else {
+          setPinnedTaskIds([]);
+        }
+      } catch (e) {
+        setPinnedTaskIds([]);
+      }
+    }
+  }, [user]);
+
+  const togglePinTask = (taskId: number) => {
+    const numericId = Number(taskId);
+    let updated = [...pinnedTaskIds];
+    if (updated.includes(numericId)) {
+      updated = updated.filter(id => id !== numericId);
+      toast.success(t('Đã bỏ ghim công việc'));
+    } else {
+      if (updated.length >= 8) {
+        toast.error(t('Bạn chỉ được ghim tối đa 8 công việc lên đầu ưu tiên.'));
+        return;
+      }
+      updated.push(numericId);
+      toast.success(t('Đã ghim công việc thành công!'));
+    }
+    setPinnedTaskIds(updated);
+    if (user?.id) {
+      localStorage.setItem(`pinned_tasks_${user.id}`, JSON.stringify(updated));
+    }
+  };
+
   const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
   const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
   const [wsDatePreset, setWsDatePreset] = useState('all');
@@ -1327,14 +1364,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     let list = wsTasks;
     const targetUserId = wsUserId ? Number(wsUserId) : Number(currentUser?.id);
 
+    // Filter out hidden tasks or filter by hidden status only
+    if (wsStatus === 'hidden') {
+      list = list.filter(task => task.is_hidden && Number(task.is_hidden) === 1);
+    } else {
+      list = list.filter(task => !task.is_hidden || Number(task.is_hidden) !== 1);
+      
+      // Filter by Status
+      if (wsStatus && wsStatus !== 'all') {
+        list = list.filter(task => task.status === wsStatus);
+      }
+    }
+
     // Filter by Priority
     if (wsPriority && wsPriority !== 'all') {
       list = list.filter(task => task.priority === wsPriority);
-    }
-
-    // Filter by Status
-    if (wsStatus && wsStatus !== 'all') {
-      list = list.filter(task => task.status === wsStatus);
     }
 
     // Filter by Date Preset
@@ -1392,6 +1436,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       });
     }
 
+    // Sort pinned tasks to the top
+    if (pinnedTaskIds.length > 0) {
+      list = [...list].sort((a, b) => {
+        const aPinned = pinnedTaskIds.includes(Number(a.id));
+        const bPinned = pinnedTaskIds.includes(Number(b.id));
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+        return 0;
+      });
+    }
+
     if (!wsSearch) return list;
     const searchVal = wsSearch.toLowerCase();
     return list.filter(task => {
@@ -1427,7 +1482,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         campaignName.includes(searchVal)
       );
     });
-  }, [wsTasks, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser, wsUserId, wsPriority, wsStatus, wsDatePreset]);
+  }, [wsTasks, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser, wsUserId, wsPriority, wsStatus, wsDatePreset, pinnedTaskIds]);
 
   const workspaceStats = useMemo(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -1455,6 +1510,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     let pendingApproval = 0;
 
     tabTasks.forEach(task => {
+      // Skip hidden tasks in statistics
+      if (task.is_hidden || Number(task.is_hidden) === 1) return;
+
       // Pending approval
       if (Number(task.require_approval) === 1 && task.approval_status === 'pending' && Number(task.approver_id) === Number(currentUser?.id)) {
         pendingApproval++;
@@ -5330,16 +5388,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 }}
               >
                 {[
-                  { id: 'all', label: `${t('Tất cả')} (${wsTasks.length})` },
-                  { id: 'customer', label: `${t('Công việc khách hàng')} (${wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length})` },
+                  { id: 'all', label: `${t('Tất cả')} (${wsTasks.filter(task => !task.is_hidden || Number(task.is_hidden) !== 1).length})` },
+                  { id: 'customer', label: `${t('Công việc khách hàng')} (${wsTasks.filter(task => (!task.is_hidden || Number(task.is_hidden) !== 1) && task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length})` },
                   { id: 'team', label: `${t('Công việc nội bộ team')} (${wsTasks.filter(task => {
                       const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
                       const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                      return !isClient && !tagsList.includes('personal_task');
+                      return (!task.is_hidden || Number(task.is_hidden) !== 1) && !isClient && !tagsList.includes('personal_task');
                     }).length})` },
                   { id: 'personal', label: `${t('Công việc cá nhân')} (${wsTasks.filter(task => {
                       const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                      return tagsList.includes('personal_task');
+                      return (!task.is_hidden || Number(task.is_hidden) !== 1) && tagsList.includes('personal_task');
                     }).length})` }
                 ].map(opt => (
                   <option key={opt.id} value={opt.id}>{opt.label}</option>
@@ -5415,17 +5473,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               position: 'relative'
             }}>
               {[
-                { id: 'all', label: t('Tất cả'), icon: <Layers size={14} />, count: wsTasks.length },
-                { id: 'customer', label: t('Công việc khách hàng'), icon: <Users size={14} />, count: wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
+                { id: 'all', label: t('Tất cả'), icon: <Layers size={14} />, count: wsTasks.filter(task => !task.is_hidden || Number(task.is_hidden) !== 1).length },
+                { id: 'customer', label: t('Công việc khách hàng'), icon: <Users size={14} />, count: wsTasks.filter(task => (!task.is_hidden || Number(task.is_hidden) !== 1) && task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
                 { id: 'team', label: t('Công việc nội bộ team'), icon: <CheckSquare size={14} />, count: wsTasks.filter(task => {
                     const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
                     const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                    return !isClient && !tagsList.includes('personal_task');
+                    return (!task.is_hidden || Number(task.is_hidden) !== 1) && !isClient && !tagsList.includes('personal_task');
                   }).length
                 },
                 { id: 'personal', label: t('Công việc cá nhân'), icon: <User size={14} />, count: wsTasks.filter(task => {
                     const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                    return tagsList.includes('personal_task');
+                    return (!task.is_hidden || Number(task.is_hidden) !== 1) && tagsList.includes('personal_task');
                   }).length
                 }
               ].map(tab => {
@@ -6273,13 +6331,38 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {/* Clear Filter Toolbar */}
                 <div style={{
                   display: 'flex',
-                  justifyContent: 'flex-end',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   marginTop: '12px',
                   paddingTop: '12px',
                   borderTop: '1px dashed var(--color-border-light)',
-                  gap: '8px'
+                  gap: '8px',
+                  flexWrap: 'wrap'
                 }}>
-                  <button
+                  <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)', cursor: 'pointer', userSelect: 'none' }}>
+                      <input
+                        type="checkbox"
+                        checked={wsStatus === 'all'}
+                        onChange={() => setWsStatus(wsStatus === 'all' ? 'planned' : 'all')}
+                        style={{ cursor: 'pointer', width: '14px', height: '14px' }}
+                      />
+                      <span>{t('Hiện việc đã xong')}</span>
+                    </label>
+
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)', cursor: 'pointer', userSelect: 'none' }}>
+                      <input
+                        type="checkbox"
+                        checked={wsStatus === 'hidden'}
+                        onChange={() => setWsStatus(wsStatus === 'hidden' ? 'planned' : 'hidden')}
+                        style={{ cursor: 'pointer', width: '14px', height: '14px' }}
+                      />
+                      <span>{t('Hiện việc đã ẩn')}</span>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
                     type="button"
                     className="btn outline sm"
                     onClick={() => {
@@ -6300,6 +6383,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     {t('Xóa bộ lọc')}
                   </button>
                 </div>
+              </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -6611,13 +6695,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   key={task.id} 
                   style={{
                     padding: isMobile ? '0.75rem 1rem' : '1rem 1.25rem',
-                    background: 'var(--color-surface)',
-                    border: isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
+                    background: pinnedTaskIds.includes(Number(task.id)) 
+                      ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.03)' : 'rgba(239, 68, 68, 0.015)') 
+                      : 'var(--color-surface)',
+                    border: pinnedTaskIds.includes(Number(task.id))
+                      ? '1.5px solid var(--color-danger)'
+                      : (isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)'),
                     borderRadius: 'var(--radius-lg)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: isMobile ? '0.5rem' : '0.75rem',
-                    boxShadow: isOverdue && task.status !== 'done' ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)' : 'var(--shadow-sm)',
+                    boxShadow: pinnedTaskIds.includes(Number(task.id))
+                      ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)'
+                      : (isOverdue && task.status !== 'done' ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)' : 'var(--shadow-sm)'),
                     transition: 'all var(--transition-fluid)',
                     cursor: 'pointer',
                     position: 'relative'
@@ -6676,11 +6766,39 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         );
                       })}
                     </div>
-                    {task.priority === 'high' && (
-                      <span style={{ fontSize: '0.625rem', fontWeight: 800, padding: '1px 6px', borderRadius: '20px', background: 'var(--color-danger-light)', color: 'var(--color-danger)', flexShrink: 0 }}>
-                        {t('Khẩn cấp')}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      {task.priority === 'high' && (
+                        <span style={{ fontSize: '0.625rem', fontWeight: 800, padding: '1px 6px', borderRadius: '20px', background: 'var(--color-danger-light)', color: 'var(--color-danger)', flexShrink: 0 }}>
+                          {t('Khẩn cấp')}
+                        </span>
+                      )}
+                      {(() => {
+                        const isPinned = pinnedTaskIds.includes(Number(task.id));
+                        return (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePinTask(task.id);
+                            }}
+                            style={{
+                              border: 'none',
+                              background: isPinned ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                              color: isPinned ? 'var(--color-danger)' : 'var(--color-text-light)',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                            title={isPinned ? t('Bỏ ghim công việc') : t('Ghim công việc')}
+                          >
+                            <Pin size={14} style={{ transform: isPinned ? 'rotate(0deg)' : 'rotate(45deg)', transition: 'transform 0.2s' }} />
+                          </button>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   {/* Task Image Preview */}
@@ -7003,23 +7121,35 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               setSelectedTaskForDetails(parsedTask);
                             }}
                             style={{
-                              background: 'var(--color-surface)',
-                              border: isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
+                              background: pinnedTaskIds.includes(Number(task.id)) 
+                                ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.03)' : 'rgba(239, 68, 68, 0.015)') 
+                                : 'var(--color-surface)',
+                              border: pinnedTaskIds.includes(Number(task.id))
+                                ? '1.5px solid var(--color-danger)'
+                                : (isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)'),
                               borderRadius: '12px',
                               padding: '0.875rem',
                               cursor: 'grab',
                               opacity: task.status === 'done' ? 0.7 : 1,
-                              boxShadow: 'var(--shadow-sm)',
+                              boxShadow: pinnedTaskIds.includes(Number(task.id))
+                                ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)'
+                                : 'var(--shadow-sm)',
                               transition: 'all 0.2s',
                               position: 'relative'
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-primary)';
+                              e.currentTarget.style.borderColor = pinnedTaskIds.includes(Number(task.id))
+                                ? 'var(--color-danger)'
+                                : (isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-primary)');
                               e.currentTarget.style.boxShadow = 'var(--shadow-md)';
                             }}
                             onMouseLeave={e => {
-                              e.currentTarget.style.borderColor = isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-border-light)';
-                              e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                              e.currentTarget.style.borderColor = pinnedTaskIds.includes(Number(task.id))
+                                ? 'var(--color-danger)'
+                                : (isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-border-light)');
+                              e.currentTarget.style.boxShadow = pinnedTaskIds.includes(Number(task.id))
+                                ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)'
+                                : 'var(--shadow-sm)';
                             }}
                           >
                             {/* Drag handle & header info */}
@@ -7027,6 +7157,32 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               <span className={`badge ${task.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.625rem', padding: '1px 5px' }}>
                                 {task.priority === 'high' ? 'Cao' : 'Trung bình'}
                               </span>
+                              {(() => {
+                                const isPinned = pinnedTaskIds.includes(Number(task.id));
+                                return (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      togglePinTask(task.id);
+                                    }}
+                                    style={{
+                                      border: 'none',
+                                      background: isPinned ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                                      color: isPinned ? 'var(--color-danger)' : 'var(--color-text-light)',
+                                      cursor: 'pointer',
+                                      padding: '4px',
+                                      borderRadius: '6px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    title={isPinned ? t('Bỏ ghim công việc') : t('Ghim công việc')}
+                                  >
+                                    <Pin size={11} style={{ transform: isPinned ? 'rotate(0deg)' : 'rotate(45deg)', transition: 'transform 0.2s' }} />
+                                  </button>
+                                );
+                              })()}
                             </div>
 
                             {/* Task Image Preview */}

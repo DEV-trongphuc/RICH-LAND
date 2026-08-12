@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 195;
+$targetVersion = 196;
 $currentVersion = 186;
 
 // Query current DB version
@@ -414,8 +414,61 @@ try {
         $logMsg("Đã bổ sung cột nguoi_gioi_thieu_id và foreign key vào bảng contacts.", "success");
     }
 
+    // 8.13. Add activity_dependencies, task_focus_logs, and task_hidden_users (Version 196)
+    $chkAD = $conn->query("SHOW TABLES LIKE 'activity_dependencies'");
+    if (!$chkAD || $chkAD->num_rows == 0) {
+        $conn->query("CREATE TABLE `activity_dependencies` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `activity_id` int(11) NOT NULL,
+          `predecessor_id` int(11) NOT NULL,
+          `dependency_type` varchar(10) NOT NULL DEFAULT 'FS',
+          `lag_days` int(11) NOT NULL DEFAULT 0,
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `uq_activity_predecessor` (`activity_id`,`predecessor_id`),
+          KEY `idx_act_dep_activity` (`activity_id`),
+          KEY `idx_act_dep_predecessor` (`predecessor_id`),
+          CONSTRAINT `fk_act_dep_activity` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`id`) ON DELETE CASCADE,
+          CONSTRAINT `fk_act_dep_predecessor` FOREIGN KEY (`predecessor_id`) REFERENCES `activities` (`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+        $logMsg("Đã tạo bảng activity_dependencies.", "success");
+    }
+
+    $chkTFL = $conn->query("SHOW TABLES LIKE 'task_focus_logs'");
+    if (!$chkTFL || $chkTFL->num_rows == 0) {
+        $conn->query("CREATE TABLE `task_focus_logs` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `tenant_id` int(11) NOT NULL,
+          `task_id` int(11) NOT NULL,
+          `user_id` int(11) NOT NULL,
+          `duration_minutes` int(11) NOT NULL DEFAULT 25,
+          `completed_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`),
+          KEY `idx_focus_logs_tenant` (`tenant_id`),
+          KEY `idx_focus_logs_task` (`task_id`),
+          KEY `idx_focus_logs_user` (`user_id`),
+          CONSTRAINT `fk_focus_logs_task` FOREIGN KEY (`task_id`) REFERENCES `activities` (`id`) ON DELETE CASCADE,
+          CONSTRAINT `fk_focus_logs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+        $logMsg("Đã tạo bảng task_focus_logs.", "success");
+    }
+
+    $chkTHU = $conn->query("SHOW TABLES LIKE 'task_hidden_users'");
+    if (!$chkTHU || $chkTHU->num_rows == 0) {
+        $conn->query("CREATE TABLE `task_hidden_users` (
+          `task_id` int(11) NOT NULL,
+          `user_id` int(11) NOT NULL,
+          `hidden_at` datetime DEFAULT current_timestamp(),
+          PRIMARY KEY (`task_id`,`user_id`),
+          KEY `idx_task_hidden_user` (`user_id`,`task_id`),
+          CONSTRAINT `fk_hidden_users_task` FOREIGN KEY (`task_id`) REFERENCES `activities` (`id`) ON DELETE CASCADE,
+          CONSTRAINT `fk_hidden_users_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+        $logMsg("Đã tạo bảng task_hidden_users.", "success");
+    }
+
     // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '195') ON DUPLICATE KEY UPDATE setting_value = '195'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '196') ON DUPLICATE KEY UPDATE setting_value = '196'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

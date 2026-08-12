@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe,
   Bold, Italic, List, ListOrdered, Image as ImageIcon, 
   Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff,
-  Eye, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight, Building2, Megaphone, Loader2, RotateCcw,
-  CheckCircle2, XCircle, Camera
+  Eye, EyeOff, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight, Building2, Megaphone, Loader2, RotateCcw,
+  CheckCircle2, XCircle, Camera, Target
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -38,6 +38,27 @@ interface WorkspaceTaskDrawerProps {
   onNextFocusTask?: () => void;
   zIndex?: number;
 }
+
+const getRoleDisplayName = (user: any) => {
+  if (!user) return '';
+  if (user.job_title) return user.job_title;
+  const roleMap: Record<string, string> = {
+    super_admin: 'Super Admin',
+    superadmin: 'Super Admin',
+    admin: 'Admin',
+    director: 'Giám đốc',
+    manager: 'Quản lý',
+    sales: 'Kinh doanh',
+    sale: 'Kinh doanh',
+    accountant: 'Kế toán',
+    hr: 'Nhân sự',
+    sale_admin: 'Sale Admin',
+    saleadmin: 'Sale Admin',
+    marketing: 'Marketing',
+    viewer: 'Viewer'
+  };
+  return roleMap[user.role?.toLowerCase()] || user.role || '';
+};
 
 export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({ 
   isOpen, 
@@ -85,10 +106,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [activeTab, setActiveTab] = useState<'comments' | 'timeline'>('comments');
+  const [timeline, setTimeline] = useState<any[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [timelinePage, setTimelinePage] = useState(1);
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentAttachments, setCommentAttachments] = useState<any[]>([]);
-  const [replyTo, setReplyTo] = useState<{ id: number; userName: string } | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: number; userName: string; avatar?: string } | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -104,6 +129,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [loadingMute, setLoadingMute] = useState(false);
   const [showMuteConfirmModal, setShowMuteConfirmModal] = useState(false);
+
+  const [isHidden, setIsHidden] = useState(false);
+  const [loadingHide, setLoadingHide] = useState(false);
 
   // Meeting action modals
   const [meetingToComplete, setMeetingToComplete] = useState<any>(null);
@@ -128,7 +156,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   };
 
   useEffect(() => {
-    if (isOpen && task?.id) {
+    if (isOpen && task?.id && task.id !== 'new') {
       setLoadingMute(true);
       api.get(`/activities/${task.id}/mute-status`)
         .then(res => {
@@ -139,6 +167,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         .catch(err => console.error("Lỗi lấy trạng thái thông báo task:", err))
         .finally(() => setLoadingMute(false));
 
+      api.get(`/activities/${task.id}/hide-status`)
+        .then(res => {
+          if (res.data && res.data.success) {
+            setIsHidden(!!res.data.is_hidden);
+          }
+        })
+        .catch(err => console.error("Lỗi lấy trạng thái ẩn task:", err));
+      
       loadSubtaskCommentCounts();
     }
   }, [isOpen, task?.id]);
@@ -180,6 +216,47 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       .finally(() => setLoadingMute(false));
   };
 
+  const handleHideClick = () => {
+    if (!task?.id) return;
+    if (isHidden) {
+      // Unhide doesn't need confirmation
+      executeToggleHide();
+    } else {
+      setShowHideConfirmModal(true);
+    }
+  };
+
+  const executeToggleHide = () => {
+    if (!task?.id) return;
+    setLoadingHide(true);
+    api.post(`/activities/${task.id}/toggle-hide`)
+      .then(res => {
+        if (res.data && res.data.success) {
+          setIsHidden(res.data.is_hidden);
+          toast.success(res.data.message);
+          onUpdate();
+        }
+      })
+      .catch(err => {
+        toast.error(t('Lỗi cập nhật trạng thái ẩn: ') + (err.response?.data?.message || err.message));
+      })
+      .finally(() => setLoadingHide(false));
+  };
+
+  const handleShareTask = () => {
+    if (!formData.id) return;
+    const params = new URLSearchParams(window.location.search);
+    params.set('task_id', String(formData.id));
+    const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      toast.success(t('Đã sao chép liên kết chia sẻ công việc!'));
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      toast.error(t('Không thể sao chép liên kết'));
+    });
+  };
+
   const getTomorrowString = () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -195,12 +272,41 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   // Checklist inline edit & assignee picker state
   const [editingChecklistId, setEditingChecklistId] = useState<string | null>(null);
   const [editingChecklistTitle, setEditingChecklistTitle] = useState<string>('');
+  const [editingChecklistDeadline, setEditingChecklistDeadline] = useState<string>('');
   const [activeAssigneeDropdownId, setActiveAssigneeDropdownId] = useState<string | null>(null);
   const [deleteSubtaskTarget, setDeleteSubtaskTarget] = useState<{ id: string; title: string } | null>(null);
+  const [showParticipantDropdown, setShowParticipantDropdown] = useState(false);
+  const [showTeamDropdown, setShowTeamDropdown] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
+  const [showHideConfirmModal, setShowHideConfirmModal] = useState(false);
 
   const [allowedProjects, setAllowedProjects] = useState<any[]>([]);
   const [allowedCampaigns, setAllowedCampaigns] = useState<any[]>([]);
   const [allowedTeams, setAllowedTeams] = useState<any[]>([]);
+
+  const teamDropdownRef = useRef<HTMLDivElement>(null);
+  const participantDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (showTeamDropdown && teamDropdownRef.current && !teamDropdownRef.current.contains(target)) {
+        setShowTeamDropdown(false);
+      }
+      if (showParticipantDropdown && participantDropdownRef.current && !participantDropdownRef.current.contains(target)) {
+        setShowParticipantDropdown(false);
+      }
+      if (activeAssigneeDropdownId !== null) {
+        const isTrigger = (target as HTMLElement).closest('.subtask-assignee-trigger');
+        const isDropdown = (target as HTMLElement).closest('.subtask-assignee-dropdown');
+        if (!isTrigger && !isDropdown) {
+          setActiveAssigneeDropdownId(null);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showTeamDropdown, showParticipantDropdown, activeAssigneeDropdownId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -485,6 +591,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   // Participants modal state
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [participantsSearch, setParticipantsSearch] = useState('');
+  const [selectedSubtaskForParticipants, setSelectedSubtaskForParticipants] = useState<any | null>(null);
+  const [showAddParticipantsSection, setShowAddParticipantsSection] = useState(false);
 
   // Contacts state
   const [contacts, setContacts] = useState<any[]>([]);
@@ -530,6 +638,36 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       console.error(e);
     } finally {
       setLoadingComments(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!task?.id || task.id === 'new') return;
+    try {
+      const res = await api.delete(`/activities/comments/${commentId}`);
+      if (res.data && res.data.success) {
+        loadComments(task.id);
+        loadTimeline(task.id);
+        toast.success(t('Đã xóa bình luận!'));
+      } else {
+        toast.error(res.data?.message || t('Không thể xóa bình luận'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi khi xóa bình luận: ') + e.message);
+    }
+  };
+
+  const loadTimeline = async (taskId: number) => {
+    setLoadingTimeline(true);
+    try {
+      const res = await api.get(`/activities/${taskId}/timeline`);
+      if (res.data && res.data.success) {
+        setTimeline(res.data.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTimeline(false);
     }
   };
 
@@ -695,8 +833,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       setCampaignTarget(parsedMeta.campaign_target || '');
       if (normalizedTask.id !== 'new') {
         loadComments(normalizedTask.id);
+        loadTimeline(normalizedTask.id);
       } else {
         setComments([]);
+        setTimeline([]);
       }
 
       // Compute and store original hash
@@ -755,6 +895,19 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     }
     
     return { isValid: true };
+  };
+
+  const linkifyHtml = (html: string) => {
+    if (!html) return '';
+    return html.replace(/<a\b[^>]*>([\s\S]*?)<\/a>|(<[^>]+>)|(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, (match, aContent, htmlTag, url) => {
+      if (aContent) return match;
+      if (htmlTag) return match;
+      if (url) {
+        const href = url.startsWith('www.') ? `https://${url}` : url;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary); text-decoration: underline; word-break: break-all;">${url}</a>`;
+      }
+      return match;
+    });
   };
 
   const renderCommentContent = (text: string) => {
@@ -1109,6 +1262,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           return nextData;
         });
         onUpdate();
+        loadTimeline(task.id);
       }
     } catch (e: any) {
       toast.error(t('Lỗi cập nhật: ') + e.message);
@@ -1194,6 +1348,23 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     toast.success(t('Đã cập nhật tiêu đề việc con'));
   };
 
+  const handleUpdateChecklistItem = (itemId: string, newTitle: string, newDeadline: string) => {
+    if (!newTitle.trim()) return;
+    const updatedChecklist = erpMeta.checklist.map((item: any) => {
+      if (item.id === itemId) {
+        return { 
+          ...item, 
+          title: newTitle.trim(),
+          due_date: newDeadline || null
+        };
+      }
+      return item;
+    });
+    const updatedMeta = { ...erpMeta, checklist: updatedChecklist };
+    handleSaveMeta(updatedMeta);
+    toast.success(t('Đã cập nhật công việc con'));
+  };
+
   const handleUpdateChecklistItemAssignee = (itemId: string, newAssigneeId: string) => {
     const updatedChecklist = erpMeta.checklist.map((item: any) => {
       if (item.id === itemId) {
@@ -1203,18 +1374,17 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     });
 
     if (newAssigneeId) {
-      const assignedIds = newAssigneeId.split(',').map(id => id.trim()).filter(Boolean);
+      const newAssignees = String(newAssigneeId).split(',').map(id => id.trim()).filter(Boolean);
       const current = getParticipantIds(formData.participant_ids);
-      let updated = [...current];
-      let hasChange = false;
-      assignedIds.forEach(id => {
-        if (!updated.includes(id)) {
-          updated.push(id);
-          hasChange = true;
+      let changed = false;
+      newAssignees.forEach(id => {
+        if (!current.includes(id)) {
+          current.push(id);
+          changed = true;
         }
       });
-      if (hasChange) {
-        const nextString = updated.join(',');
+      if (changed) {
+        const nextString = current.join(',');
         setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
         handleUpdateField('participant_ids', nextString);
       }
@@ -1439,6 +1609,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
       if (res.data && res.data.success) {
         loadComments(task.id);
+        loadTimeline(task.id);
         toast.success(t('Đã thêm bình luận!'));
       }
     } catch (e: any) {
@@ -1553,12 +1724,30 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const handleToggleParticipant = (userId: number) => {
     const current = getParticipantIds(formData.participant_ids);
-    const next = current.includes(String(userId))
-      ? current.filter(id => id !== String(userId))
-      : [...current, String(userId)];
-    const nextString = next.join(',');
-    setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
-    handleUpdateField('participant_ids', nextString);
+    const isSelected = current.includes(String(userId));
+    
+    if (isSelected) {
+      // Check if user is currently assigned to any subtask
+      const isAssignedToSubtask = erpMeta.checklist?.some((item: any) => {
+        const assignedIds = item.assignee_id ? String(item.assignee_id).split(',').map(id => id.trim()).filter(Boolean) : [];
+        return assignedIds.includes(String(userId));
+      });
+      
+      if (isAssignedToSubtask) {
+        toast.error(t('Người này hiện đang thực hiện công việc con'));
+        return;
+      }
+      
+      const next = current.filter(id => id !== String(userId));
+      const nextString = next.join(',');
+      setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
+      handleUpdateField('participant_ids', nextString);
+    } else {
+      const next = [...current, String(userId)];
+      const nextString = next.join(',');
+      setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
+      handleUpdateField('participant_ids', nextString);
+    }
   };
 
   // Document body overflow handling
@@ -1574,9 +1763,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   }, [isOpen, task, embedMode]);
 
   const drawerMotionProps = embedMode ? {} : {
-    initial: isMobileOrTablet ? { y: '100%' } : { x: '100%' },
-    animate: { y: 0, x: 0 },
-    exit: isMobileOrTablet ? { y: '100%' } : { x: '100%' },
+    initial: isMobileOrTablet ? { y: '100%' } : { opacity: 0, x: '250px' },
+    animate: { y: 0, x: 0, opacity: 1 },
+    exit: isMobileOrTablet ? { y: '100%' } : { opacity: 0, x: '250px' },
     transition: { type: 'spring' as const, damping: 30, stiffness: 250, mass: 0.8 },
     drag: isMobileOrTablet ? ('y' as const) : false,
     dragConstraints: { top: 0 },
@@ -1588,7 +1777,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     }
   };
 
-  if (!task) return null;
 
   // Common card style override
   const cardStyle: React.CSSProperties = {
@@ -1616,7 +1804,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const isSale = currentUser && ['sales', 'sale'].includes(currentUser.role?.toLowerCase());
 
   const getContactFullName = (c: any) => {
-    return `${c.last_name || ''} ${c.first_name || ''}`.trim() || c.name || t('Khách hàng');
+    return (c.full_name || '').trim() || c.name || t('Khách hàng');
   };
 
   const allowedContacts = contacts.filter(c => {
@@ -1643,7 +1831,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       return bChecked - aChecked;
     });
 
-  const currentHash = (() => {
+  const currentHash = React.useMemo(() => {
     const cleanObj = (obj: any) => {
       const clean: any = {};
       Object.keys(obj || {}).forEach(key => {
@@ -1659,9 +1847,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       formData: cleanObj(formData),
       erpMeta: cleanObj(erpMeta)
     });
-  })();
+  }, [formData, erpMeta]);
 
-  const hasChanges = originalHash !== currentHash;
+  if (!task) return null;
 
   const handleImageClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -1670,12 +1858,82 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     }
   };
 
-  const isApproverOrAdmin = currentUser && (
-    // 1. Phải là người duyệt được chỉ định và không phải là người thực hiện công việc (tránh tự duyệt)
-    (Number(currentUser.id) === Number(formData.approver_id) && Number(currentUser.id) !== Number(formData.user_id)) ||
-    // 2. Hoặc là Admin/Superadmin hệ thống nhưng không phải là người thực hiện công việc
-    (['admin', 'superadmin', 'super_admin'].includes((currentUser.role || '').toLowerCase()) && Number(currentUser.id) !== Number(formData.user_id))
-  );
+  const hasChanges = originalHash !== currentHash;
+
+  const isApproverOrAdmin = currentUser && Number(currentUser.id) === Number(formData.approver_id);
+
+  const formatLogAction = (log: any) => {
+    const action = log.action;
+    let data: any = {};
+    try {
+      data = JSON.parse(log.new_data || '{}');
+    } catch(e) {}
+    
+    switch (action) {
+      case 'CREATE':
+        return `đã tạo công việc "${data.subject || ''}"`;
+      case 'UPDATE':
+        const keys = Object.keys(data);
+        const displayKeys = keys.filter(k => [
+          'status', 'progress', 'priority', 'user_id', 'due_date', 'body', 'subject', 'participant_ids', 'tags'
+        ].includes(k));
+        
+        if (displayKeys.length > 0) {
+          const changes = displayKeys.map(k => {
+            const val = data[k];
+            if (k === 'status') {
+              const statusLabels: Record<string, string> = {
+                todo: 'Cần làm',
+                in_progress: 'Đang làm',
+                done: 'Hoàn thành',
+                cancelled: 'Đã hủy',
+                pending: 'Chờ duyệt'
+              };
+              return `trạng thái thành "${statusLabels[val] || val}"`;
+            }
+            if (k === 'progress') return `tiến độ thành ${val}%`;
+            if (k === 'priority') {
+              const priorityLabels: Record<string, string> = {
+                low: 'Thấp',
+                medium: 'Trung bình',
+                high: 'Cao'
+              };
+              return `độ ưu tiên thành "${priorityLabels[val] || val}"`;
+            }
+            if (k === 'user_id') {
+              const assignedUser = users.find(u => Number(u.id) === Number(val));
+              return `người thực hiện thành "${assignedUser?.full_name || val}"`;
+            }
+            if (k === 'due_date') return `thời hạn thành "${val || 'không có'}"`;
+            if (k === 'body') return `mô tả công việc`;
+            if (k === 'subject') return `tên công việc`;
+            if (k === 'participant_ids') return `người liên quan`;
+            if (k === 'tags') return `nhãn công việc`;
+            return `trường "${k}"`;
+          });
+          return `đã cập nhật ${changes.join(', ')}`;
+        }
+        return 'đã cập nhật thông tin công việc';
+      case 'ADD_COMMENT':
+        return 'đã thêm bình luận mới';
+      case 'DELETE_COMMENT':
+        return 'đã xóa bình luận';
+      case 'COMPLETE_SUBTASK':
+        return `đã hoàn thành công việc con "${data.title || ''}"`;
+      case 'INCOMPLETE_SUBTASK':
+        return `đã đánh dấu chưa hoàn thành công việc con "${data.title || ''}"`;
+      case 'ADD_SUBTASK':
+        return `đã thêm công việc con "${data.title || ''}"`;
+      case 'DELETE_SUBTASK':
+        return `đã xóa công việc con "${data.title || ''}"`;
+      case 'CANCEL_MEETING':
+        return `đã hủy lịch hẹn. Lý do: "${data.reason || ''}"`;
+      case 'RESCHEDULE_MEETING':
+        return `đã dời lịch hẹn đến ngày ${data.due_date || ''}`;
+      default:
+        return `đã thực hiện thao tác "${action}"`;
+    }
+  };
 
   const content = (
     <motion.div 
@@ -1712,7 +1970,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       )}
         {/* Drawer Header */}
         <div style={{
-          padding: isMobileOrTablet ? '0.5rem 0.75rem' : (embedMode ? '0.75rem 1rem' : '1.25rem 1.5rem'),
+          padding: isMobileOrTablet ? '0.5rem 0.75rem' : (embedMode ? '0.75rem 0.5rem' : '1.25rem 1.5rem'),
           borderBottom: '1px solid var(--color-border-light)',
           display: 'flex',
           justifyContent: 'space-between',
@@ -1753,7 +2011,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             )}
             <div style={{ minWidth: 0, flex: 1 }}>
               <h3 style={{ fontSize: isMobileOrTablet ? '0.75rem' : '1.1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: isMobileOrTablet ? '4px' : '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t("Chi tiết công việc")}</span>
+                <span 
+                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={formData.subject || t("Chi tiết công việc")}
+                >
+                  {formData.subject || t("Chi tiết công việc")}
+                </span>
                 <span className="badge" style={{
                   background: 'rgba(107, 114, 128, 0.1)',
                   color: 'var(--color-text-muted)',
@@ -1831,6 +2094,32 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           </div>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+            {/* Share Task Button */}
+            {formData.id && formData.id !== 'new' && (
+              <button
+                type="button"
+                onClick={handleShareTask}
+                className="hover-lift"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-sm)',
+                  transition: 'all 0.2s'
+                }}
+                title={t("Chia sẻ liên kết công việc")}
+              >
+                <Share2 size={18} />
+              </button>
+            )}
+
             {/* Notification Mute Bell Button */}
             <button
               type="button"
@@ -1856,6 +2145,61 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               {isMuted ? <BellOff size={18} /> : <Bell size={18} />}
             </button>
 
+            {/* Hide task eye button */}
+            {task?.id && task.id !== 'new' && (
+              <button
+                type="button"
+                onClick={handleHideClick}
+                disabled={loadingHide}
+                className="hover-lift"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  border: isHidden ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border)',
+                  background: isHidden ? 'rgba(239, 68, 68, 0.08)' : 'var(--color-surface)',
+                  color: isHidden ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-sm)',
+                  transition: 'all 0.2s'
+                }}
+                title={isHidden ? t("Công việc đang ẩn (Bấm để hiển thị lại)") : t("Ẩn công việc khỏi bàn làm việc")}
+              >
+                {isHidden ? <EyeOff size={18} style={{ color: 'var(--color-danger)' }} /> : <Eye size={18} />}
+              </button>
+            )}
+
+            {!embedMode && (window.location.pathname === '/workspace' || window.location.pathname === '/') && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('enter-focus-mode', { detail: { task } }));
+                  handleCloseDrawer();
+                }}
+                className="hover-lift"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg)',
+                  color: 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-sm)',
+                  transition: 'all 0.2s'
+                }}
+                title={t("Chế độ tập trung")}
+              >
+                <Target size={18} />
+              </button>
+            )}
+
             <button
               onClick={handleManualSave}
               disabled={isSaving}
@@ -1864,13 +2208,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: isMobileOrTablet ? '0' : '6px',
-                padding: isMobileOrTablet ? '6px' : '8px 18px',
+                gap: isMobileOrTablet ? '0' : '8px',
+                padding: isMobileOrTablet ? '6px' : '8px 20px',
                 width: isMobileOrTablet ? '36px' : undefined,
-                borderRadius: '8px',
-                fontSize: '0.85rem',
+                borderRadius: isMobileOrTablet ? '8px' : '10px',
+                fontSize: isMobileOrTablet ? '0.85rem' : '0.9rem',
                 fontWeight: 700,
-                height: '36px',
+                height: isMobileOrTablet ? '36px' : '38px',
                 background: 'var(--color-primary)',
                 borderColor: 'var(--color-primary)',
                 color: 'white',
@@ -1906,10 +2250,21 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         </div>
 
         {/* Drawer Body - 2 Columns Layout */}
-        <div style={{ display: 'flex', flexDirection: isMobileOrTablet ? 'column' : 'row', flex: 1, overflowY: 'auto', padding: isMobileOrTablet ? '1rem 1rem 100px 1rem' : (embedMode ? '1rem 1rem 4.5rem 1rem' : '1.5rem 1.5rem 4.5rem 1.5rem'), gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem') }} className={`custom-scrollbar ${embedMode ? 'focus-right-column' : ''}`}>
+        <div style={{ display: 'flex', flexDirection: isMobileOrTablet ? 'column' : 'row', flex: 1, overflow: 'hidden' }} className={embedMode ? 'focus-right-column' : ''}>
           
           {/* Left Column (7) */}
-          <div style={{ flex: isMobileOrTablet ? 'none' : 7, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem'), minWidth: 0 }}>
+          <div 
+            style={{ 
+              flex: isMobileOrTablet ? 'none' : 7, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: isMobileOrTablet ? '1rem' : (embedMode ? '12px' : '1.5rem'), 
+              minWidth: 0,
+              overflowY: 'auto',
+              padding: isMobileOrTablet ? '1rem 1rem 100px 1rem' : (embedMode ? '1rem 0.5rem 1.5rem 1.25rem' : '1.5rem 2rem 1.5rem 2rem')
+            }}
+            className="custom-scrollbar"
+          >
             
             {/* Tên công việc */}
             <div className="card" style={cardStyle}>
@@ -2184,7 +2539,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       <div style={{
                         width: `${percent}%`,
                         height: '100%',
-                        background: percent === 100 ? 'var(--color-success)' : 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-success) 100%)',
+                        background: percent < 33 
+                          ? 'var(--color-danger)' 
+                          : (percent < 66 
+                              ? 'var(--color-warning)' 
+                              : 'var(--color-success)'
+                            ),
                         borderRadius: '3px',
                         transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
                       }} />
@@ -2303,6 +2663,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {/* Subtask Card */}
                         <div 
+                          onClick={() => {
+                            if (task?.id !== 'new') {
+                              setSelectedSubtask(isCommentsOpen ? null : item);
+                            }
+                          }}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -2314,16 +2679,22 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             transition: 'all 0.2s',
                             opacity: item.done ? 0.8 : 1,
                             position: 'relative',
-                            gap: '10px'
+                            gap: '10px',
+                            cursor: task?.id !== 'new' ? 'pointer' : 'default'
                           }}
+                          className={task?.id !== 'new' ? "hover-bg-alt" : ""}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
                             {/* Round & Large Custom Checkbox */}
-                            <div style={{ position: 'relative', width: 22, height: 22, flexShrink: 0 }}>
+                            <div 
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ position: 'relative', width: 22, height: 22, flexShrink: 0, marginTop: '2px' }}
+                            >
                               <input
                                 type="checkbox"
                                 checked={!!item.done}
                                 onChange={() => handleToggleChecklist(item.id)}
+                                onClick={(e) => e.stopPropagation()}
                                 disabled={currentUser?.role === 'viewer'}
                                 style={{
                                   opacity: 0,
@@ -2359,6 +2730,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                       animate={{ scale: 1, opacity: 1 }}
                                       exit={{ scale: 0, opacity: 0 }}
                                       transition={{ type: 'spring', damping: 15, stiffness: 300 }}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
                                       <Check size={14} color="white" strokeWidth={4} />
                                     </motion.div>
@@ -2370,42 +2742,60 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '3px' }}>
                               {/* Title / Inline Edit */}
                               {isEditingThis ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <input
-                                    type="text"
-                                    className="form-input"
-                                    value={editingChecklistTitle}
-                                    onChange={(e) => setEditingChecklistTitle(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        handleUpdateChecklistItemTitle(item.id, editingChecklistTitle);
+                                <div 
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+                                    <input
+                                      type="text"
+                                      className="form-input"
+                                      value={editingChecklistTitle}
+                                      onChange={(e) => setEditingChecklistTitle(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleUpdateChecklistItem(item.id, editingChecklistTitle, editingChecklistDeadline);
+                                          setEditingChecklistId(null);
+                                        } else if (e.key === 'Escape') {
+                                          setEditingChecklistId(null);
+                                        }
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      autoFocus
+                                      style={{ fontSize: '0.82rem', padding: '4px 8px', height: '32px', borderRadius: '6px', flex: 1 }}
+                                    />
+                                    <input
+                                      type="date"
+                                      className="form-input"
+                                      value={editingChecklistDeadline}
+                                      onChange={(e) => setEditingChecklistDeadline(e.target.value)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ fontSize: '0.8rem', padding: '4px 6px', height: '32px', borderRadius: '6px', width: '130px', flexShrink: 0 }}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="btn primary sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleUpdateChecklistItem(item.id, editingChecklistTitle, editingChecklistDeadline);
                                         setEditingChecklistId(null);
-                                      } else if (e.key === 'Escape') {
+                                      }}
+                                      style={{ padding: '4px 10px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
+                                    >
+                                      {t('Lưu')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn outline sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         setEditingChecklistId(null);
-                                      }
-                                    }}
-                                    autoFocus
-                                    style={{ fontSize: '0.82rem', padding: '4px 8px', height: '32px', borderRadius: '6px', width: '100%' }}
-                                  />
-                                  <button
-                                    type="button"
-                                    className="btn primary sm"
-                                    onClick={() => {
-                                      handleUpdateChecklistItemTitle(item.id, editingChecklistTitle);
-                                      setEditingChecklistId(null);
-                                    }}
-                                    style={{ padding: '4px 10px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
-                                  >
-                                    {t('Lưu')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn outline sm"
-                                    onClick={() => setEditingChecklistId(null)}
-                                    style={{ padding: '4px 8px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
-                                  >
-                                    ✕
-                                  </button>
+                                      }}
+                                      style={{ padding: '4px 8px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
                                 </div>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2421,9 +2811,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                   {currentUser?.role !== 'viewer' && (
                                     <button
                                       type="button"
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         setEditingChecklistId(item.id);
                                         setEditingChecklistTitle(item.title);
+                                        setEditingChecklistDeadline(item.due_date ? new Date(item.due_date).toISOString().split('T')[0] : '');
                                       }}
                                       style={{
                                         border: 'none',
@@ -2458,114 +2850,118 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             </div>
                           </div>
 
-                          {/* Right Actions (Round User Icon & Delete Trash Icon) */}
+                          {/* Right Actions */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                            {/* Avatars stack if multiple */}
-                            {itemUsers.length > 1 && (
-                              <div style={{ display: 'flex', alignItems: 'center', marginRight: '4px' }}>
-                                {itemUsers.slice(0, 3).map((u, idx) => (
-                                  <div 
-                                    key={u.id} 
-                                    style={{ 
-                                      marginLeft: idx > 0 ? '-6px' : 0, 
-                                      zIndex: 10 - idx,
-                                      border: '2px solid var(--color-surface)',
-                                      borderRadius: '50%',
-                                      overflow: 'hidden',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center'
-                                    }}
-                                  >
-                                    <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={24} />
-                                  </div>
-                                ))}
-                                {itemUsers.length > 3 && (
-                                  <div 
-                                    style={{ 
-                                      marginLeft: '-6px', 
-                                      zIndex: 5,
-                                      border: '2px solid var(--color-surface)',
-                                      borderRadius: '50%',
-                                      background: 'var(--color-primary-light)',
-                                      color: 'var(--color-primary)',
-                                      fontSize: '9px',
-                                      fontWeight: 800,
-                                      width: '24px',
-                                      height: '24px',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center'
-                                    }}
-                                  >
-                                    +{itemUsers.length - 3}
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                             {/* Round User Assignee Icon Button & Stack */}
+                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                               {itemUsers.length > 0 && (
+                                 <div 
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     setSelectedSubtaskForParticipants(item);
+                                   }}
+                                   className="subtask-assignee-trigger"
+                                   style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                                   title={itemUsers.map(u => u.full_name || u.name).join(', ')}
+                                 >
+                                   {itemUsers.slice(0, 3).map((u, idx) => (
+                                     <div 
+                                       key={u.id} 
+                                       style={{ 
+                                          marginLeft: idx === 0 ? 0 : -8, 
+                                          border: '1.5px solid var(--color-surface)',
+                                          borderRadius: '50%',
+                                          overflow: 'hidden',
+                                          zIndex: 10 - idx,
+                                          boxShadow: 'var(--shadow-sm)',
+                                          display: 'flex'
+                                       }}
+                                     >
+                                       <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={22} />
+                                     </div>
+                                   ))}
+                                   {itemUsers.length > 3 && (
+                                     <div 
+                                       style={{ 
+                                          marginLeft: -8, 
+                                          width: '22px', 
+                                          height: '22px', 
+                                          borderRadius: '50%', 
+                                          background: 'var(--color-primary-light)', 
+                                          color: 'var(--color-primary)', 
+                                          fontSize: '0.625rem', 
+                                          fontWeight: 800, 
+                                          display: 'flex', 
+                                          alignItems: 'center', 
+                                          justifyContent: 'center',
+                                          border: '1.5px solid var(--color-surface)',
+                                          zIndex: 5
+                                       }}
+                                     >
+                                       +{itemUsers.length - 3}
+                                     </div>
+                                   )}
+                                 </div>
+                               )}
 
-                            {/* Round User Assignee Icon Button */}
-                            <div style={{ position: 'relative' }}>
-                              <button
-                                type="button"
-                                onClick={() => setActiveAssigneeDropdownId(isAssigneeDropdownOpen ? null : item.id)}
-                                disabled={currentUser?.role === 'viewer'}
-                                style={{
-                                  border: itemUsers.length > 1 
-                                    ? '1px dashed rgba(189, 29, 45, 0.4)' 
-                                    : (itemUsers.length === 1 ? '1.5px solid var(--color-primary-light)' : '1px solid var(--color-border-light)'),
-                                  background: itemUsers.length > 0 ? 'transparent' : 'rgba(163, 20, 34, 0.06)',
-                                  width: '28px',
-                                  height: '28px',
-                                  borderRadius: '50%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  cursor: currentUser?.role === 'viewer' ? 'default' : 'pointer',
-                                  padding: 0,
-                                  transition: 'all 0.15s ease'
-                                }}
-                                className="hover-scale"
-                                title={itemUsers.length > 0 ? `${t('Giao cho')}: ${itemUsers.map(u => u.full_name || u.name).join(', ')}` : t('Phân công người thực hiện')}
-                              >
-                                {itemUsers.length === 1 && itemUser ? (
-                                  <Avatar 
-                                    src={itemUser.avatar || itemUser.avatar_url} 
-                                    name={itemUser.full_name || itemUser.name} 
-                                    size={26} 
-                                  />
-                                ) : (
-                                  <UserPlus size={14} color="var(--color-primary)" />
-                                )}
-                              </button>
+                               <button
+                                 type="button"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setActiveAssigneeDropdownId(isAssigneeDropdownOpen ? null : item.id);
+                                 }}
+                                 disabled={currentUser?.role === 'viewer'}
+                                 style={{
+                                   border: '1px dashed var(--color-primary)',
+                                   background: 'rgba(163, 20, 34, 0.04)',
+                                   width: '24px',
+                                   height: '24px',
+                                   borderRadius: '50%',
+                                   display: 'flex',
+                                   alignItems: 'center',
+                                   justifyContent: 'center',
+                                   cursor: currentUser?.role === 'viewer' ? 'default' : 'pointer',
+                                   padding: 0,
+                                   transition: 'all 0.15s ease'
+                                 }}
+                                 className="hover-scale subtask-assignee-trigger"
+                                 title={t('Phân công người thực hiện')}
+                               >
+                                 <UserPlus size={12} color="var(--color-primary)" />
+                               </button>
 
                               {/* User selection dropdown popup */}
                               {isAssigneeDropdownOpen && (
-                                <div style={{
-                                  position: 'absolute',
-                                  top: '100%',
-                                  right: 0,
-                                  marginTop: '6px',
-                                  zIndex: 9999,
-                                  background: 'var(--color-surface)',
-                                  border: '1px solid var(--color-border-light)',
-                                  borderRadius: '12px',
-                                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
-                                  minWidth: '220px',
-                                  maxHeight: '230px',
-                                  overflowY: 'auto',
-                                  padding: '6px',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '2px'
-                                }}>
+                                <div 
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="subtask-assignee-dropdown"
+                                  style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    right: 0,
+                                    marginTop: '6px',
+                                    zIndex: 9999,
+                                    background: 'var(--color-surface)',
+                                    border: '1px solid var(--color-border-light)',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
+                                    minWidth: '220px',
+                                    maxHeight: '230px',
+                                    overflowY: 'auto',
+                                    padding: '6px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px'
+                                  }}
+                                >
                                   <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '4px 8px' }}>
                                     {t('Phân công người thực hiện:')}
                                   </div>
                                   
                                   {/* Unassign option */}
                                   <div
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       handleUpdateChecklistItemAssignee(item.id, '');
                                       setActiveAssigneeDropdownId(null);
                                     }}
@@ -2590,7 +2986,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                     return (
                                       <div
                                         key={u.id}
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                          e.stopPropagation();
                                           const nextAssignees = isAssigned
                                             ? assignedIds.filter(id => id !== String(u.id))
                                             : [...assignedIds, String(u.id)];
@@ -2632,7 +3029,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                 <div style={{ position: 'relative' }}>
                                   <button
                                     type="button"
-                                    onClick={() => setSelectedSubtask(isCommentsOpen ? null : item)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedSubtask(isCommentsOpen ? null : item);
+                                    }}
                                     style={{
                                       border: isCommentsOpen ? '1px solid var(--color-primary)' : '1px solid var(--color-border-light)',
                                       background: isCommentsOpen ? 'rgba(163, 20, 34, 0.06)' : 'transparent',
@@ -2655,20 +3055,16 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                   {commentCount > 0 && (
                                     <span style={{
                                       position: 'absolute',
-                                      top: '-5px',
-                                      right: '-5px',
+                                      top: '-6px',
+                                      right: '-6px',
                                       background: 'var(--color-primary)',
                                       color: 'white',
                                       fontSize: '9px',
                                       fontWeight: 800,
-                                      borderRadius: '50%',
-                                      width: '16px',
-                                      height: '16px',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
+                                      borderRadius: '8px',
+                                      padding: '2px 5px',
                                       lineHeight: 1,
-                                      border: '1.5px solid var(--color-surface)',
+                                      border: '1.5px solid var(--color-bg)',
                                       pointerEvents: 'none'
                                     }}>
                                       {commentCount}
@@ -2682,7 +3078,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             {currentUser?.role !== 'viewer' && (
                               <button
                                 type="button"
-                                onClick={() => setDeleteSubtaskTarget({ id: item.id, title: item.title })}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteSubtaskTarget({ id: item.id, title: item.title });
+                                }}
                                 style={{
                                   border: 'none',
                                   background: 'transparent',
@@ -2769,7 +3168,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                           {comment.content && /<[a-z][\s\S]*>/i.test(comment.content) ? (
                                             <div 
                                               className="rich-comment-content"
-                                              dangerouslySetInnerHTML={{ __html: comment.content }}
+                                              dangerouslySetInnerHTML={{ __html: linkifyHtml(comment.content) }}
                                               style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0', lineHeight: '1.4' }}
                                             />
                                           ) : (
@@ -3111,213 +3510,530 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               </div>
             </div>
 
-            {/* Bình luận & Trao đổi */}
+            {/* Bình luận & Trao đổi hoặc Dòng thời gian */}
             {task?.id !== 'new' && (
               <div className="card" style={cardStyle}>
-                <label style={cardLabelStyle}>
-                  {t('Bình luận & Trao đổi')} ({comments.length})
-                </label>
-
-                {/* Add comment input */}
-                <div style={{ background: 'rgba(0, 0, 0, 0.015)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.01)' }}>
-                  {replyTo && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(163, 20, 34, 0.08)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: '#a31422', fontWeight: 700 }}>
-                      <span>Đang trả lời {replyTo.userName}</span>
-                      <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#a31422', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
-                    </div>
-                  )}
-                  <div style={{ position: 'relative' }}>
-                    <MentionInput
-                      value={newCommentText}
-                      onChange={e => setNewCommentText(e.target.value)}
-                      onImagePaste={addLocalTaskCommentAttachment}
-                      onFilePaste={addLocalTaskCommentAttachment}
-                      placeholder={t('Viết bình luận... (Dán ảnh trực tiếp Ctrl+V)')}
-                      style={{ minHeight: '65px', fontSize: '0.85rem', paddingRight: '40px' }}
-                      disabled={isSubmittingComment || uploadingFile}
-                    />
-                    <label style={{ position: 'absolute', right: '10px', bottom: '10px', cursor: (uploadingFile || isSubmittingComment) ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('Đính kèm file')}>
-                      <input type="file" onChange={handleCommentAttachmentUpload} style={{ display: 'none' }} disabled={uploadingFile || isSubmittingComment} />
-                      {uploadingFile ? <RefreshCw className="spin" size={18} /> : <Paperclip size={18} />}
-                    </label>
-                  </div>
-                  
-                  {/* Attachment Chips List */}
-                  {commentAttachments.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '2px' }}>
-                      {commentAttachments.map((att: any, idx: number) => (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', color: 'var(--color-text)' }}>
-                          {att.previewUrl ? (
-                            <img src={att.previewUrl} alt="preview" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover' }} />
-                          ) : (
-                            <Paperclip size={11} color="var(--color-primary)" />
-                          )}
-                          <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{att.name}</span>
-                          <button onClick={() => removeTaskCommentAttachment(idx)} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 2px', lineHeight: 1 }}>×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '4px' }}>
-                    <button
-                      onClick={handlePostComment}
-                      disabled={isSubmittingComment || uploadingFile || (!newCommentText.trim() && commentAttachments.length === 0)}
-                      className="btn primary sm"
-                      style={{ padding: '6px 18px', fontSize: '0.78rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: '#fff' }}
-                    >
-                      {isSubmittingComment ? <RefreshCw className="spin" size={13} /> : <Send size={13} />}
-                      <span>{t('Gửi')}</span>
-                    </button>
-                  </div>
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', marginBottom: '14px', gap: '20px' }}>
+                  <button 
+                    onClick={() => setActiveTab('comments')} 
+                    style={{ 
+                      padding: '8px 4px', 
+                      fontSize: '0.85rem', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      borderBottom: activeTab === 'comments' ? '2px solid var(--color-primary)' : '2px solid transparent', 
+                      color: activeTab === 'comments' ? 'var(--color-primary)' : 'var(--color-text-muted)', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <MessageSquare size={14} />
+                    <span>{t('Bình luận & Trao đổi')} ({comments.length})</span>
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('timeline')} 
+                    style={{ 
+                      padding: '8px 4px', 
+                      fontSize: '0.85rem', 
+                      fontWeight: 700, 
+                      border: 'none', 
+                      background: 'none', 
+                      borderBottom: activeTab === 'timeline' ? '2px solid var(--color-primary)' : '2px solid transparent', 
+                      color: activeTab === 'timeline' ? 'var(--color-primary)' : 'var(--color-text-muted)', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Clock size={14} />
+                    <span>{t('Dòng thời gian')} ({timeline.length})</span>
+                  </button>
                 </div>
 
-                {/* Comments feed list */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', marginTop: '4px' }} className="custom-scrollbar">
-                  {loadingComments ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <StatRowSkeleton />
-                      <StatRowSkeleton />
-                      <StatRowSkeleton />
-                    </div>
-                  ) : comments.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
-                      {t('Chưa có thảo luận nào.')}
-                    </div>
-                  ) : (
-                    (() => {
-                      const rootComments = comments.filter((c: any) => !c.parent_id);
-                      const getReplies = (parentId: number) => {
-                        return comments
-                          .filter((c: any) => Number(c.parent_id) === Number(parentId))
-                          .sort((a: any, b: any) => new Date(a.created_at.replace(/-/g, '/')).getTime() - new Date(b.created_at.replace(/-/g, '/')).getTime());
-                      };
-
-                      const renderSingleComment = (comment: any, isReply: boolean = false) => {
-                        const commUser = users.find(u => Number(u.id) === Number(comment.user_id));
-                        let commentParsedAtts = [];
-                        if (comment.attachments) {
-                          try {
-                            commentParsedAtts = typeof comment.attachments === 'string' ? JSON.parse(comment.attachments) : comment.attachments;
-                          } catch (e) {
-                            console.error(e);
-                          }
-                        }
-                        if (!Array.isArray(commentParsedAtts)) commentParsedAtts = [];
-
-                        return (
-                          <div 
-                            key={comment.id} 
-                            id={`workspace-comment-${comment.id}`}
+                {activeTab === 'comments' ? (
+                  <>
+                    {/* Add comment input */}
+                    <div style={{ background: 'rgba(0, 0, 0, 0.015)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.01)' }}>
+                      {replyTo && (
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between', 
+                          background: 'rgba(107, 114, 128, 0.08)', 
+                          border: '1px solid var(--color-border-light)',
+                          padding: '8px 12px', 
+                          borderRadius: '10px', 
+                          fontSize: '0.78rem', 
+                          color: 'var(--color-text)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar src={replyTo.avatar} name={replyTo.userName} size={20} />
+                            <span>
+                              {t('Đang trả lời')}{' '}
+                              <strong style={{ color: 'var(--color-primary)' }}>{replyTo.userName}</strong>
+                            </span>
+                          </div>
+                          <button 
+                            onClick={() => setReplyTo(null)} 
                             style={{ 
-                              display: 'flex', 
-                              gap: '12px', 
-                              background: isReply ? 'transparent' : 'rgba(0, 0, 0, 0.01)', 
-                              border: isReply ? 'none' : '1px solid var(--color-border-light)', 
-                              padding: isReply ? '4px 0 4px 12px' : '12px 16px', 
-                              borderRadius: isReply ? '0' : '14px',
-                              borderLeft: isReply ? '2px solid var(--color-border-light)' : undefined,
-                              transition: 'all 0.5s ease',
-                              marginTop: isReply ? '6px' : '0'
+                              border: 'none', 
+                              background: 'transparent', 
+                              color: 'var(--color-text-muted)', 
+                              cursor: 'pointer', 
+                              fontWeight: 800, 
+                              fontSize: '1rem', 
+                              padding: '0 4px',
+                              lineHeight: 1
                             }}
                           >
-                            <Avatar src={comment.avatar_url || commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || comment.user_name || 'Đồng nghiệp'} size={isReply ? 24 : 28} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: isReply ? '0.75rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || comment.user_name || 'Đồng nghiệp'}</span>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at.replace(/-/g, '/')).toLocaleString('vi-VN')}</span>
-                              </div>
-                              {comment.content && /<[a-z][\s\S]*>/i.test(comment.content) ? (
-                                <div 
-                                  className="rich-text-editor-content"
-                                  dangerouslySetInnerHTML={{ __html: comment.content }}
-                                  style={{ fontSize: isReply ? '0.78rem' : '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45' }}
-                                />
+                            ×
+                          </button>
+                        </div>
+                      )}
+                      <div style={{ position: 'relative' }}>
+                        <MentionInput
+                          value={newCommentText}
+                          onChange={e => setNewCommentText(e.target.value)}
+                          onImagePaste={addLocalTaskCommentAttachment}
+                          onFilePaste={addLocalTaskCommentAttachment}
+                          placeholder={t('Viết bình luận... (Dán ảnh trực tiếp Ctrl+V)')}
+                          style={{ minHeight: '65px', fontSize: '0.85rem', paddingRight: '40px' }}
+                          disabled={isSubmittingComment || uploadingFile}
+                        />
+                        <label style={{ position: 'absolute', right: '10px', bottom: '10px', cursor: (uploadingFile || isSubmittingComment) ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('Đính kèm file')}>
+                          <input type="file" onChange={handleCommentAttachmentUpload} style={{ display: 'none' }} disabled={uploadingFile || isSubmittingComment} />
+                          {uploadingFile ? <RefreshCw className="spin" size={18} /> : <Paperclip size={18} />}
+                        </label>
+                      </div>
+                      
+                      {/* Attachment Chips List */}
+                      {commentAttachments.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '2px' }}>
+                          {commentAttachments.map((att: any, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', color: 'var(--color-text)' }}>
+                              {att.previewUrl ? (
+                                <img src={att.previewUrl} alt="preview" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover' }} />
                               ) : (
-                                <div style={{ fontSize: isReply ? '0.78rem' : '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>
-                                  {renderCommentContent(comment.content)}
-                                </div>
+                                <Paperclip size={11} color="var(--color-primary)" />
                               )}
-                              {commentParsedAtts.length > 0 && (
-                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
-                                  {commentParsedAtts.map((url: any, aIdx: number) => {
-                                    const name = typeof url === 'string' ? url.substring(url.lastIndexOf('/') + 1) : (url.name || 'File');
-                                    const rawHref = typeof url === 'string' ? url : (url.url || '#');
+                              <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{att.name}</span>
+                              <button onClick={() => removeTaskCommentAttachment(idx)} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 2px', lineHeight: 1 }}>×</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
-                                    const apiBase = import.meta.env.VITE_API_URL || '/backend';
-                                    let href = rawHref;
-                                    if (rawHref && rawHref.startsWith('uploads/')) {
-                                      href = `${apiBase}/${rawHref}`;
-                                    } else if (rawHref && rawHref.startsWith('storage/uploads/')) {
-                                      href = `${apiBase}/${rawHref.replace('storage/uploads/', 'uploads/')}`;
-                                    }
+                      <div style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '4px' }}>
+                        <button
+                          onClick={handlePostComment}
+                          disabled={isSubmittingComment || uploadingFile || (!newCommentText.trim() && commentAttachments.length === 0)}
+                          className="btn primary sm"
+                          style={{ padding: '6px 18px', fontSize: '0.78rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: '#fff' }}
+                        >
+                          {isSubmittingComment ? <RefreshCw className="spin" size={13} /> : <Send size={13} />}
+                          <span>{t('Gửi')}</span>
+                        </button>
+                      </div>
+                    </div>
 
-                                    const isImage = /\.(jpg|jpeg|png|gif|webp|svg)/i.test(href);
+                    {/* Comments feed list */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', marginTop: '4px' }} className="custom-scrollbar">
+                      {loadingComments ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                        </div>
+                      ) : comments.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
+                          {t('Chưa có thảo luận nào.')}
+                        </div>
+                      ) : (
+                        (() => {
+                          const rootComments = comments.filter((c: any) => !c.parent_id);
+                          const getReplies = (parentId: number) => {
+                            return comments
+                              .filter((c: any) => Number(c.parent_id) === Number(parentId))
+                              .sort((a: any, b: any) => new Date(a.created_at.replace(/-/g, '/')).getTime() - new Date(b.created_at.replace(/-/g, '/')).getTime());
+                          };
 
-                                    if (isImage) {
-                                      return (
-                                        <div key={aIdx} style={{ marginTop: '4px', display: 'inline-block' }}>
-                                          <a href={href} target="_blank" rel="noreferrer">
-                                            <img 
-                                              src={href} 
-                                              alt={name} 
-                                              style={{ 
-                                                maxWidth: '240px', 
-                                                maxHeight: '160px', 
-                                                borderRadius: '8px', 
-                                                border: '1px solid var(--color-border-light)', 
-                                                objectFit: 'cover',
-                                                cursor: 'zoom-in',
-                                                boxShadow: 'var(--shadow-sm)'
-                                              }} 
-                                            />
+                          const renderSingleComment = (comment: any, isReply: boolean = false) => {
+                            const commUser = users.find(u => Number(u.id) === Number(comment.user_id));
+                            let commentParsedAtts = [];
+                            if (comment.attachments) {
+                              try {
+                                commentParsedAtts = typeof comment.attachments === 'string' ? JSON.parse(comment.attachments) : comment.attachments;
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }
+                            if (!Array.isArray(commentParsedAtts)) commentParsedAtts = [];
+
+                            return (
+                              <div 
+                                key={comment.id} 
+                                id={`workspace-comment-${comment.id}`}
+                                style={{ 
+                                  display: 'flex', 
+                                  gap: '12px', 
+                                  background: isReply ? 'var(--color-bg-light, rgba(0, 0, 0, 0.015))' : 'var(--color-surface, #fff)', 
+                                  border: '1px solid var(--color-border-light)', 
+                                  padding: isReply ? '10px 14px' : '14px 18px', 
+                                  borderRadius: isReply ? '12px' : '16px',
+                                  boxShadow: isReply ? 'inset 0 1px 2px rgba(0, 0, 0, 0.01)' : '0 2px 8px rgba(0, 0, 0, 0.02)',
+                                  transition: 'all 0.5s ease',
+                                  marginTop: isReply ? '4px' : '0',
+                                  boxSizing: 'border-box'
+                                }}
+                              >
+                                <Avatar src={comment.avatar_url || commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || comment.user_name || 'Đồng nghiệp'} size={isReply ? 24 : 32} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+                                    <span style={{ fontSize: isReply ? '0.76rem' : '0.82rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || comment.user_name || 'Đồng nghiệp'}</span>
+                                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at.replace(/-/g, '/')).toLocaleString('vi-VN')}</span>
+                                  </div>
+                                  {comment.content && /<[a-z][\s\S]*>/i.test(comment.content) ? (
+                                    <div 
+                                      className="rich-text-editor-content"
+                                      dangerouslySetInnerHTML={{ __html: linkifyHtml(comment.content) }}
+                                      style={{ fontSize: isReply ? '0.78rem' : '0.825rem', color: 'var(--color-text-light)', margin: '6px 0 0', lineHeight: '1.45' }}
+                                    />
+                                  ) : (
+                                    <div style={{ fontSize: isReply ? '0.78rem' : '0.825rem', color: 'var(--color-text-light)', margin: '6px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>
+                                      {renderCommentContent(comment.content)}
+                                    </div>
+                                  )}
+                                  {commentParsedAtts.length > 0 && (
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                      {commentParsedAtts.map((url: any, aIdx: number) => {
+                                        const name = typeof url === 'string' ? url.substring(url.lastIndexOf('/') + 1) : (url.name || 'File');
+                                        const rawHref = typeof url === 'string' ? url : (url.url || '#');
+
+                                        const apiBase = import.meta.env.VITE_API_URL || '/backend';
+                                        let href = rawHref;
+                                        if (rawHref && rawHref.startsWith('uploads/')) {
+                                          href = `${apiBase}/${rawHref}`;
+                                        } else if (rawHref && rawHref.startsWith('storage/uploads/')) {
+                                          href = `${apiBase}/${rawHref.replace('storage/uploads/', 'uploads/')}`;
+                                        }
+
+                                        const isImage = /\.(jpg|jpeg|png|gif|webp|svg)/i.test(href);
+
+                                        if (isImage) {
+                                          return (
+                                            <div key={aIdx} style={{ marginTop: '4px', display: 'inline-block' }}>
+                                              <a href={href} target="_blank" rel="noreferrer">
+                                                <img 
+                                                  src={href} 
+                                                  alt={name} 
+                                                  style={{ 
+                                                    maxWidth: '240px', 
+                                                    maxHeight: '160px', 
+                                                    borderRadius: '8px', 
+                                                    border: '1px solid var(--color-border-light)', 
+                                                    objectFit: 'cover',
+                                                    cursor: 'zoom-in',
+                                                    boxShadow: 'var(--shadow-sm)'
+                                                  }} 
+                                                />
+                                              </a>
+                                            </div>
+                                          );
+                                        }
+
+                                        return (
+                                          <a key={aIdx} href={href} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', color: 'var(--color-primary)', fontSize: '0.65rem' }}>
+                                            <FileText size={10} />
+                                            <span>{name}</span>
                                           </a>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  
+                                  {(() => {
+                                    const isCurrentUserAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser?.role || '');
+                                    const isCommentAuthor = currentUser?.id && String(currentUser.id) === String(comment.user_id);
+                                    const canDeleteComment = isCurrentUserAdmin || isCommentAuthor;
+
+                                    if (!isReply || canDeleteComment) {
+                                      return (
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px', alignItems: 'center' }}>
+                                          {canDeleteComment && (
+                                            <button
+                                              onClick={() => setCommentToDelete(comment.id)}
+                                              style={{ 
+                                                background: 'none', 
+                                                border: 'none', 
+                                                color: 'var(--color-danger, #ef4444)', 
+                                                cursor: 'pointer', 
+                                                display: 'inline-flex', 
+                                                alignItems: 'center', 
+                                                padding: '4px' 
+                                              }}
+                                              className="hover-scale"
+                                              title={t('Xóa bình luận')}
+                                            >
+                                              <Trash2 size={12} />
+                                            </button>
+                                          )}
+                                          {!isReply && (
+                                            <button
+                                              onClick={() => setReplyTo({ id: comment.id, userName: commUser?.full_name || comment.user_name || 'Đồng nghiệp', avatar: comment.avatar_url || commUser?.avatar || commUser?.avatar_url })}
+                                              style={{ 
+                                                background: 'rgba(163, 20, 34, 0.05)', 
+                                                border: 'none', 
+                                                color: 'var(--color-primary)', 
+                                                fontSize: '0.7rem', 
+                                                padding: '4px 10px', 
+                                                borderRadius: '12px',
+                                                cursor: 'pointer', 
+                                                fontWeight: 700, 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '4px' 
+                                              }}
+                                              className="hover-scale"
+                                            >
+                                              <MessageSquare size={11} />
+                                              <span>Phản hồi</span>
+                                            </button>
+                                          )}
                                         </div>
                                       );
                                     }
-
-                                    return (
-                                      <a key={aIdx} href={href} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', color: 'var(--color-primary)', fontSize: '0.65rem' }}>
-                                        <FileText size={10} />
-                                        <span>{name}</span>
-                                      </a>
-                                    );
-                                  })}
+                                    return null;
+                                  })()}
                                 </div>
-                              )}
-                              
-                              {!isReply && (
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                                  <button
-                                    onClick={() => setReplyTo({ id: comment.id, userName: commUser?.full_name || comment.user_name || 'Đồng nghiệp' })}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: 0, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}
-                                    className="hover-lift"
-                                  >
-                                    Phản hồi
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      };
-
-                      return rootComments.map((rootComment: any) => {
-                        const replies = getReplies(rootComment.id);
-                        return (
-                          <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                            {renderSingleComment(rootComment, false)}
-                            {replies.length > 0 && (
-                              <div style={{ marginLeft: '32px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '8px', marginTop: '4px' }}>
-                                {replies.map((reply: any) => renderSingleComment(reply, true))}
                               </div>
-                            )}
-                          </div>
-                        );
-                      });
-                    })()
-                  )}
-                </div>
+                            );
+                          };
+
+                          return rootComments.map((rootComment: any) => {
+                            const replies = getReplies(rootComment.id);
+                            return (
+                              <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {renderSingleComment(rootComment, false)}
+                                {replies.length > 0 && (
+                                  <div style={{ 
+                                    marginLeft: '20px', 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    gap: '8px', 
+                                    borderLeft: '2px solid rgba(163, 20, 34, 0.15)', 
+                                    paddingLeft: '14px', 
+                                    marginTop: '8px',
+                                    marginBottom: '6px'
+                                  }}>
+                                    {replies.map((reply: any) => renderSingleComment(reply, true))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          });
+                        })()
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '10px 5px', position: 'relative' }}>
+                    {/* Scrollable Container for Timeline */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '450px', overflowY: 'auto', paddingRight: '6px', position: 'relative' }} className="custom-scrollbar">
+                      {/* Vertical line connector */}
+                      <div style={{ position: 'absolute', left: '17px', top: '15px', bottom: '15px', width: '2px', background: 'var(--color-border-light)' }} />
+                      
+                      {loadingTimeline ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                        </div>
+                      ) : timeline.length === 0 ? (
+                        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '20px 0' }}>
+                          {t('Chưa có lịch sử hoạt động ghi nhận')}
+                        </div>
+                      ) : (
+                        (() => {
+                          const itemsPerPage = 20;
+                          const startIndex = (timelinePage - 1) * itemsPerPage;
+                          const paginatedTimeline = timeline.slice(startIndex, startIndex + itemsPerPage);
+
+                          return paginatedTimeline.map((log: any, idx: number) => {
+                            const dateStr = log.created_at ? new Date(log.created_at.replace(/-/g, '/')).toLocaleString('vi-VN') : '';
+                            let data: any = {};
+                            try {
+                              data = JSON.parse(log.new_data || '{}');
+                            } catch(e) {}
+
+                            // Parse changes
+                            const keys = Object.keys(data);
+                            const displayKeys = keys.filter(k => [
+                              'status', 'progress', 'priority', 'user_id', 'due_date'
+                            ].includes(k));
+
+                            const getActionMainText = () => {
+                              switch (log.action) {
+                                case 'CREATE':
+                                  return t('đã tạo công việc này');
+                                case 'UPDATE':
+                                  if (displayKeys.length > 0) {
+                                    return t('đã cập nhật các thông tin:');
+                                  }
+                                  return t('đã cập nhật thông tin công việc');
+                                case 'ADD_COMMENT':
+                                  return t('đã thêm bình luận mới');
+                                case 'DELETE_COMMENT':
+                                  return t('đã xóa bình luận');
+                                case 'COMPLETE_SUBTASK':
+                                  return `${t('đã hoàn thành công việc con')} "${data.title || ''}"`;
+                                case 'INCOMPLETE_SUBTASK':
+                                  return `${t('đã đánh dấu chưa hoàn thành công việc con')} "${data.title || ''}"`;
+                                case 'ADD_SUBTASK':
+                                  return `${t('đã thêm công việc con')} "${data.title || ''}"`;
+                                case 'DELETE_SUBTASK':
+                                  return `${t('đã xóa công việc con')} "${data.title || ''}"`;
+                                case 'CANCEL_MEETING':
+                                  return `${t('đã hủy lịch hẹn')} (Lý do: "${data.reason || ''}")`;
+                                case 'RESCHEDULE_MEETING':
+                                  return `${t('đã dời lịch hẹn đến ngày')} ${data.due_date || ''}`;
+                                default:
+                                  return `${t('đã thực hiện thao tác')} "${log.action}"`;
+                              }
+                            };
+
+                            return (
+                              <div key={idx} style={{ display: 'flex', gap: '15px', position: 'relative', zIndex: 1 }}>
+                                {/* Avatar */}
+                                <div style={{ flexShrink: 0 }}>
+                                  <Avatar 
+                                    src={log.user_avatar} 
+                                    name={log.user_name || t('Hệ thống')} 
+                                    size={36} 
+                                  />
+                                </div>
+                                
+                                {/* Log details */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, paddingTop: '2px' }}>
+                                  <div style={{ fontSize: '0.825rem', color: 'var(--color-text)', lineHeight: '1.4' }}>
+                                    <strong style={{ color: 'var(--color-text)', marginRight: '6px', fontWeight: 700 }}>
+                                      {log.user_name || t('Hệ thống')}
+                                    </strong>
+                                    {getActionMainText()}
+                                  </div>
+                                  {log.action === 'UPDATE' && displayKeys.length > 0 && (
+                                    <div style={{ 
+                                      display: 'flex', 
+                                      flexDirection: 'column', 
+                                      gap: '4px', 
+                                      marginTop: '2px',
+                                      marginBottom: '2px',
+                                      paddingLeft: '10px',
+                                      borderLeft: '2px solid var(--color-border-light)'
+                                    }}>
+                                      {displayKeys.map(k => {
+                                        const val = data[k];
+                                        let label = '';
+                                        let displayVal = val;
+                                        
+                                        if (k === 'status') {
+                                          label = t('Trạng thái');
+                                          const statusLabels: Record<string, string> = {
+                                            todo: t('Cần làm'),
+                                            in_progress: t('Đang làm'),
+                                            done: t('Hoàn thành'),
+                                            cancelled: t('Đã hủy'),
+                                            pending: t('Chờ duyệt'),
+                                            planned: t('Lên kế hoạch')
+                                          };
+                                          displayVal = statusLabels[val] || val;
+                                        } else if (k === 'progress') {
+                                          label = t('Tiến độ');
+                                          displayVal = `${val}%`;
+                                        } else if (k === 'priority') {
+                                          label = t('Độ ưu tiên');
+                                          const priorityLabels: Record<string, string> = {
+                                            low: t('Thấp'),
+                                            medium: t('Trung bình'),
+                                            high: t('Cao')
+                                          };
+                                          displayVal = priorityLabels[val] || val;
+                                        } else if (k === 'user_id') {
+                                          label = t('Người thực hiện');
+                                          const assignedUser = users.find(u => Number(u.id) === Number(val));
+                                          displayVal = assignedUser?.full_name || val;
+                                        } else if (k === 'due_date') {
+                                          label = t('Thời hạn');
+                                          displayVal = val ? new Date(val).toLocaleDateString('vi-VN') : t('Không có');
+                                        } else if (k === 'body') {
+                                          label = t('Mô tả');
+                                          displayVal = t('Đã cập nhật nội dung');
+                                        } else if (k === 'subject') {
+                                          label = t('Tên công việc');
+                                          displayVal = val;
+                                        } else if (k === 'participant_ids') {
+                                          label = t('Người liên quan');
+                                          displayVal = t('Đã cập nhật danh sách');
+                                        } else if (k === 'tags') {
+                                          label = t('Nhãn công việc');
+                                          displayVal = val;
+                                        } else {
+                                          label = k;
+                                        }
+                                        
+                                        return (
+                                          <span key={k} style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)' }}>
+                                            • {label}: <strong style={{ color: 'var(--color-text)', fontWeight: 600 }}>{displayVal}</strong>
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                    {dateStr}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()
+                      )}
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {timeline.length > 20 && (
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '10px', borderTop: '1px solid var(--color-border-light)', paddingTop: '15px' }}>
+                        {Array.from({ length: Math.min(5, Math.ceil(timeline.length / 20)) }).map((_, pIdx) => {
+                          const pNum = pIdx + 1;
+                          return (
+                            <button
+                              key={pNum}
+                              onClick={() => setTimelinePage(pNum)}
+                              className={`btn sm ${timelinePage === pNum ? 'primary' : 'border'}`}
+                              style={{ 
+                                minWidth: '32px', 
+                                height: '32px', 
+                                borderRadius: '8px', 
+                                padding: 0, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                background: timelinePage === pNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                                borderColor: timelinePage === pNum ? 'var(--color-primary)' : 'var(--color-border)',
+                                color: timelinePage === pNum ? '#fff' : 'var(--color-text)'
+                              }}
+                            >
+                              {pNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             {/* Bottom Spacer to prevent content from being flush against the bottom */}
@@ -3325,7 +4041,20 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           </div>
 
           {/* Right Column (3) */}
-          <div style={{ flex: isMobileOrTablet ? 'none' : 3, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem'), minWidth: 0 }}>
+          <div 
+            style={{ 
+              flex: isMobileOrTablet ? 'none' : 3, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: isMobileOrTablet ? '1rem' : (embedMode ? '12px' : '1.5rem'), 
+              minWidth: 0,
+              background: 'var(--color-bg)',
+              borderLeft: isMobileOrTablet ? 'none' : '1px solid var(--color-border-light)',
+              overflowY: 'auto',
+              padding: isMobileOrTablet ? '1rem 1rem 100px 1rem' : (embedMode ? '1rem 0.5rem 1.5rem 0.5rem' : '1.5rem 2rem 1.5rem 2rem')
+            }}
+            className="custom-scrollbar"
+          >
             
             {/* Tiến độ công việc */}
             <div className="card" style={cardStyle}>
@@ -3520,314 +4249,212 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             </div>
 
             {/* Khách hàng liên quan */}
-            <div className="card" style={cardStyle}>
-              
-              {/* Primary Contact (if any) */}
-              {((formData.related_type === 'contact' || formData.contact_id) && (formData.related_type === 'contact' ? formData.related_id : formData.contact_id)) ? (
-                <div style={{ marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                      {t('Khách hàng chính')}
-                    </div>
-                    {task.id === 'new' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData({ 
-                            ...formData, 
-                            contact_id: null, 
-                            contact_name: '',
-                            ...(formData.related_type === 'contact' ? { related_id: '', related_type: null } : {})
-                          });
-                        }}
-                        style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.75rem', padding: '2px' }}
-                      >
-                        {t('Thay đổi')}
-                      </button>
-                    )}
-                  </div>
-                  <div 
-                    className="hover-lift"
-                    onClick={() => {
-                      if (onOpenContact) {
-                        onOpenContact(Number(formData.related_type === 'contact' ? formData.related_id : formData.contact_id));
-                      }
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: 'rgba(189, 29, 45, 0.04)',
-                      border: '1px solid rgba(189, 29, 45, 0.1)',
-                      padding: '10px 14px',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      color: 'var(--color-primary)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Avatar name={formData.contact_name || t('Khách hàng')} size={26} />
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>{formData.contact_name || t('Khách hàng')}</span>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Nhấn để xem chi tiết')}</span>
-                      </div>
-                    </div>
-                    <ArrowUpRight size={16} />
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                    {t('Khách hàng chính *')}
-                  </div>
-                  <CustomSelect
-                    searchable
-                    options={[
-                      { value: '', label: t('Chọn khách hàng chính...') },
-                      ...allowedContacts.map(c => ({
-                        value: String(c.id),
-                        label: `${getContactFullName(c)} ${c.phone ? `(${c.phone})` : ''}`,
-                        avatar: c.avatar_url || c.avatar
-                      }))
-                    ]}
-                    value={formData.contact_id ? String(formData.contact_id) : (formData.related_type === 'contact' && formData.related_id ? String(formData.related_id) : '')}
-                    onChange={async val => {
-                      const selected = allowedContacts.find(c => String(c.id) === String(val));
-                      const contactIdVal = val ? Number(val) : null;
-                      const contactNameVal = selected ? getContactFullName(selected) : '';
-                      const isContactRelated = (formData.related_type === 'contact' || !formData.related_type);
-                      
-                      setFormData({
-                        ...formData,
-                        contact_id: contactIdVal,
-                        contact_name: contactNameVal,
-                        ...(isContactRelated ? {
-                          related_id: contactIdVal,
-                          related_type: contactIdVal ? 'contact' : null
-                        } : {})
-                      });
-
-                      if (task.id !== 'new') {
-                        try {
-                          await api.put(`/activities/${task.id}`, {
-                            contact_id: contactIdVal,
-                            ...(isContactRelated ? {
-                              related_id: contactIdVal,
-                              related_type: contactIdVal ? 'contact' : null
-                            } : {})
-                          });
-                          onUpdate();
-                        } catch (e: any) {
-                          toast.error(t('Lỗi cập nhật khách hàng liên kết: ') + e.message);
-                        }
-                      }
-                    }}
-                    placeholder={t('Chọn khách hàng chính...')}
-                  />
-                </div>
-              )}
-
-              {/* Additional Contacts list */}
-              {(() => {
-                const addContactIds = erpMeta.related_contact_ids || [];
-                const addContacts = allowedContacts.filter(c => addContactIds.includes(Number(c.id)));
-                const mainContactId = Number(formData.related_id || formData.contact_id || 0);
+            {(currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'sale') && (
+              <div className="card" style={cardStyle}>
                 
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {addContacts.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                          {t('Khách hàng liên kết thêm')} ({addContacts.length})
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {addContacts.map(c => (
-                            <div 
-                              key={c.id} 
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                background: 'rgba(0, 0, 0, 0.015)',
-                                border: '1px solid var(--color-border-light)',
-                                padding: '8px 12px',
-                                borderRadius: '10px'
-                              }}
-                            >
-                              <div 
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1 }}
-                                onClick={() => {
-                                  if (onOpenContact) {
-                                    onOpenContact(Number(c.id));
-                                  }
-                                }}
-                              >
-                                <Avatar name={getContactFullName(c)} src={c.avatar_url || c.avatar} size={22} />
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)' }}>{getContactFullName(c)}</span>
-                                  <span style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)' }}>{c.phone || c.email || t('Xem hồ sơ')}</span>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const nextIds = addContactIds.filter((id: number) => id !== Number(c.id));
-                                  const updatedMeta = { ...erpMeta, related_contact_ids: nextIds };
-                                  setErpMeta(updatedMeta);
-                                  handleSaveMeta(updatedMeta);
-                                }}
-                                style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.8rem', padding: '4px' }}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Picker/Dropdown */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                {/* Primary Contact (if any) */}
+                {((formData.related_type === 'contact' || formData.contact_id) && (formData.related_type === 'contact' ? formData.related_id : formData.contact_id)) ? (
+                  <div style={{ marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                       <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                        {t('Thêm khách hàng liên kết')}
+                        {t('Khách hàng chính')}
                       </div>
-                      <CustomSelect
-                        multiple
-                        searchable
-                        showAvatars
-                        options={allowedContacts
-                          .filter(c => Number(c.id) !== mainContactId)
-                          .map(c => ({
-                            value: String(c.id),
-                            label: `${getContactFullName(c)} ${c.phone ? `(${c.phone})` : ''}`,
-                            avatar: c.avatar_url || c.avatar
-                          }))}
-                        value={addContactIds.map(String)}
-                        onChange={(vals) => {
-                          const nextIds = vals.map(Number);
-                          const updatedMeta = { ...erpMeta, related_contact_ids: nextIds };
-                          setErpMeta(updatedMeta);
-                          handleSaveMeta(updatedMeta);
-                        }}
-                        placeholder={t('Chọn khách hàng...')}
-                      />
+                      {task.id === 'new' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({ 
+                              ...formData, 
+                              contact_id: null, 
+                              contact_name: '',
+                              ...(formData.related_type === 'contact' ? { related_id: '', related_type: null } : {})
+                            });
+                          }}
+                          style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.75rem', padding: '2px' }}
+                        >
+                          {t('Thay đổi')}
+                        </button>
+                      )}
+                    </div>
+                    <div 
+                      className="hover-lift"
+                      onClick={() => {
+                        if (onOpenContact) {
+                          onOpenContact(Number(formData.related_type === 'contact' ? formData.related_id : formData.contact_id));
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        background: 'rgba(0, 0, 0, 0.015)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Avatar 
+                          name={formData.contact_name || t('Khách hàng')} 
+                          src={allowedContacts.find(c => String(c.id) === String(formData.contact_id || formData.related_id))?.avatar_url || allowedContacts.find(c => String(c.id) === String(formData.contact_id || formData.related_id))?.avatar}
+                          size={24} 
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                            {formData.contact_name || t('Khách hàng')}
+                          </span>
+                          <span style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)' }}>
+                            {allowedContacts.find(c => String(c.id) === String(formData.contact_id || formData.related_id))?.phone || allowedContacts.find(c => String(c.id) === String(formData.contact_id || formData.related_id))?.email || t('Xem hồ sơ')}
+                          </span>
+                        </div>
+                      </div>
+                      <ArrowUpRight size={16} />
                     </div>
                   </div>
-                );
-              })()}
-            </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                      {t('Khách hàng chính *')}
+                    </div>
+                    <CustomSelect
+                      searchable
+                      options={[
+                        { value: '', label: t('Chọn khách hàng chính...') },
+                        ...allowedContacts.map(c => ({
+                          value: String(c.id),
+                          label: `${getContactFullName(c)} ${c.phone ? `(${c.phone})` : ''}`,
+                          avatar: c.avatar_url || c.avatar
+                        }))
+                      ]}
+                      value={formData.contact_id ? String(formData.contact_id) : (formData.related_type === 'contact' && formData.related_id ? String(formData.related_id) : '')}
+                      onChange={async val => {
+                        const selected = allowedContacts.find(c => String(c.id) === String(val));
+                        const contactIdVal = val ? Number(val) : null;
+                        const contactNameVal = selected ? getContactFullName(selected) : '';
+                        const isContactRelated = (formData.related_type === 'contact' || !formData.related_type);
+                        
+                        setFormData({
+                          ...formData,
+                          contact_id: contactIdVal,
+                          contact_name: contactNameVal,
+                          ...(isContactRelated ? {
+                            related_id: contactIdVal,
+                            related_type: contactIdVal ? 'contact' : null
+                          } : {})
+                        });
 
-            {/* Dự án & Chiến dịch liên quan */}
-            <div className="card" style={cardStyle}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                {t('Liên kết Dự án / Chiến dịch / Team')}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Dự án')}</span>
-                    {!!erpMeta.project_id && (
-                      <button 
-                        type="button" 
-                                                onClick={() => { navigate(`/projects?id=${erpMeta.project_id}`); onClose?.(); }} 
-                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.725rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
-                        className="hover-opacity"
-                      >
-                        <Eye size={13} style={{ color: 'var(--color-text-muted)' }} /> {t('Xem')}
-                      </button>
-                    )}
-                  </div>
-                  <CustomSelect
-                    searchable
-                    options={[
-                      { value: '', label: t('Chọn dự án...') },
-                      ...allowedProjects.map(p => ({ value: String(p.id), label: p.name }))
-                    ]}
-                    value={erpMeta.project_id ? String(erpMeta.project_id) : ''}
-                    onChange={val => {
-                      const nextProject = val ? Number(val) : null;
-                      let nextCampaign = erpMeta.campaign_id;
-                      if (nextProject && nextCampaign) {
-                        const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
-                        if (campObj && Number(campObj.project_id) !== nextProject) {
-                          nextCampaign = null;
-                        }
-                      }
-                      const nextMeta = { ...erpMeta, project_id: nextProject, campaign_id: nextCampaign };
-                      setErpMeta(nextMeta);
-                      handleSaveMeta(nextMeta);
-                    }}
-                    placeholder={t('Chọn dự án...')}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Chiến dịch')}</span>
-                    {!!erpMeta.campaign_id && (
-                      <button 
-                        type="button" 
-                                                onClick={() => { navigate(`/projects?tab=campaigns&id=${erpMeta.campaign_id}`); onClose?.(); }} 
-                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.725rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
-                        className="hover-opacity"
-                        title={t('Xem chi tiết chiến dịch')}
-                      >
-                        <Eye size={13} style={{ color: 'var(--color-text-muted)' }} /> {t('Xem')}
-                      </button>
-                    )}
-                  </div>
-                  {(() => {
-                    const filteredCamps = erpMeta.project_id
-                      ? allowedCampaigns.filter(c => Number(c.project_id) === Number(erpMeta.project_id))
-                      : allowedCampaigns;
-                    return (
-                      <CustomSelect
-                        searchable
-                        options={[
-                          { value: '', label: t('Chọn chiến dịch...') },
-                          ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
-                        ]}
-                        value={erpMeta.campaign_id ? String(erpMeta.campaign_id) : ''}
-                        onChange={val => {
-                          const nextCampaign = val ? Number(val) : null;
-                          let nextProject = erpMeta.project_id;
-                          if (nextCampaign) {
-                            const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
-                            if (campObj && campObj.project_id) {
-                              nextProject = Number(campObj.project_id);
-                            }
+                        if (task.id !== 'new') {
+                          try {
+                            await api.put(`/activities/${task.id}`, {
+                              contact_id: contactIdVal,
+                              ...(isContactRelated ? {
+                                related_id: contactIdVal,
+                                related_type: contactIdVal ? 'contact' : null
+                              } : {})
+                            });
+                            onUpdate();
+                          } catch (e: any) {
+                            toast.error(t('Lỗi cập nhật khách hàng liên kết: ') + e.message);
                           }
-                          const nextMeta = { ...erpMeta, campaign_id: nextCampaign, project_id: nextProject };
-                          setErpMeta(nextMeta);
-                          handleSaveMeta(nextMeta);
-                        }}
-                        placeholder={t('Chọn chiến dịch...')}
-                      />
-                    );
-                  })()}
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Nhóm / Team')}</span>
-                  <CustomSelect
-                    searchable
-                    showAvatars
-                    options={[
-                      { value: '', label: t('Chọn nhóm...') },
-                      ...allowedTeams.map(t => ({ value: String(t.id), label: t.name }))
-                    ]}
-                    value={erpMeta.team_id ? String(erpMeta.team_id) : ''}
-                    onChange={val => {
-                      const nextTeam = val ? Number(val) : null;
-                      const nextMeta = { ...erpMeta, team_id: nextTeam };
-                      setErpMeta(nextMeta);
-                      handleSaveMeta(nextMeta);
-                    }}
-                    placeholder={t('Chọn nhóm...')}
-                  />
-                </div>
+                        }
+                      }}
+                      placeholder={t('Chọn khách hàng chính...')}
+                    />
+                  </div>
+                )}
+
+                {/* Additional Contacts list */}
+                {(() => {
+                  const addContactIds = erpMeta.related_contact_ids || [];
+                  const addContacts = allowedContacts.filter(c => addContactIds.includes(Number(c.id)));
+                  const mainContactId = Number(formData.related_id || formData.contact_id || 0);
+                  
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {addContacts.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                            {t('Khách hàng liên kết thêm')} ({addContacts.length})
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {addContacts.map(c => (
+                              <div 
+                                key={c.id} 
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  background: 'rgba(0, 0, 0, 0.015)',
+                                  border: '1px solid var(--color-border-light)',
+                                  padding: '8px 12px',
+                                  borderRadius: '10px'
+                                }}
+                              >
+                                <div 
+                                  style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1 }}
+                                  onClick={() => {
+                                    if (onOpenContact) {
+                                      onOpenContact(Number(c.id));
+                                    }
+                                  }}
+                                >
+                                  <Avatar name={getContactFullName(c)} src={c.avatar_url || c.avatar} size={22} />
+                                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)' }}>{getContactFullName(c)}</span>
+                                    <span style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)' }}>{c.phone || c.email || t('Xem hồ sơ')}</span>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextIds = addContactIds.filter((id: number) => id !== Number(c.id));
+                                    const updatedMeta = { ...erpMeta, related_contact_ids: nextIds };
+                                    setErpMeta(updatedMeta);
+                                    handleSaveMeta(updatedMeta);
+                                  }}
+                                  style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.8rem', padding: '4px' }}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Picker/Dropdown */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                          {t('Thêm khách hàng liên kết')}
+                        </div>
+                        <CustomSelect
+                          multiple
+                          searchable
+                          showAvatars
+                          options={allowedContacts
+                            .filter(c => Number(c.id) !== mainContactId)
+                            .map(c => ({
+                              value: String(c.id),
+                              label: `${getContactFullName(c)} ${c.phone ? `(${c.phone})` : ''}`,
+                              avatar: c.avatar_url || c.avatar
+                            }))}
+                          value={addContactIds.map(String)}
+                          onChange={(vals) => {
+                            const nextIds = vals.map(Number);
+                            const updatedMeta = { ...erpMeta, related_contact_ids: nextIds };
+                            setErpMeta(updatedMeta);
+                            handleSaveMeta(updatedMeta);
+                          }}
+                          placeholder={t('Chọn khách hàng...')}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
-            </div>
+            )}
+
 
             {/* Approval Banner */}
             {formData.require_approval === 1 && formData.progress === 100 && (
@@ -3967,7 +4594,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   <CustomSelect
                     options={approverOptions.map(u => ({
                       value: String(u.id),
-                      label: `${u.full_name} (${u.role})`,
+                      label: `${u.full_name} (${getRoleDisplayName(u)})`,
                       avatar: u.avatar || u.avatar_url
                     }))}
                     value={formData.approver_id ? String(formData.approver_id) : ''}
@@ -3997,106 +4624,429 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               )}
             </div>
 
-            {/* Người thực hiện */}
+            {/* Liên kết team */}
             <div className="card" style={cardStyle}>
-              <label style={cardLabelStyle}>
-                {t('Người thực hiện')}
-              </label>
-              <CustomSelect
-                options={users.map(u => ({
-                  value: String(u.id),
-                  label: u.full_name,
-                  avatar: u.avatar || u.avatar_url
-                }))}
-                value={String(formData.user_id || '')}
-                onChange={val => {
-                  handleUpdateField('user_id', Number(val));
-                }}
-                searchable
-                showAvatars
-              />
-            </div>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                {t('Liên kết team')}
+              </div>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                {/* Selected team pills */}
+                {(() => {
+                  const selectedTeamIds = erpMeta?.team_ids || (erpMeta?.team_id ? [erpMeta.team_id] : []);
+                  const selectedTeams = allowedTeams.filter(t => selectedTeamIds.includes(t.id) || selectedTeamIds.includes(String(t.id)) || selectedTeamIds.includes(Number(t.id)));
+                  
+                  return (
+                    <>
+                      {selectedTeams.map(t => (
+                        <span 
+                          key={t.id}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '5px 12px',
+                            background: 'rgba(107, 114, 128, 0.08)',
+                            color: 'var(--color-text)',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            borderRadius: '16px',
+                            border: '1px solid rgba(107, 114, 128, 0.16)'
+                          }}
+                        >
+                          <Users size={13} style={{ opacity: 0.7 }} color="var(--color-text-muted)" />
+                          {t.name}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextTeamIds = selectedTeamIds.filter(id => String(id) !== String(t.id));
+                              const nextMeta = { ...erpMeta, team_ids: nextTeamIds, team_id: nextTeamIds[0] || null };
+                              setErpMeta(nextMeta);
+                              handleSaveMeta(nextMeta);
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'rgba(107, 114, 128, 0.8)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              padding: 0,
+                              fontSize: '0.85rem',
+                              marginLeft: '4px'
+                            }}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </>
+                  );
+                })()}
 
-            {/* Người liên quan */}
-            <div className="card" style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label style={cardLabelStyle}>
-                  {t('Người liên quan')}
-                </label>
+                {/* Dash add button for teams */}
                 <button
                   type="button"
-                  onClick={() => setShowParticipantsModal(true)}
-                  className="btn outline sm hover-lift"
-                  style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  onClick={() => setShowTeamDropdown(!showTeamDropdown)}
+                  style={{
+                    border: '1px dashed var(--color-primary)',
+                    background: 'rgba(163, 20, 34, 0.04)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    padding: 0,
+                    transition: 'all 0.15s ease'
+                  }}
+                  className="hover-scale"
+                  title={t('Liên kết thêm team')}
                 >
-                  <Users size={12} />
-                  {t('Quản lý')}
+                  <Plus size={16} color="var(--color-primary)" />
                 </button>
-              </div>
 
-              {/* Avatar Stack */}
-              <div 
-                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '4px 0' }}
-                onClick={() => setShowParticipantsModal(true)}
-              >
-                {participants.length === 0 ? (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                    {t('Chưa có người liên quan.')}
-                  </span>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      {participants.slice(0, 3).map((u: any, idx: number) => (
-                        <div 
-                          key={u.id} 
-                          style={{ 
-                            marginLeft: idx === 0 ? 0 : -8, 
-                            border: '2px solid var(--color-surface)', 
-                            borderRadius: '50%',
-                            overflow: 'hidden',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                            zIndex: 10 - idx
-                          }}
-                        >
-                          <Avatar src={u.avatar_url || u.avatar} name={u.full_name} size={28} />
-                        </div>
-                      ))}
-                      {participants.length > 3 && (
-                        <div 
-                          style={{ 
-                            marginLeft: -8, 
-                            width: 28, 
-                            height: 28, 
-                            borderRadius: '50%', 
-                            background: 'var(--color-border-light)', 
-                            color: 'var(--color-text)', 
-                            fontSize: '0.7rem', 
-                            fontWeight: 800, 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            border: '2px solid var(--color-surface)',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                            zIndex: 5
-                          }}
-                        >
-                          +{participants.length - 3}
-                        </div>
-                      )}
+                {/* Dropdown list of teams */}
+                {showTeamDropdown && (
+                  <div 
+                    ref={teamDropdownRef}
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: '6px',
+                      zIndex: 9999,
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '16px',
+                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
+                      minWidth: '260px',
+                      maxHeight: '280px',
+                      overflowY: 'auto',
+                      padding: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '3px'
+                    }}
+                  >
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '6px 8px', borderBottom: '1px dashed var(--color-border-light)', marginBottom: '4px' }}>
+                      {t('Chọn team liên kết:')}
                     </div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', marginLeft: '8px' }}>
-                      ({participants.length} {t('người')})
-                    </span>
+                    {allowedTeams.map((tItem: any) => {
+                      const selectedTeamIds = erpMeta?.team_ids || (erpMeta?.team_id ? [erpMeta.team_id] : []);
+                      const isSelected = selectedTeamIds.some(id => String(id) === String(tItem.id));
+                      
+                      return (
+                        <div
+                          key={tItem.id}
+                          onClick={() => {
+                            let nextTeamIds = [...selectedTeamIds];
+                            if (isSelected) {
+                              nextTeamIds = nextTeamIds.filter(id => String(id) !== String(tItem.id));
+                            } else {
+                              nextTeamIds.push(tItem.id);
+                              
+                              // Automatically add all members of this team to related users!
+                              const teamUsers = users.filter(u => Number(u.team_id) === Number(tItem.id));
+                              if (teamUsers.length > 0) {
+                                const currentP = getParticipantIds(formData.participant_ids);
+                                const nextP = [...currentP];
+                                let addedCount = 0;
+                                teamUsers.forEach(u => {
+                                  const uidStr = String(u.id);
+                                  if (!nextP.includes(uidStr)) {
+                                    nextP.push(uidStr);
+                                    addedCount++;
+                                  }
+                                });
+                                if (addedCount > 0) {
+                                  const nextPString = nextP.join(',');
+                                  setFormData((prev: any) => ({ ...prev, participant_ids: nextPString }));
+                                  handleUpdateField('participant_ids', nextPString);
+                                  toast.success(t('Đã tự động thêm {count} nhân sự thuộc phòng ban vào người liên quan.').replace('{count}', String(addedCount)));
+                                }
+                              }
+                            }
+                            const nextMeta = { ...erpMeta, team_ids: nextTeamIds, team_id: nextTeamIds[0] || null };
+                            setErpMeta(nextMeta);
+                            handleSaveMeta(nextMeta);
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '0.78rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: isSelected ? 'var(--color-primary-light)' : 'transparent',
+                            color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                            fontWeight: isSelected ? 600 : 400
+                          }}
+                          className="hover-bg-alt"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Users size={14} color={isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+                            <span>{tItem.name}</span>
+                          </div>
+                          {isSelected && <Check size={12} color="var(--color-primary)" strokeWidth={3} />}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Người thực hiện & Người liên quan */}
+            <div className="card" style={cardStyle}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={cardLabelStyle}>
+                    {t('Người thực hiện chính')}
+                  </label>
+                  <CustomSelect
+                    options={users.map(u => ({
+                      value: String(u.id),
+                      label: u.full_name,
+                      avatar: u.avatar || u.avatar_url
+                    }))}
+                    value={String(formData.user_id || '')}
+                    onChange={val => {
+                      handleUpdateField('user_id', Number(val));
+                    }}
+                    searchable
+                    showAvatars
+                  />
+                </div>
+                
+                <div style={{ borderTop: '1px dashed var(--color-border-light)', paddingTop: '12px' }}>
+                  <label style={cardLabelStyle}>
+                    {t('Người liên quan')}
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                    {/* Selected participant avatars */}
+                    {participants.length > 0 && (
+                      <div 
+                        style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                        onClick={() => setShowParticipantsModal(true)}
+                        title={t('Xem chi tiết người liên quan')}
+                        className="hover-lift"
+                      >
+                        {participants.map((u, idx) => (
+                          <div
+                            key={u.id}
+                            style={{
+                              marginLeft: idx === 0 ? 0 : -8,
+                              border: '1.5px solid var(--color-surface)',
+                              borderRadius: '50%',
+                              overflow: 'hidden',
+                              zIndex: 10 - idx,
+                              boxShadow: 'var(--shadow-sm)',
+                              display: 'flex'
+                            }}
+                            title={u.full_name || u.name}
+                          >
+                            <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={28} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Dash add button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowParticipantDropdown(!showParticipantDropdown)}
+                      disabled={currentUser?.role === 'viewer'}
+                      style={{
+                        border: '1px dashed var(--color-primary)',
+                        background: 'rgba(163, 20, 34, 0.04)',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: currentUser?.role === 'viewer' ? 'default' : 'pointer',
+                        padding: 0,
+                        transition: 'all 0.15s ease'
+                      }}
+                      className="hover-scale"
+                      title={t('Thêm người liên quan')}
+                    >
+                      <UserPlus size={14} color="var(--color-primary)" />
+                    </button>
+                    
+                    {showParticipantDropdown && (
+                      <div 
+                        ref={participantDropdownRef}
+                        style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        marginTop: '6px',
+                        zIndex: 9999,
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
+                        minWidth: '220px',
+                        maxHeight: '230px',
+                        overflowY: 'auto',
+                        padding: '6px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '4px 8px' }}>
+                          {t('Chọn người liên quan:')}
+                        </div>
+                        {users.map((u: any) => {
+                          const isSelected = participantIds.includes(Number(u.id));
+                          return (
+                            <div
+                              key={u.id}
+                              onClick={() => handleToggleParticipant(Number(u.id))}
+                              style={{
+                                padding: '6px 8px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: isSelected ? 'var(--color-primary-light)' : 'transparent',
+                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                fontWeight: isSelected ? 600 : 400
+                              }}
+                              className="hover-bg-alt"
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={20} />
+                                <span>{u.full_name || u.name}</span>
+                              </div>
+                              {isSelected && <Check size={12} color="var(--color-primary)" strokeWidth={3} />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+
+
+
+            {/* Phân loại công việc */}
+            <div className="card" style={cardStyle}>
+              <label style={cardLabelStyle}>
+                {t('Phân loại công việc')}
+              </label>
+              <CustomSelect
+                options={[
+                  { value: 'task', label: t('Công việc chính') },
+                  { value: 'meeting', label: t('Lịch hẹn gặp gỡ') }
+                ]}
+                value={formData.type || 'task'}
+                onChange={async (val) => {
+                  const newType = String(val);
+                  setFormData((prev: any) => ({ ...prev, type: newType }));
+                  await handleUpdateField('type', newType);
+                  onUpdate();
+                  toast.success(t('Đã thay đổi phân loại công việc'));
+                }}
+              />
+            </div>
+
+            {/* Độ ưu tiên & Hạn hoàn thành */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="card" style={cardStyle}>
+                <label style={cardLabelStyle}>
+                  {t('Độ ưu tiên')}
+                </label>
+                <CustomSelect
+                  options={[
+                    { value: 'high', label: t('Cao') },
+                    { value: 'medium', label: t('Trung bình') },
+                    { value: 'low', label: t('Thấp') }
+                  ]}
+                  value={formData.priority || 'medium'}
+                  onChange={val => {
+                    handleUpdateField('priority', String(val));
+                  }}
+                />
+              </div>
+
+              <div className="card" style={cardStyle}>
+                <label style={cardLabelStyle}>
+                  {t('Hạn hoàn thành')}
+                </label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={formData.due_date ? formData.due_date.substring(0, 10) : ''}
+                  onChange={(e) => {
+                    handleUpdateField('due_date', e.target.value || null);
+                  }}
+                  style={{ fontSize: '0.8rem', padding: '6px 10px', height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+                />
+              </div>
+            </div>
+
+            {/* Thẻ tag */}
+            <div className="card" style={cardStyle}>
+              <label style={cardLabelStyle}>
+                {t('Thẻ tag')}
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
+                {(formData.tags || '').split(',').filter(Boolean).map((tag: string, tIdx: number) => {
+                  const trimmedTag = tag.trim();
+                  if (trimmedTag === 'internal_task') return null;
+                  return (
+                    <span key={tIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(107, 114, 128, 0.08)', color: 'var(--color-text-light)', fontSize: '0.7rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px' }}>
+                      <span>{trimmedTag}</span>
+                      <button
+                        onClick={() => {
+                          const next = (formData.tags || '').split(',').filter(Boolean).filter((t: string) => t !== tag).join(',');
+                          handleUpdateField('tags', next);
+                        }}
+                        style={{ border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', padding: 0 }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('Gõ tag & nhấn Enter...')}
+                style={{ fontSize: '0.78rem', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const inputVal = (e.target as HTMLInputElement).value.trim();
+                    if (inputVal) {
+                      const tags = (formData.tags || '').split(',').filter(Boolean);
+                      if (!tags.includes(inputVal)) {
+                        tags.push(inputVal);
+                        handleUpdateField('tags', tags.join(','));
+                      }
+                      (e.target as HTMLInputElement).value = '';
+                    }
+                  }
+                }}
+              />
             </div>
 
             {/* Lặp lại định kỳ */}
             <div className="card" style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={cardLabelStyle}>🔄 {t('Lặp lại định kỳ')}</span>
+                  <span style={cardLabelStyle}>{t('Lặp lại định kỳ')}</span>
                   {erpMeta.recurrence?.pattern && erpMeta.recurrence.pattern !== 'none' && (
                     <span className="badge success" style={{ fontSize: '0.625rem', borderRadius: '4px', padding: '2px 6px', textTransform: 'none', letterSpacing: 'normal' }}>
                       {erpMeta.recurrence?.pattern === 'daily' ? t('Hàng ngày') :
@@ -4252,105 +5202,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Phân loại công việc */}
-            <div className="card" style={cardStyle}>
-              <label style={cardLabelStyle}>
-                {t('Phân loại công việc')}
-              </label>
-              <CustomSelect
-                options={[
-                  { value: 'task', label: t('Công việc chính') },
-                  { value: 'meeting', label: t('Lịch hẹn gặp gỡ') }
-                ]}
-                value={formData.type || 'task'}
-                onChange={async (val) => {
-                  const newType = String(val);
-                  setFormData((prev: any) => ({ ...prev, type: newType }));
-                  await handleUpdateField('type', newType);
-                  onUpdate();
-                  toast.success(t('Đã thay đổi phân loại công việc'));
-                }}
-              />
-            </div>
-
-            {/* Độ ưu tiên & Hạn hoàn thành */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="card" style={cardStyle}>
-                <label style={cardLabelStyle}>
-                  {t('Độ ưu tiên')}
-                </label>
-                <CustomSelect
-                  options={[
-                    { value: 'high', label: t('Cao') },
-                    { value: 'medium', label: t('Trung bình') },
-                    { value: 'low', label: t('Thấp') }
-                  ]}
-                  value={formData.priority || 'medium'}
-                  onChange={val => {
-                    handleUpdateField('priority', String(val));
-                  }}
-                />
-              </div>
-
-              <div className="card" style={cardStyle}>
-                <label style={cardLabelStyle}>
-                  {t('Hạn hoàn thành')}
-                </label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={formData.due_date ? formData.due_date.substring(0, 10) : ''}
-                  onChange={(e) => {
-                    handleUpdateField('due_date', e.target.value || null);
-                  }}
-                  style={{ fontSize: '0.8rem', padding: '6px 10px', height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
-                />
-              </div>
-            </div>
-
-            {/* Thẻ tag */}
-            <div className="card" style={cardStyle}>
-              <label style={cardLabelStyle}>
-                {t('Thẻ tag')}
-              </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
-                {(formData.tags || '').split(',').filter(Boolean).map((tag: string, tIdx: number) => (
-                  <span key={tIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(107, 114, 128, 0.08)', color: 'var(--color-text-light)', fontSize: '0.7rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px' }}>
-                    <span>{tag}</span>
-                    <button
-                      onClick={() => {
-                        const next = (formData.tags || '').split(',').filter(Boolean).filter((t: string) => t !== tag).join(',');
-                        handleUpdateField('tags', next);
-                      }}
-                      style={{ border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', padding: 0 }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <input
-                type="text"
-                className="form-input"
-                placeholder={t('Gõ tag & nhấn Enter...')}
-                style={{ fontSize: '0.78rem', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const inputVal = (e.target as HTMLInputElement).value.trim();
-                    if (inputVal) {
-                      const tags = (formData.tags || '').split(',').filter(Boolean);
-                      if (!tags.includes(inputVal)) {
-                        tags.push(inputVal);
-                        handleUpdateField('tags', tags.join(','));
-                      }
-                      (e.target as HTMLInputElement).value = '';
-                    }
-                  }
-                }}
-              />
-            </div>
             {/* Nút xóa công việc ở dưới cùng */}
             {canDelete && (
               <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
@@ -4407,12 +5258,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               justifyContent: 'center',
               animation: 'fade-in 0.2s ease-out'
             }}
-            onClick={() => setShowParticipantsModal(false)}
+            onClick={() => { setShowParticipantsModal(false); setShowAddParticipantsSection(false); }}
           >
             <div 
               style={{
-                width: '600px',
-                maxWidth: '90vw',
+                width: '850px',
+                maxWidth: '94vw',
                 height: '80vh',
                 background: 'var(--color-surface)',
                 borderRadius: '20px',
@@ -4435,7 +5286,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   </p>
                 </div>
                 <button 
-                  onClick={() => setShowParticipantsModal(false)}
+                  onClick={() => { setShowParticipantsModal(false); setShowAddParticipantsSection(false); }}
                   style={{ border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer' }}
                 >
                   <X size={18} />
@@ -4458,90 +5309,300 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
               {/* Members List */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.5rem' }} className="custom-scrollbar">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {filteredUsersForParticipants.map((u: any) => {
-                    const isParticipant = participantIds.includes(Number(u.id));
-                    const subtasks = (erpMeta.checklist || []).filter((item: any) => Number(item.assignee_id) === Number(u.id));
+                {(() => {
+                  const currentRelatedUsers = filteredUsersForParticipants.filter((u: any) => participantIds.includes(Number(u.id)));
+                  const nonRelatedUsers = filteredUsersForParticipants.filter((u: any) => !participantIds.includes(Number(u.id)));
 
-                    return (
-                      <div 
-                        key={u.id}
-                        style={{
-                          background: isParticipant ? 'rgba(189,29,45,0.02)' : 'transparent',
-                          border: `1px solid ${isParticipant ? 'var(--color-border-light)' : 'rgba(0,0,0,0.03)'}`,
-                          borderRadius: '12px',
-                          padding: '10px 14px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '6px',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <input
-                              type="checkbox"
-                              checked={isParticipant}
-                              onChange={() => handleToggleParticipant(u.id)}
-                              style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
-                            />
-                            <Avatar src={u.avatar_url || u.avatar} name={u.full_name} size={28} />
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{u.full_name}</span>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{u.role}</span>
-                            </div>
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {/* Current Related Members Section */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {t('Thành viên liên quan')} ({currentRelatedUsers.length})
+                        </span>
+                        {currentRelatedUsers.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic', border: '1px dashed var(--color-border-light)', borderRadius: '12px' }}>
+                            {t('Chưa có thành viên liên quan nào')}
                           </div>
-                        </div>
+                        ) : (
+                          currentRelatedUsers.map((u: any) => {
+                            const isParticipant = true;
+                            const subtasks = (erpMeta.checklist || []).filter((item: any) => Number(item.assignee_id) === Number(u.id));
 
-                        {/* Display sub-tasks for this member */}
-                        {isParticipant && (
-                          <div style={{ borderTop: '1px dashed var(--color-border-light)', paddingTop: '6px', marginTop: '4px' }}>
-                            {subtasks.length > 0 ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: '38px' }}>
-                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                  {t('Nhiệm vụ được giao')} ({subtasks.length}):
-                                </span>
-                                {subtasks.map((st: any) => (
-                                  <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem' }}>
-                                    <input 
-                                      type="checkbox" 
-                                      checked={!!st.done} 
-                                      readOnly
-                                      style={{ width: 12, height: 12, accentColor: 'var(--color-success)', cursor: 'default' }} 
+                            return (
+                              <div 
+                                key={u.id}
+                                style={{
+                                  background: 'rgba(189,29,45,0.02)',
+                                  border: '1px solid var(--color-border-light)',
+                                  borderRadius: '12px',
+                                  padding: '10px 14px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '6px',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isParticipant}
+                                      onChange={() => handleToggleParticipant(u.id)}
+                                      style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
                                     />
-                                    <span style={{ textDecoration: st.done ? 'line-through' : 'none', color: st.done ? 'var(--color-text-muted)' : 'var(--color-text-light)' }}>
-                                      {st.title}
+                                    <Avatar src={u.avatar_url || u.avatar} name={u.full_name} size={28} />
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{u.full_name}</span>
+                                      <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{getRoleDisplayName(u)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Display sub-tasks for this member */}
+                                <div style={{ borderTop: '1px dashed var(--color-border-light)', paddingTop: '6px', marginTop: '4px' }}>
+                                  {subtasks.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: '38px' }}>
+                                      <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        {t('Nhiệm vụ được giao')} ({subtasks.length}):
+                                      </span>
+                                      {subtasks.map((st: any) => (
+                                        <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem' }}>
+                                          <input 
+                                            type="checkbox" 
+                                            checked={!!st.done} 
+                                            readOnly
+                                            style={{ width: 12, height: 12, accentColor: 'var(--color-success)', cursor: 'default' }} 
+                                          />
+                                          <span style={{ textDecoration: st.done ? 'line-through' : 'none', color: st.done ? 'var(--color-text-muted)' : 'var(--color-text-light)' }}>
+                                            {st.title}
+                                          </span>
+                                          {st.due_date && (
+                                            <span style={{
+                                              fontSize: '0.68rem',
+                                              color: 'var(--color-text-muted)',
+                                              background: 'var(--color-bg-subtle, rgba(0,0,0,0.02))',
+                                              padding: '1px 6px',
+                                              borderRadius: '4px',
+                                              border: '1px solid var(--color-border-light)',
+                                              marginLeft: '6px'
+                                            }}>
+                                              {t('Hạn')}: {new Date(st.due_date).toLocaleDateString('vi-VN')}
+                                            </span>
+                                          )}
+                                          {st.priority && st.priority !== 'medium' && (
+                                            <span style={{
+                                              fontSize: '0.55rem',
+                                              fontWeight: 800,
+                                              padding: '1px 4px',
+                                              borderRadius: '3px',
+                                              background: st.priority === 'high' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                                              color: st.priority === 'high' ? 'var(--color-danger)' : 'var(--color-info)',
+                                              textTransform: 'uppercase',
+                                              marginLeft: '6px'
+                                            }}>
+                                              {st.priority === 'high' ? t('Cao') : t('Thấp')}
+                                            </span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginLeft: '38px', fontStyle: 'italic' }}>
+                                      {t('Chưa giao việc con nào')}
                                     </span>
-                                    <span style={{
-                                      fontSize: '0.55rem',
-                                      fontWeight: 800,
-                                      padding: '1px 4px',
-                                      borderRadius: '3px',
-                                      background: st.priority === 'high' ? 'rgba(239, 68, 68, 0.08)' : st.priority === 'low' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-                                      color: st.priority === 'high' ? 'var(--color-danger)' : st.priority === 'low' ? 'var(--color-info)' : 'var(--color-warning)',
-                                      textTransform: 'uppercase'
-                                    }}>
-                                      {st.priority === 'high' ? t('Cao') : st.priority === 'low' ? t('Thấp') : t('Trung bình')}
-                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Add Member Button / Section */}
+                      <div style={{ marginTop: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '16px' }}>
+                        {!showAddParticipantsSection ? (
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddParticipantsSection(true)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '10px 24px',
+                                background: 'var(--color-primary-light, rgba(163,20,34,0.05))',
+                                color: 'var(--color-primary, #a31422)',
+                                border: '1px dashed var(--color-primary, #a31422)',
+                                borderRadius: '24px',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                              className="hover-lift"
+                            >
+                              <UserPlus size={15} />
+                              {t('Thêm thành viên')}
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                {t('Thành viên chưa liên quan')} ({nonRelatedUsers.length})
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowAddParticipantsSection(false)}
+                                style={{
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: 'var(--color-primary)',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {t('Thu gọn')}
+                              </button>
+                            </div>
+
+                            {nonRelatedUsers.length === 0 ? (
+                              <div style={{ textAlign: 'center', padding: '1rem 0', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                {t('Tất cả nhân sự đều đã được thêm làm người liên quan')}
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+                                {nonRelatedUsers.map((u: any) => (
+                                  <div
+                                    key={u.id}
+                                    style={{
+                                      background: 'transparent',
+                                      border: '1px solid rgba(0,0,0,0.03)',
+                                      borderRadius: '12px',
+                                      padding: '8px 12px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                    className="hover-bg-alt"
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={false}
+                                        onChange={() => handleToggleParticipant(u.id)}
+                                        style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
+                                      />
+                                      <Avatar src={u.avatar_url || u.avatar} name={u.full_name} size={28} />
+                                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>{u.full_name}</span>
+                                        <span style={{ fontSize: '0.66rem', color: 'var(--color-text-muted)' }}>{getRoleDisplayName(u)}</span>
+                                      </div>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
-                            ) : (
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginLeft: '38px', fontStyle: 'italic' }}>
-                                {t('Chưa giao việc con nào')}
-                              </span>
                             )}
                           </div>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Modal Footer */}
               <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', background: 'var(--color-surface)' }}>
-                <button className="btn outline" onClick={() => setShowParticipantsModal(false)} style={{ borderRadius: '20px', padding: '6px 20px' }}>
+                <button className="btn outline" onClick={() => { setShowParticipantsModal(false); setShowAddParticipantsSection(false); }} style={{ borderRadius: '20px', padding: '6px 20px' }}>
+                  {t('Đóng')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SUBTASK PARTICIPANTS MODAL */}
+        {selectedSubtaskForParticipants && (
+          <div 
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.65)',
+              zIndex: 1000300,
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'fade-in 0.2s ease-out'
+            }}
+            onClick={() => setSelectedSubtaskForParticipants(null)}
+          >
+            <div 
+              style={{
+                width: '450px',
+                maxWidth: '90vw',
+                background: 'var(--color-surface)',
+                borderRadius: '16px',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.25)',
+                display: 'flex',
+                flexDirection: 'column',
+                animation: 'scale-up 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                overflow: 'hidden'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                    {t('Người thực hiện công việc con')}
+                  </h3>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '340px' }}>
+                    {selectedSubtaskForParticipants.title}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setSelectedSubtaskForParticipants(null)}
+                  style={{ border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* List of Users */}
+              <div style={{ padding: '1.25rem 1.5rem', maxHeight: '400px', overflowY: 'auto' }} className="custom-scrollbar">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {(() => {
+                    const assigneeIds = selectedSubtaskForParticipants.assignee_id ? selectedSubtaskForParticipants.assignee_id.split(',').filter(Boolean) : [];
+                    const subtaskUsers = assigneeIds.map((id: string) => users.find((u: any) => String(u.id) === String(id))).filter(Boolean);
+
+                    if (subtaskUsers.length === 0) {
+                      return (
+                        <div style={{ textAlign: 'center', padding: '1rem 0', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                          {t('Chưa phân công ai')}
+                        </div>
+                      );
+                    }
+
+                    return subtaskUsers.map((u: any) => (
+                      <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', background: 'var(--color-bg-subtle, rgba(0,0,0,0.01))', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                        <Avatar src={u.avatar_url || u.avatar} name={u.full_name} size={32} />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.825rem', fontWeight: 800, color: 'var(--color-text)' }}>{u.full_name}</span>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{getRoleDisplayName(u)}</span>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', background: 'var(--color-surface)' }}>
+                <button className="btn outline" onClick={() => setSelectedSubtaskForParticipants(null)} style={{ borderRadius: '20px', padding: '6px 20px', fontSize: '0.8rem' }}>
                   {t('Đóng')}
                 </button>
               </div>
@@ -4954,7 +6015,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   inset: 0,
                   backgroundColor: 'rgba(0, 0, 0, 0.5)',
                   backdropFilter: 'blur(4px)',
-                  zIndex: 100000,
+                  zIndex: 1000500,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -5060,6 +6121,51 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             cancelText={t('Quay lại')}
             confirmType="danger"
           />
+
+          {/* Confirm Comment Deletion Modal */}
+          <ConfirmModal
+            isOpen={commentToDelete !== null}
+            onClose={() => setCommentToDelete(null)}
+            onConfirm={async () => {
+              if (commentToDelete !== null) {
+                await handleDeleteComment(commentToDelete);
+                setCommentToDelete(null);
+              }
+            }}
+            title={t('Xác nhận xóa bình luận')}
+            message={t('Bạn có chắc chắn muốn xóa bình luận này không? Hành động này không thể hoàn tác.')}
+            confirmText={t('Xóa')}
+            cancelText={t('Hủy')}
+            confirmType="danger"
+          />
+
+          {/* Confirm Hide Task Modal */}
+          <ConfirmModal
+            isOpen={showHideConfirmModal}
+            onClose={() => setShowHideConfirmModal(false)}
+            onConfirm={() => {
+              setShowHideConfirmModal(false);
+              executeToggleHide();
+            }}
+            title={t('Ẩn công việc khỏi bàn làm việc?')}
+            confirmText={t('Xác nhận ẩn')}
+            cancelText={t('Hủy')}
+            confirmType="danger"
+            width={480}
+          >
+            <div style={{ textAlign: 'left', lineHeight: '1.6', fontSize: '0.85rem', color: 'var(--color-text)' }}>
+              <p style={{ marginBottom: '12px' }}>{t('Bạn có chắc chắn muốn ẩn công việc này khỏi Bàn làm việc của mình không?')}</p>
+              <p style={{ fontWeight: 700, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                {t('Công việc này sẽ tự động hiển thị trở lại khi:')}
+              </p>
+              <ul style={{ listStyleType: 'disc', paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--color-text-muted)' }}>
+                <li>{t('Bạn được phân công làm Người thực hiện chính mới.')}</li>
+                <li>{t('Bạn được thêm vào danh sách Người liên quan (Người tham gia).')}</li>
+                <li>{t('Ai đó nhắc tên (mention) bạn bằng cú pháp @tên hoặc tag trực tiếp bạn trong phần mô tả/checklist.')}</li>
+                <li>{t('Ai đó nhắc tên (mention) bạn hoặc trả lời bình luận của bạn trong phần Thảo luận.')}</li>
+              </ul>
+            </div>
+          </ConfirmModal>
     </>,
     document.body
   );
