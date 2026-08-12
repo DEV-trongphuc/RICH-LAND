@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Users, Briefcase, Download, ArrowUpRight, ArrowDownRight, Filter } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Briefcase, Download, ArrowUpRight, ArrowDownRight, Filter, DollarSign } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line, LabelList } from 'recharts';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useUIStore } from '../store/uiStore';
@@ -48,7 +48,7 @@ export const ReportsPage: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  const [tab, setTab] = useState<'sales' | 'pipeline' | 'customers' | 'companies' | 'expenses' | 'activities'>('sales');
+  const [tab, setTab] = useState<'sales' | 'pipeline' | 'customers' | 'companies' | 'expenses' | 'activities' | 'referrals'>('sales');
   const [period, setPeriod] = useState<Period>('this_quarter');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_quarter'));
   
@@ -59,6 +59,7 @@ export const ReportsPage: React.FC = () => {
   const [companyData, setCompanyData] = useState<any>(null);
   const [expenseData, setExpenseData] = useState<any>(null);
   const [activityData, setActivityData] = useState<any>(null);
+  const [referralData, setReferralData] = useState<any>(null);
   const [teams, setTeams] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [ownerPage, setOwnerPage] = useState(1);
@@ -177,6 +178,21 @@ export const ReportsPage: React.FC = () => {
     } finally { setLoading(false); }
   };
 
+  const fetchReferrals = async () => {
+    if (!referralData) setLoading(true);
+    try {
+      const r = await api.get('/reports/referrals', { params: { team_id: getEffectiveTeamId() } });
+      const raw = r.data.data;
+      if (raw) {
+        if (raw.top_referrers) raw.top_referrers = raw.top_referrers.map((item: any) => ({ ...item, referral_count: Number(item.referral_count || 0), total_revenue: Number(item.total_revenue || 0) }));
+        if (raw.details) raw.details = raw.details.map((item: any) => ({ ...item, contact_revenue: Number(item.contact_revenue || 0) }));
+      }
+      setReferralData(raw);
+    } catch (e: any) {
+      console.error("Failed to fetch referrals reports", e);
+    } finally { setLoading(false); }
+  };
+
   useEffect(() => {
     if (tab === 'sales') fetchSales();
     else if (tab === 'pipeline') fetchPipeline();
@@ -184,6 +200,7 @@ export const ReportsPage: React.FC = () => {
     else if (tab === 'companies') fetchCompanies();
     else if (tab === 'expenses') fetchExpenses();
     else if (tab === 'activities') fetchActivities();
+    else if (tab === 'referrals') fetchReferrals();
   }, [tab, dateRange, teams, users]);
 
   return (
@@ -259,7 +276,8 @@ export const ReportsPage: React.FC = () => {
           { key: 'customers', label: 'Khách hàng' },
           { key: 'companies', label: 'Doanh nghiệp' },
           { key: 'expenses', label: 'Chi phí' },
-          { key: 'activities', label: 'Hoạt động' }
+          { key: 'activities', label: 'Hoạt động' },
+          { key: 'referrals', label: 'Giới thiệu' }
         ];
         const activeTabIndex = TABS.findIndex(t => t.key === tab);
         return (
@@ -1128,6 +1146,150 @@ export const ReportsPage: React.FC = () => {
                     })()}
                   </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'referrals' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Summary Stat Cards */}
+          <div className="grid grid-3" style={{ gap: '1rem' }}>
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
+                <Users size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tổng số lead giới thiệu</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                  {referralData?.summary?.total_referrals || 0}
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
+                <DollarSign size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tổng doanh thu từ giới thiệu</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                  {FMT_VND(referralData?.summary?.total_revenue || 0)}
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
+                <TrendingUp size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Số khách hàng giới thiệu</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                  {referralData?.top_referrers?.length || 0}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-2" style={{ gap: '1.5rem', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.5fr' }}>
+            {/* Top Referrers */}
+            <div className="card" style={{ padding: '1.5rem' }}>
+              <h3 style={{ fontWeight: 700, marginBottom: '1rem' }}>Top người giới thiệu nhiều nhất</h3>
+              <div className="table-wrap" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Khách hàng</th>
+                      <th style={{ textAlign: 'center' }}>Số lượt giới thiệu</th>
+                      <th>Doanh thu đem lại</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(referralData?.top_referrers || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                          Chưa có dữ liệu giới thiệu
+                        </td>
+                      </tr>
+                    ) : (
+                      (referralData?.top_referrers || []).map((r: any) => (
+                        <tr key={r.referrer_id}>
+                          <td>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                              {`${r.referrer_first_name || ''} ${r.referrer_last_name || ''}`.trim() || 'Ẩn danh'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{r.referrer_phone}</div>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className="badge info">{r.referral_count}</span>
+                          </td>
+                          <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
+                            {FMT_VND(r.total_revenue)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Detailed Referrals List */}
+            <div className="card" style={{ padding: '1.5rem' }}>
+              <h3 style={{ fontWeight: 700, marginBottom: '1rem' }}>Danh sách khách hàng được giới thiệu</h3>
+              <div className="table-wrap" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Khách hàng mới</th>
+                      <th>Người giới thiệu</th>
+                      <th>Trạng thái</th>
+                      <th>Doanh thu</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(referralData?.details || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                          Chưa có danh sách khách hàng được giới thiệu
+                        </td>
+                      </tr>
+                    ) : (
+                      (referralData?.details || []).map((d: any) => (
+                        <tr key={d.contact_id}>
+                          <td>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                              {`${d.contact_first_name || ''} ${d.contact_last_name || ''}`.trim() || 'Ẩn danh'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{d.contact_phone}</div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
+                              Nhập ngày: {new Date(d.contact_created_at).toLocaleDateString('vi-VN')}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                              {`${d.referrer_first_name || ''} ${d.referrer_last_name || ''}`.trim() || 'Ẩn danh'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{d.referrer_phone}</div>
+                          </td>
+                          <td>
+                            <span className={`badge ${d.contact_status === 'customer' ? 'success' : 'warning'}`}>
+                              {d.contact_status === 'customer' ? 'Khách hàng' : 'Tiềm năng'}
+                            </span>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                              {d.contact_pipeline_status}
+                            </div>
+                          </td>
+                          <td style={{ fontWeight: 600 }}>
+                            {FMT_VND(d.contact_revenue)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

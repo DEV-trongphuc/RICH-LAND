@@ -227,6 +227,7 @@ CREATE TABLE IF NOT EXISTS `contacts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_id` int(11) NOT NULL DEFAULT 1,
   `person_id` int(11) DEFAULT NULL, -- FK to Persons (Chống trùng lặp)
+  `nguoi_gioi_thieu_id` int(11) DEFAULT NULL, -- FK to referrer contact
   `project_id` int(11) DEFAULT NULL, -- FK to Projects
   `company_id` int(11) DEFAULT NULL,
   `owner_id` int(11) DEFAULT NULL,   -- FK to Users (Sales Owner)
@@ -269,7 +270,8 @@ CREATE TABLE IF NOT EXISTS `contacts` (
   FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`) ON DELETE SET NULL,
   FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL,
-  FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`nguoi_gioi_thieu_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8. Table: leads (Module 1 - Raw incoming lead inputs)

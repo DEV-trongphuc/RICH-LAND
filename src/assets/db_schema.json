@@ -2247,6 +2247,14 @@
                 "extra": ""
             },
             {
+                "field": "nguoi_gioi_thieu_id",
+                "type": "int(11)",
+                "null": "YES",
+                "key": "MUL",
+                "default": null,
+                "extra": ""
+            },
+            {
                 "field": "duplicate_flag",
                 "type": "tinyint(1)",
                 "null": "NO",

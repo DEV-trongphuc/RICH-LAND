@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 194;
+$targetVersion = 195;
 $currentVersion = 186;
 
 // Query current DB version
@@ -406,8 +406,16 @@ try {
         $logMsg("Đã bổ sung cột grab_max_attempts vào bảng distribution_rounds.", "success");
     }
 
+    // 8.12. Add nguoi_gioi_thieu_id to contacts (Version 195)
+    $chkNGTI = $conn->query("SHOW COLUMNS FROM `contacts` LIKE 'nguoi_gioi_thieu_id'");
+    if (!$chkNGTI || $chkNGTI->num_rows == 0) {
+        $conn->query("ALTER TABLE `contacts` ADD COLUMN `nguoi_gioi_thieu_id` INT(11) NULL DEFAULT NULL COMMENT 'ID khách hàng giới thiệu' AFTER `person_id`");
+        $conn->query("ALTER TABLE `contacts` ADD CONSTRAINT `fk_contacts_referrer` FOREIGN KEY (`nguoi_gioi_thieu_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL");
+        $logMsg("Đã bổ sung cột nguoi_gioi_thieu_id và foreign key vào bảng contacts.", "success");
+    }
+
     // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '194') ON DUPLICATE KEY UPDATE setting_value = '194'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '195') ON DUPLICATE KEY UPDATE setting_value = '195'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

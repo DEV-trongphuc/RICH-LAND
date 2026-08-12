@@ -339,8 +339,8 @@ class ContactController {
         $stmt = $this->db->prepare("
             INSERT INTO contacts (tenant_id,company_id,owner_id,created_by,first_name,last_name,
                 email,phone,mobile,job_title,department,source,status,tags,notes,stage_id,
-                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score,person_id,collaborator_ids)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score,person_id,collaborator_ids,nguoi_gioi_thieu_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
             $auth['tenant_id'],
@@ -354,7 +354,8 @@ class ContactController {
             $b['expected_revenue'] ?? 0, $b['win_probability'] ?? 50,
             $last_contact, $b['lead_score'] ?? 0,
             $personId,
-            $b['collaborator_ids'] ?? null
+            $b['collaborator_ids'] ?? null,
+            !empty($b['nguoi_gioi_thieu_id']) ? (int)$b['nguoi_gioi_thieu_id'] : null
         ]);
         $id = (int)$this->db->lastInsertId();
         if ($duplicateFlag) {
@@ -643,7 +644,7 @@ class ContactController {
             'phone2', 'dob', 'citizen_id', 'district', 'company', 'tax_code', 'budget',
             'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
             'utm_campaign', 'utm_medium', 'utm_content', 'utm_term', 'platform',
-            'form_name', 'zalo_phone', 'facebook_link'
+            'form_name', 'zalo_phone', 'facebook_link', 'nguoi_gioi_thieu_id'
         ];
         $sets = []; $params = [];
         
@@ -677,7 +678,7 @@ class ContactController {
                 // Fix date string & numeric strict mode crashes
                 if (in_array($f, ['birthday', 'dob', 'last_contact', 'leave_start', 'leave_end']) && ($b[$f] === '' || $b[$f] === null || $b[$f] === 'null')) {
                     $params[] = null;
-                } else if (in_array($f, ['stage_id', 'project_id', 'campaign_id', 'owner_id', 'company_id']) && (empty($b[$f]) || $b[$f] === 0 || $b[$f] === '0' || $b[$f] === 'null')) {
+                } else if (in_array($f, ['stage_id', 'project_id', 'campaign_id', 'owner_id', 'company_id', 'nguoi_gioi_thieu_id']) && (empty($b[$f]) || $b[$f] === 0 || $b[$f] === '0' || $b[$f] === 'null')) {
                     $params[] = null;
                 } else if (in_array($f, ['budget', 'expected_revenue', 'win_probability']) && ($b[$f] === '' || $b[$f] === null || $b[$f] === 'null')) {
                     $params[] = 0;

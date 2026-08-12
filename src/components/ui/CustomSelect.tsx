@@ -92,14 +92,36 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const filtered = React.useMemo(() => {
     if (!searchable) return options;
     const searchLower = (search || '').toLowerCase();
-    return options.filter(o => {
+    
+    // For small lists, do simple filter
+    if (options.length <= 100) {
+      return options.filter(o => {
+        const labelStr = o.label ? String(o.label) : '';
+        const sublabelStr = o.sublabel ? String(o.sublabel) : '';
+        const translatedLabel = t(labelStr) || '';
+        const translatedSublabel = t(sublabelStr) || '';
+        return translatedLabel.toLowerCase().includes(searchLower) ||
+          (o.sublabel && translatedSublabel.toLowerCase().includes(searchLower));
+      });
+    }
+
+    // For large lists, optimize performance by exiting early after 100 matches
+    const result = [];
+    for (const o of options) {
       const labelStr = o.label ? String(o.label) : '';
       const sublabelStr = o.sublabel ? String(o.sublabel) : '';
       const translatedLabel = t(labelStr) || '';
       const translatedSublabel = t(sublabelStr) || '';
-      return translatedLabel.toLowerCase().includes(searchLower) ||
+      
+      const isMatch = translatedLabel.toLowerCase().includes(searchLower) ||
         (o.sublabel && translatedSublabel.toLowerCase().includes(searchLower));
-    });
+        
+      if (isMatch) {
+        result.push(o);
+        if (result.length >= 100) break;
+      }
+    }
+    return result;
   }, [options, search, searchable, t]);
 
   const isSelected = (val: string | number) => {

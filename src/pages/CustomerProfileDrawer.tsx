@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1321,6 +1322,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [activeTab]);
   
   useEffect(() => {
+    const isSaleRole = currentUser?.role === 'sale';
+    if (isSaleRole && (activeTab === 'tasks' || activeTab === 'scoring')) {
+      setActiveTab(isMobileOrTablet ? '' : 'info');
+    }
+  }, [activeTab, currentUser, isMobileOrTablet]);
+  
+  useEffect(() => {
     setTabRenderReady(true);
   }, [activeTab, isMobileOrTablet]);
 
@@ -1516,7 +1524,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
       'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
-      'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data', 'collaborator_ids', 'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature'
+      'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data', 'collaborator_ids', 'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'nguoi_gioi_thieu_id'
     ];
 
     const cleanObject = (obj: any) => {
@@ -1555,7 +1563,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
       'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact', 'created_at',
       'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range', 'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data',
-      'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'collaborator_ids'
+      'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'collaborator_ids', 'nguoi_gioi_thieu_id'
     ];
     const payload: Record<string, any> = {};
     allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });
@@ -1798,6 +1806,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return { group1: false, group2: false, group3: false, group4: false, group5: false };
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
+
+  const referrerOptions = useMemo(() => {
+    const list = Array.isArray(contacts) ? contacts : [];
+    return [
+      { value: '', label: '— Chưa chọn / Không có —' },
+      ...list
+        .filter((c: any) => Number(c.id) !== Number(formData.id))
+        .map((c: any) => ({
+          value: String(c.id),
+          label: `${c.first_name || ''} ${c.last_name || ''}`.trim() + (c.phone || c.mobile ? ` (${c.phone || c.mobile})` : ''),
+          avatar: c.avatar_url,
+          sublabel: [
+            c.phone || c.mobile ? `SĐT: ${c.phone || c.mobile}` : null,
+            c.email ? `Email: ${c.email}` : null,
+            c.owner_name ? `Sales: ${c.owner_name}` : null
+          ].filter(Boolean).join(' - ')
+        }))
+    ];
+  }, [contacts, formData.id]);
 
   const [allowPipelineBackward, setAllowPipelineBackward] = useState<boolean>(false);
   const [allowPipelineSkip, setAllowPipelineSkip] = useState<boolean>(false);
@@ -5839,7 +5866,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               return tabGroups.map((group, groupIdx) => {
                                 const allowedTabs = group.tabs
                                   .map(id => TABS.find(tab => tab.id === id))
-                                  .filter((tab): tab is any => !!tab && (isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses')));
+                                  .filter((tab): tab is any => {
+                                    if (!tab) return false;
+                                    const isSaleRole = currentUser?.role === 'sale';
+                                    if (isSaleRole && (tab.id === 'tasks' || tab.id === 'scoring')) return false;
+                                    return isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses');
+                                  });
                                 if (allowedTabs.length === 0) return null;
 
                                 return (
@@ -5925,7 +5957,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               return tabGroups.map((group, groupIdx) => {
                                 const allowedTabs = group.tabs
                                   .map(id => TABS.find(tab => tab.id === id))
-                                  .filter((tab): tab is any => !!tab && (isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses')));
+                                  .filter((tab): tab is any => {
+                                    if (!tab) return false;
+                                    const isSaleRole = currentUser?.role === 'sale';
+                                    if (isSaleRole && (tab.id === 'tasks' || tab.id === 'scoring')) return false;
+                                    return isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses');
+                                  });
                                 if (allowedTabs.length === 0) return null;
 
                                 return (
@@ -6806,6 +6843,44 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               onChange={val => setFormData((prev: any) => ({ ...prev, source: val as string }))}
                             />
                           </div>
+
+                          {formData.source === 'gioi_thieu' && (
+                            <div className="form-group">
+                              <label className="form-label">Khách hàng giới thiệu (Referrer)</label>
+                              <CustomSelect
+                                options={referrerOptions}
+                                value={formData.nguoi_gioi_thieu_id ? String(formData.nguoi_gioi_thieu_id) : ''}
+                                onChange={val => setFormData((prev: any) => ({ ...prev, nguoi_gioi_thieu_id: val ? Number(val) : null }))}
+                                searchable
+                                showAvatars
+                                placeholder="Chọn khách hàng giới thiệu..."
+                              />
+                              {formData.nguoi_gioi_thieu_id && (
+                                <div style={{ marginTop: '4px', fontSize: '0.75rem' }}>
+                                  <span style={{ color: 'var(--color-text-muted)' }}>Xem nhanh: </span>
+                                  {(() => {
+                                    const refContact = contacts.find((x: any) => Number(x.id) === Number(formData.nguoi_gioi_thieu_id));
+                                    if (!refContact) return <span style={{ color: 'var(--color-text-muted)' }}>Không tìm thấy khách hàng này</span>;
+                                    return (
+                                      <a
+                                        href={`/contacts?open_contact_id=${refContact.id}`}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          handleSave().then(() => {
+                                            onClose();
+                                            window.location.href = `/contacts?open_contact_id=${refContact.id}`;
+                                          });
+                                        }}
+                                        style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                                      >
+                                        {`${refContact.first_name || ''} ${refContact.last_name || ''}`.trim()} ({refContact.phone || refContact.mobile})
+                                      </a>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+                          )}
                           <div className="form-group">
                             <label className="form-label">Ngành nghề kinh doanh</label>
                             <CustomSelect

@@ -756,6 +756,7 @@ switch ($resource) {
         elseif ($resourceId === 'companies')  $ctrl->companies($auth);
         elseif ($resourceId === 'expenses')   $ctrl->expenses($auth);
         elseif ($resourceId === 'inventory')  $ctrl->inventory($auth);
+        elseif ($resourceId === 'referrals')  $ctrl->referrals($auth);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 

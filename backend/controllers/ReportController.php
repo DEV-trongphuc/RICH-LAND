@@ -542,6 +542,89 @@ class ReportController
         ]);
     }
 
+    public function referrals(array $auth): void
+    {
+        $scope = $this->resolveUserScope($auth);
+        $isSale = $scope['isSale'];
+        $isManager = $scope['isManager'];
+        $userIds = $scope['userIds'];
+        $uid = $scope['uid'];
+        $tid = $scope['tid'];
+
+        $saleFilter = "";
+        $params = [$tid];
+        if ($isSale) {
+            $saleFilter = " AND c.owner_id=?";
+            $params[] = $uid;
+        } else if ($isManager) {
+            $idsClause = implode(',', array_map('intval', $userIds));
+            $saleFilter = " AND c.owner_id IN ($idsClause)";
+        }
+
+        // Summary stats
+        $stmtSum = $this->db->prepare("
+            SELECT 
+                COUNT(c.id) as total_referrals,
+                COALESCE(SUM(c.total_spent), 0) as total_revenue
+            FROM contacts c
+            WHERE c.tenant_id=? AND c.deleted_at IS NULL AND c.nguoi_gioi_thieu_id IS NOT NULL $saleFilter
+        ");
+        $stmtSum->execute($params);
+        $summary = $stmtSum->fetch();
+
+        // Top Referrers
+        $stmtTop = $this->db->prepare("
+            SELECT 
+                c_ref.id as referrer_id,
+                c_ref.first_name as referrer_first_name,
+                c_ref.last_name as referrer_last_name,
+                c_ref.phone as referrer_phone,
+                COUNT(c.id) as referral_count,
+                SUM(c.total_spent) as total_revenue
+            FROM contacts c
+            INNER JOIN contacts c_ref ON c.nguoi_gioi_thieu_id = c_ref.id
+            WHERE c.tenant_id=? AND c.deleted_at IS NULL AND c_ref.deleted_at IS NULL $saleFilter
+            GROUP BY c_ref.id, c_ref.first_name, c_ref.last_name, c_ref.phone
+            ORDER BY referral_count DESC, total_revenue DESC
+            LIMIT 50
+        ");
+        $stmtTop->execute($params);
+        $topReferrers = $stmtTop->fetchAll();
+
+        // Details of referrals
+        $stmtDetails = $this->db->prepare("
+            SELECT 
+                c.id as contact_id,
+                c.first_name as contact_first_name,
+                c.last_name as contact_last_name,
+                c.phone as contact_phone,
+                c.status as contact_status,
+                c.pipeline_status as contact_pipeline_status,
+                c.total_spent as contact_revenue,
+                c.created_at as contact_created_at,
+                c_ref.id as referrer_id,
+                c_ref.first_name as referrer_first_name,
+                c_ref.last_name as referrer_last_name,
+                c_ref.phone as referrer_phone
+            FROM contacts c
+            INNER JOIN contacts c_ref ON c.nguoi_gioi_thieu_id = c_ref.id
+            WHERE c.tenant_id=? AND c.deleted_at IS NULL AND c_ref.deleted_at IS NULL $saleFilter
+            ORDER BY c.created_at DESC
+            LIMIT 200
+        ");
+        $stmtDetails->execute($params);
+        $details = $stmtDetails->fetchAll();
+
+        respond(200, [
+            'summary' => [
+                'total_referrals' => (int)($summary['total_referrals'] ?? 0),
+                'total_revenue' => (float)($summary['total_revenue'] ?? 0)
+            ],
+            'top_referrers' => $topReferrers,
+            'details' => $details
+        ]);
+    }
+
     private function resolveUserScope(array $auth): array {
         $role = $auth['role'] ?? '';
         $uid = (int)($auth['user_id'] ?? 0);
