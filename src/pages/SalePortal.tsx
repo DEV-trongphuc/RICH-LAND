@@ -5285,7 +5285,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </span>
                         </div>
                         <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                          Nguồn: {lead.source || 'Facebook CAPI'}
+                          {lead.source ? `${t('Nguồn:')} ${lead.source}` : t('Nguồn: Chưa cấu hình')}
                         </p>
                       </div>
 
@@ -19257,7 +19257,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     color: '#475569',
                     border: '1px solid rgba(100, 116, 139, 0.15)'
                   }}>
-                    {t('Nguồn:')} {activeIncomingOffer.lead.source || 'Facebook CAPI'}
+                    {activeIncomingOffer.lead.source ? `${t('Nguồn:')} ${activeIncomingOffer.lead.source}` : t('Nguồn: Chưa cấu hình')}
                   </span>
                 </div>
                 
