@@ -3271,11 +3271,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token) return;
     setNightShiftLoading(true);
     try {
-      const res = await fetchAPI('get_night_shift_status');
+      const targetParam = impersonatedSale?.id ? `?consultant_id=${impersonatedSale.id}` : (saleIdFilter ? `?consultant_id=${saleIdFilter}` : '');
+      const res = await fetchAPI(`get_night_shift_status${targetParam}`);
       if (res.success) {
         setNightShiftRegistered(res.registered);
         setNightShiftApproved(res.approved === 1 || res.approved === true);
-        setNightShiftCanToggle(res.can_toggle);
+        setNightShiftCanToggle(res.can_toggle || isUserAdminRole || isUserManagerRole);
         setNightShiftDate(res.shift_date);
         setNightShiftDeadline(res.deadline_time || '');
       }
@@ -3290,9 +3291,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (togglingNightShift) return;
     setTogglingNightShift(true);
     try {
+      const targetConsultant = impersonatedSale?.id || saleIdFilter || null;
       const res = await fetchAPI('register_night_shift', {
         method: 'POST',
-        body: JSON.stringify({ register: !nightShiftRegistered })
+        body: JSON.stringify({ 
+          register: !nightShiftRegistered,
+          consultant_id: targetConsultant || undefined
+        })
       });
       if (res.success) {
         toast.success(res.message);
@@ -3316,9 +3321,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token) return;
     setWeekendShiftLoading(true);
     try {
-      const res = await fetchAPI('get_weekend_shift_status');
+      const targetParam = impersonatedSale?.id ? `?consultant_id=${impersonatedSale.id}` : (saleIdFilter ? `?consultant_id=${saleIdFilter}` : '');
+      const res = await fetchAPI(`get_weekend_shift_status${targetParam}`);
       if (res.success) {
-        setWeekendShiftAllow(res.allow_weekend_registration);
+        setWeekendShiftAllow(res.allow_weekend_registration || isUserAdminRole || isUserManagerRole);
         setWeekendShiftSat(res.saturday);
         setWeekendShiftSun(res.sunday);
       }
@@ -3333,9 +3339,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (togglingWeekendShift[dateStr]) return;
     setTogglingWeekendShift(prev => ({ ...prev, [dateStr]: true }));
     try {
+      const targetConsultant = impersonatedSale?.id || saleIdFilter || null;
       const res = await fetchAPI('register_weekend_shift', {
         method: 'POST',
-        body: JSON.stringify({ date: dateStr, register: !currentRegistered })
+        body: JSON.stringify({ 
+          date: dateStr, 
+          register: !currentRegistered,
+          consultant_id: targetConsultant || undefined
+        })
       });
       if (res.success) {
         toast.success(res.message);
@@ -14085,14 +14096,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 {nightShiftRegistered ? t('Đã đăng ký trực') : (nightShiftCanToggle ? t('Chưa đăng ký') : t('Đã hết hạn đăng ký'))}
                               </span>
                             )}
-                            {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                              <div style={{ opacity: (nightShiftCanToggle && !togglingNightShift) ? 1 : 0.6, pointerEvents: togglingNightShift ? 'none' : 'auto' }}>
+                            {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
+                              <div style={{ opacity: ((nightShiftCanToggle || isUserAdminRole || isUserManagerRole) && !togglingNightShift) ? 1 : 0.6, pointerEvents: togglingNightShift ? 'none' : 'auto' }}>
                                 <ToggleSwitch
                                   checked={nightShiftRegistered}
-                                  disabled={togglingNightShift || !nightShiftCanToggle}
+                                  disabled={togglingNightShift || (!nightShiftCanToggle && !isUserAdminRole && !isUserManagerRole)}
                                   onChange={() => {
                                     if (togglingNightShift) return;
-                                    if (!nightShiftCanToggle) {
+                                    if (!nightShiftCanToggle && !isUserAdminRole && !isUserManagerRole) {
                                       toast.error(t('Đã quá hạn đăng ký trực ca đêm hôm nay!'));
                                       return;
                                     }
@@ -14196,12 +14207,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}>
                                           {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
                                         </span>
-                                        {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                          <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.6 }}>
+                                        {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
+                                          <div style={{ opacity: (weekendShiftSat.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
                                             <ToggleSwitch
                                               checked={weekendShiftSat.registered}
                                               onChange={() => {
-                                                if (!weekendShiftSat.can_toggle) {
+                                                if (!weekendShiftSat.can_toggle && !isUserAdminRole && !isUserManagerRole) {
                                                   toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
                                                   return;
                                                 }
@@ -14258,12 +14269,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
                                       </span>
                                     )}
-                                    {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                      <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.6 }}>
+                                    {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
+                                      <div style={{ opacity: (weekendShiftSat.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
                                         <ToggleSwitch
                                           checked={weekendShiftSat.registered}
                                           onChange={() => {
-                                            if (!weekendShiftSat.can_toggle) {
+                                            if (!weekendShiftSat.can_toggle && !isUserAdminRole && !isUserManagerRole) {
                                               toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
                                               return;
                                             }
@@ -14313,12 +14324,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}>
                                           {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
                                         </span>
-                                        {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                          <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.6 }}>
+                                        {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
+                                          <div style={{ opacity: (weekendShiftSun.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
                                             <ToggleSwitch
                                               checked={weekendShiftSun.registered}
                                               onChange={() => {
-                                                if (!weekendShiftSun.can_toggle) {
+                                                if (!weekendShiftSun.can_toggle && !isUserAdminRole && !isUserManagerRole) {
                                                   toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Chủ Nhật!'));
                                                   return;
                                                 }
@@ -14375,12 +14386,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
                                       </span>
                                     )}
-                                    {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                      <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.6 }}>
+                                    {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
+                                      <div style={{ opacity: (weekendShiftSun.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
                                         <ToggleSwitch
                                           checked={weekendShiftSun.registered}
                                           onChange={() => {
-                                            if (!weekendShiftSun.can_toggle) {
+                                            if (!weekendShiftSun.can_toggle && !isUserAdminRole && !isUserManagerRole) {
                                               toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Chủ Nhật!'));
                                               return;
                                             }

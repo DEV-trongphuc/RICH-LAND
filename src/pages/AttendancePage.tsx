@@ -141,6 +141,14 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const [suppReason, setSuppReason] = useState('');
   const [suppSubmitting, setSuppSubmitting] = useState(false);
 
+  // Admin Shift Assignment states
+  const [showAssignShiftModal, setShowAssignShiftModal] = useState(false);
+  const [assignConsultantId, setAssignConsultantId] = useState<string>('');
+  const [assignShiftType, setAssignShiftType] = useState<'night' | 'weekend' | 'holiday'>('night');
+  const [assignShiftDate, setAssignShiftDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [assignHolidayName, setAssignHolidayName] = useState<string>('Trực lễ phân công');
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
+
   // Scheduler / Diary creation states
   const [diaryNoteText, setDiaryNoteText] = useState('');
   const [newActivityType, setNewActivityType] = useState<'task' | 'meeting' | 'call' | 'note'>('task');
@@ -327,6 +335,60 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       toast.error(t('Lỗi: ') + err.message);
     } finally {
       setActioningRegId(null);
+    }
+  };
+
+  const handleAssignShift = async () => {
+    if (!assignConsultantId) {
+      toast.error(t('Vui lòng chọn nhân viên cần phân công'));
+      return;
+    }
+    if (!assignShiftDate) {
+      toast.error(t('Vui lòng chọn ngày trực'));
+      return;
+    }
+    setAssignSubmitting(true);
+    try {
+      let res: any;
+      if (assignShiftType === 'night') {
+        res = await fetchAPI('register_night_shift', {
+          method: 'POST',
+          body: JSON.stringify({
+            consultant_id: assignConsultantId,
+            shift_date: assignShiftDate,
+            register: true
+          })
+        });
+      } else if (assignShiftType === 'weekend') {
+        res = await fetchAPI('register_weekend_shift', {
+          method: 'POST',
+          body: JSON.stringify({
+            consultant_id: assignConsultantId,
+            date: assignShiftDate,
+            register: true
+          })
+        });
+      } else {
+        res = await fetchAPI('register_weekly_shifts', {
+          method: 'POST',
+          body: JSON.stringify({
+            consultant_id: assignConsultantId,
+            holiday_shifts: [{ date: assignShiftDate, holiday_name: assignHolidayName || 'Trực lễ phân công' }]
+          })
+        });
+      }
+      if (res?.success) {
+        toast.success(res.message || t('Phân công trực ca thành công!'));
+        setShowAssignShiftModal(false);
+        fetchRegistrations();
+        if (viewMode === 'calendar') fetchCalendarCheckIns();
+      } else {
+        toast.error(res?.message || t('Lỗi phân công ca trực'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    } finally {
+      setAssignSubmitting(false);
     }
   };
 
@@ -1051,6 +1113,23 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           >
             <RefreshCw size={14} className={registrationsLoading ? 'spin' : ''} />
           </button>
+
+          {canApprove && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowAssignShiftModal(true);
+                if (!assignConsultantId && consultants.length > 0) {
+                  setAssignConsultantId(String(consultants[0].id));
+                }
+              }}
+              className="btn primary"
+              style={{ height: '36px', marginTop: '16px', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', fontWeight: 650 }}
+            >
+              <Users size={15} />
+              <span>{t('+ Phân công trực ca')}</span>
+            </button>
+          )}
         </div>
 
         {/* Table representation */}
@@ -2977,6 +3056,132 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         </div>
         </>,
         document.body
+      )}
+
+      {/* Admin Assign Shift Modal */}
+      {showAssignShiftModal && (
+        <CustomModal
+          isOpen={showAssignShiftModal}
+          onClose={() => setShowAssignShiftModal(false)}
+          title={t('Phân công trực ca cho nhân viên')}
+          width="480px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{
+              background: 'var(--color-primary-light)',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              fontSize: '0.8rem',
+              color: 'var(--color-primary-dark)',
+              border: '1px solid rgba(59, 130, 246, 0.2)'
+            }}>
+              <Info size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
+              {t('Admin/Manager chủ động phân công trực sẽ được duyệt ngay lập tức (approved = 1), không bị giới hạn bởi hạn chót đăng ký.')}
+            </div>
+
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label className="form-label" style={{ fontSize: '0.8125rem', fontWeight: 650 }}>
+                {t('Chọn nhân viên kinh doanh / Sale')} <span style={{ color: 'var(--color-danger)' }}>*</span>
+              </label>
+              <select
+                className="form-select"
+                value={assignConsultantId}
+                onChange={e => setAssignConsultantId(e.target.value)}
+                style={{ height: '40px' }}
+              >
+                <option value="">{t('-- Chọn nhân viên --')}</option>
+                {consultants.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.email ? `(${c.email})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label className="form-label" style={{ fontSize: '0.8125rem', fontWeight: 650 }}>
+                {t('Loại ca trực')}
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setAssignShiftType('night')}
+                  className={`btn sm ${assignShiftType === 'night' ? 'primary' : 'outline'}`}
+                  style={{ borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  <Moon size={14} />
+                  <span>{t('Trực đêm')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssignShiftType('weekend')}
+                  className={`btn sm ${assignShiftType === 'weekend' ? 'primary' : 'outline'}`}
+                  style={{ borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  <Calendar size={14} />
+                  <span>{t('Cuối tuần')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssignShiftType('holiday')}
+                  className={`btn sm ${assignShiftType === 'holiday' ? 'primary' : 'outline'}`}
+                  style={{ borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  <CheckSquare size={14} />
+                  <span>{t('Ngày lễ')}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label className="form-label" style={{ fontSize: '0.8125rem', fontWeight: 650 }}>
+                {t('Ngày trực')} <span style={{ color: 'var(--color-danger)' }}>*</span>
+              </label>
+              <input
+                type="date"
+                className="form-input"
+                value={assignShiftDate}
+                onChange={e => setAssignShiftDate(e.target.value)}
+                style={{ height: '40px' }}
+              />
+            </div>
+
+            {assignShiftType === 'holiday' && (
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label className="form-label" style={{ fontSize: '0.8125rem', fontWeight: 650 }}>
+                  {t('Tên ngày lễ / Dịp trực')}
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={assignHolidayName}
+                  onChange={e => setAssignHolidayName(e.target.value)}
+                  placeholder={t('Ví dụ: Trực Lễ Quốc Khánh, Trực Tết...')}
+                  style={{ height: '40px' }}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+              <button
+                type="button"
+                className="btn outline"
+                onClick={() => setShowAssignShiftModal(false)}
+                disabled={assignSubmitting}
+              >
+                {t('Hủy')}
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={handleAssignShift}
+                disabled={assignSubmitting || !assignConsultantId}
+              >
+                {assignSubmitting ? t('Đang xử lý...') : t('Xác nhận phân công')}
+              </button>
+            </div>
+          </div>
+        </CustomModal>
       )}
 
     </div>

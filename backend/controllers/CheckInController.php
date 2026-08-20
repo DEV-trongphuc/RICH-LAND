@@ -107,9 +107,13 @@ class CheckInController {
                 $month = (int)$_GET['month'];
 
                 // 1. Night shifts
-                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email 
+                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
+                                    COALESCE(a.name, u.full_name) as user_name, '' as holiday_name, 
+                                    COALESCE(a.avatar, u.avatar_url) as user_avatar, 
+                                    COALESCE(a.email, u.email) as user_email 
                              FROM night_shift_registrations r 
-                             JOIN users u ON r.user_id = u.id 
+                             LEFT JOIN accounts a ON r.user_id = a.id
+                             LEFT JOIN users u ON r.user_id = u.id 
                              WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
                 $nightParams = [$year, $month];
                 if ($userIdFilter !== null) {
@@ -121,9 +125,13 @@ class CheckInController {
                 $shifts = array_merge($shifts, $stmtNight->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
                 // 2. Weekend shifts
-                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email 
+                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
+                                      COALESCE(a.name, u.full_name) as user_name, '' as holiday_name, 
+                                      COALESCE(a.avatar, u.avatar_url) as user_avatar, 
+                                      COALESCE(a.email, u.email) as user_email 
                                FROM weekend_shift_registrations r 
-                               JOIN users u ON r.user_id = u.id 
+                               LEFT JOIN accounts a ON r.user_id = a.id
+                               LEFT JOIN users u ON r.user_id = u.id 
                                WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
                 $weekendParams = [$year, $month];
                 if ($userIdFilter !== null) {
@@ -135,9 +143,13 @@ class CheckInController {
                 $shifts = array_merge($shifts, $stmtWeekend->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
                 // 3. Holiday shifts
-                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, r.holiday_name, u.avatar_url as user_avatar, u.email as user_email 
+                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
+                                      COALESCE(a.name, u.full_name) as user_name, r.holiday_name, 
+                                      COALESCE(a.avatar, u.avatar_url) as user_avatar, 
+                                      COALESCE(a.email, u.email) as user_email 
                                FROM holiday_shift_registrations r 
-                               JOIN users u ON r.user_id = u.id 
+                               LEFT JOIN accounts a ON r.user_id = a.id
+                               LEFT JOIN users u ON r.user_id = u.id 
                                WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
                 $holidayParams = [$year, $month];
                 if ($userIdFilter !== null) {
@@ -153,9 +165,13 @@ class CheckInController {
                 $to = $_GET['to'];
 
                 // 1. Night shifts
-                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email 
+                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
+                                    COALESCE(a.name, u.full_name) as user_name, '' as holiday_name, 
+                                    COALESCE(a.avatar, u.avatar_url) as user_avatar, 
+                                    COALESCE(a.email, u.email) as user_email 
                              FROM night_shift_registrations r 
-                             JOIN users u ON r.user_id = u.id 
+                             LEFT JOIN accounts a ON r.user_id = a.id
+                             LEFT JOIN users u ON r.user_id = u.id 
                              WHERE r.shift_date BETWEEN ? AND ?";
                 $nightParams = [$from, $to];
                 if ($userIdFilter !== null) {
@@ -167,9 +183,13 @@ class CheckInController {
                 $shifts = array_merge($shifts, $stmtNight->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
                 // 2. Weekend shifts
-                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email 
+                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
+                                      COALESCE(a.name, u.full_name) as user_name, '' as holiday_name, 
+                                      COALESCE(a.avatar, u.avatar_url) as user_avatar, 
+                                      COALESCE(a.email, u.email) as user_email 
                                FROM weekend_shift_registrations r 
-                               JOIN users u ON r.user_id = u.id 
+                               LEFT JOIN accounts a ON r.user_id = a.id
+                               LEFT JOIN users u ON r.user_id = u.id 
                                WHERE r.shift_date BETWEEN ? AND ?";
                 $weekendParams = [$from, $to];
                 if ($userIdFilter !== null) {
@@ -181,9 +201,13 @@ class CheckInController {
                 $shifts = array_merge($shifts, $stmtWeekend->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
                 // 3. Holiday shifts
-                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, r.holiday_name, u.avatar_url as user_avatar, u.email as user_email 
+                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
+                                      COALESCE(a.name, u.full_name) as user_name, r.holiday_name, 
+                                      COALESCE(a.avatar, u.avatar_url) as user_avatar, 
+                                      COALESCE(a.email, u.email) as user_email 
                                FROM holiday_shift_registrations r 
-                               JOIN users u ON r.user_id = u.id 
+                               LEFT JOIN accounts a ON r.user_id = a.id
+                               LEFT JOIN users u ON r.user_id = u.id 
                                WHERE r.shift_date BETWEEN ? AND ?";
                 $holidayParams = [$from, $to];
                 if ($userIdFilter !== null) {

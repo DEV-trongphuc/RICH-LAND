@@ -336,6 +336,29 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [holidayShifts, setHolidayShifts] = useState<any[]>([]);
   const [weekendShifts, setWeekendShifts] = useState<any[]>([]);
   const [nightShifts, setNightShifts] = useState<any[]>([]);
+  const [satShiftRegistered, setSatShiftRegistered] = useState(false);
+  const [sunShiftRegistered, setSunShiftRegistered] = useState(false);
+
+  // Compute upcoming Saturday and Sunday dates
+  const getWeekendDates = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+    const satDate = new Date(today);
+    const sunDate = new Date(today);
+
+    if (dayOfWeek === 6) { // today is Sat
+      sunDate.setDate(today.getDate() + 1);
+    } else if (dayOfWeek === 0) { // today is Sun
+      satDate.setDate(today.getDate() - 1);
+    } else {
+      satDate.setDate(today.getDate() + (6 - dayOfWeek));
+      sunDate.setDate(today.getDate() + (7 - dayOfWeek));
+    }
+    const satStr = satDate.toISOString().slice(0, 10);
+    const sunStr = sunDate.toISOString().slice(0, 10);
+    return { satStr, sunStr };
+  };
+  const { satStr: currentSatDateStr, sunStr: currentSunDateStr } = getWeekendDates();
 
   // 6. Documents / Attachments
   const [documents, setDocuments] = useState<any[]>([]);
@@ -408,6 +431,12 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
             setHolidayShifts(d.holiday_shifts || []);
             setWeekendShifts(d.weekend_shifts || []);
             setNightShifts(d.night_shifts || []);
+
+            const curWeekend = getWeekendDates();
+            const hasSat = Boolean(d.weekend_shifts && d.weekend_shifts.some((ws: any) => ws.shift_date === curWeekend.satStr && Number(ws.approved) === 1));
+            const hasSun = Boolean(d.weekend_shifts && d.weekend_shifts.some((ws: any) => ws.shift_date === curWeekend.sunStr && Number(ws.approved) === 1));
+            setSatShiftRegistered(hasSat);
+            setSunShiftRegistered(hasSun);
             setWorkStartTime(d.work_start_time || '08:00');
             setWorkEndTime(d.work_end_time || '17:30');
             setLeaveStart(d.leave_start || '');
@@ -583,6 +612,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setHolidayShifts([]);
       setWeekendShifts([]);
       setNightShifts([]);
+      setSatShiftRegistered(false);
+      setSunShiftRegistered(false);
       setWorkStartTime('08:00');
       setWorkEndTime('17:30');
       setScheduleMode('daily');
@@ -987,6 +1018,10 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           zalo_chat_id: zaloChatId,
           telegram_chat_id: telegramChatId,
           overtime_mode: overtimeMode ? 1 : 0,
+          weekend_shifts: [
+            { date: currentSatDateStr, register: satShiftRegistered },
+            { date: currentSunDateStr, register: sunShiftRegistered }
+          ],
           use_custom_work_hours: useCustomWorkHours ? 1 : 0,
           leave_start: leaveStart || null,
           leave_end: leaveEnd || null
@@ -2643,7 +2678,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       </div>
                     </div>
 
-                    {/* Overtime mode */}
+                    {/* Overtime / Night Shift mode */}
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -2654,10 +2689,13 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       border: '1px solid var(--color-border-light)'
                     }}>
                       <div>
-                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Đăng ký trực đêm / Tăng ca (Overtime Mode)')}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Đăng ký trực ca đêm / Tăng ca (Night Duty)')}</span>
+                          {overtimeMode && <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{t('Đã bật trực đêm')}</span>}
+                        </div>
                         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0', maxWidth: '580px' }}>
                           {role === 'sale' 
-                            ? t('Kích hoạt để chuyên viên này tham gia trực đêm và nhận lead tự động ngoài giờ làm việc hành chính.')
+                            ? t('Kích hoạt để chuyên viên này tham gia trực ca đêm và nhận lead tự động ngoài giờ. Admin có thể bật/tắt trực tiếp bất cứ lúc nào.')
                             : t('Ghi nhận thông tin tăng ca đêm của nhân sự để phục vụ cho việc tính ngày công tăng ca hàng tháng.')}
                         </p>
                       </div>
@@ -2687,6 +2725,87 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                           }}
                         />
+                      </div>
+                    </div>
+
+                    {/* Weekend Shift (Saturday & Sunday Duty) Controls */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                      padding: '1rem',
+                      background: 'var(--color-bg-light)',
+                      borderRadius: '12px',
+                      border: '1px solid var(--color-border-light)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Calendar size={15} style={{ color: 'var(--color-primary)' }} />
+                            {t('Phân công trực Cuối tuần tuần này')}
+                          </span>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                            {t('Admin chủ động bật trực Thứ 7 hoặc Chủ Nhật để Sale nhận lead cuối tuần (không bị giới hạn hạn chót đăng ký).')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem', marginTop: '4px' }}>
+                        {/* Saturday */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          background: 'var(--color-surface)',
+                          borderRadius: '10px',
+                          border: '1px solid var(--color-border)'
+                        }}>
+                          <div>
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: 'var(--color-text)', display: 'block' }}>
+                              {t('Thứ Bảy')} ({new Date(currentSatDateStr).toLocaleDateString('vi-VN')})
+                            </span>
+                            <span style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              color: satShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)'
+                            }}>
+                              {satShiftRegistered ? t('Đã duyệt trực Thứ 7') : t('Chưa đăng ký')}
+                            </span>
+                          </div>
+                          <ToggleSwitch
+                            checked={satShiftRegistered}
+                            onChange={setSatShiftRegistered}
+                          />
+                        </div>
+
+                        {/* Sunday */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          background: 'var(--color-surface)',
+                          borderRadius: '10px',
+                          border: '1px solid var(--color-border)'
+                        }}>
+                          <div>
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: 'var(--color-text)', display: 'block' }}>
+                              {t('Chủ Nhật')} ({new Date(currentSunDateStr).toLocaleDateString('vi-VN')})
+                            </span>
+                            <span style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              color: sunShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)'
+                            }}>
+                              {sunShiftRegistered ? t('Đã duyệt trực Chủ Nhật') : t('Chưa đăng ký')}
+                            </span>
+                          </div>
+                          <ToggleSwitch
+                            checked={sunShiftRegistered}
+                            onChange={setSunShiftRegistered}
+                          />
+                        </div>
                       </div>
                     </div>
 
