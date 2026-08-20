@@ -20,8 +20,11 @@ function normalizePhone($phoneRaw)
     // Remove common prefixes like "p:", "tel:", "phone:", etc.
     $phone = preg_replace('/^(p:|tel:|phone:)\s*/i', '', $phone);
 
+    // Pre-insert separator if two full numbers are separated by space
+    $phone = preg_replace('/(\d{9,11})\s+([0\+]\d{8,11})/', '$1, $2', $phone);
+
     // Extract the last phone number if multiple are provided (separated by commas, semicolons, slashes, pipes, newlines, or words like "hoặc", "or", "và", "and")
-    $parts = preg_split('~[,;/|\n\r]|(?:\s+(?:hoặc|or|và|and)\s+)|\s{2,}|(?<=\d{8,12})\s+(?=[0+])~iu', $phone);
+    $parts = preg_split('~[,;/|\n\r]|(?:\s+(?:hoặc|or|và|and)\s+)|\s{2,}~iu', $phone);
     $validParts = [];
     if (is_array($parts)) {
         foreach ($parts as $part) {
