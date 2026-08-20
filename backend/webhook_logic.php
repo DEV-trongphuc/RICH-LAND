@@ -21,7 +21,7 @@ function normalizePhone($phoneRaw)
     $phone = preg_replace('/^(p:|tel:|phone:)\s*/i', '', $phone);
 
     // Extract the last phone number if multiple are provided (separated by commas, semicolons, slashes, pipes, newlines, or words like "hoặc", "or", "và", "and")
-    $parts = preg_split('#[,;/\x7c\n\r]|(?:\s+(?:hoặc|or|và|and)\s+)|\s{2,}|(?<=\d{8,12})\s+(?=[0+])#iu', $phone);
+    $parts = preg_split('~[,;/|\n\r]|(?:\s+(?:hoặc|or|và|and)\s+)|\s{2,}|(?<=\d{8,12})\s+(?=[0+])~iu', $phone);
     $validParts = [];
     if (is_array($parts)) {
         foreach ($parts as $part) {
