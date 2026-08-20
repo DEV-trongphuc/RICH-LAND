@@ -208,9 +208,9 @@ class ContactController {
             )
             LEFT JOIN distribution_logs dl ON dl.id = (
                 SELECT MAX(id) FROM distribution_logs 
-                WHERE lead_id = l.id AND assigned_to = c.owner_id
+                WHERE lead_id = l.id
             )
-            LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+            LEFT JOIN distribution_rounds r ON COALESCE(dl.round_id, l.target_round_id) = r.id
             LEFT JOIN data_reports dr ON dr.id = (
                 SELECT MAX(id) FROM data_reports 
                 WHERE lead_id = l.id AND consultant_id = c.owner_id

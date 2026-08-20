@@ -156,12 +156,14 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   const [systemMaxAttempts, setSystemMaxAttempts] = useState<number>(2);
   const [roundCooldowns, setRoundCooldowns] = useState<any>({});
+  const [consultantStatuses, setConsultantStatuses] = useState<any>({});
 
   const loadRoundCooldowns = async (roundId: number) => {
     try {
       const json = await fetchAPI(`get_round_cooldowns&round_id=${roundId}`);
       if (json && json.success) {
         setRoundCooldowns(json.cooldowns || {});
+        setConsultantStatuses(json.consultant_statuses || {});
       }
     } catch (e) {
       console.error(e);
@@ -2114,6 +2116,39 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                               </span>
                                             );
                                           }
+
+                                          const cStat = consultantStatuses[user.id];
+                                          if (cStat) {
+                                            if (cStat.status === 'no_night_shift') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', background: theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : '#ede9fe', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Chưa trực đêm")}
+                                                </span>
+                                              );
+                                            }
+                                            if (cStat.status === 'out_of_hours') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', background: theme === 'dark' ? 'rgba(107, 114, 128, 0.15)' : '#f3f4f6', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Ngoài giờ làm")}
+                                                </span>
+                                              );
+                                            }
+                                            if (cStat.status === 'on_leave') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Nghỉ phép")}
+                                                </span>
+                                              );
+                                            }
+                                            if (cStat.status === 'vacation') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Tạm ngưng")}
+                                                </span>
+                                              );
+                                            }
+                                          }
+
                                           return (
                                             <span style={{ 
                                               fontSize: '0.7rem', 

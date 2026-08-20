@@ -19323,6 +19323,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </CustomModal>
       )}
 
+      {/* Real-time Grab Lead Offer Modal Popup */}
+      {activeOffers.filter((o: any) => !dismissedOfferIds.includes(o.offer_id)).slice(0, 1).map((offer: any) => (
+        <GrabLeadOfferModal
+          key={offer.offer_id}
+          offer={offer}
+          onClaim={handleGrabLead}
+          onClose={() => setDismissedOfferIds((prev) => [...prev, offer.offer_id])}
+          t={t}
+          theme={theme}
+        />
+      ))}
+
       {/* Task Participants List Modal */}
       {participantsModalOpen && (
         <CustomModal

@@ -196,9 +196,32 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
     $phone = normalizePhone(extractMappedValues($mappings, 'phone', $data));
     $email = extractMappedValues($mappings, 'email', $data);
     $source = extractMappedValues($mappings, 'source', $data);
-    $type = extractMappedValues($mappings, 'type', $data);
     $note = extractMappedValues($mappings, 'note', $data);
     $name = extractMappedValues($mappings, 'name', $data);
+
+    if (!empty($connItem['auto_append_unmapped_note'])) {
+        $mappedCols = [];
+        foreach ($mappings as $sysF => $mList) {
+            if (is_array($mList)) {
+                foreach ($mList as $mItem) {
+                    if (!empty($mItem['sheet_column'])) {
+                        $mappedCols[strtolower(trim($mItem['sheet_column']))] = true;
+                    }
+                }
+            }
+        }
+        $unmappedNotes = [];
+        foreach ($data as $colKey => $colVal) {
+            if (trim((string)$colVal) === '') continue;
+            if (!isset($mappedCols[strtolower(trim($colKey))])) {
+                $unmappedNotes[] = "{$colKey}: {$colVal}";
+            }
+        }
+        if (!empty($unmappedNotes)) {
+            $extraNoteStr = implode(' | ', $unmappedNotes);
+            $note = !empty($note) ? "{$note}\n[Cột chưa map: {$extraNoteStr}]" : "[Cột chưa map: {$extraNoteStr}]";
+        }
+    }
 }
 
 if (isLeadBlocked($conn, $phone, $email)) {

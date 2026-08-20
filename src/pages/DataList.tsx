@@ -1,7 +1,7 @@
 import { useState, useEffect, Fragment, useMemo } from 'react';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -31,6 +31,7 @@ type Lead = {
   lead_id?: number;
   name: string;
   phone: string;
+  phone2?: string;
   email: string;
   source: string;
   status: string;
@@ -50,6 +51,28 @@ type Lead = {
   is_public?: number | boolean;
   person_id?: number;
   assigned_to?: number;
+
+  // Mapped & Extended fields
+  gender?: string;
+  dob?: string;
+  citizen_id?: string;
+  district?: string;
+  company?: string;
+  tax_code?: string;
+  budget?: string | number;
+  demand_type?: string;
+  property_type?: string;
+  bedroom_count?: string;
+  preferred_location?: string;
+  utm_campaign?: string;
+  utm_medium?: string;
+  utm_content?: string;
+  utm_term?: string;
+  platform?: string;
+  form_name?: string;
+  campaign_name?: string;
+  zalo_phone?: string;
+  facebook_link?: string;
 };
 
 import { fetchAPI, getDefaultDateFilter } from '../utils/api';
@@ -534,6 +557,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           lead_id: item.lead_id,
           name: item.lead_name || t('Khách hàng ẩn danh'),
           phone: item.phone || '-',
+          phone2: item.phone2 || '',
           email: item.email || '-',
           source: item.source || '-',
           type: item.type || '-',
@@ -548,7 +572,27 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           ai_screener_status: item.ai_screener_status,
           ai_evaluation: item.ai_evaluation,
           is_public: item.is_public,
-          takers: item.takers || []
+          takers: item.takers || [],
+          gender: item.gender || '',
+          dob: item.dob || '',
+          citizen_id: item.citizen_id || '',
+          district: item.district || '',
+          company: item.company || '',
+          tax_code: item.tax_code || '',
+          budget: item.budget || '',
+          demand_type: item.demand_type || '',
+          property_type: item.property_type || '',
+          bedroom_count: item.bedroom_count || '',
+          preferred_location: item.preferred_location || '',
+          utm_campaign: item.utm_campaign || '',
+          utm_medium: item.utm_medium || '',
+          utm_content: item.utm_content || '',
+          utm_term: item.utm_term || '',
+          platform: item.platform || '',
+          form_name: item.form_name || '',
+          campaign_name: item.campaign_name || '',
+          zalo_phone: item.zalo_phone || '',
+          facebook_link: item.facebook_link || ''
         }));
         setLeads(mappedLeads);
         setTotalCount(json.total_count ?? mappedLeads.length);
@@ -3325,6 +3369,319 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           </div>
                         </div>
                       </div>
+
+                      {/* Mapped Property & Requirement Details */}
+                      {(selectedLead.preferred_location || selectedLead.bedroom_count || selectedLead.property_type || selectedLead.demand_type || (selectedLead.budget && Number(selectedLead.budget) > 0)) && (
+                        <div style={{
+                          background: theme === 'dark' ? 'rgba(59, 130, 246, 0.08)' : 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
+                          border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid #bfdbfe',
+                          padding: '1.25rem',
+                          borderRadius: '16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem',
+                          marginTop: '1rem',
+                          boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(59, 130, 246, 0.04)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                              background: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe',
+                              padding: '8px',
+                              borderRadius: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: theme === 'dark' ? '#60a5fa' : '#2563eb'
+                            }}>
+                              <Building2 size={18} strokeWidth={2.5} />
+                            </div>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#93c5fd' : '#1e40af', letterSpacing: '-0.01em' }}>
+                              {t('Nhu cầu & Bất động sản quan tâm')}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '4px' }}>
+                            {selectedLead.preferred_location && (
+                              <div style={{ gridColumn: 'span 2', background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <MapPin size={12} className="text-primary" /> {t('Khu vực / Dự án')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {selectedLead.preferred_location}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.bedroom_count && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <BedDouble size={12} className="text-primary" /> {t('Loại hình / Phòng ngủ')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {selectedLead.bedroom_count}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.property_type && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <Home size={12} className="text-primary" /> {t('Loại BĐS')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {selectedLead.property_type}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.demand_type && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <Target size={12} className="text-primary" /> {t('Nhu cầu')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {selectedLead.demand_type}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.budget && Number(selectedLead.budget) > 0 && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <DollarSign size={12} className="text-success" /> {t('Ngân sách')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-success)' }}>
+                                  {Number(selectedLead.budget).toLocaleString('vi-VN')} đ
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Campaign & Source Tracking Info */}
+                      {(selectedLead.form_name || selectedLead.platform || selectedLead.campaign_name || selectedLead.utm_campaign || selectedLead.utm_content || selectedLead.utm_medium) && (
+                        <div style={{
+                          background: theme === 'dark' ? 'rgba(139, 92, 246, 0.08)' : 'linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%)',
+                          border: theme === 'dark' ? '1px solid rgba(139, 92, 246, 0.2)' : '1px solid #ddd6fe',
+                          padding: '1.25rem',
+                          borderRadius: '16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem',
+                          marginTop: '1rem',
+                          boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(139, 92, 246, 0.04)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                              background: theme === 'dark' ? 'rgba(139, 92, 246, 0.2)' : '#ede9fe',
+                              padding: '8px',
+                              borderRadius: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: theme === 'dark' ? '#a78bfa' : '#7c3aed'
+                            }}>
+                              <Layers size={18} strokeWidth={2.5} />
+                            </div>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#c4b5fd' : '#5b21b6', letterSpacing: '-0.01em' }}>
+                              {t('Nguồn & Chiến dịch Quảng cáo')}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '4px' }}>
+                            {selectedLead.form_name && (
+                              <div style={{ gridColumn: 'span 2', background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <FileText size={12} /> {t('Tên Form / Landing Page')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.form_name}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.platform && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <Globe size={12} /> {t('Nền tảng')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.platform}
+                                </div>
+                              </div>
+                            )}
+
+                            {(selectedLead.campaign_name || selectedLead.utm_campaign) && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <Target size={12} /> {t('Chiến dịch Ads')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.campaign_name || selectedLead.utm_campaign}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.utm_content && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <Layers size={12} /> {t('Mẫu QC (Adset)')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.utm_content}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.utm_medium && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <ExternalLink size={12} /> {t('Hình thức Ads')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.utm_medium}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Extended Personal & Contact Info */}
+                      {(selectedLead.phone2 || selectedLead.zalo_phone || selectedLead.facebook_link || selectedLead.district || selectedLead.company || selectedLead.citizen_id || selectedLead.dob || selectedLead.gender) && (
+                        <div style={{
+                          background: theme === 'dark' ? 'rgba(16, 185, 129, 0.08)' : 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                          border: theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid #a7f3d0',
+                          padding: '1.25rem',
+                          borderRadius: '16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem',
+                          marginTop: '1rem',
+                          boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.04)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                              background: theme === 'dark' ? 'rgba(16, 185, 129, 0.2)' : '#d1fae5',
+                              padding: '8px',
+                              borderRadius: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: theme === 'dark' ? '#34d399' : '#059669'
+                            }}>
+                              <User size={18} strokeWidth={2.5} />
+                            </div>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#6ee7b7' : '#065f46', letterSpacing: '-0.01em' }}>
+                              {t('Thông tin Khách hàng mở rộng')}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '4px' }}>
+                            {selectedLead.phone2 && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <PhoneCall size={12} /> {t('SĐT phụ')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.phone2}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.zalo_phone && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <MessageSquare size={12} /> {t('Zalo')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.zalo_phone}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.district && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <MapPin size={12} /> {t('Quận / Huyện')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.district}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.company && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <Briefcase size={12} /> {t('Công ty')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.company}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.facebook_link && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <Share2 size={12} /> {t('Facebook')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                  <a href={selectedLead.facebook_link.startsWith('http') ? selectedLead.facebook_link : `https://${selectedLead.facebook_link}`} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+                                    {selectedLead.facebook_link}
+                                  </a>
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.tax_code && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <FileText size={12} /> {t('Mã số thuế')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.tax_code}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.citizen_id && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <User size={12} /> {t('CCCD / CMND')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.citizen_id}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.dob && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <Calendar size={12} /> {t('Ngày sinh')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.dob}
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedLead.gender && (
+                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                  <User size={12} /> {t('Giới tính')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {selectedLead.gender}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {/* AI Decision Notes */}
                       {aiDecisionNotes && aiDecisionNotes.length > 0 && (

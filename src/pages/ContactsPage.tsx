@@ -1987,13 +1987,24 @@ export const ContactsPage: React.FC = () => {
                         )}
                         {columns.find(col => col.id === 'created_at')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                              {c.created_at ? (() => {
-                                const d = new Date(c.created_at);
-                                const pad = (n: number) => String(n).padStart(2, '0');
-                                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                              })() : '—'}
-                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600, margin: 0, whiteSpace: 'nowrap' }}>
+                                {c.created_at ? (() => {
+                                  const d = new Date(c.created_at);
+                                  const pad = (n: number) => String(n).padStart(2, '0');
+                                  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                                })() : '—'}
+                              </p>
+                              {c.round_name ? (
+                                <span style={{ fontSize: '0.725rem', color: 'var(--color-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                  {c.round_name}
+                                </span>
+                              ) : c.dl_status === 'databank_claim' ? (
+                                <span style={{ fontSize: '0.725rem', color: 'var(--color-success)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                  Claim Databank
+                                </span>
+                              ) : null}
+                            </div>
                           </td>
                         )}
                         {/* Removed interaction column */}

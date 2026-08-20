@@ -543,7 +543,8 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 LEFT JOIN consultants c ON dl.assigned_to = c.id
                 LEFT JOIN users u ON c.email = u.email
                 LEFT JOIN distribution_rounds r ON dl.round_id = r.id
-                WHERE dl.status = 'pending_work_hours' OR dl.status = 'pending'";
+                WHERE dl.status = 'pending_work_hours' 
+                   OR (dl.status = 'pending' AND (l.next_attempt_date IS NULL OR l.next_attempt_date <= NOW()))";
                  
         $res = $conn->query($sql);
         if (!$res) {
@@ -713,7 +714,49 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 $assignedConsultantId = null;
                 $assignResult = null;
                 if ($row['round_id'] > 0) {
-                    $assignResult = getNextConsultantInRound($conn, $row['round_id']);
+                    $maxAttempts = (int) get_system_setting($conn, 'lead_max_recall_attempts');
+                    $cooldownMins = (int) get_system_setting($conn, 'lead_recall_cooldown_minutes');
+                    $excludeIds = [];
+
+                    if ($maxAttempts > 0) {
+                        $attStmt = $conn->prepare("
+                            SELECT assigned_to, COUNT(*) as cnt 
+                            FROM distribution_logs 
+                            WHERE lead_id = ? AND status = 'recalled' AND received_at >= CURDATE() 
+                            GROUP BY assigned_to
+                        ");
+                        if ($attStmt) {
+                            $attStmt->bind_param("i", $row['lead_id']);
+                            $attStmt->execute();
+                            $attRes = $attStmt->get_result();
+                            while ($attRow = $attRes->fetch_assoc()) {
+                                if ((int)$attRow['cnt'] >= $maxAttempts) {
+                                    $excludeIds[] = (int)$attRow['assigned_to'];
+                                }
+                            }
+                            $attStmt->close();
+                        }
+                    }
+
+                    if ($cooldownMins > 0) {
+                        $coolStmt = $conn->prepare("
+                            SELECT DISTINCT assigned_to 
+                            FROM distribution_logs 
+                            WHERE lead_id = ? AND status = 'recalled' 
+                              AND received_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                        ");
+                        if ($coolStmt) {
+                            $coolStmt->bind_param("ii", $row['lead_id'], $cooldownMins);
+                            $coolStmt->execute();
+                            $coolRes = $coolStmt->get_result();
+                            while ($coolRow = $coolRes->fetch_assoc()) {
+                                $excludeIds[] = (int)$coolRow['assigned_to'];
+                            }
+                            $coolStmt->close();
+                        }
+                    }
+
+                    $assignResult = getNextConsultantInRound($conn, $row['round_id'], null, array_values(array_unique($excludeIds)));
                     if ($assignResult) {
                         $assignedConsultantId = $assignResult['id'];
                     }
@@ -1832,8 +1875,31 @@ foreach ($connections as $connItem) {
             $email = extractMappedValues($mappings, 'email', $rowData);
             $source = extractMappedValues($mappings, 'source', $rowData);
             $type = extractMappedValues($mappings, 'type', $rowData);
-            $note = extractMappedValues($mappings, 'note', $rowData);
             $name = extractMappedValues($mappings, 'name', $rowData);
+
+            if (!empty($connItem['auto_append_unmapped_note'])) {
+                $mappedCols = [];
+                foreach ($mappings as $sysF => $mList) {
+                    if (is_array($mList)) {
+                        foreach ($mList as $mItem) {
+                            if (!empty($mItem['sheet_column'])) {
+                                $mappedCols[strtolower(trim($mItem['sheet_column']))] = true;
+                            }
+                        }
+                    }
+                }
+                $unmappedNotes = [];
+                foreach ($rowData as $colKey => $colVal) {
+                    if (trim($colVal) === '') continue;
+                    if (!isset($mappedCols[strtolower(trim($colKey))])) {
+                        $unmappedNotes[] = "{$colKey}: {$colVal}";
+                    }
+                }
+                if (!empty($unmappedNotes)) {
+                    $extraNoteStr = implode(' | ', $unmappedNotes);
+                    $note = !empty($note) ? "{$note}\n[Cột chưa map: {$extraNoteStr}]" : "[Cột chưa map: {$extraNoteStr}]";
+                }
+            }
 
             if (!empty($connItem['require_both_contact'])) {
                 if (empty($phone) || empty($email)) {
@@ -2327,36 +2393,98 @@ foreach ($connections as $connItem) {
                         $dupSuffix = " (Trùng số: Sale cũ $oldSaleName > $oldSaleMonths tháng).";
                     }
 
-                    if ($targetRoundId) {
-                        $assignResult = getNextConsultantInRound($conn, $targetRoundId);
-                        if ($assignResult) {
-                            $assignedConsultantId = $assignResult['id'];
-                            $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-                            $cronMessage = $assignResult['is_compensation'] 
-                                ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention) (đồng bộ hệ thống).' : 'Được phân bổ đền bù lượt lỗi (đồng bộ hệ thống).') 
-                                : 'Được phân bổ tự động qua vòng xoay (đồng bộ hệ thống).';
-                            $cronMessage .= $dupSuffix;
+                    $isGrabRound = false;
+                    $eligibleGrabConsultants = [];
+                    $competingNames = [];
+                    $grabCountdownSeconds = 300;
+                    $grabCooldownSeconds = 3600;
 
-                            // Check working hours
-                            if ($whStmt) {
-                                $whStmt->bind_param("i", $assignedConsultantId);
-                                $whStmt->execute();
-                                $whRes = $whStmt->get_result();
-                                if ($whRes && $whRow = $whRes->fetch_assoc()) {
-                                    $whStart = $whRow['work_start_time'] ?? '00:00';
-                                    $whEnd = $whRow['work_end_time'] ?? '23:59';
-                                    $workSchedule = $whRow['work_schedule'] ?? null;
-                                    $currentTime = date('H:i');
-                                    if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
-                                        $cronStatus = 'pending_work_hours';
-                                        $cronMessage .= ' (Trì hoãn: ngoài khung giờ làm việc)';
-                                    }
+                    if ($targetRoundId) {
+                        $rRes = $roundsCache[(int)$targetRoundId] ?? null;
+                        $roundType = $rRes['round_type'] ?? 'round_robin';
+
+                        if ($roundType === 'grab') {
+                            $isGrabRound = true;
+                            $grabCountdownSeconds = !empty($rRes['grab_countdown_seconds']) ? (int)$rRes['grab_countdown_seconds'] : 300;
+                            $grabCooldownSeconds = !empty($rRes['grab_cooldown_seconds']) ? (int)$rRes['grab_cooldown_seconds'] : 3600;
+
+                            $cStmt = $conn->prepare("
+                                SELECT c.id, c.name, c.email, c.phone, c.work_start_time, c.work_end_time, c.work_schedule
+                                FROM round_consultants rc
+                                JOIN consultants c ON rc.consultant_id = c.id
+                                WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' AND c.vacation_mode = 0
+                            ");
+                            $cStmt->bind_param("i", $targetRoundId);
+                            $cStmt->execute();
+                            $activeConsultants = $cStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                            $cStmt->close();
+
+                            $currentTime = date('H:i');
+                            foreach ($activeConsultants as $c) {
+                                // Check cooldown (grab_cooldown_seconds)
+                                $cooldownStmt = $conn->prepare("
+                                    SELECT 1 FROM distribution_logs 
+                                    WHERE assigned_to = ? 
+                                      AND round_id = ? 
+                                      AND status = 'grabbed' 
+                                      AND received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND) 
+                                    LIMIT 1
+                                ");
+                                $cooldownStmt->bind_param("iii", $c['id'], $targetRoundId, $grabCooldownSeconds);
+                                $cooldownStmt->execute();
+                                $isOnCooldown = $cooldownStmt->get_result()->num_rows > 0;
+                                $cooldownStmt->close();
+
+                                if ($isOnCooldown) {
+                                    continue;
+                                }
+
+                                if (checkConsultantGates($conn, $c['id'], $rowData, true) === true) {
+                                    $eligibleGrabConsultants[] = $c;
+                                    $competingNames[] = $c['name'] ?? 'TVV';
                                 }
                             }
+
+                            if (!empty($eligibleGrabConsultants)) {
+                                $assignedConsultantId = null;
+                                $cronStatus = 'pending_claim';
+                                $cronMessage = 'Lead được đưa vào hàng tranh nhận cho ' . count($eligibleGrabConsultants) . ' tư vấn viên.' . $dupSuffix;
+                            } else {
+                                $assignedConsultantId = null;
+                                $cronStatus = 'pending_work_hours';
+                                $cronMessage = 'Ngoài khung giờ làm việc / Tất cả TVV trong hàng tranh nhận đang bận/cooldown. Hệ thống tạm giữ Lead.' . $dupSuffix;
+                            }
                         } else {
-                            $assignedConsultantId = null;
-                            $cronStatus = (isset($isFallbackRound) && $isFallbackRound) ? 'fallback' : 'pending';
-                            $cronMessage = ((isset($isFallbackRound) && $isFallbackRound) ? 'No active consultants in fallback round.' : 'No active consultants in this round via cron_sync.') . $dupSuffix;
+                            $assignResult = getNextConsultantInRound($conn, $targetRoundId);
+                            if ($assignResult) {
+                                $assignedConsultantId = $assignResult['id'];
+                                $cronStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                                $cronMessage = $assignResult['is_compensation'] 
+                                    ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention) (đồng bộ hệ thống).' : 'Được phân bổ đền bù lượt lỗi (đồng bộ hệ thống).') 
+                                    : 'Được phân bổ tự động qua vòng xoay (đồng bộ hệ thống).';
+                                $cronMessage .= $dupSuffix;
+
+                                // Check working hours
+                                if ($whStmt) {
+                                    $whStmt->bind_param("i", $assignedConsultantId);
+                                    $whStmt->execute();
+                                    $whRes = $whStmt->get_result();
+                                    if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                                        $whStart = $whRow['work_start_time'] ?? '00:00';
+                                        $whEnd = $whRow['work_end_time'] ?? '23:59';
+                                        $workSchedule = $whRow['work_schedule'] ?? null;
+                                        $currentTime = date('H:i');
+                                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
+                                            $cronStatus = 'pending_work_hours';
+                                            $cronMessage .= ' (Trì hoãn: ngoài khung giờ làm việc)';
+                                        }
+                                    }
+                                }
+                            } else {
+                                $assignedConsultantId = null;
+                                $cronStatus = (isset($isFallbackRound) && $isFallbackRound) ? 'fallback' : 'pending';
+                                $cronMessage = ((isset($isFallbackRound) && $isFallbackRound) ? 'No active consultants in fallback round.' : 'No active consultants in this round via cron_sync.') . $dupSuffix;
+                            }
                         }
                     } else {
                         $cronStatus = 'unassigned';
@@ -2388,6 +2516,24 @@ foreach ($connections as $connItem) {
                         }
                     }
 
+                    // Handle Grab Lead Offers
+                    if ($isGrabRound && $cronStatus === 'pending_claim' && $leadId && !empty($eligibleGrabConsultants)) {
+                        $updL = $conn->prepare("UPDATE leads SET status = 'pending_claim', is_accepted = 0, assigned_to = NULL, target_round_id = ? WHERE id = ?");
+                        $updL->bind_param("ii", $targetRoundId, $leadId);
+                        $updL->execute();
+                        $updL->close();
+
+                        $offerStmt = $conn->prepare("
+                            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
+                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+                        ");
+                        foreach ($eligibleGrabConsultants as $ec) {
+                            $offerStmt->bind_param("iiii", $leadId, $ec['id'], $targetRoundId, $grabCountdownSeconds);
+                            $offerStmt->execute();
+                        }
+                        $offerStmt->close();
+                    }
+
                     logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage, false);
                     
                     // Record hash so we don't process this row again on next cron run
@@ -2403,6 +2549,17 @@ foreach ($connections as $connItem) {
                     $conn->rollback();
                     logSync("Transaction failed for row: " . $txE->getMessage());
                     continue;
+                }
+
+                // Send Grab Lead notifications outside transaction
+                if ($isGrabRound && $cronStatus === 'pending_claim' && $leadId && !empty($eligibleGrabConsultants)) {
+                    foreach ($eligibleGrabConsultants as $ec) {
+                        try {
+                            sendGrabOfferNotification($conn, $leadId, $ec['id'], $targetRoundId, $grabCountdownSeconds, $competingNames);
+                        } catch (Exception $gNotifEx) {
+                            logSync("Error sending grab notification to user {$ec['id']}: " . $gNotifEx->getMessage());
+                        }
+                    }
                 }
 
                 // Notifications

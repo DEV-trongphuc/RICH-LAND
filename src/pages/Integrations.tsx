@@ -68,6 +68,7 @@ type Connection = {
   mappings?: Mapping[];
   require_both_contact?: number | boolean;
   notify_admin?: number | boolean;
+  auto_append_unmapped_note?: number | boolean;
   last_sync_at?: string;
   two_way_sync?: number | boolean;
   google_script_url?: string;
@@ -804,6 +805,19 @@ const IntegrationsInner = () => {
     }
   };
 
+  const handleToggleAppendUnmapped = async (conn: any) => {
+    try {
+      const newAppend = conn.auto_append_unmapped_note ? 0 : 1;
+      const json = await fetchAPI(`toggle_append_unmapped&id=${conn.id}&append=${newAppend}`);
+      if (json.success) {
+        toast.success(newAppend ? t('Đã bật tự động gom cột chưa map vào Ghi chú') : t('Đã tắt tự động gom cột chưa map'));
+        fetchData();
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    }
+  };
+
   useEffect(() => {
     if (connections.length > 0 && !selected) {
       setSelected(connections[0]);
@@ -1526,6 +1540,31 @@ const IntegrationsInner = () => {
                     <div style={{
                       width: 18, height: 18, borderRadius: '50%', background: 'var(--color-surface)',
                       position: 'absolute', top: 3, left: selected.notify_admin ? 23 : 3,
+                      transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {t('Tự động gộp các cột chưa map vào Ghi chú thêm')}
+                    </h4>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      {t('Nếu bật, tất cả các cột khác trên Sheets/Webhook không được cấu hình ánh xạ sẽ tự động được thu thập và gom vào phần Ghi chú thêm của Lead.')}
+                    </p>
+                  </div>
+                  <div
+                    onClick={() => handleToggleAppendUnmapped(selected)}
+                    style={{
+                      width: 44, height: 24, borderRadius: 24, cursor: 'pointer', position: 'relative',
+                      background: selected.auto_append_unmapped_note ? 'var(--color-success)' : 'var(--color-border)',
+                      transition: 'background 0.3s'
+                    }}
+                  >
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', background: 'var(--color-surface)',
+                      position: 'absolute', top: 3, left: selected.auto_append_unmapped_note ? 23 : 3,
                       transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                     }} />
                   </div>

@@ -3420,10 +3420,31 @@ switch ($action) {
                 dl.lead_id,
                 l.name as lead_name, 
                 l.phone, 
+                l.phone2,
                 l.email, 
                 l.source, 
                 l.type,
                 l.note,
+                l.gender,
+                l.dob,
+                l.citizen_id,
+                l.district,
+                l.company,
+                l.tax_code,
+                l.budget,
+                l.demand_type,
+                l.property_type,
+                l.bedroom_count,
+                l.preferred_location,
+                l.utm_campaign,
+                l.utm_medium,
+                l.utm_content,
+                l.utm_term,
+                l.platform,
+                l.form_name,
+                l.campaign_name,
+                l.zalo_phone,
+                l.facebook_link,
                 l.ai_screener_status,
                 l.ai_evaluation,
                 dl.status, 
@@ -5460,7 +5481,111 @@ switch ($action) {
             }
         }
 
-        echo json_encode(['success' => true, 'cooldowns' => (object)$cooldowns]);
+        // Compute comprehensive consultant readiness (work hours, night shifts, leave, vacation, check-in)
+        require_once __DIR__ . '/webhook_logic.php';
+        $currentTime = date('H:i');
+        $todayStr = date('Y-m-d');
+        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '22:00';
+        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+
+        $isNightShiftNow = false;
+        if ($nightShiftStart < $nightShiftEnd) {
+            $isNightShiftNow = ($currentTime >= $nightShiftStart && $currentTime <= $nightShiftEnd);
+        } else {
+            $isNightShiftNow = ($currentTime >= $nightShiftStart || $currentTime <= $nightShiftEnd);
+        }
+
+        $currentHour = (int)date('H');
+        $endHour = (int)explode(':', $nightShiftEnd)[0];
+        $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : $todayStr;
+
+        $cRes = $conn->query("
+            SELECT c.id, c.name, c.email, c.status, c.vacation_mode, c.leave_start, c.leave_end, 
+                   c.work_start_time, c.work_end_time, c.work_schedule
+            FROM round_consultants rc
+            JOIN consultants c ON rc.consultant_id = c.id
+            WHERE rc.round_id = $roundId
+        ");
+
+        $consultantStatuses = [];
+        if ($cRes) {
+            while ($c = $cRes->fetch_assoc()) {
+                $uId = (int)$c['id'];
+                $isCool = isset($cooldowns[$uId]) && $cooldowns[$uId]['on_cooldown'];
+                
+                if ($isCool) {
+                    $consultantStatuses[$uId] = [
+                        'status' => 'cooldown',
+                        'label' => 'Đang chờ',
+                        'remaining_seconds' => $cooldowns[$uId]['remaining_seconds'],
+                        'on_cooldown' => true
+                    ];
+                    continue;
+                }
+
+                if ((int)($c['vacation_mode'] ?? 0) === 1) {
+                    $consultantStatuses[$uId] = [
+                        'status' => 'vacation',
+                        'label' => 'Tạm ngưng',
+                        'on_cooldown' => false
+                    ];
+                    continue;
+                }
+
+                if (!empty($c['leave_start']) && !empty($c['leave_end']) && $todayStr >= $c['leave_start'] && $todayStr <= $c['leave_end']) {
+                    $consultantStatuses[$uId] = [
+                        'status' => 'on_leave',
+                        'label' => 'Nghỉ phép',
+                        'on_cooldown' => false
+                    ];
+                    continue;
+                }
+
+                if ($isNightShiftNow) {
+                    $stmtN = $conn->prepare("
+                        SELECT 1 FROM night_shift_registrations 
+                        WHERE (user_id = ? OR user_id = (SELECT id FROM users WHERE email = ? LIMIT 1)) 
+                          AND shift_date = ? AND approved = 1 
+                        LIMIT 1
+                    ");
+                    $stmtN->bind_param("iss", $uId, $c['email'], $shiftDate);
+                    $stmtN->execute();
+                    $hasNight = (bool)$stmtN->get_result()->fetch_assoc();
+                    $stmtN->close();
+
+                    if (!$hasNight) {
+                        $consultantStatuses[$uId] = [
+                            'status' => 'no_night_shift',
+                            'label' => 'Chưa trực đêm',
+                            'on_cooldown' => false
+                        ];
+                        continue;
+                    }
+                } else {
+                    $inWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule'], $uId, $conn);
+                    if (!$inWorkHours) {
+                        $consultantStatuses[$uId] = [
+                            'status' => 'out_of_hours',
+                            'label' => 'Ngoài giờ làm',
+                            'on_cooldown' => false
+                        ];
+                        continue;
+                    }
+                }
+
+                $consultantStatuses[$uId] = [
+                    'status' => 'ready',
+                    'label' => 'Sẵn sàng',
+                    'on_cooldown' => false
+                ];
+            }
+        }
+
+        echo json_encode([
+            'success' => true, 
+            'cooldowns' => (object)$cooldowns,
+            'consultant_statuses' => (object)$consultantStatuses
+        ]);
         break;
 
     case 'get_consultants':
@@ -7976,6 +8101,22 @@ switch ($action) {
             $stmt->bind_param("ii", $notify, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'TOGGLE_NOTIFY_ADMIN', ['id' => $id, 'notify_admin' => $notify]);
+            }
+            $stmt->close();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'toggle_append_unmapped':
+        try {
+            $id = (int) ($_GET['id'] ?? 0);
+            $append = (int) ($_GET['append'] ?? 0);
+            $stmt = $conn->prepare("UPDATE sheet_connections SET auto_append_unmapped_note=? WHERE id=?");
+            $stmt->bind_param("ii", $append, $id);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'TOGGLE_APPEND_UNMAPPED', ['id' => $id, 'auto_append_unmapped_note' => $append]);
             }
             $stmt->close();
             echo json_encode(['success' => true]);
