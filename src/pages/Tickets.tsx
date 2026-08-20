@@ -3558,6 +3558,44 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       )}
                     </div>
                   </div>
+                ) : (selectedLead.round_name || (selectedLead as any).target_round_id || selectedLead.status === 'pending' || selectedLead.status === 'pending_work_hours' || selectedLead.status === 'pending_claim') ? (
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                      <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={40} />
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{t('Bot Hệ Thống')}</span>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#fef3c7', color: '#b45309', fontWeight: 700 }}>
+                            {selectedLead.status === 'pending_work_hours' ? t('Chờ giờ làm') : selectedLead.status === 'pending_claim' ? t('Chờ tranh nhận') : t('Tạm giữ')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Vòng chia')}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                          {selectedLead.round_name && selectedLead.round_name !== '-' ? selectedLead.round_name : t('Vòng phân bổ hệ thống')}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
+                          <Clock size={12} /> {t('Thời gian nhận')}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.created_at || (selectedLead as any).distributed_at || '—'}</div>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
+                          <Zap size={12} /> {t('Trạng thái')}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#d97706' }}>
+                          {selectedLead.status === 'pending_work_hours' ? t('Đang tạm giữ chờ vào khung giờ làm việc của Sale') : selectedLead.status === 'pending_claim' ? t('Đang phát tín hiệu chờ Sale tranh nhận') : t('Đang chờ hệ thống phân bổ cho Sale tiếp theo')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div style={{ background: 'var(--color-bg)', padding: '1.5rem', borderRadius: 12, border: '1px solid var(--color-border)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                     {t("Chưa có thông tin phân bổ cho Khách hàng này.")}

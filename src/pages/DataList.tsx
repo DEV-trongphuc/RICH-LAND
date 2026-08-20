@@ -1,7 +1,7 @@
 import { useState, useEffect, Fragment, useMemo } from 'react';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -3367,97 +3367,72 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               </div>
                             )}
                           </div>
+                          {/* Mapped Property & Requirement Details inside same Yellow Card */}
+                          {(selectedLead.preferred_location || selectedLead.bedroom_count || selectedLead.property_type || selectedLead.demand_type || (selectedLead.budget && Number(selectedLead.budget) > 0)) && (
+                            <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '10px', marginTop: '2px' }}>
+                              <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '8px' }}>
+                                {t('Nhu cầu & Bất động sản quan tâm:')}
+                              </span>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
+                                {selectedLead.preferred_location && (
+                                  <div style={{ gridColumn: 'span 2', background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                      <MapPin size={12} color="#d97706" /> {t('Khu vực / Dự án')}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                      {selectedLead.preferred_location}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {selectedLead.bedroom_count && (
+                                  <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                      <BedDouble size={12} color="#d97706" /> {t('Loại hình / Phòng ngủ')}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                      {selectedLead.bedroom_count}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {selectedLead.property_type && (
+                                  <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                      <Home size={12} color="#d97706" /> {t('Loại BĐS')}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                      {selectedLead.property_type}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {selectedLead.demand_type && (
+                                  <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                      <Target size={12} color="#d97706" /> {t('Nhu cầu')}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                      {selectedLead.demand_type}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {selectedLead.budget && Number(selectedLead.budget) > 0 && (
+                                  <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
+                                      <DollarSign size={12} color="#059669" /> {t('Ngân sách')}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-success)' }}>
+                                      {Number(selectedLead.budget).toLocaleString('vi-VN')} đ
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      {/* Mapped Property & Requirement Details */}
-                      {(selectedLead.preferred_location || selectedLead.bedroom_count || selectedLead.property_type || selectedLead.demand_type || (selectedLead.budget && Number(selectedLead.budget) > 0)) && (
-                        <div style={{
-                          background: theme === 'dark' ? 'rgba(59, 130, 246, 0.08)' : 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
-                          border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid #bfdbfe',
-                          padding: '1.25rem',
-                          borderRadius: '16px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.75rem',
-                          marginTop: '1rem',
-                          boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(59, 130, 246, 0.04)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{
-                              background: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe',
-                              padding: '8px',
-                              borderRadius: '10px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: theme === 'dark' ? '#60a5fa' : '#2563eb'
-                            }}>
-                              <Building2 size={18} strokeWidth={2.5} />
-                            </div>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#93c5fd' : '#1e40af', letterSpacing: '-0.01em' }}>
-                              {t('Nhu cầu & Bất động sản quan tâm')}
-                            </span>
-                          </div>
-
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '4px' }}>
-                            {selectedLead.preferred_location && (
-                              <div style={{ gridColumn: 'span 2', background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <MapPin size={12} className="text-primary" /> {t('Khu vực / Dự án')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  {selectedLead.preferred_location}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.bedroom_count && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <BedDouble size={12} className="text-primary" /> {t('Loại hình / Phòng ngủ')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  {selectedLead.bedroom_count}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.property_type && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <Home size={12} className="text-primary" /> {t('Loại BĐS')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  {selectedLead.property_type}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.demand_type && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <Target size={12} className="text-primary" /> {t('Nhu cầu')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  {selectedLead.demand_type}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.budget && Number(selectedLead.budget) > 0 && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <DollarSign size={12} className="text-success" /> {t('Ngân sách')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-success)' }}>
-                                  {Number(selectedLead.budget).toLocaleString('vi-VN')} đ
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
 
                       {/* Campaign & Source Tracking Info */}
                       {(selectedLead.form_name || selectedLead.platform || selectedLead.campaign_name || selectedLead.utm_campaign || selectedLead.utm_content || selectedLead.utm_medium) && (
@@ -4684,6 +4659,44 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
                   )}
                 </div>
+                ) : (selectedLead.round_name || (selectedLead as any).target_round_id || selectedLead.status === 'pending' || selectedLead.status === 'pending_work_hours' || selectedLead.status === 'pending_claim') ? (
+                  <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                      <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={40} />
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{t('Bot Hệ Thống')}</span>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#fef3c7', color: '#b45309', fontWeight: 700 }}>
+                            {selectedLead.status === 'pending_work_hours' ? t('Chờ giờ làm') : selectedLead.status === 'pending_claim' ? t('Chờ tranh nhận') : t('Tạm giữ')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Vòng chia')}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                          {selectedLead.round_name && selectedLead.round_name !== '-' ? selectedLead.round_name : t('Vòng phân bổ hệ thống')}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
+                          <Clock size={12} /> {t('Thời gian nhận')}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{selectedLead.created_at || (selectedLead as any).distributed_at || '—'}</div>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
+                          <Zap size={12} /> {t('Trạng thái')}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#d97706' }}>
+                          {selectedLead.status === 'pending_work_hours' ? t('Đang tạm giữ chờ vào khung giờ làm việc của Sale') : selectedLead.status === 'pending_claim' ? t('Đang phát tín hiệu chờ Sale tranh nhận') : t('Đang chờ hệ thống phân bổ cho Sale tiếp theo')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div style={{ background: 'var(--color-bg)', padding: '1.5rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
                     {t('Chưa có thông tin phân bổ cho Khách hàng này.')}

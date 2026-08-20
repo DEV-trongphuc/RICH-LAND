@@ -1820,7 +1820,7 @@ foreach ($connections as $connItem) {
 
         // Preload all rounds for this connection sync to avoid N+1 queries in the loop
         $roundsCache = [];
-        $roundsRes = $conn->query("SELECT id, is_active, round_name, cc_emails FROM distribution_rounds");
+        $roundsRes = $conn->query("SELECT id, is_active, round_name, cc_emails, round_type, grab_countdown_seconds, grab_cooldown_seconds FROM distribution_rounds");
         if ($roundsRes) {
             while ($rRow = $roundsRes->fetch_assoc()) {
                 $roundsCache[(int)$rRow['id']] = $rRow;
