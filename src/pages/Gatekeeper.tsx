@@ -305,6 +305,22 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             {t('Chờ nhận')}
           </span>
         );
+      case 'grabbed':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: 'var(--color-success-light)',
+            color: 'var(--color-success)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Đã nhận')}
+          </span>
+        );
       case 'assigned':
       case 'active':
         return (

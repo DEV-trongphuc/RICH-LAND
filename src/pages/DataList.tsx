@@ -1367,7 +1367,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       }
     }
     switch (status) {
-      case 'active': return <span className="badge success">{t('Đã tranh')}</span>;
+      case 'grabbed':
+      case 'active':
+        return <span className="badge success">{t('Đã nhận')}</span>;
       case 'assigned': return <span className="badge success">{t('Đã chia')}</span>;
       case 'compensation': return <span className="badge purple">{t('Data Bù')}</span>;
       case 'pending_claim': return <span className="badge warning">{t('Chờ nhận')}</span>;

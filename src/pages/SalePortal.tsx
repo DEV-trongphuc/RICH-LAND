@@ -4829,6 +4829,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }
     }
     switch (status) {
+      case 'grabbed':
+      case 'active':
+        return <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#047857', border: '1px solid rgba(16, 185, 129, 0.2)' }}>{t('Đã nhận')}</span>;
       case 'assigned': return <span className="badge" style={{ background: 'rgba(13, 148, 136, 0.1)', color: '#0f766e', border: '1px solid rgba(13, 148, 136, 0.2)' }}>{t('Đã chia')}</span>;
       case 'compensation': return <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#6d28d9', border: '1px solid rgba(139, 92, 246, 0.2)' }}>{t('Data Bù')}</span>;
       case 'pending_claim': return <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#a16207', border: '1px solid rgba(234, 179, 8, 0.2)' }}>{t('Chờ nhận')}</span>;
