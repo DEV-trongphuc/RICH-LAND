@@ -537,14 +537,19 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                        c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time, c.work_schedule,
                        c.status as consultant_status, c.leave_start, c.leave_end,
                        COALESCE(u.id, c.id) AS user_id,
-                       r.round_name, r.cc_emails, r.round_type, r.grab_countdown_seconds, r.grab_cooldown_seconds
+                       r.round_name, r.cc_emails, r.round_type, r.grab_countdown_seconds, r.grab_cooldown_seconds,
+                       l.is_accepted as lead_is_accepted
                 FROM distribution_logs dl
                 JOIN leads l ON dl.lead_id = l.id
                 LEFT JOIN consultants c ON dl.assigned_to = c.id
                 LEFT JOIN users u ON c.email = u.email
                 LEFT JOIN distribution_rounds r ON dl.round_id = r.id
-                WHERE dl.status = 'pending_work_hours' 
-                   OR (dl.status = 'pending' AND (l.next_attempt_date IS NULL OR l.next_attempt_date <= NOW()))";
+                WHERE l.is_accepted = 0
+                  AND dl.id = (SELECT MAX(id) FROM distribution_logs WHERE lead_id = l.id)
+                  AND (
+                      dl.status = 'pending_work_hours' 
+                      OR (dl.status = 'pending' AND (l.next_attempt_date IS NULL OR l.next_attempt_date <= NOW()))
+                  )";
                  
         $res = $conn->query($sql);
         if (!$res) {
@@ -557,6 +562,9 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
         $readyToRelease = [];
         
         while ($row = $res->fetch_assoc()) {
+            if ((int)$row['lead_is_accepted'] === 1) {
+                continue; // Skip already accepted leads
+            }
             $targetUserId = (int) ($row['user_id'] ?? 0);
             $status = $row['consultant_status'];
             $leaveStart = $row['leave_start'] ?? null;

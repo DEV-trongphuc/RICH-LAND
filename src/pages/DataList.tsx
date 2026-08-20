@@ -256,6 +256,9 @@ const parseBlacklistNote = (note: string) => {
 
 const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: (key: string) => string) => {
   if (!selectedLead) return null;
+  if (!selectedLead.ai_screener_status || selectedLead.ai_screener_status === 'not_screened') {
+    return null;
+  }
   if (selectedLead.ai_screener_status === 'passed' && selectedLead.ai_evaluation) {
     return {
       avatar: "/LOGO.jpg",
