@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hash = password_hash($password, PASSWORD_DEFAULT);
         
         // Kích hoạt tài khoản, cập nhật hash mật khẩu và xóa token
-        $updateStmt = $conn->prepare("UPDATE accounts SET is_confirmed = 1, password_hash = ?, confirm_token = NULL WHERE id = ?");
+        $updateStmt = $conn->prepare("UPDATE users SET is_confirmed = 1, password_hash = ?, confirm_token = NULL WHERE id = ?");
         $updateStmt->bind_param("si", $hash, $admin['id']);
         $dbSuccess = $updateStmt->execute();
         $updateStmt->close();

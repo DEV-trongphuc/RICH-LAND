@@ -567,16 +567,15 @@ if (!in_array($action, $publicActions)) {
     }
 
     if ($currentSaleConsultantId === 0 && isset($decodedUser['email']) && !empty($decodedUser['email'])) {
-        $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+        $stmtC = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
         $stmtC->bind_param("s", $decodedUser['email']);
         $stmtC->execute();
         $cRow = $stmtC->get_result()->fetch_assoc();
-        $stmtC->close();
         if ($cRow) {
             $currentSaleConsultantId = (int)$cRow['id'];
         } else if (isset($decodedUser['role']) && in_array($decodedUser['role'], ['sale', 'sales', 'manager'], true)) {
             // Auto-create consultant record if missing for this company user
-            $stmtInsert = $conn->prepare("INSERT INTO consultants (name, email, status, work_start_time, work_end_time, vacation_mode, overtime_mode) VALUES (?, ?, 'active', '08:00', '17:30', 0, 0)");
+            $stmtInsert = $conn->prepare("INSERT INTO users (tenant_id, full_name, email, role, status, work_start_time, work_end_time, vacation_mode, overtime_mode) VALUES (1, ?, ?, 'sales', 'active', '08:00', '17:30', 0, 0)");
             $userName = $decodedUser['name'] ?? $decodedUser['username'] ?? 'User';
             $stmtInsert->bind_param("ss", $userName, $decodedUser['email']);
             if ($stmtInsert->execute()) {
@@ -2094,7 +2093,7 @@ switch ($action) {
             if (password_verify($password, $user['password_hash'])) {
 
                 // Update last_login
-                $upd = $conn->prepare("UPDATE accounts SET last_login = NOW() WHERE id = ?");
+                $upd = $conn->prepare("UPDATE users SET last_login_at = NOW() WHERE id = ?");
                 if ($upd) {
                     $upd->bind_param("i", $user['id']);
                     $upd->execute();
@@ -2197,14 +2196,14 @@ switch ($action) {
 
             // Auto confirm email if not already
             if ((int) $user['is_confirmed'] === 0) {
-                $stmtConfirm = $conn->prepare("UPDATE accounts SET is_confirmed = 1 WHERE id = ?");
+                $stmtConfirm = $conn->prepare("UPDATE users SET is_confirmed = 1 WHERE id = ?");
                 $stmtConfirm->bind_param("i", $user['id']);
                 $stmtConfirm->execute();
                 $stmtConfirm->close();
             }
 
             // Update last_login
-            $upd = $conn->prepare("UPDATE accounts SET last_login = NOW() WHERE id = ?");
+            $upd = $conn->prepare("UPDATE users SET last_login_at = NOW() WHERE id = ?");
             if ($upd) {
                 $upd->bind_param("i", $user['id']);
                 $upd->execute();
@@ -5684,7 +5683,7 @@ switch ($action) {
             $bank_account = !empty($input['bank_account']) ? $input['bank_account'] : null;
             $phone = !empty($input['phone']) ? trim($input['phone']) : null;
 
-            $stmt = $conn->prepare("INSERT INTO consultants (name, email, phone, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id, dob, gender, citizen_id, address, bank_name, bank_account) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO users (tenant_id, full_name, email, phone, role, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar_url, team_id, dob, gender, citizen_id, address, bank_name, bank_account, is_active, is_confirmed) VALUES (1, ?, ?, ?, 'sales', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)");
             $stmt->bind_param("sssssssssissssss", $name, $email, $phone, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account);
             $stmt->execute();
             $newId = $conn->insert_id;
@@ -5817,7 +5816,7 @@ switch ($action) {
                 $zalo_chat_id = $oldData['zalo_chat_id'];
             }
 
-            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, phone=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, team_id=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
+            $stmt = $conn->prepare("UPDATE users SET full_name=?, email=?, phone=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar_url=?, team_id=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
             $stmt->bind_param("ssssssssssisssssssi", $name, $email, $phone, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', [
@@ -6317,7 +6316,7 @@ switch ($action) {
             $stmtD2->execute();
             $stmtD2->close();
 
-            $stmtD3 = $conn->prepare("DELETE FROM consultants WHERE id = ?");
+            $stmtD3 = $conn->prepare("DELETE FROM users WHERE id = ?");
             $stmtD3->bind_param("i", $id);
             $stmtD3->execute();
             $stmtD3->close();
@@ -6857,7 +6856,7 @@ switch ($action) {
                 echo json_encode(['success' => false, 'message' => 'Lỗi chuẩn bị truy vấn SQL']);
             }
         } else if ($type === 'account') {
-            $stmt = $conn->prepare("UPDATE accounts SET zalo_chat_id = NULL WHERE id = ?");
+            $stmt = $conn->prepare("UPDATE users SET zalo_chat_id = NULL WHERE id = ?");
             if ($stmt) {
                 $stmt->bind_param("i", $id);
                 if ($stmt->execute()) {
@@ -6924,7 +6923,7 @@ switch ($action) {
                 echo json_encode(['success' => false, 'message' => 'Lỗi chuẩn bị truy vấn SQL']);
             }
         } else if ($type === 'account') {
-            $stmt = $conn->prepare("UPDATE accounts SET telegram_chat_id = NULL WHERE id = ?");
+            $stmt = $conn->prepare("UPDATE users SET telegram_chat_id = NULL WHERE id = ?");
             if ($stmt) {
                 $stmt->bind_param("i", $id);
                 if ($stmt->execute()) {
@@ -7338,10 +7337,10 @@ switch ($action) {
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
             if ($starting_consultant_id) {
                 $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=?, grab_max_attempts=? WHERE id=?");
-                $stmt->bind_param("sisiisiiiiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
+                $stmt->bind_param("sisiisiiiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
             } else {
                 $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=?, grab_max_attempts=? WHERE id=?");
-                $stmt->bind_param("sisiisiiiii", $name, $status, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
+                $stmt->bind_param("sisisiiiii", $name, $status, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
             }
             $stmt->execute();
             $stmt->close();
@@ -13218,7 +13217,7 @@ switch ($action) {
             $hash = password_hash($password, PASSWORD_DEFAULT);
             $token = bin2hex(random_bytes(32));
 
-            $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role, email, is_confirmed, confirm_token, zalo_chat_id, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO users (tenant_id, username, password_hash, full_name, role, email, is_confirmed, confirm_token, zalo_chat_id, avatar_url, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active) VALUES (1, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("sssssssssssssssi", $username, $hash, $name, $role, $email, $token, $zalo_chat_id, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $phone, $is_active);
 
             if ($stmt->execute()) {
@@ -13365,10 +13364,10 @@ switch ($action) {
 
             if (!empty($password)) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=?, zalo_chat_id=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, phone=?, is_active=? WHERE id=?");
+                $stmt = $conn->prepare("UPDATE users SET username=?, password_hash=?, full_name=?, role=?, email=?, zalo_chat_id=?, avatar_url=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, phone=?, is_active=? WHERE id=?");
                 $stmt->bind_param("ssssssssssssssii", $username, $hash, $name, $role, $dbEmail, $zalo_chat_id, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $phone, $is_active, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=?, zalo_chat_id=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, phone=?, is_active=? WHERE id=?");
+                $stmt = $conn->prepare("UPDATE users SET username=?, full_name=?, role=?, email=?, zalo_chat_id=?, avatar_url=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, phone=?, is_active=? WHERE id=?");
                 $stmt->bind_param("sssssssssssssii", $username, $name, $role, $dbEmail, $zalo_chat_id, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $phone, $is_active, $id);
             }
 
@@ -14030,7 +14029,7 @@ switch ($action) {
             }
 
             // Finally, delete the account
-            $stmtDelAcc = $conn->prepare("DELETE FROM accounts WHERE id = ?");
+            $stmtDelAcc = $conn->prepare("DELETE FROM users WHERE id = ?");
             $stmtDelAcc->bind_param("i", $id);
             $stmtDelAcc->execute();
 
@@ -14059,7 +14058,7 @@ switch ($action) {
             }
 
             $token = bin2hex(random_bytes(32));
-            $stmt = $conn->prepare("UPDATE accounts SET confirm_token = ?, is_confirmed = 0 WHERE id = ?");
+            $stmt = $conn->prepare("UPDATE users SET confirm_token = ?, is_confirmed = 0 WHERE id = ?");
             $stmt->bind_param("si", $token, $id);
             if ($stmt->execute()) {
                 $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
