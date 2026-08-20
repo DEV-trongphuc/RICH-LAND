@@ -537,7 +537,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                        c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time, c.work_schedule,
                        c.status as consultant_status, c.leave_start, c.leave_end,
                        COALESCE(u.id, c.id) AS user_id,
-                       r.round_name, r.cc_emails
+                       r.round_name, r.cc_emails, r.round_type, r.grab_countdown_seconds, r.grab_cooldown_seconds
                 FROM distribution_logs dl
                 JOIN leads l ON dl.lead_id = l.id
                 LEFT JOIN consultants c ON dl.assigned_to = c.id
@@ -711,6 +711,77 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
             if ($isActuallyOnLeaveOrInactive) {
                 logSync("Lead ID {$row['lead_id']} is pending or owner is inactive. Checking for new allocation...");
                 
+                $isGrabRound = (($row['round_type'] ?? '') === 'grab');
+                if ($isGrabRound && $row['round_id'] > 0) {
+                    $grabCountdownSeconds = !empty($row['grab_countdown_seconds']) ? (int)$row['grab_countdown_seconds'] : 300;
+                    $grabCooldownSeconds = !empty($row['grab_cooldown_seconds']) ? (int)$row['grab_cooldown_seconds'] : 3600;
+
+                    $cStmt = $conn->prepare("
+                        SELECT c.id, c.name, c.email, c.phone, c.work_start_time, c.work_end_time, c.work_schedule
+                        FROM round_consultants rc
+                        JOIN consultants c ON rc.consultant_id = c.id
+                        WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' AND c.vacation_mode = 0
+                    ");
+                    $cStmt->bind_param("i", $row['round_id']);
+                    $cStmt->execute();
+                    $activeConsultants = $cStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $cStmt->close();
+
+                    $leadRowData = [
+                        'name' => $row['lead_name'],
+                        'phone' => $row['lead_phone'],
+                        'email' => $row['lead_email'],
+                        'source' => $row['lead_source'],
+                        'type' => $row['lead_type'],
+                        'note' => $row['lead_note']
+                    ];
+
+                    $eligibleGrabConsultants = [];
+                    foreach ($activeConsultants as $c) {
+                        require_once __DIR__ . '/webhook_logic.php';
+                        if (checkConsultantGates($conn, $c['id'], $leadRowData, true) === true) {
+                            $eligibleGrabConsultants[] = $c;
+                        }
+                    }
+
+                    if (!empty($eligibleGrabConsultants)) {
+                        $conn->begin_transaction();
+                        try {
+                            $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending_claim', target_round_id = ?, last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL WHERE id = ?");
+                            $upLead->bind_param("ii", $row['round_id'], $row['lead_id']);
+                            $upLead->execute();
+                            $upLead->close();
+
+                            // Clean old pending offers for this lead
+                            $conn->query("UPDATE lead_offers SET status = 'expired' WHERE lead_id = " . (int)$row['lead_id'] . " AND status = 'pending'");
+
+                            $offerStmt = $conn->prepare("
+                                INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
+                                VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+                            ");
+                            foreach ($eligibleGrabConsultants as $ec) {
+                                $offerStmt->bind_param("iiii", $row['lead_id'], $ec['id'], $row['round_id'], $grabCountdownSeconds);
+                                $offerStmt->execute();
+                            }
+                            $offerStmt->close();
+
+                            $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'reallocated', message = CONCAT(message, '\n[Phát tín hiệu tranh nhận lúc ', NOW(), ']') WHERE id = ?");
+                            $upLog->bind_param("i", $row['log_id']);
+                            $upLog->execute();
+                            $upLog->close();
+
+                            logDistribution($conn, $row['lead_id'], null, $row['round_id'], 'pending_claim', "Tái phát tín hiệu tranh nhận cho " . count($eligibleGrabConsultants) . " Sale.", false);
+
+                            $conn->commit();
+                            triggerTwoWaySync($conn, $row['lead_id']);
+                            $releasedCount++;
+                        } catch (Exception $e) {
+                            $conn->rollback();
+                        }
+                        continue;
+                    }
+                }
+
                 $assignedConsultantId = null;
                 $assignResult = null;
                 if ($row['round_id'] > 0) {
@@ -1287,72 +1358,109 @@ if (!function_exists('recallInactiveLeads')) {
                 $fallbackAdminData = null;
                 $fallbackCcEmails = '';
                 $maxAttempts = 0;
-                $excludeIds = [];
+                $isGrabRound = false;
+                $grabCountdownSeconds = 300;
+                $grabCooldownSeconds = 3600;
+                $eligibleGrabConsultants = [];
 
                 if ($roundId > 0) {
                     // Fetch round info
-                    $rStmt = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
+                    $rStmt = $conn->prepare("SELECT round_name, round_type, grab_countdown_seconds, grab_cooldown_seconds, cc_emails FROM distribution_rounds WHERE id = ?");
                     $rStmt->bind_param("i", $roundId);
                     $rStmt->execute();
                     $rRes = $rStmt->get_result()->fetch_assoc();
                     if ($rRes) {
                         $roundName = $rRes['round_name'];
                         $ccEmails = $rRes['cc_emails'];
+                        if (($rRes['round_type'] ?? '') === 'grab') {
+                            $isGrabRound = true;
+                            $grabCountdownSeconds = !empty($rRes['grab_countdown_seconds']) ? (int)$rRes['grab_countdown_seconds'] : 300;
+                            $grabCooldownSeconds = !empty($rRes['grab_cooldown_seconds']) ? (int)$rRes['grab_cooldown_seconds'] : 3600;
+                        }
                     }
                     $rStmt->close();
 
-                    $maxAttempts = (int) get_system_setting($conn, 'lead_max_recall_attempts');
-                    if ($maxAttempts <= 0) {
-                        $maxAttempts = 0;
-                    }
-
-                    if ($maxAttempts > 0) {
-                        $attemptsStmt = $conn->prepare("
-                            SELECT assigned_to, COUNT(*) as cnt 
-                            FROM distribution_logs 
-                            WHERE lead_id = ? AND status = 'recalled' AND received_at >= CURDATE() 
-                            GROUP BY assigned_to
+                    if ($isGrabRound) {
+                        $cStmt = $conn->prepare("
+                            SELECT c.id, c.name, c.email, c.phone, c.work_start_time, c.work_end_time, c.work_schedule
+                            FROM round_consultants rc
+                            JOIN consultants c ON rc.consultant_id = c.id
+                            WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' AND c.vacation_mode = 0
                         ");
-                        if ($attemptsStmt) {
-                            $attemptsStmt->bind_param("i", $leadId);
-                            $attemptsStmt->execute();
-                            $attemptsRes = $attemptsStmt->get_result();
-                            while ($attemptsRow = $attemptsRes->fetch_assoc()) {
-                                if ((int)$attemptsRow['cnt'] >= $maxAttempts) {
-                                    $excludeIds[] = (int)$attemptsRow['assigned_to'];
+                        $cStmt->bind_param("i", $roundId);
+                        $cStmt->execute();
+                        $activeConsultants = $cStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                        $cStmt->close();
+
+                        $leadRowData = [
+                            'name' => $row['lead_name'],
+                            'phone' => $row['lead_phone'],
+                            'email' => $row['lead_email'],
+                            'source' => $row['lead_source'],
+                            'type' => $row['lead_type'],
+                            'note' => $row['lead_note']
+                        ];
+
+                        foreach ($activeConsultants as $c) {
+                            require_once __DIR__ . '/webhook_logic.php';
+                            if (checkConsultantGates($conn, $c['id'], $leadRowData, true) === true) {
+                                $eligibleGrabConsultants[] = $c;
+                            }
+                        }
+                    } else {
+                        $maxAttempts = (int) get_system_setting($conn, 'lead_max_recall_attempts');
+                        if ($maxAttempts <= 0) {
+                            $maxAttempts = 0;
+                        }
+
+                        if ($maxAttempts > 0) {
+                            $attemptsStmt = $conn->prepare("
+                                SELECT assigned_to, COUNT(*) as cnt 
+                                FROM distribution_logs 
+                                WHERE lead_id = ? AND status = 'recalled' AND received_at >= CURDATE() 
+                                GROUP BY assigned_to
+                            ");
+                            if ($attemptsStmt) {
+                                $attemptsStmt->bind_param("i", $leadId);
+                                $attemptsStmt->execute();
+                                $attemptsRes = $attemptsStmt->get_result();
+                                while ($attemptsRow = $attemptsRes->fetch_assoc()) {
+                                    if ((int)$attemptsRow['cnt'] >= $maxAttempts) {
+                                        $excludeIds[] = (int)$attemptsRow['assigned_to'];
+                                    }
                                 }
+                                $attemptsStmt->close();
                             }
-                            $attemptsStmt->close();
                         }
-                    }
 
-                    $cooldownMins = (int) get_system_setting($conn, 'lead_recall_cooldown_minutes');
-                    if ($cooldownMins > 0) {
-                        $cooldownStmt = $conn->prepare("
-                            SELECT DISTINCT assigned_to 
-                            FROM distribution_logs 
-                            WHERE lead_id = ? AND status = 'recalled' 
-                              AND received_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
-                        ");
-                        if ($cooldownStmt) {
-                            $cooldownStmt->bind_param("ii", $leadId, $cooldownMins);
-                            $cooldownStmt->execute();
-                            $cooldownRes = $cooldownStmt->get_result();
-                            while ($cooldownRow = $cooldownRes->fetch_assoc()) {
-                                $excludeIds[] = (int)$cooldownRow['assigned_to'];
+                        $cooldownMins = (int) get_system_setting($conn, 'lead_recall_cooldown_minutes');
+                        if ($cooldownMins > 0) {
+                            $cooldownStmt = $conn->prepare("
+                                SELECT DISTINCT assigned_to 
+                                FROM distribution_logs 
+                                WHERE lead_id = ? AND status = 'recalled' 
+                                  AND received_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                            ");
+                            if ($cooldownStmt) {
+                                $cooldownStmt->bind_param("ii", $leadId, $cooldownMins);
+                                $cooldownStmt->execute();
+                                $cooldownRes = $cooldownStmt->get_result();
+                                while ($cooldownRow = $cooldownRes->fetch_assoc()) {
+                                    $excludeIds[] = (int)$cooldownRow['assigned_to'];
+                                }
+                                $cooldownStmt->close();
                             }
-                            $cooldownStmt->close();
                         }
-                    }
 
-                    if (!empty($excludeIds)) {
-                        $excludeIds = array_values(array_unique($excludeIds));
-                    }
+                        if (!empty($excludeIds)) {
+                            $excludeIds = array_values(array_unique($excludeIds));
+                        }
 
-                    $assignResult = getNextConsultantInRound($conn, $roundId, null, $excludeIds);
-                    if ($assignResult) {
-                        $newConsultantId = $assignResult['id'];
-                        $newStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                        $assignResult = getNextConsultantInRound($conn, $roundId, null, $excludeIds);
+                        if ($assignResult) {
+                            $newConsultantId = $assignResult['id'];
+                            $newStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                        }
                     }
                 }
 
@@ -1395,7 +1503,35 @@ if (!function_exists('recallInactiveLeads')) {
                 }
 
                 // 4. Update leads table & Log
-                if (!$newConsultantId && !empty($excludeIds)) {
+                if ($isGrabRound) {
+                    if (!empty($eligibleGrabConsultants)) {
+                        $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending_claim', target_round_id = ?, last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL WHERE id = ?");
+                        $upLead->bind_param("ii", $roundId, $leadId);
+                        $upLead->execute();
+                        $upLead->close();
+
+                        $offerStmt = $conn->prepare("
+                            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
+                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+                        ");
+                        foreach ($eligibleGrabConsultants as $ec) {
+                            $offerStmt->bind_param("iiii", $leadId, $ec['id'], $roundId, $grabCountdownSeconds);
+                            $offerStmt->execute();
+                        }
+                        $offerStmt->close();
+
+                        $newStatus = 'pending_claim';
+                        $logMsg = "Thu hồi từ Sale {$oldConsultantName} và tái phát tín hiệu tranh nhận cho " . count($eligibleGrabConsultants) . " Sale.";
+                    } else {
+                        $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending_work_hours', target_round_id = ?, last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL WHERE id = ?");
+                        $upLead->bind_param("ii", $roundId, $leadId);
+                        $upLead->execute();
+                        $upLead->close();
+
+                        $newStatus = 'pending_work_hours';
+                        $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Ngoài khung giờ làm việc / tất cả Sale đang bận. Hệ thống tạm giữ.";
+                    }
+                } else if (!$newConsultantId && !empty($excludeIds)) {
                     $nextAttemptDate = date('Y-m-d H:i:s', strtotime('+1 day'));
                     $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending', next_attempt_date = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
                     $upLead->bind_param("si", $nextAttemptDate, $leadId);
