@@ -5442,14 +5442,12 @@ switch ($action) {
             $statuses = ["'grabbed'"];
         } else {
             $cooldownMins = (int) get_system_setting($conn, 'normal_round_cooldown_minutes');
-            if ($cooldownMins === -1) {
-                $cooldownSec = 0;
-            } else if ($cooldownMins <= 0) {
-                $cooldownSec = 300; // default 5 mins
-            } else {
+            if ($cooldownMins > 0) {
                 $cooldownSec = $cooldownMins * 60;
+                $statuses = ["'assigned'", "'compensation'"];
+            } else {
+                $cooldownSec = 0;
             }
-            $statuses = ["'assigned'", "'compensation'"];
         }
 
         $cooldowns = [];
