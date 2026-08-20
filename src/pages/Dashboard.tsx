@@ -1623,7 +1623,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                               ? '/LOGO.jpg'
                               : log.status === 'blacklisted'
                                 ? '/imgs/angry_icon.jpg'
-                                : (log.assigned_to_avatar || '/LOGO.jpg')
+                                : log.assigned_to_avatar
                         }
                         name={
                           log.status === 'pending_approval'

@@ -2446,7 +2446,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             })()
                           ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours' && lead.status !== 'pending_claim') ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Avatar src={lead.assigned_to_avatar || '/LOGO.jpg'} name={lead.assigned_to_name} size={20} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
+                              <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={20} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
                               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{lead.assigned_to_name}</span>
                             </div>
                           ) : lead.status === 'pending_claim' ? (
@@ -2622,7 +2622,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             })()
                           ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours' && lead.status !== 'pending_claim') ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src={lead.assigned_to_avatar || '/LOGO.jpg'} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
+                              <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
                               <div>
                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
