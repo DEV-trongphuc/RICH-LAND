@@ -196,6 +196,14 @@ class ContactController {
                    r.round_name,
                    dl.id as log_id,
                    l.id as lead_id,
+                   l.note as lead_note,
+                   l.type as lead_type,
+                   l.source as lead_source,
+                   l.preferred_location as lead_preferred_location,
+                   l.bedroom_count as lead_bedroom_count,
+                   l.property_type as lead_property_type,
+                   l.demand_type as lead_demand_type,
+                   l.budget as lead_budget,
                    dr.status as report_status,
                    dr.id as report_id,
                    dr.reason as report_reason
@@ -451,8 +459,17 @@ class ContactController {
                         ) as t WHERE t.cid = c.id
                     ) as last_order_at,
                     l.id as lead_id,
+                    l.note as lead_note,
+                    l.type as lead_type,
+                    l.source as lead_source,
+                    l.preferred_location as lead_preferred_location,
+                    l.bedroom_count as lead_bedroom_count,
+                    l.property_type as lead_property_type,
+                    l.demand_type as lead_demand_type,
+                    l.budget as lead_budget,
                     dl.round_id as dl_round_id,
                     dl.status as dl_status,
+                    r.round_name,
                     dr.status as ticket_status,
                     dr.reason as ticket_reason
             FROM contacts c

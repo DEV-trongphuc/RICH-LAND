@@ -114,12 +114,22 @@ const GrabLeadOfferModal: React.FC<{
   t: (key: string) => string;
   theme: string;
 }> = ({ offer, onClaim, onClose, t, theme }) => {
-  const [timeLeft, setTimeLeft] = useState(offer.seconds_remaining);
+  const targetExpiresAt = useMemo(() => {
+    if (offer.expires_at) {
+      return parseServerDate(offer.expires_at).getTime();
+    }
+    return Date.now() + (Number(offer.seconds_remaining) || 300) * 1000;
+  }, [offer.expires_at, offer.seconds_remaining, offer.lead_id, offer.offer_id]);
+
+  const [timeLeft, setTimeLeft] = useState(() => {
+    return Math.max(0, Math.floor((targetExpiresAt - Date.now()) / 1000));
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setTimeLeft(offer.seconds_remaining);
-  }, [offer]);
+    const calc = Math.max(0, Math.floor((targetExpiresAt - Date.now()) / 1000));
+    setTimeLeft(calc);
+  }, [targetExpiresAt]);
 
   useEffect(() => {
     if (timeLeft <= 0) {
@@ -127,10 +137,15 @@ const GrabLeadOfferModal: React.FC<{
       return;
     }
     const interval = setInterval(() => {
-      setTimeLeft((prev: number) => prev - 1);
+      const remaining = Math.max(0, Math.floor((targetExpiresAt - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(interval);
+        onClose();
+      }
     }, 1000);
     return () => clearInterval(interval);
-  }, [timeLeft, onClose]);
+  }, [targetExpiresAt, onClose, timeLeft]);
 
   const handleClaimClick = async () => {
     if (submitting) return;
@@ -139,7 +154,12 @@ const GrabLeadOfferModal: React.FC<{
     setSubmitting(false);
   };
 
-  const percentage = Math.max(0, Math.min(100, (timeLeft / (offer.seconds_remaining || 300)) * 100));
+  const totalDuration = (Number(offer.seconds_remaining) || 300);
+  const percentage = Math.max(0, Math.min(100, (timeLeft / totalDuration) * 100));
+
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+  const formattedTime = `${mins}:${String(secs).padStart(2, '0')}`;
 
   return (
     <div style={{
@@ -176,24 +196,30 @@ const GrabLeadOfferModal: React.FC<{
         <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{t("Vòng chia")}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>{offer.round_name}</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>{offer.round_name || t('Vòng Nhận Data Nhanh')}</div>
+            {offer.lead_name && (
+              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#f59e0b', marginTop: '0.25rem' }}>{offer.lead_name}</div>
+            )}
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+              {offer.lead_source ? `${t('Nguồn:')} ${offer.lead_source}` : t('Nguồn: Chưa cấu hình')}
+            </div>
           </div>
 
           {/* Countdown graphic */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              <span style={{ fontSize: '2rem', fontWeight: 900, color: timeLeft <= 10 ? 'var(--color-danger)' : '#f59e0b' }}>
-                {timeLeft}
+              <span style={{ fontSize: '2.5rem', fontWeight: 900, color: timeLeft <= 15 ? 'var(--color-danger)' : '#f59e0b', fontFamily: 'monospace' }}>
+                {formattedTime}
               </span>
               <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                {t("giây")}
+                {t("còn lại")}
               </span>
             </div>
             {/* Progress bar */}
             <div style={{ width: '100%', height: '8px', background: theme === 'dark' ? '#374151' : '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
               <div style={{
                 width: `${percentage}%`, height: '100%',
-                background: timeLeft <= 10 ? 'var(--color-danger)' : 'linear-gradient(90deg, #f59e0b, #d97706)',
+                background: timeLeft <= 15 ? 'var(--color-danger)' : 'linear-gradient(90deg, #f59e0b, #d97706)',
                 transition: 'width 1s linear'
               }} />
             </div>
@@ -19135,6 +19161,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           />
         </Suspense>
       )}
+
+      {/* Grab Lead Offer Modal */}
+      {activeOffers.length > 0 && (() => {
+        const currentOffer = activeOffers.find(o => !dismissedOfferIds.includes(Number(o.lead_id || o.offer_id)));
+        if (!currentOffer) return null;
+        return (
+          <GrabLeadOfferModal
+            key={currentOffer.offer_id || currentOffer.lead_id}
+            offer={currentOffer}
+            onClaim={handleGrabLead}
+            onClose={() => setDismissedOfferIds(prev => [...prev, Number(currentOffer.lead_id || currentOffer.offer_id)])}
+            t={t}
+            theme={theme}
+          />
+        );
+      })()}
 
       {/* 2-Minute Lead Offer Countdown Modal */}
       {activeIncomingOffer && !hideOfferModal && (
