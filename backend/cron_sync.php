@@ -532,7 +532,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
         
         // Select all logs pending work hours or pending, including status and leave dates to check if they went on leave
         $sql = "SELECT dl.id as log_id, dl.lead_id, dl.assigned_to, 
-                       COALESCE(dl.round_id, l.target_round_id, (SELECT round_id FROM webhook_connections WHERE id = l.connection_id LIMIT 1), (SELECT round_id FROM sheet_connections WHERE id = l.connection_id LIMIT 1), 0) AS round_id,
+                       COALESCE(dl.round_id, l.target_round_id, (SELECT round_id FROM sheet_connections WHERE id = l.connection_id LIMIT 1), 0) AS round_id,
                        dl.message, dl.status as log_status, COALESCE(dl.received_at, NOW()) AS received_at,
                        l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
@@ -920,7 +920,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     
                     // Update lead table
                     $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = ?, last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL WHERE id = ?");
-                    $upLead->bind_param("issi", $assignedConsultantId, $newStatus, $row['lead_id']);
+                    $upLead->bind_param("isi", $assignedConsultantId, $newStatus, $row['lead_id']);
                     $upLead->execute();
                     $upLead->close();
                     
