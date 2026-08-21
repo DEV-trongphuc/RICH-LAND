@@ -329,7 +329,14 @@ class CheckInController {
         }
 
         if (!$isSupplementary) {
-            if (empty($selfieUrl) || !filter_var($selfieUrl, FILTER_VALIDATE_URL)) {
+            $isValidSelfie = !empty($selfieUrl) && (
+                filter_var($selfieUrl, FILTER_VALIDATE_URL) !== false ||
+                strpos($selfieUrl, 'uploads/') === 0 ||
+                strpos($selfieUrl, '/uploads/') === 0 ||
+                strpos($selfieUrl, 'data:image/') === 0 ||
+                preg_match('#^[a-zA-Z0-9_\-/\.]+\.(jpg|jpeg|png|webp|gif|svg)$#i', $selfieUrl)
+            );
+            if (!$isValidSelfie) {
                 respond(422, null, 'Đường dẫn ảnh selfie check-in không hợp lệ hoặc thiếu.', false);
             }
         }
