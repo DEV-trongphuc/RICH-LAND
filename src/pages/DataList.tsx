@@ -760,6 +760,25 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   });
   const [isSavingLeadFields, setIsSavingLeadFields] = useState(false);
   const [isReleasingLead, setIsReleasingLead] = useState(false);
+  const [distributionLogs, setDistributionLogs] = useState<any[]>([]);
+  const [loadingDistLogs, setLoadingDistLogs] = useState(false);
+
+  const fetchLeadDistributionLogs = async (leadId: number) => {
+    if (!leadId) return;
+    setLoadingDistLogs(true);
+    try {
+      const res = await fetchAPI(`get_lead_distribution_logs&lead_id=${leadId}`);
+      if (res.success && Array.isArray(res.data)) {
+        setDistributionLogs(res.data);
+      } else {
+        setDistributionLogs([]);
+      }
+    } catch (e) {
+      setDistributionLogs([]);
+    } finally {
+      setLoadingDistLogs(false);
+    }
+  };
 
   const handleReleaseToDatabank = (leadId: number, contactId?: number) => {
     showConfirm({
@@ -881,9 +900,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         note: selectedLead.note || ''
       });
       setIsAdminEditingLead(false);
+      fetchLeadDistributionLogs(selectedLead.lead_id || selectedLead.id);
     } else {
       setNotificationStatus(null);
       setIsAdminEditingLead(false);
+      setDistributionLogs([]);
     }
   }, [selectedLead]);
 
@@ -4079,6 +4100,121 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           })}
                         </div>
                       )}
+
+                      {/* Distribution Logs Audit Section */}
+                      <div style={{
+                        background: theme === 'dark' ? 'rgba(59, 130, 246, 0.06)' : 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
+                        border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid #bfdbfe',
+                        padding: '1.25rem',
+                        borderRadius: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.875rem',
+                        marginTop: '1rem',
+                        boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(59, 130, 246, 0.04)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                              background: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe',
+                              padding: '8px',
+                              borderRadius: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: theme === 'dark' ? '#60a5fa' : '#2563eb'
+                            }}>
+                              <RefreshCw size={18} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#93c5fd' : '#1e40af', display: 'block', letterSpacing: '-0.01em' }}>
+                                {t('Lịch sử Phân bổ & Thu hồi Data')}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                {t('Toàn bộ tiến trình xoay vòng, phân phối và thu hồi data này')}
+                              </span>
+                            </div>
+                          </div>
+                          {loadingDistLogs && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Đang tải...')}</span>}
+                        </div>
+
+                        {distributionLogs.length === 0 && !loadingDistLogs ? (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '0.5rem 0' }}>
+                            {t('Chưa có lịch sử phân bổ chi tiết cho data này.')}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                            {distributionLogs.map((log: any, idx: number) => {
+                              const isRecalled = log.status === 'recalled';
+                              const isAssigned = log.status === 'assigned';
+                              
+                              const badgeStyle = isRecalled
+                                ? { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5', label: t('Thu hồi') }
+                                : isAssigned
+                                ? { bg: '#dcfce7', text: '#15803d', border: '#86efac', label: t('Đã phân bổ') }
+                                : { bg: '#fef3c7', text: '#b45309', border: '#fcd34d', label: t('Chờ xử lý') };
+
+                              return (
+                                <div key={log.id || idx} style={{
+                                  background: theme === 'dark' ? 'rgba(0,0,0,0.25)' : '#ffffff',
+                                  border: '1px solid var(--color-border-light)',
+                                  borderRadius: '10px',
+                                  padding: '0.75rem 0.875rem',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '6px'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <span style={{
+                                        fontSize: '0.65rem',
+                                        fontWeight: 800,
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        background: badgeStyle.bg,
+                                        color: badgeStyle.text,
+                                        border: `1px solid ${badgeStyle.border}`,
+                                        textTransform: 'uppercase'
+                                      }}>
+                                        {badgeStyle.label}
+                                      </span>
+                                      {log.consultant_name && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                          <Avatar src={log.consultant_avatar} name={log.consultant_name} size={18} />
+                                          <span>{log.consultant_name}</span>
+                                        </div>
+                                      )}
+                                      {log.round_name && (
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                          ({log.round_name})
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <Clock size={11} /> {log.received_at}
+                                    </span>
+                                  </div>
+
+                                  {log.message && (
+                                    <div style={{
+                                      fontSize: '0.78rem',
+                                      color: theme === 'dark' ? '#cbd5e1' : '#475569',
+                                      background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                                      padding: '6px 10px',
+                                      borderRadius: '6px',
+                                      borderLeft: `3px solid ${isRecalled ? '#ef4444' : isAssigned ? '#10b981' : '#f59e0b'}`,
+                                      lineHeight: 1.4,
+                                      whiteSpace: 'pre-wrap'
+                                    }}>
+                                      {log.message}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </>
                   );
                 })()}

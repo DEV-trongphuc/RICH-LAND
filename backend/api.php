@@ -1898,6 +1898,57 @@ switch ($action) {
         echo json_encode(['success' => true, 'data' => $sources]);
         break;
 
+    case 'get_lead_distribution_logs':
+        $lead_id = (int)($_GET['lead_id'] ?? 0);
+        if ($lead_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid lead_id']);
+            break;
+        }
+        $stmt = $conn->prepare("
+            SELECT dl.id, dl.lead_id, dl.assigned_to, dl.round_id, dl.status, dl.message, dl.received_at,
+                   c.name as consultant_name, c.email as consultant_email, c.avatar as consultant_avatar,
+                   r.round_name
+            FROM distribution_logs dl
+            LEFT JOIN consultants c ON dl.assigned_to = c.id
+            LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+            WHERE dl.lead_id = ?
+            ORDER BY dl.id DESC
+        ");
+        $stmt->bind_param("i", $lead_id);
+        $stmt->execute();
+        $logs = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        echo json_encode(['success' => true, 'data' => $logs]);
+        break;
+
+    case 'dismiss_overdue_lead':
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true);
+        $lead_id = (int)($input['lead_id'] ?? 0);
+        if ($lead_id > 0) {
+            require_once __DIR__ . '/cron_sync.php';
+            if (function_exists('recallInactiveLeads')) {
+                recallInactiveLeads($conn);
+            }
+            if (function_exists('recallExpiredGrabLeads')) {
+                recallExpiredGrabLeads($conn);
+            }
+        }
+        echo json_encode(['success' => true]);
+        break;
+
+    case 'force_redistribute_lead':
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true);
+        $lead_id = (int)($input['lead_id'] ?? 0);
+        if ($lead_id > 0) {
+            require_once __DIR__ . '/webhook_logic.php';
+            $conn->query("UPDATE leads SET next_attempt_date = NULL, status = 'pending', assigned_to = NULL WHERE id = $lead_id");
+            redistributePendingLeads($conn);
+        }
+        echo json_encode(['success' => true, 'message' => 'Đã kích hoạt phân bổ lại ngay lập tức!']);
+        break;
+
     case 'get_import_history':
         if (!isset($decodedUser) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'assistant')) {
             http_response_code(403);
@@ -5565,13 +5616,8 @@ switch ($action) {
             $cooldownSec = (int)($round['grab_cooldown_seconds'] ?? 3600);
             $statuses = ["'grabbed'"];
         } else {
-            $cooldownMins = (int) get_system_setting($conn, 'normal_round_cooldown_minutes');
-            if ($cooldownMins > 0) {
-                $cooldownSec = $cooldownMins * 60;
-                $statuses = ["'assigned'", "'compensation'"];
-            } else {
-                $cooldownSec = 0;
-            }
+            $cooldownSec = 0;
+            $statuses = [];
         }
 
         $cooldowns = [];
@@ -6516,21 +6562,12 @@ switch ($action) {
                 break;
             }
 
-            // Verify timeout limit
-            $timeoutMinutes = get_lead_recall_minutes($conn, $resChk['last_interaction_date'], $resChk['connection_recall_minutes']);
-            $lastInteraction = strtotime($resChk['last_interaction_date']);
-            if ($timeoutMinutes > 0 && (time() - $lastInteraction) > $timeoutMinutes * 60) {
-                $conn->rollback();
-                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã bị thu hồi hoặc chuyển cho người khác do quá hạn tiếp nhận']);
-                break;
-            }
-
             // If logged in as sale, verify the lead is assigned to them
             if ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') {
                 $sale_id = $currentSaleConsultantId ?? 0;
                 if ((int)$resChk['assigned_to'] !== $sale_id) {
                     $conn->rollback();
-                    echo json_encode(['success' => false, 'message' => 'Khách hàng này đã bị thu hồi hoặc chuyển cho người khác do quá hạn tiếp nhận']);
+                    echo json_encode(['success' => false, 'message' => 'Khách hàng này hiện không được phân bổ cho bạn hoặc đã được chuyển giao']);
                     break;
                 }
             }

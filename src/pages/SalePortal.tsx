@@ -2104,7 +2104,32 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const [consultantDocs, setConsultantDocs] = useState<any[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
-  const [dismissedLeadIds, setDismissedLeadIds] = useState<number[]>([]);
+  const [dismissedLeadIds, setDismissedLeadIds] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem('dismissed_lead_ids');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const handleDismissOverdueLead = async (leadId: number) => {
+    const numId = Number(leadId);
+    setDismissedLeadIds(prev => {
+      const next = Array.from(new Set([...prev, numId]));
+      try {
+        localStorage.setItem('dismissed_lead_ids', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+    try {
+      await fetchAPI('dismiss_overdue_lead', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: numId })
+      });
+      loadPortalData();
+    } catch (e) {}
+  };
   const [hideOfferModal, setHideOfferModal] = useState(false);
   const [lastOfferedLeadId, setLastOfferedLeadId] = useState<number | null>(null);
 
@@ -2150,7 +2175,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!['sale', 'manager'].includes(String(effectiveRole).toLowerCase())) return null;
     const unacceptedLeads = (data.leads || []).filter((l: any) => {
       if (Number(l.is_accepted)) return false;
-      if (Number(l.lead_recall_minutes) <= 0) return false;
+      const recallMins = Number(l.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
+      if (recallMins <= 0) return false;
       if (dismissedLeadIds.includes(Number(l.lead_id || l.id))) return false;
       
       const status = String(l.status || l.distribution_status || '').toLowerCase();
@@ -2162,17 +2188,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (unacceptedLeads.length === 0) return null;
     
     const activeOffers = unacceptedLeads.map((lead: any) => {
-      const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
+      const leadRecallMins = Number(lead.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
       const limitMs = leadRecallMins * 60 * 1000;
-      const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
+      const targetDate = parseServerDate(lead.received_at || lead.last_assigned_at || lead.last_interaction_date).getTime();
+      const elapsedMs = now - targetDate;
       const remainingMs = limitMs - elapsedMs;
-      return { lead, remainingMs };
+      return { lead, remainingMs, leadRecallMins, limitMs };
     }).filter(item => item.remainingMs > 0);
 
     if (activeOffers.length === 0) return null;
     activeOffers.sort((a, b) => a.remainingMs - b.remainingMs);
     return activeOffers[0];
-  }, [data.leads, effectiveRole, now, dismissedLeadIds]);
+  }, [data.leads, effectiveRole, now, dismissedLeadIds, sysSettings]);
 
   useEffect(() => {
     const intervalMs = activeIncomingOffer ? 100 : 10000;
@@ -5359,7 +5386,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                         {isOverdue ? (
                           <button 
-                            onClick={() => setDismissedLeadIds(prev => [...prev, Number(lead.lead_id || lead.id)])}
+                            onClick={() => handleDismissOverdueLead(lead.lead_id || lead.id)}
                             className="btn outline danger sm hover-lift"
                             style={{
                               height: '32px',
@@ -19266,7 +19293,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     strokeDasharray={2 * Math.PI * 56}
                     strokeDashoffset={
                       (2 * Math.PI * 56) * 
-                      (1 - Math.max(0, activeIncomingOffer.remainingMs) / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000))
+                      (1 - Math.max(0, activeIncomingOffer.remainingMs) / (activeIncomingOffer.limitMs || 120000))
                     }
                     strokeLinecap="round"
                     style={{ transition: 'stroke-dashoffset 0.1s linear' }}
@@ -19358,7 +19385,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     alignItems: 'center',
                     gap: '4px'
                   }}>
-                    <Clock size={12} /> {t('Được chia lúc:')} {activeIncomingOffer.lead.last_interaction_date ? new Date(activeIncomingOffer.lead.last_interaction_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                    <Clock size={12} /> {t('Được chia lúc:')} {parseServerDate(activeIncomingOffer.lead.received_at || activeIncomingOffer.lead.last_assigned_at || activeIncomingOffer.lead.last_interaction_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               </div>

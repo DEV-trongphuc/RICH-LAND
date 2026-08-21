@@ -1002,16 +1002,7 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
 
     $isRoundRobin = ($roundType === 'round_robin');
     $normalCooldownSec = 0;
-    if ($isRoundRobin) {
-        $cooldownMins = (int) get_system_setting($conn, 'normal_round_cooldown_minutes');
-        if ($cooldownMins === -1) {
-            $normalCooldownSec = 0;
-        } else if ($cooldownMins <= 0) {
-            $normalCooldownSec = 300; // default 5 mins
-        } else {
-            $normalCooldownSec = $cooldownMins * 60;
-        }
-    }
+    // Normal round robin has NO cooldown delay between leads. Cooldown only applies to grab rounds.
 
     // Get absolute last assigned consultant for this round from distribution_logs to prevent back-to-back leads
     $absoluteLastAssignedId = null;
@@ -4084,8 +4075,7 @@ if (!function_exists('redistributePendingLeads')) {
         $sql = "SELECT id, target_round_id, name, phone, email, source, type, note 
                 FROM leads 
                 WHERE status = 'pending' 
-                  AND next_attempt_date IS NOT NULL 
-                  AND next_attempt_date <= NOW()
+                  AND (next_attempt_date IS NULL OR next_attempt_date <= NOW())
                 ORDER BY id ASC";
                 
         $res = $conn->query($sql);
@@ -4109,7 +4099,7 @@ if (!function_exists('redistributePendingLeads')) {
                     $lockStmt->execute();
                     $lockStmt->close();
                     
-                    // Assign to next consultant (without any exclusions since it's a new day!)
+                    // Assign to next consultant
                     $assignResult = getNextConsultantInRound($conn, $roundId);
                     
                     $newConsultantId = null;
@@ -4164,8 +4154,8 @@ if (!function_exists('redistributePendingLeads')) {
                     }
                     
                     // Update lead
-                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = 'active', next_attempt_date = NULL, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
-                    $upLead->bind_param("ii", $newConsultantId, $leadId);
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = ?, next_attempt_date = NULL, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                    $upLead->bind_param("isi", $newConsultantId, $newStatus, $leadId);
                     $upLead->execute();
                     $upLead->close();
                     
