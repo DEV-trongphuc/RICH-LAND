@@ -318,7 +318,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             display: 'inline-flex',
             alignItems: 'center'
           }}>
-            {t('Đã nhận')}
+            {t('Tranh data')}
           </span>
         );
       case 'assigned':

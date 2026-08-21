@@ -66,7 +66,7 @@ function runDailyReportCron($conn)
             JOIN consultants c ON dl.assigned_to = c.id 
             WHERE dl.received_at >= ?
               AND dl.received_at <= ?
-              AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours', 'reminder')
+              AND dl.status IN ('assigned', 'grabbed', 'compensation', 'error', 'rule_6_month', 'pending_work_hours', 'reminder')
             GROUP BY c.id, dl.status
         ");
         $stmtData->bind_param("ss", $startTimestamp, $endTimestamp);
@@ -81,6 +81,7 @@ function runDailyReportCron($conn)
                     $saleData[$cId] = [
                         'name' => $row['name'],
                         'assigned' => 0,
+                        'grabbed' => 0,
                         'compensation' => 0,
                         'rule_6_month' => 0,
                         'pending_work_hours' => 0,
@@ -96,7 +97,7 @@ function runDailyReportCron($conn)
 
         $saleList = [];
         foreach ($saleData as $cId => $stats) {
-            $normalTotal = $stats['assigned'] + $stats['compensation'] + $stats['rule_6_month'] + $stats['pending_work_hours'] + max(0, $stats['error'] - $stats['compensation']);
+            $normalTotal = ($stats['assigned'] ?? 0) + ($stats['grabbed'] ?? 0) + ($stats['compensation'] ?? 0) + ($stats['rule_6_month'] ?? 0) + ($stats['pending_work_hours'] ?? 0) + max(0, ($stats['error'] ?? 0) - ($stats['compensation'] ?? 0));
             $reminderTotal = $stats['reminder'];
             $saleList[] = [
                 'name' => $stats['name'],

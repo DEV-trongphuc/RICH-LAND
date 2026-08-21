@@ -4822,7 +4822,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, [loc.search]);
 
   const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string, takers?: any[]) => {
-    if (status === 'assigned' && reportStatus === 'pending') {
+    if ((status === 'assigned' || status === 'grabbed') && reportStatus === 'pending') {
       return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#4338ca', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Ticket Review')}</span>;
     }
     if (reportStatus === 'approved_no_comp') {
@@ -4841,6 +4841,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
     switch (status) {
       case 'grabbed':
+        return <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.2)' }}>{t('Giật Lead')}</span>;
       case 'active':
         return <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#047857', border: '1px solid rgba(16, 185, 129, 0.2)' }}>{t('Đã nhận')}</span>;
       case 'assigned': return <span className="badge" style={{ background: 'rgba(13, 148, 136, 0.1)', color: '#0f766e', border: '1px solid rgba(13, 148, 136, 0.2)' }}>{t('Đã chia')}</span>;
@@ -9315,6 +9316,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               options={[
                 { value: 'all', label: t('Tất cả trạng thái'), icon: <Filter size={16} /> },
                 { value: 'assigned', label: t('Đã chia') },
+                { value: 'grabbed', label: t('Giật Lead') },
                 { value: 'compensation', label: t('Data Bù') },
                 { value: 'databank_claim', label: 'Databank Claim' },
                 { value: 'reminder', label: t('Nhắc lại') },

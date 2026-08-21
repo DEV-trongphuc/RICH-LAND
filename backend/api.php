@@ -2513,11 +2513,11 @@ switch ($action) {
         $endDate = $_GET['end_date'] ?? '';
 
         if ($isSale) {
-            $where = ["dl.assigned_to = ?", "dl.status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim')"];
+            $where = ["dl.assigned_to = ?", "dl.status IN ('assigned', 'grabbed', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim')"];
             $params = [$saleId];
             $types = "i";
         } else {
-            $where = ["dl.status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim')"];
+            $where = ["dl.status IN ('assigned', 'grabbed', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim')"];
             $params = [];
             $types = "";
             if ($saleFilterId !== null) {
@@ -2948,7 +2948,7 @@ switch ($action) {
                   JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
                   JOIN users u2 ON u2.id = c.owner_id
                   JOIN consultants cons2 ON u2.email = cons2.email
-                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
+                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
               )
         ");
         $distributedCount = 0;
@@ -3206,7 +3206,7 @@ switch ($action) {
             $stmtCheck = $conn->prepare("
                 SELECT 1 
                 FROM distribution_logs 
-                WHERE lead_id = ? AND assigned_to = ? AND status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback') 
+                WHERE lead_id = ? AND assigned_to = ? AND status IN ('assigned', 'grabbed', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim') 
                 LIMIT 1
             ");
             $stmtCheck->bind_param("ii", $leadId, $saleId);
@@ -3234,8 +3234,8 @@ switch ($action) {
         $todayStr = date('Y-m-d');
         $stmt = $conn->prepare("SELECT 
             COUNT(*) as total,
-            SUM(IF(status='assigned',1,0)) as assigned,
-            SUM(IF(status='duplicate',1,0)) as duplicates
+            SUM(IF(status IN ('assigned', 'grabbed'), 1, 0)) as assigned,
+            SUM(IF(status='duplicate', 1, 0)) as duplicates
         FROM distribution_logs WHERE received_at >= ? AND received_at <= ?");
         $todayStart = $todayStr . ' 00:00:00';
         $todayEnd = $todayStr . ' 23:59:59';
@@ -3723,7 +3723,7 @@ switch ($action) {
         $distRes = $conn->query("
             SELECT 
                 DATE(dl.received_at) as date_str,
-                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success') AND l.is_accepted = 1 AND l.assigned_to = dl.assigned_to THEN 1 ELSE 0 END) as distributed,
+                SUM(CASE WHEN dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success') AND l.is_accepted = 1 AND l.assigned_to = dl.assigned_to THEN 1 ELSE 0 END) as distributed,
                 SUM(CASE WHEN dl.status = 'blacklisted' THEN 1 ELSE 0 END) as blacklist,
                 SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder,
                 SUM(CASE WHEN dl.status IN ('error', 'no_consultant') THEN 1 ELSE 0 END) as error,
@@ -3866,7 +3866,7 @@ switch ($action) {
                 LEFT JOIN data_reports rep ON rep.lead_id = l.id AND rep.consultant_id = c.id
                 WHERE DATE(dl.received_at) = '$escapedDate' 
                   AND dl.lead_id IS NOT NULL 
-                  AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success')
+                  AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success')
                   AND l.is_accepted = 1
                   AND l.assigned_to = dl.assigned_to
                   $distFilter
@@ -3902,7 +3902,7 @@ switch ($action) {
                 LEFT JOIN leads l ON dl.lead_id = l.id
                 WHERE DATE(dl.received_at) = '$escapedDate' 
                   AND dl.lead_id IS NOT NULL 
-                  AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success')
+                  AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success')
                   AND l.is_accepted = 1
                   AND l.assigned_to = dl.assigned_to
                   $distFilter
@@ -6642,7 +6642,7 @@ switch ($action) {
         $sqlSystemStats = "
             SELECT COUNT(*) as system_successful
             FROM distribution_logs dl
-            WHERE dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours') AND $dateCondition
+            WHERE dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours') AND $dateCondition
         ";
         $stmtSystem = $conn->prepare($sqlSystemStats);
         if ($stmtSystem) {
@@ -6657,10 +6657,10 @@ switch ($action) {
 
         $sqlStats = "
             SELECT 
-                SUM(CASE WHEN status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours') THEN 1 ELSE 0 END) as successful,
+                SUM(CASE WHEN status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours') THEN 1 ELSE 0 END) as successful,
                 SUM(CASE WHEN status = 'reminder' THEN 1 ELSE 0 END) as reminder,
                 SUM(CASE WHEN status IN ('duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as error,
-                SUM(CASE WHEN status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'reminder', 'duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as total
+                SUM(CASE WHEN status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'reminder', 'duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as total
             FROM distribution_logs dl
             WHERE dl.assigned_to = ? AND $dateCondition
         ";
@@ -6809,7 +6809,7 @@ switch ($action) {
                   AND EXISTS (
                       SELECT 1 FROM leads l2 
                       JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                      WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
+                      WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
                   )
             ");
             if ($resDist) {
@@ -6853,8 +6853,8 @@ switch ($action) {
             SELECT 
                 dl.round_id, 
                 IFNULL(dr.round_name, 'Không rõ vòng') as round_name, 
-                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'reminder', 'duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as total_count,
-                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours') THEN 1 ELSE 0 END) as successful_count,
+                SUM(CASE WHEN dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'reminder', 'duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as total_count,
+                SUM(CASE WHEN dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours') THEN 1 ELSE 0 END) as successful_count,
                 SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder_count,
                 SUM(CASE WHEN dl.status IN ('duplicate', 'error', 'no_consultant', 'blacklisted') THEN 1 ELSE 0 END) as error_count
             FROM distribution_logs dl
@@ -6889,7 +6889,7 @@ switch ($action) {
         $sqlByDate = "
             SELECT DATE_FORMAT(dl.received_at, '%Y-%m-%d') as date_str, COUNT(*) as count
             FROM distribution_logs dl
-            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours')
+            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours')
             GROUP BY DATE(dl.received_at)
             ORDER BY date_str ASC
         ";
@@ -6915,7 +6915,7 @@ switch ($action) {
             SELECT IFNULL(l.source, 'Không rõ nguồn') as source_name, COUNT(*) as count
             FROM distribution_logs dl
             JOIN leads l ON dl.lead_id = l.id
-            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours')
+            WHERE dl.assigned_to = ? AND $dateCondition AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours')
             GROUP BY l.source
             ORDER BY count DESC
         ";
@@ -7332,7 +7332,7 @@ switch ($action) {
                             FROM distribution_logs 
                             WHERE round_id IN ($idsStr)
                               AND $dateCondition
-                              AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
+                              AND status IN ('assigned', 'grabbed', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
                             GROUP BY assigned_to, round_id, status";
             $countsRes = $conn->query($countsQuery);
             if ($countsRes) {
@@ -7360,12 +7360,13 @@ switch ($action) {
 
                     $sc = $counts[$rId][$cId] ?? [];
                     $assigned = $sc['assigned'] ?? 0;
+                    $grabbed = $sc['grabbed'] ?? 0;
                     $comp = $sc['compensation'] ?? 0;
                     $rule6 = $sc['rule_6_month'] ?? 0;
                     $pending = $sc['pending_work_hours'] ?? 0;
                     $err = $sc['error'] ?? 0;
 
-                    $assignedCount = $assigned + $comp + $rule6 + $pending + max(0, $err - $comp);
+                    $assignedCount = $assigned + $grabbed + $comp + $rule6 + $pending + max(0, $err - $comp);
                     $rawCounts[] = $assignedCount;
                     $normalizedCounts[] = $assignedCount * $ratio;
                     $totalLeads += $assignedCount;
@@ -7956,7 +7957,7 @@ switch ($action) {
                 l.connection_id,
                 l.source,
                 COUNT(DISTINCT l.id) as total_leads,
-                SUM(CASE WHEN dl.status = 'assigned' THEN 1 ELSE 0 END) as assigned_count,
+                SUM(CASE WHEN dl.status IN ('assigned', 'grabbed') THEN 1 ELSE 0 END) as assigned_count,
                 SUM(CASE WHEN dl.status = 'duplicate' THEN 1 ELSE 0 END) as duplicate_count,
                 SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder_count,
                 SUM(CASE WHEN dl.status = 'error' THEN 1 ELSE 0 END) as error_count
@@ -8607,7 +8608,7 @@ switch ($action) {
             $findOrigStmt = $conn->prepare("
                 SELECT dl.round_id, dl.assigned_to
                 FROM distribution_logs dl
-                WHERE dl.lead_id = ? AND dl.status IN ('assigned', 'compensation') AND dl.round_id > 0
+                WHERE dl.lead_id = ? AND dl.status IN ('assigned', 'grabbed', 'compensation') AND dl.round_id > 0
                 ORDER BY dl.received_at DESC
             ");
             if ($findOrigStmt) {
@@ -8759,7 +8760,7 @@ switch ($action) {
             $findOrigStmt = $conn->prepare("
                 SELECT dl.round_id, dl.assigned_to
                 FROM distribution_logs dl
-                WHERE dl.lead_id = ? AND dl.status IN ('assigned', 'compensation') AND dl.round_id > 0
+                WHERE dl.lead_id = ? AND dl.status IN ('assigned', 'grabbed', 'compensation') AND dl.round_id > 0
                 ORDER BY dl.received_at DESC
             ");
             if ($findOrigStmt) {
@@ -8974,7 +8975,7 @@ switch ($action) {
                 $updLead->close();
 
                 // 3. Mark distribution_logs as error - chỉ áp dụng cho lượt đang hoạt động gần nhất
-                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'compensation') ORDER BY id DESC LIMIT 1");
+                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'grabbed', 'compensation') ORDER BY id DESC LIMIT 1");
                 $updLog->bind_param("iii", $lead_id, $sale_id, $round_id);
                 $updLog->execute();
                 $updLog->close();
@@ -9884,7 +9885,7 @@ switch ($action) {
 
             if (!$no_compensation) {
                 // Mark distribution_logs as error - chỉ áp dụng cho lượt đang hoạt động gần nhất
-                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'compensation') ORDER BY id DESC LIMIT 1");
+                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'grabbed', 'compensation') ORDER BY id DESC LIMIT 1");
                 $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
                 $updLog->execute();
 
@@ -10162,7 +10163,7 @@ switch ($action) {
             $updLead->execute();
 
             // 3. Update distribution_logs status to 'error' - chỉ áp dụng cho lượt đang hoạt động gần nhất
-            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'compensation') ORDER BY id DESC LIMIT 1");
+            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'grabbed', 'compensation') ORDER BY id DESC LIMIT 1");
             $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
             $updLog->execute();
 
@@ -14778,6 +14779,7 @@ switch ($action) {
         $statsResRaw = $conn->query($statsSql);
         $statusCounts = [
             'assigned' => 0,
+            'grabbed' => 0,
             'compensation' => 0,
             'rule_6_month' => 0,
             'pending_work_hours' => 0,
@@ -14817,6 +14819,7 @@ switch ($action) {
         $prevStatsResRaw = $conn->query($prevStatsSql);
         $prevStatusCounts = [
             'assigned' => 0,
+            'grabbed' => 0,
             'compensation' => 0,
             'rule_6_month' => 0,
             'pending_work_hours' => 0,
@@ -14913,11 +14916,11 @@ switch ($action) {
         }
 
         // 1. Success (Distributed) Calculations
-        $raw_distributed = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'] + $statusCounts['compensation'] + $statusCounts['databank_claim'] + $statusCounts['released_to_kho'];
+        $raw_distributed = $statusCounts['assigned'] + $statusCounts['grabbed'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'] + $statusCounts['compensation'] + $statusCounts['databank_claim'] + $statusCounts['released_to_kho'];
         $distributed_today = max(0, $raw_distributed - $ticketErrors);
 
         // Keep details consistent: distributed_assigned + distributed_compensation = distributed_today
-        $assigned_count = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'];
+        $assigned_count = $statusCounts['assigned'] + $statusCounts['grabbed'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'];
         $compensation_count = $statusCounts['compensation'] + $statusCounts['databank_claim'];
         $assigned_adjusted = max(0, $assigned_count - $ticketErrors);
         $rem = max(0, $ticketErrors - $assigned_count);
@@ -14929,7 +14932,7 @@ switch ($action) {
             SELECT COUNT(*) as cnt 
             FROM distribution_logs dl
             JOIN leads l ON dl.lead_id = l.id
-            WHERE dl.status IN ('assigned', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
+            WHERE dl.status IN ('assigned', 'grabbed', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
               AND l.source IN ('ca_nhan', 'gioi_thieu')
               AND $dateConditionDl $managerFilterDl
         ");
@@ -14959,7 +14962,7 @@ switch ($action) {
         ];
 
         // Do the same for previous period to keep % change consistent
-        $prev_raw_distributed = $prevStatusCounts['assigned'] + $prevStatusCounts['rule_6_month'] + $prevStatusCounts['pending_work_hours'] + $prevStatusCounts['fallback'] + $prevStatusCounts['success'] + $prevStatusCounts['compensation'] + $prevStatusCounts['databank_claim'] + $prevStatusCounts['released_to_kho'];
+        $prev_raw_distributed = $prevStatusCounts['assigned'] + $prevStatusCounts['grabbed'] + $prevStatusCounts['rule_6_month'] + $prevStatusCounts['pending_work_hours'] + $prevStatusCounts['fallback'] + $prevStatusCounts['success'] + $prevStatusCounts['compensation'] + $prevStatusCounts['databank_claim'] + $prevStatusCounts['released_to_kho'];
         $prev_distributed_today = max(0, $prev_raw_distributed - $prevTicketErrors);
         $prev_duplicates = $prevStatusCounts['duplicate'] + $prevStatusCounts['reminder'];
         $prev_underStandard = $prevStatusCounts['rejected'] + $prevStatusCounts['pending_approval'] + $prevStatusCounts['error'] + $prevStatusCounts['no_consultant'];
@@ -15032,7 +15035,7 @@ switch ($action) {
                                      COUNT(*) as cnt 
                               FROM distribution_logs 
                               WHERE $dateCondition $managerFilterDlNoAlias
-                                AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
+                                AND status IN ('assigned', 'grabbed', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
                               GROUP BY assigned_to, adjusted_status";
             $countsRes = $conn->query($leadCountsSql);
             $consultantStatusCounts = [];
@@ -15044,6 +15047,7 @@ switch ($action) {
                     if (!isset($consultantStatusCounts[$cId])) {
                         $consultantStatusCounts[$cId] = [
                             'assigned' => 0,
+                            'grabbed' => 0,
                             'compensation' => 0,
                             'rule_6_month' => 0,
                             'pending_work_hours' => 0,
@@ -15059,7 +15063,7 @@ switch ($action) {
             foreach ($consultants as $cId => &$c) {
                 if (isset($consultantStatusCounts[$cId])) {
                     $sc = $consultantStatusCounts[$cId];
-                    $c['assigned_count'] = $sc['assigned'] + $sc['compensation'] + $sc['rule_6_month'] + $sc['pending_work_hours'] + max(0, $sc['error'] - $sc['compensation']);
+                    $c['assigned_count'] = ($sc['assigned'] ?? 0) + ($sc['grabbed'] ?? 0) + ($sc['compensation'] ?? 0) + ($sc['rule_6_month'] ?? 0) + ($sc['pending_work_hours'] ?? 0) + max(0, ($sc['error'] ?? 0) - ($sc['compensation'] ?? 0));
                 }
             }
             unset($c);
@@ -15309,7 +15313,7 @@ switch ($action) {
                                   GROUP BY lead_id
                               ) dl_max ON dl.id = dl_max.max_id
                               JOIN consultants c ON dl.assigned_to = c.id 
-                              WHERE $dateConditionDl $managerFilterDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error', 'reminder', 'databank_claim') 
+                              WHERE $dateConditionDl $managerFilterDl AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'error', 'reminder', 'databank_claim') 
                               GROUP BY c.id, c.name, c.email, c.avatar, c.status, c.vacation_mode, dl.status";
         $topConsultantsRes = $conn->query($topConsultantsSql);
         $consultantStats = [];
@@ -15325,6 +15329,7 @@ switch ($action) {
                         'status' => $row['c_status'],
                         'vacation_mode' => (int) $row['c_vacation_mode'],
                         'assigned' => 0,
+                        'grabbed' => 0,
                         'compensation' => 0,
                         'rule_6_month' => 0,
                         'pending_work_hours' => 0,
@@ -15395,7 +15400,7 @@ switch ($action) {
 
         $topConsultantsList = [];
         foreach ($consultantStats as $cId => $cStats) {
-            $data_count = $cStats['assigned'] + $cStats['compensation'] + $cStats['rule_6_month'] + $cStats['pending_work_hours'] + $cStats['reminder'] + $cStats['databank_claim'] + max(0, $cStats['error'] - $cStats['compensation']);
+            $data_count = $cStats['assigned'] + ($cStats['grabbed'] ?? 0) + $cStats['compensation'] + $cStats['rule_6_month'] + $cStats['pending_work_hours'] + $cStats['reminder'] + $cStats['databank_claim'] + max(0, $cStats['error'] - $cStats['compensation']);
             
             $uCount = $uncontactedMap[$cId] ?? 0;
             $rCount = $recalledMap[$cId] ?? 0;
@@ -15454,7 +15459,7 @@ switch ($action) {
         $roundRatioSql = "SELECT dr.id, dr.round_name, dl.status, COUNT(dl.id) as cnt 
                           FROM distribution_logs dl 
                           JOIN distribution_rounds dr ON dl.round_id = dr.id 
-                          WHERE $dateCondition $managerFilterDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
+                          WHERE $dateCondition $managerFilterDl AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
                           GROUP BY dr.id, dr.round_name, dl.status";
         $roundRatioRes = $conn->query($roundRatioSql);
         $roundStats = [];
@@ -15465,6 +15470,7 @@ switch ($action) {
                     $roundStats[$rId] = [
                         'round_name' => $row['round_name'],
                         'assigned' => 0,
+                        'grabbed' => 0,
                         'compensation' => 0,
                         'rule_6_month' => 0,
                         'pending_work_hours' => 0,
@@ -15480,7 +15486,7 @@ switch ($action) {
 
         $roundRatioList = [];
         foreach ($roundStats as $rId => $rStats) {
-            $count = $rStats['assigned'] + $rStats['compensation'] + $rStats['rule_6_month'] + $rStats['pending_work_hours'] + max(0, $rStats['error'] - $rStats['compensation']);
+            $count = ($rStats['assigned'] ?? 0) + ($rStats['grabbed'] ?? 0) + ($rStats['compensation'] ?? 0) + ($rStats['rule_6_month'] ?? 0) + ($rStats['pending_work_hours'] ?? 0) + max(0, ($rStats['error'] ?? 0) - ($rStats['compensation'] ?? 0));
             $roundRatioList[] = [
                 'round' => $rStats['round_name'],
                 'count' => $count

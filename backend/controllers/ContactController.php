@@ -134,7 +134,7 @@ class ContactController {
                         (EXISTS (
                             SELECT 1 FROM distribution_logs dl
                             INNER JOIN leads l ON dl.lead_id = l.id
-                            WHERE l.person_id = c.person_id AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
+                            WHERE l.person_id = c.person_id AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
                         ) AND c.source != 'databank' AND (c.collaborator_ids IS NULL OR c.collaborator_ids = ''))
                     )";
                 } else if ($dataType === 'personal') {

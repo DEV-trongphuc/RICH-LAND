@@ -1228,6 +1228,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           lead.round_name || '',
           lead.assigned_to_name || t('Chưa phân bổ'),
           lead.status === 'assigned' ? t('Đã chia') :
+            lead.status === 'grabbed' ? t('Giật Lead') :
             lead.status === 'active' ? t('Đã tranh') :
               lead.status === 'compensation' ? t('Data Bù') :
                 lead.status === 'pending' ? t('Chờ chia') :
@@ -1352,7 +1353,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
 
   const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string, takers?: any[]) => {
-    if (status === 'assigned' && reportStatus === 'pending') {
+    if ((status === 'assigned' || status === 'grabbed') && reportStatus === 'pending') {
       return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Ticket Review')}</span>;
     }
     if (status === 'error' && reportStatus === 'approved') {
@@ -1368,6 +1369,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     }
     switch (status) {
       case 'grabbed':
+        return <span className="badge success">{t('Giật Lead')}</span>;
       case 'active':
         return <span className="badge success">{t('Đã nhận')}</span>;
       case 'assigned': return <span className="badge success">{t('Đã chia')}</span>;
@@ -1878,6 +1880,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   { value: 'all', label: t('Tất cả trạng thái'), icon: <Filter size={16} /> },
                   { value: 'not_contacted', label: t('Chưa liên hệ') },
                   { value: 'assigned', label: t('Đã chia') },
+                  { value: 'grabbed', label: t('Giật Lead') },
                   { value: 'compensation', label: t('Data Bù') },
                   { value: 'pending_claim', label: t('Chờ nhận') },
                   { value: 'pending_work_hours', label: t('Chờ giờ làm') },
@@ -2372,7 +2375,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         {/* Status badge */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                           {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
-                          {lead.status !== 'assigned' && lead.report_status === 'pending' && (
+                          {lead.status !== 'assigned' && lead.status !== 'grabbed' && lead.report_status === 'pending' && (
                             <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>
                               {t('Chờ duyệt')}
                             </span>
@@ -2555,7 +2558,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
                             {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
-                            {lead.status !== 'assigned' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
+                            {lead.status !== 'assigned' && lead.status !== 'grabbed' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                           </div>
                         </td>
                         <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>

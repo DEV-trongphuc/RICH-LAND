@@ -472,7 +472,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     },
     {
       id: 'distributed',
-      statusValue: 'assigned,compensation,rule_6_month,pending_work_hours,fallback,success',
+      statusValue: 'assigned,grabbed,compensation,rule_6_month,pending_work_hours,fallback,success',
       label: t('ĐÃ CHIA VÒNG THÀNH CÔNG'),
       value: stats?.distributed_today?.toLocaleString() || '0',
       icon: UserPlus,
@@ -1672,6 +1672,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                               }
                             }
                             switch (status) {
+                              case 'grabbed':
+                                return { bg: 'rgba(245, 158, 11, 0.15)', color: '#d97706', text: t('Giật Lead') };
                               case 'assigned':
                                 return { bg: 'var(--color-success-light)', color: 'var(--color-success)', text: t(roundName || '') || t('Đã chia') };
                               case 'compensation':

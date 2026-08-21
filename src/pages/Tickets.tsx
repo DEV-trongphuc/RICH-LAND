@@ -2505,11 +2505,13 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t("Trạng thái")}</div>
                     <div>
-                      {selectedLead.status === 'assigned' && (
+                      {(selectedLead.status === 'assigned' || selectedLead.status === 'grabbed') && (
                         selectedLead.report_status === 'pending' ? (
                           <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(189, 29, 45, 0.12)', color: '#a31422', border: '1px solid rgba(189, 29, 45, 0.2)' }}>{t("Ticket Review")}</span>
                         ) : selectedLead.report_status === 'approved_no_comp' ? (
                           <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#dbeafe', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.2)' }}>{t("Lỗi không bù")}</span>
+                        ) : selectedLead.status === 'grabbed' ? (
+                          <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.2)' }}>{t("Giật Lead")}</span>
                         ) : (
                           <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>{t("Đã chia")}</span>
                         )
