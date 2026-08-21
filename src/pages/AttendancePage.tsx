@@ -90,8 +90,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>(() => {
     return 'calendar';
   });
-  const [currentMonth, setCurrentMonth] = useState<number>(7); // July 2026 default
-  const [currentYear, setCurrentYear] = useState<number>(2026);
+  const [currentMonth, setCurrentMonth] = useState<number>(() => new Date().getMonth() + 1);
+  const [currentYear, setCurrentYear] = useState<number>(() => new Date().getFullYear());
   const [calendarCheckIns, setCalendarCheckIns] = useState<any[]>([]);
   const [calendarShifts, setCalendarShifts] = useState<any[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
@@ -114,8 +114,13 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   // Filter states
   const [period, setPeriod] = useState<Period>('7d');
   const [customRange, setCustomRange] = useState<DateRange>(() => {
-    // Default range (last 7 days from July 1, 2026 for demo integrity)
-    return { from: '2026-06-25', to: '2026-07-01' };
+    const now = new Date();
+    const past7 = new Date();
+    past7.setDate(now.getDate() - 7);
+    return {
+      from: past7.toISOString().slice(0, 10),
+      to: now.toISOString().slice(0, 10)
+    };
   });
   const [filterUser, setFilterUser] = useState<string>(isSales ? String(user?.id) : 'all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -198,8 +203,9 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   };
 
   const handleGoToToday = () => {
-    setCurrentMonth(7);
-    setCurrentYear(2026);
+    const now = new Date();
+    setCurrentMonth(now.getMonth() + 1);
+    setCurrentYear(now.getFullYear());
     toast.success(t('Đã chuyển về tháng hiện tại'));
   };
 

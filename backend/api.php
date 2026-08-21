@@ -5577,7 +5577,6 @@ switch ($action) {
         $cooldowns = [];
         if ($cooldownSec > 0) {
             $statusList = implode(',', $statuses);
-            // Fetch last received_at for each user in this round
             $res = $conn->query("
                 SELECT assigned_to, MAX(received_at) as last_received 
                 FROM distribution_logs 
@@ -5621,6 +5620,26 @@ switch ($action) {
         $endHour = (int)explode(':', $nightShiftEnd)[0];
         $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : $todayStr;
 
+        // Holiday check
+        $holidayName = '';
+        $holidaySchedulesJson = '[]';
+        $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+        if ($resHol && $hRow = $resHol->fetch_assoc()) {
+            $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+        }
+        $holidays = json_decode($holidaySchedulesJson, true);
+        if (is_array($holidays)) {
+            foreach ($holidays as $h) {
+                if ($todayStr >= $h['start'] && $todayStr <= $h['end']) {
+                    $holidayName = $h['name'];
+                    break;
+                }
+            }
+        }
+        $reqCheckinWeekend = (int) get_system_setting($conn, 'require_checkin_weekend_lead');
+        $reqCheckinHoliday = (int) get_system_setting($conn, 'require_checkin_holiday_lead');
+        $allowPendingCheckin = (int) get_system_setting($conn, 'allow_lead_distribution_on_pending_checkin');
+
         $cRes = $conn->query("
             SELECT c.id, c.name, c.email, c.status, c.vacation_mode, c.leave_start, c.leave_end, 
                    c.work_start_time, c.work_end_time, c.work_schedule
@@ -5645,6 +5664,15 @@ switch ($action) {
                     continue;
                 }
 
+                if ($c['status'] !== 'active') {
+                    $consultantStatuses[$uId] = [
+                        'status' => 'inactive',
+                        'label' => 'Nghỉ việc',
+                        'on_cooldown' => false
+                    ];
+                    continue;
+                }
+
                 if ((int)($c['vacation_mode'] ?? 0) === 1) {
                     $consultantStatuses[$uId] = [
                         'status' => 'vacation',
@@ -5663,19 +5691,44 @@ switch ($action) {
                     continue;
                 }
 
-                if ($isNightShiftNow) {
-                    $stmtN = $conn->prepare("
-                        SELECT 1 FROM night_shift_registrations 
-                        WHERE (user_id = ? OR user_id = (SELECT id FROM users WHERE email = ? LIMIT 1)) 
-                          AND shift_date = ? AND approved = 1 
-                        LIMIT 1
-                    ");
-                    $stmtN->bind_param("iss", $uId, $c['email'], $shiftDate);
-                    $stmtN->execute();
-                    $hasNight = (bool)$stmtN->get_result()->fetch_assoc();
-                    $stmtN->close();
+                $isRestDay = isRestDayForUser($conn, $uId, $todayStr);
+                $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
 
-                    if (!$hasNight) {
+                if (!empty($holidayName)) {
+                    $stmtCheckReg = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                    $stmtCheckReg->bind_param("is", $uId, $todayStr);
+                    $stmtCheckReg->execute();
+                    $hasHolidayShift = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                    $stmtCheckReg->close();
+                    if (!$hasHolidayShift) {
+                        $consultantStatuses[$uId] = [
+                            'status' => 'no_holiday_shift',
+                            'label' => 'Chưa trực lễ',
+                            'on_cooldown' => false
+                        ];
+                        continue;
+                    }
+                } else if ($isRestDay) {
+                    $stmtCheckReg = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                    $stmtCheckReg->bind_param("is", $uId, $todayStr);
+                    $stmtCheckReg->execute();
+                    $hasWeekendShift = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                    $stmtCheckReg->close();
+                    if (!$hasWeekendShift) {
+                        $consultantStatuses[$uId] = [
+                            'status' => 'no_weekend_shift',
+                            'label' => 'Chưa trực cuối tuần',
+                            'on_cooldown' => false
+                        ];
+                        continue;
+                    }
+                }
+
+                $isApprovedNightShift = false;
+                if ($isNightShiftNow) {
+                    if (hasApprovedShiftForDate($conn, $uId, $shiftDate)) {
+                        $isApprovedNightShift = true;
+                    } else {
                         $consultantStatuses[$uId] = [
                             'status' => 'no_night_shift',
                             'label' => 'Chưa trực đêm',
@@ -5683,12 +5736,54 @@ switch ($action) {
                         ];
                         continue;
                     }
-                } else {
+                } else if (!$isWeekendOrHoliday) {
                     $inWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule'], $uId, $conn);
                     if (!$inWorkHours) {
                         $consultantStatuses[$uId] = [
                             'status' => 'out_of_hours',
                             'label' => 'Ngoài giờ làm',
+                            'on_cooldown' => false
+                        ];
+                        continue;
+                    }
+                }
+
+                // Check-in requirement gate (Gate 2)
+                $mustCheckinOnWeekend = ($isRestDay && $reqCheckinWeekend === 1);
+                $mustCheckinOnHoliday = (!empty($holidayName) && $reqCheckinHoliday === 1);
+                if ($mustCheckinOnWeekend || $mustCheckinOnHoliday) {
+                    $bypassCheckIn = $isApprovedNightShift;
+                } else {
+                    $bypassCheckIn = $isWeekendOrHoliday || $isApprovedNightShift;
+                }
+
+                if (!$bypassCheckIn) {
+                    $stmtCheckin = $conn->prepare("SELECT status FROM check_ins WHERE user_id = ? AND check_in_date = ? LIMIT 1");
+                    $stmtCheckin->bind_param("is", $uId, $todayStr);
+                    $stmtCheckin->execute();
+                    $cInRow = $stmtCheckin->get_result()->fetch_assoc();
+                    $stmtCheckin->close();
+
+                    if (!$cInRow) {
+                        $consultantStatuses[$uId] = [
+                            'status' => 'no_checkin',
+                            'label' => 'Chưa chấm công',
+                            'on_cooldown' => false
+                        ];
+                        continue;
+                    }
+                    if ($cInRow['status'] === 'pending_approval' && $allowPendingCheckin !== 1) {
+                        $consultantStatuses[$uId] = [
+                            'status' => 'pending_checkin',
+                            'label' => 'Chờ duyệt check-in',
+                            'on_cooldown' => false
+                        ];
+                        continue;
+                    }
+                    if ($cInRow['status'] === 'rejected') {
+                        $consultantStatuses[$uId] = [
+                            'status' => 'rejected_checkin',
+                            'label' => 'Check-in bị từ chối',
                             'on_cooldown' => false
                         ];
                         continue;
@@ -7236,6 +7331,15 @@ switch ($action) {
                 $fbRoundId = (int) $fbStmt->fetch_assoc()['setting_value'];
             }
         }
+        $todayStr = date('Y-m-d');
+        $checkedInIds = [];
+        $chkRes = $conn->query("SELECT DISTINCT user_id FROM check_ins WHERE check_in_date = '$todayStr' AND status = 'approved'");
+        if ($chkRes) {
+            while ($cr = $chkRes->fetch_assoc()) {
+                $checkedInIds[] = (int)$cr['user_id'];
+            }
+        }
+
         $data = [];
         $roundIds = [];
         while ($row = $res->fetch_assoc()) {
@@ -7247,19 +7351,31 @@ switch ($action) {
             $nextName = null;
             $nextId = null;
             if (!empty($cIds)) {
-                $nextName = $cNames[0]; // default
-                $nextId = $cIds[0];
-                if ($row['last_assigned_consultant_id']) {
-                    $idx = array_search($row['last_assigned_consultant_id'], $cIds);
-                    if ($idx !== false && isset($cNames[$idx + 1])) {
-                        $nextName = $cNames[$idx + 1];
-                        $nextId = $cIds[$idx + 1];
-                    } else {
-                        // Loop back to start
-                        $nextName = $cNames[0];
-                        $nextId = $cIds[0];
+                // Filter only consultants who are currently checked-in today
+                $readyIndices = [];
+                foreach ($cIds as $idx => $cid) {
+                    if (in_array((int)$cid, $checkedInIds, true)) {
+                        $readyIndices[] = $idx;
                     }
                 }
+
+                // If some consultants are checked in, pick the next checked-in consultant after last_assigned
+                $candidatePool = !empty($readyIndices) ? $readyIndices : array_keys($cIds);
+                
+                $lastAssignedIdx = $row['last_assigned_consultant_id'] ? array_search($row['last_assigned_consultant_id'], $cIds) : false;
+                
+                $chosenIdx = $candidatePool[0];
+                if ($lastAssignedIdx !== false) {
+                    foreach ($candidatePool as $cIdx) {
+                        if ($cIdx > $lastAssignedIdx) {
+                            $chosenIdx = $cIdx;
+                            break;
+                        }
+                    }
+                }
+                
+                $nextName = $cNames[$chosenIdx] ?? null;
+                $nextId = $cIds[$chosenIdx] ?? null;
             }
             $row['next_assigned_name'] = $nextName;
             $row['next_consultant_id'] = $nextId;

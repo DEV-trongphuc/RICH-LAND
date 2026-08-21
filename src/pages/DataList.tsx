@@ -49,6 +49,7 @@ type Lead = {
   ai_evaluation?: string;
   takers?: any[];
   is_public?: number | boolean;
+  is_accepted?: number | boolean;
   person_id?: number;
   assigned_to?: number;
 
@@ -1227,7 +1228,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           lead.email,
           lead.round_name || '',
           lead.assigned_to_name || t('Chưa phân bổ'),
-          lead.status === 'assigned' ? t('Đã chia') :
+          lead.status === 'assigned' ? (Number(lead.is_accepted) === 0 ? t('Chờ nhận') : t('Đã chia')) :
             lead.status === 'grabbed' ? t('Giật Lead') :
             lead.status === 'active' ? t('Đã tranh') :
               lead.status === 'compensation' ? t('Data Bù') :
@@ -1352,7 +1353,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     return `${t('Chờ đến')} ${nextTimeStr}`;
   };
 
-  const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string, takers?: any[]) => {
+  const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string, takers?: any[], isAccepted?: number | boolean | string) => {
     if ((status === 'assigned' || status === 'grabbed') && reportStatus === 'pending') {
       return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Ticket Review')}</span>;
     }
@@ -1372,8 +1373,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         return <span className="badge success">{t('Giật Lead')}</span>;
       case 'active':
         return <span className="badge success">{t('Đã nhận')}</span>;
-      case 'assigned': return <span className="badge success">{t('Đã chia')}</span>;
-      case 'compensation': return <span className="badge purple">{t('Data Bù')}</span>;
+      case 'assigned': 
+        if (isAccepted !== undefined && (isAccepted === 0 || isAccepted === false || isAccepted === '0' || Number(isAccepted) === 0)) {
+          return <span className="badge warning">{t('Chờ nhận')}</span>;
+        }
+        return <span className="badge success">{t('Đã chia')}</span>;
+      case 'compensation': 
+        if (isAccepted !== undefined && (isAccepted === 0 || isAccepted === false || isAccepted === '0' || Number(isAccepted) === 0)) {
+          return <span className="badge warning">{t('Chờ nhận')}</span>;
+        }
+        return <span className="badge purple">{t('Data Bù')}</span>;
       case 'pending_claim': return <span className="badge warning">{t('Chờ nhận')}</span>;
       case 'pending_work_hours': return <span className="badge warm">{t('Chờ giờ làm')}</span>;
       case 'error': return <span className="badge danger">{t('Ticket')}</span>;
@@ -2374,7 +2383,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
                         {/* Status badge */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                          {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
+                          {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers, lead.is_accepted)}
                           {lead.status !== 'assigned' && lead.status !== 'grabbed' && lead.report_status === 'pending' && (
                             <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>
                               {t('Chờ duyệt')}
@@ -2557,7 +2566,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                            {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
+                            {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers, lead.is_accepted)}
                             {lead.status !== 'assigned' && lead.status !== 'grabbed' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                           </div>
                         </td>
@@ -3229,7 +3238,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái')}</div>
                     <div>
-                      {getStatusBadge((selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim') ? 'databank' : selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at, selectedLead.takers)}
+                      {getStatusBadge((selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim') ? 'databank' : selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at, selectedLead.takers, selectedLead.is_accepted)}
                     </div>
                   </div>
                 </div>

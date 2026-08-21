@@ -530,8 +530,10 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
     function releasePendingWorkHoursLeads($conn) {
         logSync("Checking for pending work hours leads to release...");
         
-        // Select all logs pending work hours, including status and leave dates to check if they went on leave
-        $sql = "SELECT dl.id as log_id, dl.lead_id, dl.assigned_to, dl.round_id, dl.message, dl.status as log_status, COALESCE(dl.received_at, NOW()) AS received_at,
+        // Select all logs pending work hours or pending, including status and leave dates to check if they went on leave
+        $sql = "SELECT dl.id as log_id, dl.lead_id, dl.assigned_to, 
+                       COALESCE(dl.round_id, l.target_round_id, (SELECT round_id FROM webhook_connections WHERE id = l.connection_id LIMIT 1), (SELECT round_id FROM sheet_connections WHERE id = l.connection_id LIMIT 1), 0) AS round_id,
+                       dl.message, dl.status as log_status, COALESCE(dl.received_at, NOW()) AS received_at,
                        l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
                        c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time, c.work_schedule,
@@ -543,12 +545,12 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 JOIN leads l ON dl.lead_id = l.id
                 LEFT JOIN consultants c ON dl.assigned_to = c.id
                 LEFT JOIN users u ON c.email = u.email
-                LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+                LEFT JOIN distribution_rounds r ON COALESCE(dl.round_id, l.target_round_id, 0) = r.id
                 WHERE l.is_accepted = 0
                   AND dl.id = (SELECT MAX(id) FROM distribution_logs WHERE lead_id = l.id)
                   AND (
-                      dl.status = 'pending_work_hours' 
-                      OR (dl.status = 'pending' AND (l.next_attempt_date IS NULL OR l.next_attempt_date <= NOW()))
+                      dl.status IN ('pending_work_hours', 'pending')
+                      OR l.status IN ('pending_work_hours', 'pending')
                   )";
                  
         $res = $conn->query($sql);
@@ -917,8 +919,8 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     }
                     
                     // Update lead table
-                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ? WHERE id = ?");
-                    $upLead->bind_param("ii", $assignedConsultantId, $row['lead_id']);
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = ?, last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL WHERE id = ?");
+                    $upLead->bind_param("issi", $assignedConsultantId, $newStatus, $row['lead_id']);
                     $upLead->execute();
                     $upLead->close();
                     
@@ -1539,15 +1541,18 @@ if (!function_exists('recallInactiveLeads')) {
                         $newStatus = 'pending_work_hours';
                         $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Ngoài khung giờ làm việc / tất cả Sale đang bận. Hệ thống tạm giữ.";
                     }
-                } else if (!$newConsultantId && !empty($excludeIds)) {
-                    $nextAttemptDate = date('Y-m-d H:i:s', strtotime('+1 day'));
-                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending', next_attempt_date = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
-                    $upLead->bind_param("si", $nextAttemptDate, $leadId);
+                } else if (!$newConsultantId) {
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending', target_round_id = ?, next_attempt_date = NULL, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                    $upLead->bind_param("ii", $roundId, $leadId);
                     $upLead->execute();
                     $upLead->close();
                     
                     $newStatus = 'pending';
-                    $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Đã vượt quá giới hạn chia {$maxAttempts} lần cho Sale này. Chờ phân bổ lại vào ngày mai ({$nextAttemptDate}).";
+                    if (!empty($excludeIds)) {
+                        $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Sale này đã đạt giới hạn thử ({$maxAttempts} lần). Lead được giữ ở trạng thái Chờ xử lý cho các Sale khác hoặc ca làm việc tiếp theo.";
+                    } else {
+                        $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Không tìm thấy Sale hoạt động khác trong vòng, chuyển lead về trạng thái Chờ xử lý (Pending).";
+                    }
                 } else {
                     $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
                     $upLead->bind_param("ii", $newConsultantId, $leadId);

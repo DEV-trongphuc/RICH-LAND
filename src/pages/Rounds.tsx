@@ -2119,10 +2119,45 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
                                           const cStat = consultantStatuses[user.id];
                                           if (cStat) {
+                                            if (cStat.status === 'no_checkin') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#d97706', background: theme === 'dark' ? 'rgba(217, 119, 6, 0.15)' : '#fef3c7', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Chưa chấm công")}
+                                                </span>
+                                              );
+                                            }
+                                            if (cStat.status === 'pending_checkin') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#b45309', background: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Chờ duyệt check-in")}
+                                                </span>
+                                              );
+                                            }
+                                            if (cStat.status === 'rejected_checkin') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Check-in bị từ chối")}
+                                                </span>
+                                              );
+                                            }
                                             if (cStat.status === 'no_night_shift') {
                                               return (
                                                 <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', background: theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : '#ede9fe', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                                   {t("Chưa trực đêm")}
+                                                </span>
+                                              );
+                                            }
+                                            if (cStat.status === 'no_weekend_shift') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', background: theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : '#ede9fe', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Chưa trực cuối tuần")}
+                                                </span>
+                                              );
+                                            }
+                                            if (cStat.status === 'no_holiday_shift') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', background: theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : '#ede9fe', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Chưa trực lễ")}
                                                 </span>
                                               );
                                             }
@@ -2144,6 +2179,13 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                               return (
                                                 <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                                   {t("Tạm ngưng")}
+                                                </span>
+                                              );
+                                            }
+                                            if (cStat.status === 'inactive') {
+                                              return (
+                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                  {t("Nghỉ việc")}
                                                 </span>
                                               );
                                             }
