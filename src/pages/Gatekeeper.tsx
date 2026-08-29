@@ -5694,7 +5694,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
                             <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
-                              {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'not_screened' ? (selectedLead.latest_log_message || selectedLead.note || t('Quá hạn tranh nhận - Chờ Admin phân bổ lại')) : t('Không đáp ứng yêu cầu bộ lọc.'))}
+                              {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'not_screened' ? ((selectedLead as any).latest_log_message || selectedLead.note || t('Quá hạn tranh nhận - Chờ Admin phân bổ lại')) : t('Không đáp ứng yêu cầu bộ lọc.'))}
                             </div>
                           </div>
                           <div>

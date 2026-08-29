@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2 } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles } from 'lucide-react';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -146,13 +146,19 @@ const buildTasks = (c: any): any[] => {
 /* ─── Helpers ────────────────────────────────────────────────── */
 // Fallback statuses used when pipeline-stages API has no data or in DEV_MODE
 const DEFAULT_PIPELINE_STAGES = [
-  { id: 'lead', name: 'Lead mới', color: '#3b82f6', order_index: 0 },
-  { id: 'qualified', name: 'Đủ điều kiện', color: '#f59e0b', order_index: 1 },
-  { id: 'customer', name: 'Khách hàng', color: '#10b981', order_index: 2 },
-  { id: 'churned', name: 'Đã rời bỏ', color: '#ef4444', order_index: 3 },
+  { id: 'chua_xac_dinh', name: 'Chưa xác định', color: '#3b82f6', order_index: 0 },
+  { id: 'quan_tam', name: 'Quan tâm', color: '#6366f1', order_index: 1 },
+  { id: 'dong_y_gap', name: 'Đồng ý gặp', color: '#ec4899', order_index: 2 },
+  { id: 'da_gap', name: 'Đã gặp', color: '#f59e0b', order_index: 3 },
+  { id: 'booking', name: 'Booking', color: '#10b981', order_index: 4 },
+  { id: 'dat_coc', name: 'Đặt cọc', color: '#14b8a6', order_index: 5 },
+  { id: 'cham_soc_dai_han', name: 'Chăm sóc dài hạn', color: '#8b5cf6', order_index: 6 }
 ];
-// Keep for pipelineModal label lookups
-const CONTACT_STATUSES = DEFAULT_PIPELINE_STAGES.map(s => ({ id: s.id, label: s.name, color: s.color }));
+// Keep for pipelineModal and status label lookups
+const CONTACT_STATUSES = [
+  ...DEFAULT_PIPELINE_STAGES.map(s => ({ id: s.id, label: s.name, color: s.color })),
+  { id: 'dong_deal', label: 'Đóng deal', color: '#10b981' }
+];
 
 const AGO = (iso: string) => {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -1294,8 +1300,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
   const [activeTab, setActiveTab] = useState<string>(() => {
+    if (initialTab) return initialTab;
     const isMobile = window.innerWidth <= 1024;
-    return isMobile ? '' : 'info';
+    if (isMobile) return '';
+    return currentUser?.role === 'sale' ? 'timeline' : 'info';
   });
   const [tabRenderReady, setTabRenderReady] = useState(true);
   const [drawerOpenComplete, setDrawerOpenComplete] = useState(false);
@@ -1312,8 +1320,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (contact?.id) {
       setDrawerOpenComplete(false);
       setHasNavigated(false);
+      if (currentUser?.role === 'sale' && !initialTab) {
+        setActiveTab(isMobileOrTablet ? '' : 'timeline');
+      }
     }
-  }, [contact?.id]);
+  }, [contact?.id, currentUser?.role, initialTab, isMobileOrTablet]);
 
   useEffect(() => {
     if (activeTab) {
@@ -1324,7 +1335,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   useEffect(() => {
     const isSaleRole = currentUser?.role === 'sale';
     if (isSaleRole && (activeTab === 'tasks' || activeTab === 'scoring')) {
-      setActiveTab(isMobileOrTablet ? '' : 'info');
+      setActiveTab(isMobileOrTablet ? '' : 'timeline');
     }
   }, [activeTab, currentUser, isMobileOrTablet]);
   
@@ -1777,6 +1788,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [allowedCampaigns, setAllowedCampaigns] = useState<any[]>([]);
   const [allowedTeams, setAllowedTeams] = useState<any[]>([]);
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
+  const [showCheckinModal, setShowCheckinModal] = useState(false);
+  const [checkinFile, setCheckinFile] = useState<File | null>(null);
+  const [checkinPreview, setCheckinPreview] = useState<string | null>(null);
+  const [checkinNote, setCheckinNote] = useState('');
+  const [isSubmittingCheckin, setIsSubmittingCheckin] = useState(false);
+
+  const [showBookingUncModal, setShowBookingUncModal] = useState(false);
+  const [bookingUncFile, setBookingUncFile] = useState<File | null>(null);
+  const [bookingUncPreview, setBookingUncPreview] = useState<string | null>(null);
+  const [bookingNote, setBookingNote] = useState('');
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [allTags, setAllTags] = useState<any[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -1807,6 +1831,68 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return { group1: false, group2: false, group3: false, group4: false, group5: false };
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
+
+  const parsedAdFormData = useMemo(() => {
+    const sources = [
+      formData?.raw_form_data,
+      formData?.form_data,
+      formData?.meta_data,
+      contact?.raw_form_data,
+      contact?.form_data,
+      contact?.meta_data
+    ];
+    
+    let combined: Record<string, any> = {};
+    for (const src of sources) {
+      if (!src) continue;
+      if (typeof src === 'object' && !Array.isArray(src)) {
+        combined = { ...combined, ...src };
+      } else if (typeof src === 'string') {
+        try {
+          const p = JSON.parse(src);
+          if (p && typeof p === 'object' && !Array.isArray(p)) {
+            combined = { ...combined, ...p };
+          }
+        } catch {}
+      }
+    }
+
+    if (formData?.ad_name && !combined.ad_name) combined.ad_name = formData.ad_name;
+    if (formData?.form_name && !combined.form_name) combined.form_name = formData.form_name;
+    if (formData?.adset_name && !combined.adset_name) combined.adset_name = formData.adset_name;
+    if (formData?.campaign_name && !combined.campaign_name) combined.campaign_name = formData.campaign_name;
+
+    const ignoreKeys = ['id', 'tenant_id', 'contact_id', 'lead_id', 'created_at', 'updated_at', 'password', 'token', 'access_token', 'user_id', 'first_name', 'last_name', 'phone', 'email', 'mobile'];
+    const entries: { label: string; value: string; key: string }[] = [];
+
+    const keyLabelMap: Record<string, string> = {
+      ad_name: 'Mẫu quảng cáo (Ad Name)',
+      form_name: 'Form đăng ký (Form Name)',
+      adset_name: 'Nhóm quảng cáo (AdSet)',
+      campaign_name: 'Chiến dịch nguồn',
+      platform: 'Kênh quảng cáo',
+      nhu_cau: 'Nhu cầu quan tâm',
+      tai_chinh: 'Khả năng tài chính',
+      tinh_trang: 'Hiện trạng mua',
+      loai_hinh: 'Loại hình BĐS',
+      thanh_toan: 'Phương thức thanh toán',
+      kenh_lien_he: 'Kênh liên hệ ưu tiên',
+      thoi_gian_lien_he: 'Thời gian liên hệ tiện nhất',
+      khu_vuc: 'Khu vực quan tâm',
+      muc_dich: 'Mục đích mua (Ở/Đầu tư)',
+      ghi_chu: 'Ghi chú đăng ký'
+    };
+
+    Object.entries(combined).forEach(([k, v]) => {
+      if (ignoreKeys.includes(k.toLowerCase()) || v === null || v === undefined || v === '') return;
+      const formattedVal = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      if (!formattedVal.trim()) return;
+      const cleanLabel = keyLabelMap[k] || keyLabelMap[k.toLowerCase()] || k.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+      entries.push({ key: k, label: cleanLabel, value: formattedVal });
+    });
+
+    return entries;
+  }, [formData, contact]);
 
   const referrerOptions = useMemo(() => {
     const list = Array.isArray(contacts) ? contacts : [];
@@ -3541,6 +3627,138 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const ownerUser = users.find(u => u.full_name === formData.owner_name || u.name === formData.owner_name || u.username === formData.owner_name);
   const ownerAvatarUrl = ownerUser?.avatar_url || ownerUser?.avatar || undefined;
 
+  const isSelfCreated = useMemo(() => {
+    const src = (formData?.source || contact?.source || '').toLowerCase();
+    const isManual = src === 'manual' || src === 'self' || Boolean((formData as any)?.is_self_created || (contact as any)?.is_self_created);
+    const isMyLead = Number(formData?.owner_id || contact?.owner_id) === Number(currentUser?.id) || Number(formData?.created_by || contact?.created_by) === Number(currentUser?.id);
+    return isManual && (isMyLead || isOwnerOrAdmin);
+  }, [formData?.source, contact?.source, formData?.owner_id, contact?.owner_id, formData?.created_by, contact?.created_by, currentUser?.id, isOwnerOrAdmin]);
+
+  const executeStageTransition = async (targetId: string, targetLabel: string, proofUrl?: string, customNote?: string) => {
+    let calculatedStatus = 'lead';
+    if (targetId === 'dat_coc' || targetId === 'dong_deal') {
+      calculatedStatus = 'customer';
+    } else if (targetId === 'not_lead' || targetId === 'churned') {
+      calculatedStatus = 'churned';
+    } else if (targetId === 'chua_xac_dinh') {
+      calculatedStatus = 'lead';
+    } else {
+      calculatedStatus = 'qualified';
+    }
+
+    setFormData((prev: any) => ({
+      ...prev,
+      pipeline_status: targetId,
+      status: calculatedStatus
+    }));
+
+    try {
+      await api.put(`/contacts/${contact.id}`, {
+        pipeline_status: targetId,
+        status: calculatedStatus,
+        ttl1_completed: formData.ttl1_completed,
+        ttl1_data: formData.ttl1_data
+      });
+
+      const noteContent = customNote || `Chuyển trạng thái Pipeline → ${targetLabel}`;
+      await api.post('/activities', {
+        type: targetId === 'da_gap' ? 'meeting' : 'note',
+        subject: `Chuyển trạng thái Pipeline → ${targetLabel}`,
+        body: proofUrl ? `${noteContent}\nTài liệu/Link đính kèm: ${proofUrl}` : noteContent,
+        status: 'done',
+        related_type: 'contact',
+        related_id: contact.id,
+        contact_id: contact.id,
+        user_id: currentUser?.id,
+        due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        done_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      });
+
+      fetchData();
+      addToast(`Đã cập nhật trạng thái sang "${targetLabel}" thành công!`, 'success');
+      onUpdate?.({ ...formData, pipeline_status: targetId, status: calculatedStatus });
+      window.dispatchEvent(new CustomEvent('contact-updated'));
+    } catch (e: any) {
+      setFormData((prev: any) => ({
+        ...prev,
+        pipeline_status: contact.pipeline_status,
+        status: contact.status
+      }));
+      addToast(e?.response?.data?.message || `Không thể chuyển trạng thái sang "${targetLabel}". Vui lòng thử lại.`, 'error');
+    }
+  };
+
+  const handleCloseDeal = () => {
+    if (drawerActivities.length === 0) {
+      addToast('Chặn đóng deal: Khách hàng chưa từng có tương tác nào! Vui lòng tạo ghi chú cuộc gọi, email hoặc hoạt động trước.', 'error');
+      return;
+    }
+    showConfirm({
+      title: 'Xác nhận Đóng Deal thành công',
+      message: `Bạn có chắc chắn muốn xác nhận Đóng Deal (Giao dịch thành công) cho khách hàng "${fullName || 'này'}"?`,
+      confirmText: 'Xác nhận Đóng Deal',
+      cancelText: 'Hủy',
+      onConfirm: async () => {
+        await executeStageTransition('dong_deal', 'Đóng deal', undefined, 'Xác nhận Đóng Deal thành công 🎉');
+      }
+    });
+  };
+
+  const handleDeleteCustomer = () => {
+    showConfirm({
+      title: 'Xóa khách hàng cá nhân',
+      message: `Bạn có chắc chắn muốn xóa khách hàng "${fullName || 'này'}" không? Lead này do bạn tự tạo sẽ được đưa vào thùng rác.`,
+      confirmText: 'Xác nhận Xóa',
+      cancelText: 'Hủy',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await api.delete(`/contacts/${contact.id}`);
+          if (res.data?.success || res.data) {
+            addToast('Đã xóa khách hàng thành công!', 'success');
+            onUpdate?.(null);
+            window.dispatchEvent(new CustomEvent('contact-updated'));
+            onClose();
+          }
+        } catch (e: any) {
+          addToast(e?.response?.data?.message || 'Không thể xóa khách hàng', 'error');
+        }
+      }
+    });
+  };
+
+  const quickSummaryContent = useMemo(() => {
+    if (!contact) return '';
+    const totalActs = drawerActivities.length;
+    const lastAct = drawerActivities[0];
+    const lastActTime = lastAct?.time ? formatDateTime(lastAct.time) : 'Chưa có';
+    const owner = formData.owner_name || 'Chưa nhận';
+    const collabs = (formData.collaborator_ids || '').split(',').map((id: string) => users.find(u => String(u.id) === String(id.trim()))?.full_name).filter(Boolean).join(', ') || 'Không có';
+    const currentStage = pipelineStages.find(s => String(s.id) === String(formData.pipeline_status))?.name || 'Chưa xác định';
+    
+    const recentNotes = drawerActivities
+      .filter((a: any) => a.note && !a.note.startsWith('{"erp_task'))
+      .slice(0, 5)
+      .map((a: any) => `- [${a.user || 'Nhân viên'} lúc ${formatDateTime(a.time)}]: ${a.note.split('\n')[0].substring(0, 120)}`);
+
+    const lines = [
+      `👤 Khách hàng: ${fullName}`,
+      `📞 Số điện thoại: ${formData.phone || formData.mobile || '—'}`,
+      `🏢 Dự án: ${formData.project_name || formData.source_project_name || 'Chưa gán'}`,
+      `📊 Giai đoạn Pipeline: ${currentStage}`,
+      `👨‍💼 Phụ trách: ${owner} | Đồng hợp tác: ${collabs}`,
+      `📈 Tương tác: ${totalActs} hoạt động (Gần nhất: ${lastActTime})`,
+      `🎯 Đánh giá TTL1:`,
+      `  • Nơi ở/Việc làm: ${ttl1Data.group1 ? 'Đã nắm' : 'Chưa rõ'}`,
+      `  • Ngân sách/Tài chính: ${ttl1Data.group2 ? 'Đã xác định' : 'Chưa rõ'}`,
+      `  • Nhu cầu cấp thiết: ${ttl1Data.group3 ? 'Có' : 'Chưa rõ'}`,
+      `  • Dự án phù hợp: ${ttl1Data.group4 ? 'Phù hợp' : 'Chưa rõ'}`,
+      `📝 Ghi chú gần nhất:`,
+      ...(recentNotes.length > 0 ? recentNotes : ['  • Chưa có ghi chú chi tiết'])
+    ];
+    return lines.join('\n');
+  }, [contact, drawerActivities, formData, fullName, users, pipelineStages, ttl1Data]);
+
   const handleAddCustomField = () => {
     const key = customFieldKey.trim();
     const val = customFieldValue.trim();
@@ -4713,7 +4931,37 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     }
     
-    setPipelineModal({ isOpen: true, targetId, targetLabel: targetName, note: '' });
+    // Check specialized stage transitions
+    if (targetId === 'da_gap') {
+      setShowCheckinModal(true);
+      return;
+    }
+
+    if (targetId === 'booking') {
+      setShowBookingUncModal(true);
+      return;
+    }
+
+    if (targetId === 'dat_coc' || targetId === 'da_coc') {
+      setDepositProjectId('');
+      setDepositUnitCode('');
+      const defaultPrice = String(formData.expected_revenue || contact?.expected_revenue || '');
+      setDepositPrice(defaultPrice);
+      setDepositExpectedCommission('');
+      setCommissionType('amount');
+      setCommissionPercent('');
+      setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
+      setShowDealModal(true);
+      return;
+    }
+
+    if (targetId === 'dong_deal') {
+      handleCloseDeal();
+      return;
+    }
+
+    // Direct transition for routine stages (no popup required)
+    executeStageTransition(targetId, targetName);
   };
 
   const pipelineStepperBar = (
@@ -4727,10 +4975,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: isMobileOrTablet ? '0.625rem 1rem' : '0.625rem 3rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
         <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
         {(() => {
-          const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
+          const linearStages = pipelineStages.filter(s => String(s.id) !== 'dong_deal');
+          const currentIdx = linearStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
           const safeIndex = currentIdx === -1 ? 0 : currentIdx;
 
-          return pipelineStages.map((st, i) => {
+          return linearStages.map((st, i) => {
             const isActive = i <= safeIndex;
             const isCurrent = i === safeIndex;
             const isBackward = i < safeIndex;
@@ -5557,6 +5806,50 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <LeadScoreRing score={score} size={44} showLabel={true} />
                       </div>
 
+                      {/* Đóng deal Action */}
+                      {formData.pipeline_status === 'dong_deal' ? (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '0 14px',
+                          height: '40px',
+                          borderRadius: '10px',
+                          background: 'rgba(16, 185, 129, 0.12)',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          color: '#059669',
+                          fontSize: '0.85rem',
+                          fontWeight: 800
+                        }}>
+                          <CheckCircle2 size={16} />
+                          <span>Đã Đóng Deal</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleCloseDeal()}
+                          className="btn"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '0 14px',
+                            height: '40px',
+                            borderRadius: '10px',
+                            background: '#10b981',
+                            borderColor: '#10b981',
+                            color: 'white',
+                            fontSize: '0.85rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
+                          }}
+                          title="Xác nhận đóng deal (giao dịch thành công)"
+                        >
+                          <CheckCircle2 size={15} />
+                          <span>Đóng Deal</span>
+                        </button>
+                      )}
+
                       <button
                         disabled={isSubmitting}
                         onClick={handleSave}
@@ -5856,7 +6149,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               const tabGroups = [
                                 {
                                   title: 'Thông tin & Nhật ký',
-                                  tabs: ['info', 'tags', 'ttl1', 'tasks', 'timeline', 'scoring']
+                                  tabs: ['timeline', 'info', 'tags', 'ttl1', 'tasks', 'scoring']
                                 },
                                 {
                                   title: 'Giao dịch & Tài liệu',
@@ -5947,7 +6240,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               const tabGroups = [
                                 {
                                   title: 'Thông tin & Nhật ký',
-                                  tabs: ['info', 'tags', 'ttl1', 'tasks', 'timeline', 'scoring']
+                                  tabs: ['timeline', 'info', 'tags', 'ttl1', 'tasks', 'scoring']
                                 },
                                 {
                                   title: 'Giao dịch & Tài liệu',
@@ -6120,39 +6413,69 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                      )}
 
                                     {group.title === 'Nghiệp vụ & Hỗ trợ' && isOwnerOrAdmin && (
-                                      <button
-                                        className={styles.sidebarTabBtn}
-                                        onClick={isReleaseBlocked ? undefined : handleReturnToDatabank}
-                                        disabled={isReleaseBlocked}
-                                        style={{
-                                          padding: '11px 0.875rem',
-                                          fontSize: '0.85rem',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '8px',
-                                          width: '100%',
-                                          border: 'none',
-                                          background: 'transparent',
-                                          borderRadius: '6px',
-                                          textAlign: 'left',
-                                          cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
-                                          color: isReleaseBlocked ? 'var(--color-text-muted)' : 'var(--color-danger)',
-                                          fontWeight: 600,
-                                          opacity: isReleaseBlocked ? 0.5 : 1,
-                                          transition: 'all 0.15s ease',
-                                          marginTop: '0.15rem'
-                                        }}
-                                        onMouseEnter={e => {
-                                          if (!isReleaseBlocked) e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)';
-                                        }}
-                                        onMouseLeave={e => {
-                                          if (!isReleaseBlocked) e.currentTarget.style.background = 'transparent';
-                                        }}
-                                        title={isReleaseBlocked ? t('Không thể trả về Databank do trạng thái khách hàng đặc biệt') : undefined}
-                                      >
-                                        <RotateCcw size={16} />
-                                        <span>Trả về Databank</span>
-                                      </button>
+                                      isSelfCreated ? (
+                                        <button
+                                          className={styles.sidebarTabBtn}
+                                          onClick={handleDeleteCustomer}
+                                          style={{
+                                            padding: '11px 0.875rem',
+                                            fontSize: '0.85rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            width: '100%',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            borderRadius: '6px',
+                                            textAlign: 'left',
+                                            cursor: 'pointer',
+                                            color: 'var(--color-danger)',
+                                            fontWeight: 600,
+                                            transition: 'all 0.15s ease',
+                                            marginTop: '0.15rem'
+                                          }}
+                                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)'}
+                                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                          title="Lead do bạn tự tạo, có thể xóa bất cứ lúc nào"
+                                        >
+                                          <Trash2 size={16} />
+                                          <span>Xóa khách hàng</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className={styles.sidebarTabBtn}
+                                          onClick={isReleaseBlocked ? undefined : handleReturnToDatabank}
+                                          disabled={isReleaseBlocked}
+                                          style={{
+                                            padding: '11px 0.875rem',
+                                            fontSize: '0.85rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            width: '100%',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            borderRadius: '6px',
+                                            textAlign: 'left',
+                                            cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
+                                            color: isReleaseBlocked ? 'var(--color-text-muted)' : 'var(--color-danger)',
+                                            fontWeight: 600,
+                                            opacity: isReleaseBlocked ? 0.5 : 1,
+                                            transition: 'all 0.15s ease',
+                                            marginTop: '0.15rem'
+                                          }}
+                                          onMouseEnter={e => {
+                                            if (!isReleaseBlocked) e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)';
+                                          }}
+                                          onMouseLeave={e => {
+                                            if (!isReleaseBlocked) e.currentTarget.style.background = 'transparent';
+                                          }}
+                                          title={isReleaseBlocked ? t('Không thể trả về Databank do trạng thái khách hàng đặc biệt') : undefined}
+                                        >
+                                          <RotateCcw size={16} />
+                                          <span>Trả về Databank</span>
+                                        </button>
+                                      )
                                     )}
                                   </div>
                                 );
@@ -6241,133 +6564,117 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <>
                           {/* INFO TAB */}
                           {activeTab === 'info' && (
-                    <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                       {/* Quick Stats Dashboard */}
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '0.75rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'repeat(2, 1fr)' : (currentUser?.role === 'sale' ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)'), gap: '0.75rem' }}>
+                        {/* Hide expected revenue card for Sale role */}
+                        {currentUser?.role !== 'sale' && (
+                          <div className="card-panel stat-card hover-lift" style={{ 
+                            padding: isMobileOrTablet ? '0.75rem 0.875rem' : '0.875rem 1rem', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            borderRadius: '12px', 
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-border-light)',
+                            position: 'relative',
+                            overflow: 'hidden'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DỰ KIẾN DOANH THU</span>
+                              <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <TrendingUp size={15} />
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>{FMT(formData.expected_revenue || 0)}</span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}><span style={{ color: '#3b82f6', fontWeight: 700 }}>{formData.win_probability || 0}%</span> xác suất</span>
+                          </div>
+                        )}
+
                         <div className="card-panel stat-card hover-lift" style={{ 
-                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '1rem 1.125rem', 
+                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '0.875rem 1rem', 
                           display: 'flex', 
                           flexDirection: 'column', 
-                          borderRadius: '14px', 
+                          borderRadius: '12px', 
                           background: 'var(--color-surface)',
                           border: '1px solid var(--color-border-light)',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                           position: 'relative',
-                          overflow: 'hidden',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                          overflow: 'hidden'
                         }}>
-                          <div className="decor-svg" style={{ color: '#3b82f6' }}>
-                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                              <path d="M20 70 L 45 45 L 60 60 L 85 30 M 85 30 H 65 M 85 30 V 50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" />
-                            </svg>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>DỰ KIẾN DOANH THU</span>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <TrendingUp size={16} />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DOANH THU THỰC TẾ</span>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <CheckCircle2 size={15} />
                             </div>
                           </div>
-                          <span style={{ fontSize: isMobileOrTablet ? '0.8rem' : '0.95rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.expected_revenue || 0)}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: '#3b82f6', fontWeight: 700 }}>{formData.win_probability || 0}%</span> xác suất</span>
+                          <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#10b981' }}>{FMT(formData.actual_revenue || 0)}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}><span style={{ color: '#10b981', fontWeight: 700 }}>{formData.paid_invoice_count || 0}</span> hóa đơn</span>
                         </div>
 
                         <div className="card-panel stat-card hover-lift" style={{ 
-                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '1rem 1.125rem', 
+                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '0.875rem 1rem', 
                           display: 'flex', 
                           flexDirection: 'column', 
-                          borderRadius: '14px', 
+                          borderRadius: '12px', 
                           background: 'var(--color-surface)',
                           border: '1px solid var(--color-border-light)',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                           position: 'relative',
-                          overflow: 'hidden',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                          overflow: 'hidden'
                         }}>
-                          <div className="decor-svg" style={{ color: '#10b981' }}>
-                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                              <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-                              <path d="M30 50 L 45 65 L 75 35" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>DOANH THU THỰC TẾ</span>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <CheckCircle2 size={16} />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CHI TIÊU</span>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Wallet size={15} />
                             </div>
                           </div>
-                          <span style={{ fontSize: isMobileOrTablet ? '0.8rem' : '0.95rem', fontWeight: 800, color: '#10b981', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.actual_revenue || 0)}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: '#10b981', fontWeight: 700 }}>{formData.paid_invoice_count || 0}</span> hóa đơn</span>
+                          <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>{FMT(formData.total_spent || 0)}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}><span style={{ color: '#f59e0b', fontWeight: 700 }}>{formData.expense_count || 0}</span> khoản chi</span>
                         </div>
 
                         <div className="card-panel stat-card hover-lift" style={{ 
-                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '1rem 1.125rem', 
+                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '0.875rem 1rem', 
                           display: 'flex', 
                           flexDirection: 'column', 
-                          borderRadius: '14px', 
+                          borderRadius: '12px', 
                           background: 'var(--color-surface)',
                           border: '1px solid var(--color-border-light)',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                           position: 'relative',
-                          overflow: 'hidden',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                          overflow: 'hidden'
                         }}>
-                          <div className="decor-svg" style={{ color: '#f59e0b' }}>
-                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                              <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-                              <path d="M50 30 V 50 H 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                            </svg>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>CHI TIÊU</span>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <Wallet size={16} />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>LẦN LIÊN HỆ CUỐI</span>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Clock size={15} />
                             </div>
                           </div>
-                          <span style={{ fontSize: isMobileOrTablet ? '0.8rem' : '0.95rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.total_spent || 0)}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: '#f59e0b', fontWeight: 700 }}>{formData.expense_count || 0}</span> khoản chi</span>
-                        </div>
-
-                        <div className="card-panel stat-card hover-lift" style={{ 
-                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '1rem 1.125rem', 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          borderRadius: '14px', 
-                          background: 'var(--color-surface)',
-                          border: '1px solid var(--color-border-light)',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}>
-                          <div className="decor-svg" style={{ color: 'var(--color-text-muted)' }}>
-                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                              <rect x="25" y="25" width="50" height="50" rx="6" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-                              <path d="M25 40 H 75 M 40 20 V 30 M 60 20 V 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.3" />
-                            </svg>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>LẦN LIÊN HỆ CUỐI</span>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <Clock size={16} />
-                            </div>
-                          </div>
-                          <span style={{ fontSize: isMobileOrTablet ? '0.8rem' : '0.95rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {formData.last_contact ? formatDateTime(formData.last_contact) : 'Chưa có'}
                           </span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
                             {formData.last_contact ? AGO(formData.last_contact) : 'Cần liên hệ ngay'}
                           </span>
                         </div>
                       </div>
 
-
-                      <div className="card-panel">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="panel-title" style={{ margin: 0 }}>Thông tin liên hệ & Công việc</h4>
+                      {/* PHẦN 1: THÔNG TIN BAN ĐẦU & FORM QUẢNG CÁO */}
+                      <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)', marginBottom: '1.25rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <User size={16} />
+                            </div>
+                            <div>
+                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>1. Thông tin ban đầu (Inbound Lead Data)</h4>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Dữ liệu gốc từ nguồn đăng ký / chiến dịch Marketing</span>
+                            </div>
+                          </div>
+                          <span className="badge info" style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
+                            Nguồn: {formData.source || 'Quảng cáo'}
+                          </span>
                         </div>
-                        <div className="grid grid-2">
+
+                        <div className="grid grid-3" style={{ gap: '0.875rem' }}>
                           <div className="form-group">
-                            <label className="form-label">Họ tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                            <label className="form-label">Họ &amp; Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <input className="form-input" placeholder="Họ" value={formData.first_name || ''} onChange={e => {
                                 const val = e.target.value;
@@ -6379,19 +6686,45 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               }} />
                             </div>
                           </div>
+
                           <div className="form-group">
-                            <label className="form-label">Email</label>
-                            <input className="form-input" type="email" placeholder="ví dụ: email@congty.com" value={formData.email || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, email: val }));
-                            }} />
+                            <label className="form-label">Phân loại Lead (Lead Score)</label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <div style={{ flex: 1 }}>
+                                <CustomSelect
+                                  options={[
+                                    { value: 'hot', label: '🔥 R1 - Nóng (Rất tiềm năng)' },
+                                    { value: 'warm', label: '⚡ R2 - Ấm (Quan tâm)' },
+                                    { value: 'cold', label: '❄️ R3 - Lạnh (Chưa rõ nhu cầu)' }
+                                  ]}
+                                  value={formData.temperature || 'cold'}
+                                  onChange={(val) => setFormData((prev: any) => ({ ...prev, temperature: val }))}
+                                />
+                              </div>
+                              <div style={{ padding: '6px 12px', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                                {score} pts
+                              </div>
+                            </div>
                           </div>
+
                           <div className="form-group">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                              <label className="form-label" style={{ margin: 0 }}>Số điện thoại chính</label>
+                            <label className="form-label">Dự án &amp; Chiến dịch nguồn</label>
+                            <div style={{ padding: '8px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-text)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
+                                {formData.source_project_name || contact?.source_project_name || formData.project_name || 'Quảng cáo chung'}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                {formData.campaign_name || contact?.campaign_name || 'Chiến dịch Marketing'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="form-group">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <label className="form-label" style={{ margin: 0 }}>Số điện thoại chính <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                               <span 
                                 onClick={() => {
-                                  if (isViewer || !formData.phone?.trim()) return;
+                                  if (!formData.phone?.trim()) return;
                                   if (zaloSource === 'primary') {
                                     setZaloSource('none');
                                     setFormData((prev: any) => ({ ...prev, zalo_link: '' }));
@@ -6402,58 +6735,63 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   }
                                 }}
                                 style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  cursor: isViewer || !formData.phone?.trim() ? 'not-allowed' : 'pointer',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 600,
-                                  color: zaloSource === 'primary' && formData.phone?.trim() ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                  userSelect: 'none'
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  cursor: formData.phone?.trim() ? 'pointer' : 'not-allowed',
+                                  color: zaloSource === 'primary' ? '#0068FF' : 'var(--color-text-muted)',
+                                  background: zaloSource === 'primary' ? 'rgba(0, 104, 255, 0.1)' : 'var(--color-bg)',
+                                  border: `1px solid ${zaloSource === 'primary' ? '#0068FF' : 'var(--color-border)'}`,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px'
                                 }}
                               >
-                                <div style={{
-                                  width: '32px',
-                                  height: '18px',
-                                  borderRadius: '9px',
-                                  background: zaloSource === 'primary' && formData.phone?.trim() ? 'var(--color-primary)' : 'var(--color-border)',
-                                  position: 'relative',
-                                  transition: 'background-color 0.2s',
-                                  opacity: isViewer || !formData.phone?.trim() ? 0.5 : 1
-                                }}>
-                                  <div style={{
-                                    width: '14px',
-                                    height: '14px',
-                                    borderRadius: '50%',
-                                    background: 'var(--color-surface)',
-                                    position: 'absolute',
-                                    top: '2px',
-                                    left: zaloSource === 'primary' && formData.phone?.trim() ? '16px' : '2px',
-                                    transition: 'left 0.2s',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
-                                  }} />
-                                </div>
-                                <span>Liên kết Zalo</span>
+                                {zaloSource === 'primary' ? '✓ Dùng làm Zalo' : '+ Dùng làm Zalo'}
                               </span>
                             </div>
-                            <input className="form-input" type="tel" placeholder="09xx xxx xxx" value={formData.phone || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => {
-                                const next = { ...prev, phone: val };
-                                if (zaloSource === 'primary') {
-                                  const cleanPhone = val.replace(/[^0-9]/g, '');
-                                  next.zalo_link = cleanPhone ? `https://zalo.me/${cleanPhone}` : '';
-                                }
-                                return next;
-                              });
-                            }} />
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                              <input 
+                                className="form-input" 
+                                placeholder="09..." 
+                                value={formData.phone || ''} 
+                                onChange={e => setFormData((prev: any) => ({ ...prev, phone: e.target.value }))}
+                                style={{ paddingRight: '60px' }}
+                              />
+                              <div style={{ position: 'absolute', right: '6px', display: 'flex', gap: '4px' }}>
+                                <button 
+                                  type="button" 
+                                  className="btn-icon sm" 
+                                  style={{ height: '26px', width: '26px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)' }} 
+                                  title="Sao chép"
+                                  onClick={() => {
+                                    if (formData.phone) {
+                                      navigator.clipboard.writeText(formData.phone);
+                                      addToast('Đã sao chép SĐT!', 'success');
+                                    }
+                                  }}
+                                >
+                                  <Copy size={13} />
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="btn-icon sm" 
+                                  style={{ height: '26px', width: '26px', border: 'none', background: 'transparent', color: 'var(--color-success)' }} 
+                                  title="Gọi điện"
+                                  onClick={() => {
+                                    if (formData.phone) showCall(formData.phone);
+                                  }}
+                                >
+                                  <Phone size={13} />
+                                </button>
+                              </div>
+                            </div>
                           </div>
+
                           <div className="form-group">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                               <label className="form-label" style={{ margin: 0 }}>Số điện thoại phụ</label>
                               <span 
                                 onClick={() => {
-                                  if (isViewer || !formData.mobile?.trim()) return;
+                                  if (!formData.mobile?.trim()) return;
                                   if (zaloSource === 'secondary') {
                                     setZaloSource('none');
                                     setFormData((prev: any) => ({ ...prev, zalo_link: '' }));
@@ -6464,134 +6802,178 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   }
                                 }}
                                 style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  cursor: isViewer || !formData.mobile?.trim() ? 'not-allowed' : 'pointer',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 600,
-                                  color: zaloSource === 'secondary' && formData.mobile?.trim() ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                  userSelect: 'none'
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  cursor: formData.mobile?.trim() ? 'pointer' : 'not-allowed',
+                                  color: zaloSource === 'secondary' ? '#0068FF' : 'var(--color-text-muted)',
+                                  background: zaloSource === 'secondary' ? 'rgba(0, 104, 255, 0.1)' : 'var(--color-bg)',
+                                  border: `1px solid ${zaloSource === 'secondary' ? '#0068FF' : 'var(--color-border)'}`,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px'
                                 }}
                               >
-                                <div style={{
-                                  width: '32px',
-                                  height: '18px',
-                                  borderRadius: '9px',
-                                  background: zaloSource === 'secondary' && formData.mobile?.trim() ? 'var(--color-primary)' : 'var(--color-border)',
-                                  position: 'relative',
-                                  transition: 'background-color 0.2s',
-                                  opacity: isViewer || !formData.mobile?.trim() ? 0.5 : 1
-                                }}>
-                                  <div style={{
-                                    width: '14px',
-                                    height: '14px',
-                                    borderRadius: '50%',
-                                    background: 'var(--color-surface)',
-                                    position: 'absolute',
-                                    top: '2px',
-                                    left: zaloSource === 'secondary' && formData.mobile?.trim() ? '16px' : '2px',
-                                    transition: 'left 0.2s',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
-                                  }} />
-                                </div>
-                                <span>Liên kết Zalo</span>
+                                {zaloSource === 'secondary' ? '✓ Dùng làm Zalo' : '+ Dùng làm Zalo'}
                               </span>
                             </div>
-                            <input className="form-input" type="tel" placeholder="08xx xxx xxx" value={formData.mobile || ''} onChange={e => {
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                              <input 
+                                className="form-input" 
+                                placeholder="09..." 
+                                value={formData.mobile || ''} 
+                                onChange={e => setFormData((prev: any) => ({ ...prev, mobile: e.target.value }))}
+                                style={{ paddingRight: '60px' }}
+                              />
+                              <div style={{ position: 'absolute', right: '6px', display: 'flex', gap: '4px' }}>
+                                <button 
+                                  type="button" 
+                                  className="btn-icon sm" 
+                                  style={{ height: '26px', width: '26px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)' }} 
+                                  title="Sao chép"
+                                  onClick={() => {
+                                    if (formData.mobile) {
+                                      navigator.clipboard.writeText(formData.mobile);
+                                      addToast('Đã sao chép SĐT!', 'success');
+                                    }
+                                  }}
+                                >
+                                  <Copy size={13} />
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="btn-icon sm" 
+                                  style={{ height: '26px', width: '26px', border: 'none', background: 'transparent', color: 'var(--color-success)' }} 
+                                  title="Gọi điện"
+                                  onClick={() => {
+                                    if (formData.mobile) showCall(formData.mobile);
+                                  }}
+                                >
+                                  <Phone size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label">Email</label>
+                            <input className="form-input" placeholder="email@domain.com" value={formData.email || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData((prev: any) => {
-                                const next = { ...prev, mobile: val };
-                                if (zaloSource === 'secondary') {
-                                  const cleanPhone = val.replace(/[^0-9]/g, '');
-                                  next.zalo_link = cleanPhone ? `https://zalo.me/${cleanPhone}` : '';
-                                }
-                                return next;
-                              });
+                              setFormData((prev: any) => ({ ...prev, email: val }));
                             }} />
                           </div>
-                          <div className="form-group">
-                            <label className="form-label">Ngày sinh</label>
-                            <input className="form-input" type="date" value={formData.birthday || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, birthday: val }));
-                            }} />
+                        </div>
+
+                        {/* Dynamic Inbound Ads Form Fields */}
+                        {parsedAdFormData && parsedAdFormData.length > 0 && (
+                          <div style={{ marginTop: '0.875rem', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <FileText size={14} style={{ color: 'var(--color-primary)' }} />
+                              <span>Dữ liệu đăng ký trong Form quảng cáo ({parsedAdFormData.length} thông tin)</span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
+                              {parsedAdFormData.map((item, idx) => (
+                                <div key={idx} style={{ background: 'var(--color-surface)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{item.label}</span>
+                                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '2px', wordBreak: 'break-word' }}>{item.value}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="form-group">
-                            <label className="form-label">Chức danh</label>
-                            <input className="form-input" placeholder="ví dụ: Giám đốc" value={formData.job_title || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, job_title: val }));
-                            }} />
+                        )}
+                      </div>
+
+                      {/* PHẦN 2: THÔNG TIN SALE KHAI THÁC */}
+                      <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)', marginBottom: '1.25rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Target size={16} />
+                            </div>
+                            <div>
+                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>2. Thông tin Sale Khai thác (TTL1 &amp; Điều hướng chăm sóc)</h4>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Cụm tiêu chí xác nhận nhu cầu &amp; Dự án/Chiến dịch điều hướng thực tế</span>
+                            </div>
                           </div>
-                          <div className="form-group">
-                            <AddressSelect
-                              label="Địa chỉ"
-                              value={formData.address || ''}
-                              onChange={addr => setFormData((prev: any) => ({ ...prev, address: addr }))}
-                              placeholder="Chọn địa chỉ liên hệ..."
-                            />
+                          <span className={`badge ${formData.ttl1_completed ? 'success' : 'warning'}`} style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px' }}>
+                            {formData.ttl1_completed ? '✓ Đã hoàn tất TTL1' : 'Đang khai thác TTL1'}
+                          </span>
+                        </div>
+
+                        {/* Cụm tương tác lần 1 (TTL1) - 4 nhóm check */}
+                        <div style={{ marginBottom: '1rem', background: 'var(--color-bg)', padding: '0.875rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                            Bộ 4 Tiêu Chí Xác Minh Nhu Cầu (TTL1):
                           </div>
-                          <div className="form-group">
-                            <label className="form-label">Giới tính</label>
-                            <CustomSelect
-                              options={[
-                                { value: '', label: '— Chưa chọn —' },
-                                { value: 'male', label: 'Nam' },
-                                { value: 'female', label: 'Nữ' },
-                                { value: 'other', label: 'Khác' }
-                              ]}
-                              value={formData.gender || ''}
-                              onChange={val => setFormData((prev: any) => ({ ...prev, gender: val as string }))}
-                            />
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group1 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group1 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <CustomCheckbox 
+                                checked={ttl1Data.group1} 
+                                onChange={(val) => {
+                                  const next = { ...ttl1Data, group1: val };
+                                  setTtl1Data(next);
+                                  handleSaveTTL1(next);
+                                }} 
+                              />
+                              <div>
+                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: ttl1Data.group1 ? '#059669' : 'var(--color-text)' }}>📍 Nơi ở / Việc làm / Gia đình</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Đã nắm thông tin cư trú, công việc</div>
+                              </div>
+                            </label>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group2 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group2 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <CustomCheckbox 
+                                checked={ttl1Data.group2} 
+                                onChange={(val) => {
+                                  const next = { ...ttl1Data, group2: val };
+                                  setTtl1Data(next);
+                                  handleSaveTTL1(next);
+                                }} 
+                              />
+                              <div>
+                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: ttl1Data.group2 ? '#059669' : 'var(--color-text)' }}>💰 Ngân sách / Tài chính</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Đã xác định tầm tài chính &amp; vốn</div>
+                              </div>
+                            </label>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group3 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group3 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <CustomCheckbox 
+                                checked={ttl1Data.group3} 
+                                onChange={(val) => {
+                                  const next = { ...ttl1Data, group3: val };
+                                  setTtl1Data(next);
+                                  handleSaveTTL1(next);
+                                }} 
+                              />
+                              <div>
+                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: ttl1Data.group3 ? '#059669' : 'var(--color-text)' }}>⚡ Nhu cầu cấp thiết</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Cần mua ngay trong 1-3 tháng</div>
+                              </div>
+                            </label>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group4 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group4 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <CustomCheckbox 
+                                checked={ttl1Data.group4} 
+                                onChange={(val) => {
+                                  const next = { ...ttl1Data, group4: val };
+                                  setTtl1Data(next);
+                                  handleSaveTTL1(next);
+                                }} 
+                              />
+                              <div>
+                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: ttl1Data.group4 ? '#059669' : 'var(--color-text)' }}>🏢 Dự án phù hợp</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Khớp sản phẩm công ty đang phân phối</div>
+                              </div>
+                            </label>
                           </div>
+                        </div>
+
+                        {/* Dự án & Chiến dịch điều hướng chăm sóc thực tế */}
+                        <div className="grid grid-2" style={{ gap: '0.875rem' }}>
                           <div className="form-group">
-                            <label className="form-label">Liên kết Zalo</label>
-                            <input className="form-input" placeholder="https://zalo.me/..." value={formData.zalo_link || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, zalo_link: val }));
-                            }} />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Liên kết Facebook</label>
-                            <input className="form-input" placeholder="https://facebook.com/..." value={formData.fb_link || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, fb_link: val }));
-                            }} />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Công ty (Liên kết)</label>
+                            <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-primary)' }}>Dự án Chăm sóc Hiện tại (Điều hướng)</label>
                             <CustomSelect
                               searchable
                               options={[
-                                { value: '', label: '— Không chọn —' },
-                                ...companiesList.map(c => ({ value: String(c.id), label: c.name }))
-                              ]}
-                              value={String(formData.company_id || '')}
-                              onChange={val => {
-                                const selectedId = val ? Number(val) : null;
-                                const selectedComp = companiesList.find(c => Number(c.id) === selectedId);
-                                setFormData((prev: any) => ({
-                                  ...prev,
-                                  company_id: selectedId,
-                                  company_name: selectedComp ? selectedComp.name : ''
-                                }));
-                              }}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Phòng ban</label>
-                            <input className="form-input" placeholder="ví dụ: Kinh doanh" value={formData.department || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, department: val }));
-                            }} />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Dự án Quan tâm (Liên kết)</label>
-                            <CustomSelect
-                              searchable
-                              options={[
-                                { value: '', label: '— Không chọn —' },
+                                { value: '', label: '— Chưa chọn dự án —' },
                                 ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
                               ]}
                               value={String(formData.project_id || '')}
@@ -6613,9 +6995,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 }));
                               }}
                             />
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                              Dự án mà Sale đang thực tế tư vấn và dẫn khách đi xem.
+                            </span>
                           </div>
+
                           <div className="form-group">
-                            <label className="form-label">Chiến dịch Quan tâm (Liên kết)</label>
+                            <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-primary)' }}>Chiến dịch Chăm sóc Hiện tại (Điều hướng)</label>
                             {(() => {
                               const filteredCamps = formData.project_id
                                 ? allowedCampaigns.filter(c => Number(c.project_id) === Number(formData.project_id))
@@ -6624,7 +7010,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <CustomSelect
                                   searchable
                                   options={[
-                                    { value: '', label: '— Không chọn —' },
+                                    { value: '', label: '— Không chọn chiến dịch —' },
                                     ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
                                   ]}
                                   value={formData.campaign_id ? String(formData.campaign_id) : ''}
@@ -6646,420 +7032,42 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 />
                               );
                             })()}
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                              Chiến dịch bán hàng tương ứng với dự án đang điều hướng.
+                            </span>
                           </div>
                         </div>
 
-                        <div style={{ borderTop: '1px solid var(--color-border-light)', margin: '1.25rem 0', paddingTop: '1.25rem' }}></div>
-
-                        {formData.custom_fields && formData.custom_fields.length > 0 && (
-                          <>
-                            <h4 className="panel-title" style={{ margin: '0 0 1rem 0' }}>Trường tùy chỉnh</h4>
-                            <div className="grid grid-2" style={{ marginBottom: '1.25rem' }}>
-                              {formData.custom_fields.map((field: any, index: number) => (
-                                <div className="form-group" key={field.id}>
-                                  <label className="form-label">{field.label} {field.is_required ? <span style={{color: 'var(--color-danger)'}}>*</span> : ''}</label>
-                                  {field.field_type === 'text' && (
-                                    <input className="form-input" value={field.value || ''} onChange={e => {
-                                      const newFields = [...formData.custom_fields];
-                                      newFields[index].value = e.target.value;
-                                      setFormData({ ...formData, custom_fields: newFields });
-                                    }} />
-                                  )}
-                                  {field.field_type === 'number' && (
-                                    <input type="number" className="form-input" value={field.value || ''} onChange={e => {
-                                      const newFields = [...formData.custom_fields];
-                                      newFields[index].value = e.target.value;
-                                      setFormData({ ...formData, custom_fields: newFields });
-                                    }} />
-                                  )}
-                                  {field.field_type === 'date' && (
-                                    <input type="date" className="form-input" value={field.value || ''} onChange={e => {
-                                      const newFields = [...formData.custom_fields];
-                                      newFields[index].value = e.target.value;
-                                      setFormData({ ...formData, custom_fields: newFields });
-                                    }} />
-                                  )}
-                                  {field.field_type === 'dropdown' && (
-                                    <CustomSelect 
-                                      options={(field.options || []).map((o:any) => ({ value: o, label: o }))} 
-                                      value={field.value || ''} 
-                                      onChange={val => {
-                                        const newFields = [...formData.custom_fields];
-                                        newFields[index].value = val.toString();
-                                        setFormData({ ...formData, custom_fields: newFields });
-                                      }} 
-                                    />
-                                  )}
-                                  {field.field_type === 'multiselect' && (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', paddingTop: '0.25rem' }}>
-                                      {(field.options || []).map((o: any) => {
-                                        let selected: string[] = [];
-                                        try {
-                                          if (typeof field.value === 'string') selected = JSON.parse(field.value);
-                                          else if (Array.isArray(field.value)) selected = field.value;
-                                        } catch (e: any) { console.error(e); }
-                                        const isChecked = selected.includes(o);
-                                        return (
-                                          <label key={o} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: isChecked ? 'var(--color-primary)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`, transition: 'all 0.2s' }}>
-                                            <input type="checkbox" checked={isChecked} onChange={e => {
-                                              const newFields = [...formData.custom_fields];
-                                              const newSelected = e.target.checked ? [...selected, o] : selected.filter((s: string) => s !== o);
-                                              newFields[index].value = newSelected;
-                                              setFormData({ ...formData, custom_fields: newFields });
-                                            }} style={{ display: 'none' }} />
-                                            <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: isChecked ? 'white' : 'var(--color-text)' }}>{o}</span>
-                                          </label>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                  {field.field_type === 'checkbox' && (
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', height: '40px' }}>
-                                      <CustomCheckbox 
-                                        checked={field.value === 'true' || field.value === true} 
-                                        onChange={e => {
-                                          const newFields = [...formData.custom_fields];
-                                          newFields[index].value = e ? 'true' : 'false';
-                                          setFormData({ ...formData, custom_fields: newFields });
-                                        }} 
-                                      />
-                                      <span style={{ fontSize: '0.875rem' }}>Có</span>
-                                    </label>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                            <div style={{ borderTop: '1px solid var(--color-border-light)', margin: '1.25rem 0', paddingTop: '1.25rem' }}></div>
-                          </>
-                        )}
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Clock size={13} style={{ color: 'var(--color-text-muted)' }} /> Thời gian
-                          </label>
-                          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Tạo lúc:</span>
-                              <input
-                                type="datetime-local"
-                                className="form-input sm"
-                                style={{ padding: '4px 8px', fontSize: '0.8125rem', width: '240px' }}
-                                value={formData.created_at ? formData.created_at.substring(0, 16).replace(' ', 'T') : ''}
-                                onChange={e => {
-                                  const val = e.target.value.replace('T', ' ') + ':00';
-                                  setFormData((prev: any) => ({ ...prev, created_at: val }));
-                                }}
-                              />
-                            </div>
-                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Cập nhật:</span>
-                              <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>
-                                {formatDateTime(formData.updated_at || formData.created_at)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px dashed var(--color-border-light)' }}>
-                          {!showAddCustomField ? (
-                            <button
-                              type="button"
-                              className="btn outline sm"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '6px' }}
-                              onClick={() => setShowAddCustomField(true)}
-                            >
-                              <Plus size={14} /> Thêm trường custom
-                            </button>
-                          ) : (
-                            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                              <h5 style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>Thêm trường tùy chỉnh mới</h5>
-                              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <div style={{ flex: 1, minWidth: '150px' }}>
-                                  <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Tên trường (Key)</label>
-                                  <input
-                                    type="text"
-                                    className="form-input sm"
-                                    placeholder="Ví dụ: Sở thích"
-                                    value={customFieldKey}
-                                    onChange={e => setCustomFieldKey(e.target.value)}
-                                    style={{ height: '32px', fontSize: '0.75rem', borderRadius: '6px' }}
-                                  />
-                                </div>
-                                <div style={{ flex: 1, minWidth: '150px' }}>
-                                  <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Giá trị (Value)</label>
-                                  <input
-                                    type="text"
-                                    className="form-input sm"
-                                    placeholder="Ví dụ: Bóng đá"
-                                    value={customFieldValue}
-                                    onChange={e => setCustomFieldValue(e.target.value)}
-                                    style={{ height: '32px', fontSize: '0.75rem', borderRadius: '6px' }}
-                                  />
-                                </div>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
-                                <button
-                                  type="button"
-                                  className="btn ghost sm"
-                                  style={{ fontSize: '0.75rem', height: '28px', padding: '0 8px' }}
-                                  onClick={() => {
-                                    setShowAddCustomField(false);
-                                    setCustomFieldKey('');
-                                    setCustomFieldValue('');
-                                  }}
-                                >
-                                  Hủy
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn primary sm"
-                                  style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px', fontWeight: 600 }}
-                                  onClick={handleAddCustomField}
-                                >
-                                  Thêm
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                        <div className="form-group" style={{ marginTop: '0.875rem', marginBottom: 0 }}>
+                          <label className="form-label">Ghi chú nhu cầu, rào cản &amp; giải pháp tiếp theo</label>
+                          <textarea
+                            className="form-input"
+                            rows={3}
+                            placeholder="Ghi chú chi tiết về nhu cầu mua, tài chính, rào cản lăn tăn của khách và hướng xử lý tiếp theo..."
+                            value={formData.notes || ''}
+                            onChange={e => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
+                            style={{ width: '100%', resize: 'none' }}
+                          />
                         </div>
                       </div>
 
-                      {(() => {
-                        const marketingNote = (contact?.lead_note || contact?.notes || formData.notes || '').trim();
-                        const locationPref = contact?.lead_preferred_location || contact?.preferred_location;
-                        const bedroomPref = contact?.lead_bedroom_count || contact?.bedroom_count;
-                        const demandPref = contact?.lead_demand_type || contact?.demand_type;
-                        const budgetPref = contact?.lead_budget || contact?.budget;
-                        const dataType = contact?.lead_type || contact?.customer_type || contact?.type;
-                        const hasMarketingInfo = !!(marketingNote || locationPref || bedroomPref || demandPref || budgetPref || dataType);
-
-                        if (!hasMarketingInfo) return null;
-
-                        return (
-                          <div 
-                            style={{ 
-                              padding: '1.25rem', 
-                              background: '#fffdf0', 
-                              border: '1px solid #fef08a', 
-                              borderLeft: '5px solid #eab308', 
-                              borderRadius: '12px', 
-                              boxShadow: '0 4px 14px rgba(234, 179, 8, 0.06)',
-                              animation: 'fadeIn 0.3s ease'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
-                              <FileText size={18} style={{ color: '#d97706' }} />
-                              <h4 style={{ fontWeight: 800, fontSize: '0.9375rem', color: '#92400e', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                                {t('Ghi chú & Nhu cầu từ Marketing')}
-                              </h4>
-                              {dataType && (
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: '#fef3c7', color: '#b45309', marginLeft: 'auto' }}>
-                                  {dataType}
-                                </span>
-                              )}
+                      {/* PHẦN 3: THÔNG TIN VẬN HÀNH & HỢP TÁC */}
+                      <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Users size={16} />
                             </div>
-
-                            {marketingNote && (
-                              <div style={{ marginBottom: (locationPref || bedroomPref || demandPref || budgetPref) ? '1rem' : '0' }}>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', marginBottom: '4px' }}>
-                                  {t('Nội dung ghi chú:')}
-                                </div>
-                                <div style={{ fontSize: '0.875rem', color: '#78350f', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500, background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                  {formatNote(marketingNote)}
-                                </div>
-                              </div>
-                            )}
-
-                            {(locationPref || bedroomPref || demandPref || budgetPref) && (
-                              <div>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', marginBottom: '6px' }}>
-                                  {t('Nhu cầu & Bất động sản quan tâm:')}
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                                  {locationPref && (
-                                    <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Khu vực / Dự án')}</div>
-                                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{locationPref}</div>
-                                    </div>
-                                  )}
-                                  {bedroomPref && (
-                                    <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Loại hình / Phòng ngủ')}</div>
-                                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{bedroomPref}</div>
-                                    </div>
-                                  )}
-                                  {demandPref && (
-                                    <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Nhu cầu')}</div>
-                                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{demandPref}</div>
-                                    </div>
-                                  )}
-                                  {budgetPref && (
-                                    <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Ngân sách')}</div>
-                                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{budgetPref}</div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      <div className="card-panel">
-                        <h4 className="panel-title">Phân loại & Trạng thái Sales</h4>
-                        <div className="grid grid-2">
-                          <div className="form-group">
-                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span>Nguồn khách (Source)</span>
-                              {currentUser?.role === 'sale' && (
-                                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Lock size={11} /> Chỉ Quản lý/Admin</span>
-                              )}
-                            </label>
-                            <CustomSelect
-                              disabled={currentUser?.role === 'sale'}
-                              options={[
-                                { value: 'website', label: 'Từ Website' },
-                                { value: 'facebook', label: 'Facebook Ads' },
-                                { value: 'gioi_thieu', label: 'Giới thiệu' },
-                                { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
-                                { value: 'cold_call', label: 'Cold Call' }
-                              ]}
-                              value={formData.source || 'website'}
-                              onChange={val => setFormData((prev: any) => ({ ...prev, source: val as string }))}
-                            />
-                          </div>
-
-                          {formData.source === 'gioi_thieu' && (
-                            <div className="form-group">
-                              <label className="form-label">Khách hàng giới thiệu (Referrer)</label>
-                              <CustomSelect
-                                options={referrerOptions}
-                                value={formData.nguoi_gioi_thieu_id ? String(formData.nguoi_gioi_thieu_id) : ''}
-                                onChange={val => setFormData((prev: any) => ({ ...prev, nguoi_gioi_thieu_id: val ? Number(val) : null }))}
-                                searchable
-                                showAvatars
-                                placeholder="Chọn khách hàng giới thiệu..."
-                              />
-                              {formData.nguoi_gioi_thieu_id && (
-                                <div style={{ marginTop: '4px', fontSize: '0.75rem' }}>
-                                  <span style={{ color: 'var(--color-text-muted)' }}>Xem nhanh: </span>
-                                  {(() => {
-                                    const refContact = contacts.find((x: any) => Number(x.id) === Number(formData.nguoi_gioi_thieu_id));
-                                    if (!refContact) return <span style={{ color: 'var(--color-text-muted)' }}>Không tìm thấy khách hàng này</span>;
-                                    return (
-                                      <a
-                                        href={`/contacts?open_contact_id=${refContact.id}`}
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          handleSave().then(() => {
-                                            onClose();
-                                            window.location.href = `/contacts?open_contact_id=${refContact.id}`;
-                                          });
-                                        }}
-                                        style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
-                                      >
-                                        {`${refContact.first_name || ''} ${refContact.last_name || ''}`.trim()} ({refContact.phone || refContact.mobile})
-                                      </a>
-                                    );
-                                  })()}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          <div className="form-group">
-                            <label className="form-label">Ngành nghề kinh doanh</label>
-                            <CustomSelect
-                              options={[
-                                { value: '', label: '— Chưa chọn —' },
-                                { value: 'real_estate', label: 'Bất động sản' },
-                                { value: 'finance', label: 'Tài chính / Ngân hàng' },
-                                { value: 'tech', label: 'Công nghệ / IT' },
-                                { value: 'manufacturing', label: 'Sản xuất / Xây dựng' },
-                                { value: 'medical', label: 'Y tế / Dược phẩm' },
-                                { value: 'education', label: 'Giáo dục' },
-                                { value: 'other', label: 'Ngành nghề khác' }
-                              ]}
-                              value={formData.industry || ''}
-                              onChange={val => setFormData((prev: any) => ({ ...prev, industry: val as string }))}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Phân khúc ngân sách</label>
-                            <CustomSelect
-                              options={[
-                                { value: '', label: '— Chưa chọn —' },
-                                { value: 'under_2b', label: 'Dưới 2 Tỷ' },
-                                { value: '2b_5b', label: '2 Tỷ - 5 Tỷ' },
-                                { value: '5b_10b', label: '5 Tỷ - 10 Tỷ' },
-                                { value: 'above_10b', label: 'Trên 10 Tỷ' }
-                              ]}
-                              value={formData.budget_range || ''}
-                              onChange={val => setFormData((prev: any) => ({ ...prev, budget_range: val as string }))}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Dự kiến doanh thu</label>
-                            <CurrencyInput
-                              value={formData.expected_revenue || 0}
-                              onChange={val => setFormData((prev: any) => ({ ...prev, expected_revenue: val }))}
-                              placeholder="VD: 1.500.000.000"
-                            />
-                          </div>
-                          <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <label className="form-label" style={{ marginBottom: 0 }}>Xác suất chốt</label>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  placeholder="50"
-                                  value={formData.win_probability || 0}
-                                  onChange={e => {
-                                    let val = Number(e.target.value);
-                                    if (val < 0) val = 0;
-                                    if (val > 100) val = 100;
-                                    setFormData((prev: any) => ({ ...prev, win_probability: val }));
-                                  }}
-                                  style={{
-                                    width: '64px',
-                                    height: '28px',
-                                    textAlign: 'center',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 800,
-                                    padding: '2px 4px',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: '6px',
-                                    background: 'var(--color-surface)',
-                                    color: (formData.win_probability ?? 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)'
-                                  }}
-                                />
-                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>%</span>
-                              </div>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={formData.win_probability ?? 0}
-                              onChange={e => setFormData((prev: any) => ({ ...prev, win_probability: Number(e.target.value) }))}
-                              className="progress-slider"
-                              style={{
-                                background: (formData.win_probability ?? 0) === 100
-                                  ? 'var(--color-success)'
-                                  : 'linear-gradient(to right, #BD1D2D 0%, #F97316 ' + (formData.win_probability ?? 0) + '%, var(--color-border-light) ' + (formData.win_probability ?? 0) + '%, var(--color-border-light) 100%)'
-                              }}
-                            />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                              <span>0%</span>
-                              <span>50%</span>
-                              <span>100%</span>
+                            <div>
+                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>3. Thông tin Hoạt động &amp; Vận hành</h4>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Phân quyền phụ trách, đồng chăm sóc, nhân khẩu học &amp; đối tác</span>
                             </div>
                           </div>
+                        </div>
+
+                        <div className="grid grid-2" style={{ gap: '0.875rem' }}>
                           <div className="form-group">
-                            <label className="form-label">Người đang chăm sóc (Sale)</label>
+                            <label className="form-label">Người đang phụ trách (Owner Sale)</label>
                             {currentUser?.role === 'sale' ? (
                               <div 
                                 style={{ padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
@@ -7091,8 +7099,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               />
                             )}
                           </div>
+
                           <div className="form-group">
-                            <label className="form-label">Nhân sự chăm sóc phụ (Co-care)</label>
+                            <label className="form-label">Người cùng chăm sóc (Co-care / Hợp tác)</label>
                             <div
                               onClickCapture={(e) => {
                                 if (isViewer || !isMainOwnerOrManagerAdmin) {
@@ -7187,11 +7196,168 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               );
                             })()}
-
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '6px', display: 'block' }}>
-                              Cho phép các sale khác có quyền xem và cùng chăm sóc khách hàng này.
-                            </span>
                           </div>
+
+                          <div className="form-group">
+                            <label className="form-label">Khách hàng giới thiệu (Referrer)</label>
+                            <CustomSelect
+                              options={referrerOptions}
+                              value={formData.nguoi_gioi_thieu_id ? String(formData.nguoi_gioi_thieu_id) : ''}
+                              onChange={val => setFormData((prev: any) => ({ ...prev, nguoi_gioi_thieu_id: val ? Number(val) : null }))}
+                              searchable
+                              showAvatars
+                              placeholder="Chọn khách hàng giới thiệu..."
+                            />
+                            {formData.nguoi_gioi_thieu_id && (
+                              <div style={{ marginTop: '4px', fontSize: '0.75rem' }}>
+                                <span style={{ color: 'var(--color-text-muted)' }}>Xem nhanh: </span>
+                                {(() => {
+                                  const refContact = contacts.find((x: any) => Number(x.id) === Number(formData.nguoi_gioi_thieu_id));
+                                  if (!refContact) return <span style={{ color: 'var(--color-text-muted)' }}>Không tìm thấy khách hàng này</span>;
+                                  return (
+                                    <a
+                                      href={`/contacts?open_contact_id=${refContact.id}`}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        handleSave().then(() => {
+                                          onClose();
+                                          window.location.href = `/contacts?open_contact_id=${refContact.id}`;
+                                        });
+                                      }}
+                                      style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                                    >
+                                      {`${refContact.first_name || ''} ${refContact.last_name || ''}`.trim()} ({refContact.phone || refContact.mobile})
+                                    </a>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label">Giới tính &amp; Ngày sinh</label>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <div style={{ flex: 1 }}>
+                                <CustomSelect
+                                  options={[
+                                    { value: '', label: '— Giới tính —' },
+                                    { value: 'male', label: 'Nam' },
+                                    { value: 'female', label: 'Nữ' },
+                                    { value: 'other', label: 'Khác' }
+                                  ]}
+                                  value={formData.gender || ''}
+                                  onChange={val => setFormData((prev: any) => ({ ...prev, gender: val as string }))}
+                                />
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <input className="form-input" type="date" value={formData.birthday || ''} onChange={e => {
+                                  const val = e.target.value;
+                                  setFormData((prev: any) => ({ ...prev, birthday: val }));
+                                }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="form-group">
+                            <AddressSelect
+                              label="Địa chỉ cư trú"
+                              value={formData.address || ''}
+                              onChange={addr => setFormData((prev: any) => ({ ...prev, address: addr }))}
+                              placeholder="Chọn địa chỉ cư trú..."
+                            />
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label">Mạng xã hội (Zalo / Facebook)</label>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <input className="form-input" placeholder="Zalo Link (https://zalo.me/...)" value={formData.zalo_link || ''} onChange={e => {
+                                const val = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, zalo_link: val }));
+                              }} />
+                              <input className="form-input" placeholder="FB Link (https://facebook.com/...)" value={formData.fb_link || ''} onChange={e => {
+                                const val = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, fb_link: val }));
+                              }} />
+                            </div>
+                          </div>
+
+                          {/* NON-SALE ONLY FIELDS */}
+                          {currentUser?.role !== 'sale' && (
+                            <>
+                              <div className="form-group">
+                                <label className="form-label">Dự kiến doanh thu</label>
+                                <CurrencyInput
+                                  value={formData.expected_revenue || 0}
+                                  onChange={val => setFormData((prev: any) => ({ ...prev, expected_revenue: val }))}
+                                  placeholder="VD: 1.500.000.000"
+                                />
+                              </div>
+
+                              <div className="form-group">
+                                <label className="form-label">Công ty đối tác (Liên kết)</label>
+                                <CustomSelect
+                                  searchable
+                                  options={[
+                                    { value: '', label: '— Không chọn —' },
+                                    ...companiesList.map(c => ({ value: String(c.id), label: c.name }))
+                                  ]}
+                                  value={String(formData.company_id || '')}
+                                  onChange={val => {
+                                    const selectedId = val ? Number(val) : null;
+                                    const selectedComp = companiesList.find(c => Number(c.id) === selectedId);
+                                    setFormData((prev: any) => ({
+                                      ...prev,
+                                      company_id: selectedId,
+                                      company_name: selectedComp ? selectedComp.name : ''
+                                    }));
+                                  }}
+                                />
+                              </div>
+
+                              <div className="form-group">
+                                <label className="form-label">Chức danh</label>
+                                <input className="form-input" placeholder="ví dụ: Giám đốc" value={formData.job_title || ''} onChange={e => {
+                                  const val = e.target.value;
+                                  setFormData((prev: any) => ({ ...prev, job_title: val }));
+                                }} />
+                              </div>
+
+                              <div className="form-group">
+                                <label className="form-label">Phòng ban</label>
+                                <input className="form-input" placeholder="ví dụ: Kinh doanh" value={formData.department || ''} onChange={e => {
+                                  const val = e.target.value;
+                                  setFormData((prev: any) => ({ ...prev, department: val }));
+                                }} />
+                              </div>
+
+                              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <Clock size={13} style={{ color: 'var(--color-text-muted)' }} /> Thời gian khởi tạo &amp; Cập nhật
+                                </label>
+                                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                  <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Tạo lúc:</span>
+                                    <input
+                                      type="datetime-local"
+                                      className="form-input sm"
+                                      style={{ padding: '4px 8px', fontSize: '0.8125rem', width: '220px' }}
+                                      value={formData.created_at ? formData.created_at.substring(0, 16).replace(' ', 'T') : ''}
+                                      onChange={e => {
+                                        const val = e.target.value.replace('T', ' ') + ':00';
+                                        setFormData((prev: any) => ({ ...prev, created_at: val }));
+                                      }}
+                                    />
+                                  </div>
+                                  <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Cập nhật:</span>
+                                    <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>
+                                      {formatDateTime(formData.updated_at || formData.created_at)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -7335,224 +7501,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           );
                         })()}
 
-                        {(() => {
-                          // Retrieve stored note IDs sorting order
-                          const storedOrder = localStorage.getItem(`notes_order_${contact?.id}`);
-                          let sortedNotes = [...notes];
-                          if (storedOrder) {
-                            try {
-                              const orderIds = JSON.parse(storedOrder);
-                              sortedNotes.sort((a, b) => {
-                                const idxA = orderIds.indexOf(a.id);
-                                const idxB = orderIds.indexOf(b.id);
-                                if (idxA === -1 && idxB === -1) return 0;
-                                if (idxA === -1) return 1;
-                                if (idxB === -1) return -1;
-                                return idxA - idxB;
-                              });
-                            } catch (e) {}
-                          }
-
-                          // Drag & Drop handlers
-                          const handleDragStart = (e: React.DragEvent, index: number) => {
-                            setDraggedIndex(index);
-                            e.dataTransfer.effectAllowed = 'move';
-                          };
-
-                          const handleDragOver = (e: React.DragEvent, index: number) => {
-                            e.preventDefault();
-                            if (draggedIndex === index) return;
-                            setDraggedOverIndex(index);
-                          };
-
-                          const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-                            e.preventDefault();
-                            if (draggedIndex === null || draggedIndex === targetIndex) return;
-
-                            const newNotes = [...sortedNotes];
-                            const [removed] = newNotes.splice(draggedIndex, 1);
-                            newNotes.splice(targetIndex, 0, removed);
-
-                            // Save new order to state
-                            setNotes(newNotes);
-
-                            // Persist the order in LocalStorage
-                            const newOrderIds = newNotes.map(x => x.id);
-                            localStorage.setItem(`notes_order_${contact?.id}`, JSON.stringify(newOrderIds));
-                            
-                            setDraggedIndex(null);
-                            setDraggedOverIndex(null);
-                          };
-
-                          const handleDragEnd = () => {
-                            setDraggedIndex(null);
-                            setDraggedOverIndex(null);
-                          };
-
-                          if (notes.length === 0) {
-                            return (
-                              <EmptyCard
-                                icon={<FileText size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
-                                title="Chưa có ghi chú nội bộ"
-                                description="Các ghi chú dạng giấy Note đính kèm thông tin khách hàng sẽ xuất hiện tại đây."
-                                actionText="Thêm ghi chú"
-                                onAction={() => {
-                                  setEditingNote(null);
-                                  setNewNote('');
-                                  setShowNoteModal(true);
-                                }}
-                              />
-                            );
-                          }
-
-                          return (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                              {sortedNotes.map((n, idx) => {
-                                const cardBg = '#fefce8'; // pale yellow like note paper
-                                const leftBorder = '4px solid #eab308'; // golden yellow accent border
-                                const isDragging = idx === draggedIndex;
-                                const isDraggedOver = idx === draggedOverIndex;
-
-                                return (
-                                  <div 
-                                    key={n.id} id={`customer-note-${n.id}`}
-                                    draggable={!isViewer}
-                                    onDragStart={(e) => handleDragStart(e, idx)}
-                                    onDragOver={(e) => handleDragOver(e, idx)}
-                                    onDrop={(e) => handleDrop(e, idx)}
-                                    onDragEnd={handleDragEnd}
-                                    className="card-panel animate-fade" 
-                                    style={{ 
-                                      padding: '1.25rem', 
-                                      background: cardBg, 
-                                      border: '1px solid #fef08a', 
-                                      borderLeft: leftBorder, 
-                                      borderRadius: '12px', 
-                                      boxShadow: '0 4px 12px rgba(234, 179, 8, 0.05)', 
-                                      position: 'relative', 
-                                      display: 'flex', 
-                                      flexDirection: 'column', 
-                                      justifyContent: 'space-between', 
-                                      minHeight: '160px',
-                                      cursor: isViewer ? 'default' : 'grab',
-                                      opacity: isDragging ? 0.4 : 1,
-                                      transform: isDraggedOver ? 'scale(1.02)' : 'none',
-                                      transition: 'all 0.2s',
-                                      borderStyle: isDraggedOver ? 'dashed' : 'solid',
-                                      borderColor: isDraggedOver ? '#eab308' : '#fef08a'
-                                    }}
-                                  >
-                                    <div>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                        <div style={{ flex: 1 }}>
-                                          <div style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</div>
-                                        
-                                        {/* Hiển thị thông tin ghi chú cấu trúc Bếp Đun Nước */}
-                                        {(n.channel || n.stuck_tag || n.sale_temperature || n.note_type === 'quality' || n.documents_sent) && (
-                                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px', marginBottom: '4px' }}>
-                                            {n.channel && (
-                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)' }}>
-                                                {n.channel === 'noi_dat' ? '🟫 Nồi Đất' : n.channel === 'noi_dong' ? '🟨 Nồi Đồng' : '🟥 Nồi Áp Suất'}
-                                                {n.channel === 'noi_dong' && n.duration_minutes ? ` (${n.duration_minutes}m)` : ''}
-                                              </span>
-                                            )}
-                                            {n.note_type === 'quality' && (
-                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                                                ⭐ Chất lượng
-                                              </span>
-                                            )}
-                                            {n.stuck_tag && (
-                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                                                📍 Vướng: {n.stuck_tag === 'sales' ? 'Sales' : n.stuck_tag === 'project' ? 'Dự án' : n.stuck_tag === 'unit' ? 'Căn' : n.stuck_tag === 'smooth' ? 'Đang xuôi' : n.stuck_tag}
-                                              </span>
-                                            )}
-                                            {n.sale_temperature && tempLabels[n.sale_temperature] && (
-                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: tempLabels[n.sale_temperature].bg, color: tempLabels[n.sale_temperature].color, border: `1px solid ${tempLabels[n.sale_temperature].color}33` }}>
-                                                🌡️ {tempLabels[n.sale_temperature].label}
-                                              </span>
-                                            )}
-                                            {n.documents_sent && (
-                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }} title={n.documents_sent}>
-                                                📁 Đã gửi tài liệu
-                                              </span>
-                                            )}
-                                          </div>
-                                        )}
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                          {canDeleteNote(n.user_id) && (
-                                            <>
-                                              <button
-                                                className="btn ghost sm"
-                                                style={{ padding: '4px', height: '24px', width: '24px', color: 'var(--color-text-muted)', border: 'none', background: 'transparent' }}
-                                                onClick={() => {
-                                                  setEditingNote(n);
-                                                  setNewNote(n.text);
-                                                  setShowNoteModal(true);
-                                                }}
-                                              >
-                                                <Pencil size={12} />
-                                              </button>
-                                              <button
-                                                className="btn ghost sm text-danger"
-                                                style={{ padding: '4px', height: '24px', width: '24px', border: 'none', background: 'transparent' }}
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  showConfirm(
-                                                    'Xóa ghi chú?',
-                                                    'Bạn có chắc chắn muốn xóa ghi chú này không?',
-                                                    async () => {
-                                                      try {
-                                                        await api.delete(`/notes/${n.id}`);
-                                                        setNotes(prev => prev.filter(x => x.id !== n.id));
-                                                        addToast('Đã xóa ghi chú', 'success');
-                                                        window.dispatchEvent(new CustomEvent('contact-updated'));
-                                                      } catch (e: any) {
-                                                        addToast('Lỗi khi xóa ghi chú', 'error');
-                                                      }
-                                                    }
-                                                  );
-                                                }}
-                                              >
-                                                <Trash2 size={12} />
-                                              </button>
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
-                                      {n.attachment_url && (
-                                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                          {/\.(jpg|jpeg|png|gif|webp)$/i.test(n.attachment_url) ? (
-                                            <Camera size={12} style={{ color: '#10b981' }} />
-                                          ) : (
-                                            <FileText size={12} style={{ color: 'var(--color-primary)' }} />
-                                          )}
-                                          <a
-                                            href={resolveAttachmentUrl(n.attachment_url)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
-                                          >
-                                            {n.attachment_url.split('/').pop()}
-                                          </a>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
-                                      <EditHistoryIndicator history={n.edit_history} />
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                                        <Avatar src={n.user_avatar || undefined} name={n.user} size={20} />
-                                        <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                                          Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
                       </div>
                     </div>
                   )}
@@ -8593,6 +8541,31 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2, marginBottom: 0 }}>Lưu vết toàn bộ quá trình chăm sóc khách hàng</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, position: 'relative' }}>
+                          {/* Quick Summary Button */}
+                          <button
+                            type="button"
+                            onClick={() => setShowSummaryModal(true)}
+                            className="btn sm"
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(59, 130, 246, 0.12))',
+                              border: '1px solid rgba(139, 92, 246, 0.3)',
+                              color: '#7c3aed',
+                              fontSize: '0.8rem',
+                              fontWeight: 800,
+                              height: '34px',
+                              padding: '0 12px',
+                              borderRadius: '8px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              cursor: 'pointer'
+                            }}
+                            title="Tóm tắt nhanh toàn bộ thông tin & nhật ký tương tác của khách hàng"
+                          >
+                            <Sparkles size={14} />
+                            <span>Tóm tắt nhanh</span>
+                          </button>
+
                           {/* Add Interaction Button */}
                           <button 
                             className="btn primary sm" 
@@ -14074,6 +14047,321 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             </div>
           </div>
         )}
+      </CustomModal>
+
+      {/* CHECK-IN GẶP KHÁCH MODAL (Giai đoạn: Đã Gặp) */}
+      <CustomModal
+        isOpen={showCheckinModal}
+        onClose={() => {
+          if (!isSubmittingCheckin) {
+            setShowCheckinModal(false);
+            setCheckinFile(null);
+            setCheckinPreview(null);
+            setCheckinNote('');
+          }
+        }}
+        title="Check-in Gặp Khách Hàng (Bắt buộc ảnh)"
+        width="500px"
+      >
+        <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+            Để chuyển sang giai đoạn <strong>Đã Gặp</strong>, bạn bắt buộc phải tải lên hình ảnh chụp minh chứng gặp khách (chụp cùng khách, sa bàn dự án, quán cafe,...).
+          </p>
+
+          <div>
+            <label className="form-label" style={{ fontWeight: 700 }}>Ảnh check-in minh chứng <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            {checkinPreview ? (
+              <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                <img src={checkinPreview} alt="Checkin preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setCheckinFile(null);
+                    setCheckinPreview(null);
+                  }}
+                  style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s' }} className="hover-lift">
+                <Camera size={28} style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }} />
+                <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tải ảnh chụp check-in (JPEG, PNG, WebP)</span>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 10 * 1024 * 1024) {
+                      addToast('Dung lượng ảnh không được vượt quá 10MB', 'error');
+                      return;
+                    }
+                    const previewUrl = URL.createObjectURL(file);
+                    setCheckinFile(file);
+                    setCheckinPreview(previewUrl);
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Ghi chú tóm tắt buổi gặp (Tùy chọn)</label>
+            <textarea
+              className="form-input"
+              rows={3}
+              placeholder="VD: Gặp khách lúc 10h tại cafe Koi Q2, khách rất quan tâm căn 2PN tháp A..."
+              value={checkinNote}
+              onChange={e => setCheckinNote(e.target.value)}
+              style={{ width: '100%', resize: 'none' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+            <button 
+              type="button" 
+              className="btn" 
+              onClick={() => {
+                setShowCheckinModal(false);
+                setCheckinFile(null);
+                setCheckinPreview(null);
+                setCheckinNote('');
+              }}
+              disabled={isSubmittingCheckin}
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={!checkinFile || isSubmittingCheckin}
+              onClick={async () => {
+                if (!checkinFile) {
+                  addToast('Vui lòng chọn ảnh chụp check-in!', 'error');
+                  return;
+                }
+                setIsSubmittingCheckin(true);
+                try {
+                  let fileToUpload = checkinFile;
+                  if (checkinFile.type.startsWith('image/')) {
+                    fileToUpload = await compressToWebP(checkinFile);
+                  }
+                  const fd = new FormData();
+                  fd.append('file', fileToUpload);
+                  const uploadRes = await api.post('/upload', fd, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                  });
+                  const uploadedUrl = uploadRes.data.data?.url ?? '';
+                  if (!uploadedUrl) throw new Error('Không thể tải ảnh lên');
+
+                  await executeStageTransition('da_gap', 'Đã Gặp', uploadedUrl, checkinNote);
+                  setShowCheckinModal(false);
+                  setCheckinFile(null);
+                  setCheckinPreview(null);
+                  setCheckinNote('');
+                } catch (err: any) {
+                  addToast(err.response?.data?.message || err.message || 'Lỗi khi tải ảnh check-in', 'error');
+                } finally {
+                  setIsSubmittingCheckin(false);
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              {isSubmittingCheckin ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              <span>Xác nhận Đã Gặp</span>
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* BOOKING UNC MODAL (Giai đoạn: Booking) */}
+      <CustomModal
+        isOpen={showBookingUncModal}
+        onClose={() => {
+          if (!isSubmittingBooking) {
+            setShowBookingUncModal(false);
+            setBookingUncFile(null);
+            setBookingUncPreview(null);
+            setBookingNote('');
+          }
+        }}
+        title="Xác Nhận Booking (Ủy nhiệm chi / UNC)"
+        width="500px"
+      >
+        <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+            Để chuyển sang giai đoạn <strong>Booking</strong>, bạn chỉ cần tải lên hình ảnh hoặc tệp UNC chuyển tiền booking giữ chỗ (không cần tạo phiếu cọc phức tạp).
+          </p>
+
+          <div>
+            <label className="form-label" style={{ fontWeight: 700 }}>Ảnh / Tệp UNC giữ chỗ <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            {bookingUncPreview ? (
+              <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                {bookingUncFile?.type?.startsWith('image/') ? (
+                  <img src={bookingUncPreview} alt="UNC preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'var(--color-bg)' }}>
+                    <FileText size={40} style={{ color: 'var(--color-primary)', marginBottom: '8px' }} />
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>{bookingUncFile?.name}</span>
+                  </div>
+                )}
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setBookingUncFile(null);
+                    setBookingUncPreview(null);
+                  }}
+                  style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s' }} className="hover-lift">
+                <Upload size={28} style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }} />
+                <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tải ảnh UNC hoặc tài liệu PDF</span>
+                <input 
+                  type="file" 
+                  accept="image/*,.pdf" 
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 10 * 1024 * 1024) {
+                      addToast('Dung lượng tệp không được vượt quá 10MB', 'error');
+                      return;
+                    }
+                    const previewUrl = URL.createObjectURL(file);
+                    setBookingUncFile(file);
+                    setBookingUncPreview(previewUrl);
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Ghi chú Booking (Tùy chọn)</label>
+            <textarea
+              className="form-input"
+              rows={3}
+              placeholder="VD: Khách booking 50 triệu căn 2PN dự án Masteri..."
+              value={bookingNote}
+              onChange={e => setBookingNote(e.target.value)}
+              style={{ width: '100%', resize: 'none' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+            <button 
+              type="button" 
+              className="btn" 
+              onClick={() => {
+                setShowBookingUncModal(false);
+                setBookingUncFile(null);
+                setBookingUncPreview(null);
+                setBookingNote('');
+              }}
+              disabled={isSubmittingBooking}
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={!bookingUncFile || isSubmittingBooking}
+              onClick={async () => {
+                if (!bookingUncFile) {
+                  addToast('Vui lòng chọn tệp UNC chuyển tiền booking!', 'error');
+                  return;
+                }
+                setIsSubmittingBooking(true);
+                try {
+                  let fileToUpload = bookingUncFile;
+                  if (bookingUncFile.type.startsWith('image/')) {
+                    fileToUpload = await compressToWebP(bookingUncFile);
+                  }
+                  const fd = new FormData();
+                  fd.append('file', fileToUpload);
+                  const uploadRes = await api.post('/upload', fd, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                  });
+                  const uploadedUrl = uploadRes.data.data?.url ?? '';
+                  if (!uploadedUrl) throw new Error('Không thể tải tệp UNC lên');
+
+                  await executeStageTransition('booking', 'Booking', uploadedUrl, bookingNote);
+                  setShowBookingUncModal(false);
+                  setBookingUncFile(null);
+                  setBookingUncPreview(null);
+                  setBookingNote('');
+                } catch (err: any) {
+                  addToast(err.response?.data?.message || err.message || 'Lỗi khi tải tệp UNC', 'error');
+                } finally {
+                  setIsSubmittingBooking(false);
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              {isSubmittingBooking ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              <span>Xác nhận Booking</span>
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* SMART SUMMARY MODAL (✨ Tóm tắt nhanh) */}
+      <CustomModal
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        title="✨ Tóm Tắt Nhanh Khách Hàng (Smart Overview)"
+        width="620px"
+      >
+        <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(59, 130, 246, 0.08))', borderRadius: '10px', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Avatar name={`${formData.first_name || ''} ${formData.last_name || ''}`} src={formData.avatar_url} size={40} />
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>{`${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Khách hàng'}</h4>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{formData.phone} • {formData.project_name || formData.source_project_name || 'Chưa gán dự án'}</span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span className="badge primary" style={{ fontSize: '0.75rem', fontWeight: 800 }}>{score} pts</span>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{formData.temperature?.toUpperCase() || 'COLD'}</div>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--color-bg)', padding: '12px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+            <pre style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--color-text)' }}>
+              {quickSummaryContent}
+            </pre>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+            <button
+              type="button"
+              className="btn outline sm"
+              onClick={() => {
+                navigator.clipboard.writeText(quickSummaryContent);
+                addToast('Đã sao chép nội dung tóm tắt!', 'success');
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Copy size={13} />
+              <span>Sao chép tóm tắt</span>
+            </button>
+            <button
+              type="button"
+              className="btn primary sm"
+              onClick={() => setShowSummaryModal(false)}
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
       </CustomModal>
     </>,
     document.body

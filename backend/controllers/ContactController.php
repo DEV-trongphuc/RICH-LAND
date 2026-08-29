@@ -122,6 +122,11 @@ class ContactController {
                     JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
                     WHERE l2.person_id = c.person_id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
                 )
+                OR EXISTS (
+                    SELECT 1 FROM data_reports dr
+                    JOIN leads l3 ON dr.lead_id = l3.id
+                    WHERE l3.person_id = c.person_id AND dr.status IN ('pending', 'approved')
+                )
             )";
             if ($dataType === 'error_ticket') {
                 $where[] = $errorCond;
@@ -153,6 +158,22 @@ class ContactController {
                     )";
                 }
             }
+        } else if (($auth['role'] ?? '') === 'sale') {
+            $errorCond = "(
+                (c.report_status IS NOT NULL AND c.report_status != '')
+                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                OR EXISTS (
+                    SELECT 1 FROM leads l2 
+                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                    WHERE l2.person_id = c.person_id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                )
+                OR EXISTS (
+                    SELECT 1 FROM data_reports dr
+                    JOIN leads l3 ON dr.lead_id = l3.id
+                    WHERE l3.person_id = c.person_id AND dr.status IN ('pending', 'approved')
+                )
+            )";
+            $where[] = "NOT $errorCond";
         }
         
         if ($from !== '') {
@@ -1075,24 +1096,34 @@ class ContactController {
 
 
     public function destroy(array $auth, int $id): void {
+        $stmtChk = $this->db->prepare("SELECT source, owner_id, created_by FROM contacts WHERE id=? AND tenant_id=? AND deleted_at IS NULL LIMIT 1");
+        $stmtChk->execute([$id, $auth['tenant_id']]);
+        $cRow = $stmtChk->fetch(PDO::FETCH_ASSOC);
+        if (!$cRow) respond(404, null, 'Không tìm thấy liên hệ', false);
+
+        $isSelfCreatedByMe = ($cRow['source'] === 'manual' || $cRow['source'] === 'self') && 
+            ((int)$cRow['owner_id'] === (int)$auth['user_id'] || (int)$cRow['created_by'] === (int)$auth['user_id']);
+
         $scope = $this->getScope($auth, 'leads', 'delete');
-        if ($scope === 'none') {
+        if ($scope === 'none' && !$isSelfCreatedByMe) {
             respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
         }
         
         $sql = "UPDATE contacts SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($scope === 'team') {
-            $sql .= " AND (owner_id=? OR owner_id IN (
-                SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
-                )
-            ))";
-            $p[] = $auth['user_id'];
-            $p[] = $auth['user_id'];
-        } else if ($scope === 'own') {
-            $sql .= " AND owner_id=?";
-            $p[] = $auth['user_id'];
+        if (!$isSelfCreatedByMe) {
+            if ($scope === 'team') {
+                $sql .= " AND (owner_id=? OR owner_id IN (
+                    SELECT id FROM users WHERE team_id IN (
+                        SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
+                    )
+                ))";
+                $p[] = $auth['user_id'];
+                $p[] = $auth['user_id'];
+            } else if ($scope === 'own') {
+                $sql .= " AND owner_id=?";
+                $p[] = $auth['user_id'];
+            }
         }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
@@ -1193,10 +1224,14 @@ class ContactController {
         $tid = $auth['tenant_id'];
 
         // 1. Fetch contact
-        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name, source FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
         $stmt->execute([$id, $tid]);
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$contact) respond(404, null, 'Không tìm thấy liên hệ', false);
+
+        if (($contact['source'] ?? '') === 'manual' || ($contact['source'] ?? '') === 'self') {
+            respond(400, null, 'Lead do Sale tự tạo không liên kết với kho Databank và không được phép trả vào Databank!', false);
+        }
 
         $personId = $contact['person_id'];
 
