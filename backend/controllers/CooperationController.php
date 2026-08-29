@@ -211,41 +211,44 @@ class CooperationController {
         }
 
         $contactIds = array_unique(array_filter(array_column($slips, 'contact_id')));
+        $depositIds = array_unique(array_filter(array_column($slips, 'deposit_slip_id')));
         $docsByContact = [];
-        $milestonesByContact = [];
+        $milestonesByDeposit = [];
 
         if (!empty($contactIds)) {
             $inClause = implode(',', array_fill(0, count($contactIds), '?'));
 
-            // 1. Fetch group of cloud files
+            // 1. Fetch group of cooperation-specific cloud files only
             $stmtDocs = $this->db->prepare("
                 SELECT contact_id, file_path 
                 FROM cloud_files 
-                WHERE tenant_id = ? AND contact_id IN ($inClause)
+                WHERE tenant_id = ? AND contact_id IN ($inClause) AND (category = 'Tài liệu Hợp tác & Hoa hồng' OR file_path LIKE '%uploads/cooperation/%')
             ");
             $stmtDocs->execute(array_merge([$tid], $contactIds));
             while ($row = $stmtDocs->fetch(PDO::FETCH_ASSOC)) {
                 $docsByContact[$row['contact_id']][] = $row;
             }
+        }
 
-            // 2. Fetch group of milestones
+        if (!empty($depositIds)) {
+            $inDepClause = implode(',', array_fill(0, count($depositIds), '?'));
+            // 2. Fetch group of milestones belonging specifically to linked deposits
             $stmtMilestones = $this->db->prepare("
-                SELECT d.contact_id, dm.unc_file_path 
+                SELECT dm.deposit_id, dm.unc_file_path 
                 FROM deposit_milestones dm
-                JOIN deposits d ON dm.deposit_id = d.id
-                JOIN contacts c ON d.contact_id = c.id
-                WHERE c.tenant_id = ? AND d.contact_id IN ($inClause) AND dm.unc_file_path IS NOT NULL AND dm.unc_file_path != ''
+                WHERE dm.deposit_id IN ($inDepClause) AND dm.unc_file_path IS NOT NULL AND dm.unc_file_path != ''
             ");
-            $stmtMilestones->execute(array_merge([$tid], $contactIds));
+            $stmtMilestones->execute($depositIds);
             while ($row = $stmtMilestones->fetch(PDO::FETCH_ASSOC)) {
-                $milestonesByContact[$row['contact_id']][] = $row;
+                $milestonesByDeposit[$row['deposit_id']][] = $row;
             }
         }
 
         foreach ($slips as &$s) {
             $cid = $s['contact_id'];
+            $depId = $s['deposit_slip_id'] ? (int)$s['deposit_slip_id'] : null;
             $docs = $docsByContact[$cid] ?? [];
-            $milestones = $milestonesByContact[$cid] ?? [];
+            $milestones = $depId ? ($milestonesByDeposit[$depId] ?? []) : [];
 
             // Collect all unique paths
             $allPaths = [];
@@ -255,9 +258,7 @@ class CooperationController {
 
             foreach ($docs as $d) {
                 $p = $d['file_path'];
-                if (empty($p)) continue;
-                $pLower = strtolower($p);
-                if (strpos($pLower, 'deposits') !== false || strpos($pLower, 'unc') !== false || strpos($pLower, 'cọc') !== false || strpos($pLower, 'hợp đồng') !== false) {
+                if (!empty($p)) {
                     $allPaths[] = $p;
                 }
             }

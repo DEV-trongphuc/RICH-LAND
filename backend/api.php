@@ -6342,9 +6342,9 @@ switch ($action) {
             // Clean expired offers
             $conn->query("UPDATE lead_offers SET status = 'expired' WHERE status = 'pending' AND expires_at < NOW()");
 
-            // Query active offers
+            // Query active offers (excluding rounds where user is currently on cooldown)
             $stmt = $conn->prepare("
-                SELECT lo.id as offer_id, lo.lead_id, lo.expires_at,
+                SELECT lo.id as offer_id, lo.lead_id, lo.round_id, lo.expires_at,
                        l.name as lead_name, l.source as lead_source, l.type as lead_type, l.note as lead_note,
                        TIMESTAMPDIFF(SECOND, NOW(), lo.expires_at) as seconds_remaining,
                        dr.round_name
@@ -6354,6 +6354,13 @@ switch ($action) {
                 WHERE lo.user_id = ? 
                   AND lo.status = 'pending' 
                   AND lo.expires_at > NOW()
+                  AND NOT EXISTS (
+                      SELECT 1 FROM distribution_logs dl 
+                      WHERE (dl.assigned_to = lo.user_id OR dl.assigned_to = (SELECT c.id FROM consultants c WHERE c.email = (SELECT u.email FROM users u WHERE u.id = lo.user_id LIMIT 1) LIMIT 1))
+                        AND dl.round_id = lo.round_id 
+                        AND dl.status = 'grabbed' 
+                        AND dl.received_at >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
+                  )
                 ORDER BY lo.expires_at ASC
             ");
             $stmt->bind_param("i", $userId);
@@ -6444,6 +6451,44 @@ switch ($action) {
                 break;
             }
 
+            // Cooldown check: verify if the user has grabbed another lead in this round within grab_cooldown_seconds
+            $targetRoundId = (int)($resChk['target_round_id'] ?? 0);
+            if ($targetRoundId > 0) {
+                $cooldownStmt = $conn->prepare("
+                    SELECT dr.grab_cooldown_seconds,
+                           TIMESTAMPDIFF(SECOND, MAX(dl.received_at), NOW()) as elapsed
+                    FROM distribution_rounds dr
+                    LEFT JOIN distribution_logs dl ON dl.round_id = dr.id 
+                         AND (dl.assigned_to = ? OR dl.assigned_to = (SELECT c.id FROM consultants c WHERE c.email = (SELECT u.email FROM users u WHERE u.id = ? LIMIT 1) LIMIT 1))
+                         AND dl.status = 'grabbed'
+                         AND dl.received_at >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
+                    WHERE dr.id = ?
+                    GROUP BY dr.id, dr.grab_cooldown_seconds
+                ");
+                if ($cooldownStmt) {
+                    $cooldownStmt->bind_param("iii", $userId, $userId, $targetRoundId);
+                    $cooldownStmt->execute();
+                    $cdRes = $cooldownStmt->get_result()->fetch_assoc();
+                    $cooldownStmt->close();
+
+                    if ($cdRes && $cdRes['elapsed'] !== null) {
+                        $cdSec = (int)($cdRes['grab_cooldown_seconds'] ?? 3600);
+                        $elapsed = (int)$cdRes['elapsed'];
+                        if ($elapsed < $cdSec) {
+                            $remainMins = max(1, ceil(($cdSec - $elapsed) / 60));
+                            // Expire remaining offers of this round for this user
+                            $conn->query("UPDATE lead_offers SET status = 'expired' WHERE user_id = $userId AND round_id = $targetRoundId AND status = 'pending'");
+                            $conn->rollback();
+                            echo json_encode([
+                                'success' => false, 
+                                'message' => "Bạn đang trong thời gian chờ (còn khoảng $remainMins phút) trước khi được nhận data tiếp theo trong vòng này."
+                            ]);
+                            break;
+                        }
+                    }
+                }
+            }
+
             // Check van chống ôm (backpressure limit)
             $backpressureLimit = (int) get_system_setting($conn, 'backpressure_limit');
             if ($backpressureLimit <= 0) {
@@ -6503,12 +6548,24 @@ switch ($action) {
             $upMyOffer->execute();
             $upMyOffer->close();
 
+            // Expire offers for other users on this lead
             $upOtherOffers = $conn->prepare("UPDATE lead_offers SET status = 'expired', responded_at = NOW() WHERE lead_id = ? AND user_id != ? AND status = 'pending'");
             $upOtherOffers->bind_param("ii", $lead_id, $userId);
             $upOtherOffers->execute();
             $upOtherOffers->close();
 
             $roundId = $resChk['target_round_id'] ? (int)$resChk['target_round_id'] : null;
+
+            // Also immediately expire all other pending offers of this winning user in the same round (cooldown starts)
+            if ($roundId) {
+                $upMyOtherRoundOffers = $conn->prepare("UPDATE lead_offers SET status = 'expired', responded_at = NOW() WHERE user_id = ? AND round_id = ? AND status = 'pending'");
+                if ($upMyOtherRoundOffers) {
+                    $upMyOtherRoundOffers->bind_param("ii", $userId, $roundId);
+                    $upMyOtherRoundOffers->execute();
+                    $upMyOtherRoundOffers->close();
+                }
+            }
+
             require_once __DIR__ . '/webhook_logic.php';
             logDistribution($conn, $lead_id, $userId, $roundId, 'grabbed', 'Tranh nhận lead thành công (Grab lead).', false);
 
@@ -10778,7 +10835,8 @@ switch ($action) {
         // Query 2: Get paginated records
         $recordsSql = "
             SELECT l.*, dr.round_name, c.name as consultant_name, c.avatar as consultant_avatar,
-                   (SELECT dl.status FROM distribution_logs dl WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1) as log_status
+                   (SELECT dl.status FROM distribution_logs dl WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1) as log_status,
+                   (SELECT dl.message FROM distribution_logs dl WHERE dl.lead_id = l.id ORDER BY dl.id DESC LIMIT 1) as latest_log_message
             FROM leads l
             LEFT JOIN distribution_rounds dr ON l.target_round_id = dr.id
             LEFT JOIN consultants c ON l.assigned_to = c.id

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, lazy, Suspense } from 'react';
+import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
@@ -189,6 +189,7 @@ export default function DepositsPage() {
   const [cancelDepositId, setCancelDepositId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
 
   const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(user.role);
   const canEditMilestones = isAdmin || (selectedDepForManage && (
@@ -372,7 +373,8 @@ export default function DepositsPage() {
       }
     }
 
-    if (isSaving) return;
+    if (isSaving || isSavingRef.current) return;
+    isSavingRef.current = true;
 
     try {
       setIsSaving(true);
@@ -416,6 +418,7 @@ export default function DepositsPage() {
       addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
       setIsSaving(false);
+      isSavingRef.current = false;
     }
   };
 

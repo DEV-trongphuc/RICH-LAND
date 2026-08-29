@@ -1630,7 +1630,7 @@ export default function CooperationSlipsPage() {
                       </h4>
                       {slip.attachment_url ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          {slip.attachment_url.split(',').map((rawUrl, urlIdx) => {
+                          {Array.from(new Set(slip.attachment_url.split(',').map(s => s.trim()).filter(Boolean))).map((rawUrl, urlIdx) => {
                             const url = rawUrl.trim();
                             if (!url) return null;
                             const fullUrl = resolveFileUrl(url);

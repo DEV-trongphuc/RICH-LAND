@@ -674,14 +674,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     return () => clearInterval(interval);
   }, [user?.role]);
 
+  const isGrabbingLeadRef = useRef(false);
   const handleGrabLead = async (leadId: number) => {
+    if (isGrabbingLeadRef.current) return;
+    isGrabbingLeadRef.current = true;
+    setIsClaiming(true);
     try {
+      const claimingOffer = activeOffers.find(o => Number(o.lead_id) === Number(leadId));
+      const targetRoundId = claimingOffer?.round_id;
+
       const json = await fetchAPI('claim_lead', {
         method: 'POST',
         body: JSON.stringify({ lead_id: leadId })
       });
       if (json.success) {
         toast.success(t('Chúc mừng! Bạn đã tranh nhận khách hàng thành công!'));
+        // Immediately remove offers of this round (or all offers claimed) from state to prevent fast double grab
+        setActiveOffers(prev => prev.filter(o => Number(o.lead_id) !== Number(leadId) && (!targetRoundId || Number(o.round_id) !== Number(targetRoundId))));
         loadPortalData();
         fetchActiveOffers();
       } else {
@@ -690,6 +699,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }
     } catch (err: any) {
       toast.error(t('Lỗi kết nối: ') + err.message);
+    } finally {
+      isGrabbingLeadRef.current = false;
+      setIsClaiming(false);
     }
   };
 

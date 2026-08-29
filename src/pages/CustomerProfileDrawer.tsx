@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2 } from 'lucide-react';
@@ -1407,6 +1407,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [depositUncFile, setDepositUncFile] = useState<File | null>(null);
   const [pendingPipelineTransition, setPendingPipelineTransition] = useState<{ targetId: string; targetLabel: string; note: string } | null>(null);
   const [depositCoopShares, setDepositCoopShares] = useState<Record<string, string>>({});
+  const isSavingDepositRef = useRef(false);
 
   useEffect(() => {
     if (selectedDepForManage) {
@@ -4192,6 +4193,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const handleSaveDeposit = async (createCoopSlipChoice: boolean = false) => {
+    if (isSubmitting || isSavingDepositRef.current) return;
+
     if (!depositProjectId || !depositUnitCode || !depositPrice) {
       addToast('Vui lòng nhập đầy đủ Dự án, Mã căn hộ và Giá bán', 'error');
       return;
@@ -4227,6 +4230,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     }
 
+    isSavingDepositRef.current = true;
     setIsSubmitting(true);
     try {
       // 1. Create the deposit slip and milestones
@@ -4320,6 +4324,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast(e?.response?.data?.message || e.message || 'Lỗi khi tạo phiếu cọc', 'error');
     } finally {
       setIsSubmitting(false);
+      isSavingDepositRef.current = false;
     }
   };
 

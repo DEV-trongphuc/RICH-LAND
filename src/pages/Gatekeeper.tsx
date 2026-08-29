@@ -2535,6 +2535,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                 <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.16)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.35)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <ShieldAlert size={12} /> {t('Blacklist')}
                                 </span>
+                              ) : (l.ai_screener_status === 'not_screened' || (!l.ai_screener_status && !l.ai_evaluation)) ? (
+                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Clock size={12} /> {t('Chờ Admin phân bổ')}
+                                </span>
                               ) : (
                                 <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <ShieldAlert size={12} /> {t('Dưới chuẩn')}
@@ -2548,6 +2552,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                   return (
                                     <>
                                       <strong>{l.status === 'blacklisted' ? t('Lý do chặn:') : t('Lý do từ chối:')}</strong> {adminReason}
+                                    </>
+                                  );
+                                }
+                                if (l.ai_screener_status === 'not_screened' || (!l.ai_screener_status && !l.ai_evaluation)) {
+                                  return (
+                                    <>
+                                      <strong>{t('Lý do tạm giữ:')}</strong> {l.latest_log_message || l.note || t('Quá hạn tranh nhận - Chờ Admin phân bổ lại')}
                                     </>
                                   );
                                 }
@@ -2832,6 +2843,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                 {t('Blacklist')}
                               </span>
                             </>
+                          ) : (l.ai_screener_status === 'not_screened' || (!l.ai_screener_status && !l.ai_evaluation)) ? (
+                            <>
+                              <Clock size={12} color="#2563eb" />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563eb' }}>
+                                {t('Chờ Admin phân bổ')}
+                              </span>
+                            </>
                           ) : (
                             <>
                               <ShieldAlert size={12} color="var(--color-danger)" />
@@ -2843,13 +2861,20 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         </div>
                       )}
 
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.4, wordBreak: 'break-word', marginTop: '0.25rem' }}>
                         {(() => {
                           const adminReason = extractManualReason(l.note || '');
                           if (adminReason) {
                             return (
                               <>
                                 <strong>{l.status === 'blacklisted' ? t('Lý do chặn:') : t('Lý do từ chối:')}</strong> {adminReason}
+                              </>
+                            );
+                          }
+                          if (l.ai_screener_status === 'not_screened' || (!l.ai_screener_status && !l.ai_evaluation)) {
+                            return (
+                              <>
+                                <strong>{t('Lý do tạm giữ:')}</strong> {l.latest_log_message || l.note || t('Quá hạn tranh nhận - Chờ Admin phân bổ lại')}
                               </>
                             );
                           }
@@ -5669,7 +5694,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: 4 }}><Tag size={12} /> {t('Đánh giá')}</div>
                             <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
-                              {selectedLead.ai_evaluation || t('Không đáp ứng yêu cầu bộ lọc.')}
+                              {selectedLead.ai_evaluation || (selectedLead.ai_screener_status === 'not_screened' ? (selectedLead.latest_log_message || selectedLead.note || t('Quá hạn tranh nhận - Chờ Admin phân bổ lại')) : t('Không đáp ứng yêu cầu bộ lọc.'))}
                             </div>
                           </div>
                           <div>

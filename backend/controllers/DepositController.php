@@ -163,6 +163,31 @@ class DepositController {
                 }
             }
 
+            // Check for duplicate pending deposit created recently for the same unit & contact (debounce/idempotency)
+            $stmtDup = $this->db->prepare("
+                SELECT id FROM deposits 
+                WHERE contact_id = ? 
+                  AND project_id = ? 
+                  AND unit_code = ? 
+                  AND status IN ('pending_admin', 'approved') 
+                  AND created_at >= DATE_SUB(NOW(), INTERVAL 60 SECOND)
+                ORDER BY id DESC 
+                LIMIT 1
+            ");
+            $stmtDup->execute([$contactId, $projectId, $unitCode]);
+            $existingDepId = $stmtDup->fetchColumn();
+            if ($existingDepId) {
+                $stmtExM = $this->db->prepare("SELECT id, milestone_name, expected_amount, status FROM deposit_milestones WHERE deposit_id = ? ORDER BY id ASC");
+                $stmtExM->execute([$existingDepId]);
+                $exMilestones = $stmtExM->fetchAll(PDO::FETCH_ASSOC);
+
+                respond(200, [
+                    'id' => (int)$existingDepId,
+                    'milestones' => $exMilestones,
+                    'is_duplicate' => true
+                ], 'Phiếu cọc cho căn hộ này đã được tiếp nhận và đang chờ xử lý.');
+            }
+
             // Insert deposit record
             $stmt = $this->db->prepare("
                 INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by)

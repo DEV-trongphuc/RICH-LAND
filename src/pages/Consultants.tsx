@@ -1013,16 +1013,16 @@ const ConsultantsInner = () => {
   return (
     <div className="anim-fade-up">
       {/* Header */}
-      <div className={isMobile ? "" : "page-header"} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '16px', marginBottom: '1.5rem', position: 'relative', zIndex: 50 }}>
+      <div className={isMobile ? "" : "page-header"} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '12px', marginBottom: isMobile ? '0.875rem' : '0.75rem', position: 'relative', zIndex: 50 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: isMobile ? '1.25rem' : '1.75rem', flexWrap: 'wrap' }}>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: isMobile ? '1.2rem' : '1.45rem', flexWrap: 'wrap', margin: 0, lineHeight: 1.2 }}>
             {activeTab === 'teams' ? t('Quản lý Nhóm (Team)') : activeTab === 'branches' ? t('Chi nhánh Kinh doanh') : t('Quản lý Tư vấn viên')}
             <button
               onClick={() => setShowInfoModal(true)}
               style={{
                 background: 'rgba(0, 0, 0, 0.02)',
                 border: '1px solid var(--color-border)',
-                padding: '3px 8px',
+                padding: '2px 7px',
                 borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
@@ -1030,7 +1030,7 @@ const ConsultantsInner = () => {
                 cursor: 'pointer',
                 color: 'var(--color-text-muted)',
                 transition: 'all 0.2s',
-                height: '24px'
+                height: '22px'
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.color = 'var(--color-primary)';
@@ -1044,11 +1044,11 @@ const ConsultantsInner = () => {
               }}
               title={t("Xem hướng dẫn thiết lập nhân sự, team và dự án trọng điểm")}
             >
-              <Info size={12} style={{ marginTop: 1 }} />
-              <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{t("Cơ chế")}</span>
+              <Info size={11} style={{ marginTop: 1 }} />
+              <span style={{ fontSize: '0.675rem', fontWeight: 600 }}>{t("Cơ chế")}</span>
             </button>
           </h1>
-          <p className="page-subtitle" style={{ fontSize: '0.8rem' }}>
+          <p className="page-subtitle" style={{ fontSize: '0.75rem', margin: '2px 0 0' }}>
             {activeTab === 'teams'
               ? t('Danh sách nhóm phân chia công việc và chỉ tiêu dự án')
               : activeTab === 'branches'
@@ -1064,23 +1064,23 @@ const ConsultantsInner = () => {
               <button 
                 onClick={openAddTeamModal} 
                 className="btn primary"
-                style={{ padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', height: '36px', width: '36px', minWidth: '36px' }}
+                style={{ padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', height: '32px', width: '32px', minWidth: '32px' }}
               >
-                <Plus size={18} />
+                <Plus size={16} />
               </button>
             ) : activeTab === 'branches' ? null : isWriteAuthorized ? (
               <button 
                 onClick={openAddModal} 
                 className="btn primary"
-                style={{ padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', height: '36px', width: '36px', minWidth: '36px' }}
+                style={{ padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', height: '32px', width: '32px', minWidth: '32px' }}
               >
-                <Plus size={18} />
+                <Plus size={16} />
               </button>
             ) : null}
           </div>
         ) : (
           /* Desktop layout: Subtabs and Add Button side by side */
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', width: 'auto', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: 'auto', justifyContent: 'flex-end' }}>
             {/* Tab bar (desktop only) */}
             {showAllTabs && (
               <div className="segmented-control-wrapper" style={{ margin: 0 }}>
@@ -1099,22 +1099,22 @@ const ConsultantsInner = () => {
                     position: 'absolute',
                     top: '2px',
                     bottom: '2px',
-                    width: '120px',
+                    width: '110px',
                     borderRadius: '6px',
                     background: 'var(--color-surface)',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
                     transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                     transform: `translateX(${
                       activeTab === 'consultants' ? '0px' : 
-                      activeTab === 'teams' ? '122px' : '244px'
+                      activeTab === 'teams' ? '112px' : '224px'
                     })`,
                     zIndex: 1
                   }} />
 
                   {[
-                    { id: 'consultants', label: t('Tư vấn viên'), icon: <User size={14} /> },
-                    { id: 'teams', label: t('Nhóm (Team)'), icon: <Users size={14} /> },
-                    { id: 'branches', label: t('Chi nhánh'), icon: <Building2 size={14} /> }
+                    { id: 'consultants', label: t('Tư vấn viên'), icon: <User size={13} /> },
+                    { id: 'teams', label: t('Nhóm (Team)'), icon: <Users size={13} /> },
+                    { id: 'branches', label: t('Chi nhánh'), icon: <Building2 size={13} /> }
                   ].map(tab => {
                     const isSelected = activeTab === tab.id;
                     return (
@@ -1122,11 +1122,11 @@ const ConsultantsInner = () => {
                         key={tab.id}
                         onClick={() => navigate(`/consultants?tab=${tab.id}`)}
                         style={{
-                          width: '120px',
-                          height: '32px',
+                          width: '110px',
+                          height: '30px',
                           borderRadius: '6px',
                           border: 'none',
-                          fontSize: '0.8125rem',
+                          fontSize: '0.78rem',
                           fontWeight: 700,
                           cursor: 'pointer',
                           background: 'transparent',
@@ -1134,7 +1134,7 @@ const ConsultantsInner = () => {
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '6px',
+                          gap: '5px',
                           position: 'relative',
                           outline: 'none',
                           boxShadow: 'none',
@@ -1156,18 +1156,18 @@ const ConsultantsInner = () => {
               <button 
                 onClick={openAddTeamModal} 
                 className="btn primary"
-                style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '36px', flexShrink: 0 }}
+                style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '32px', fontSize: '0.8125rem', flexShrink: 0 }}
               >
-                <Plus size={16} />
+                <Plus size={15} />
                 <span>{t('Thêm Nhóm')}</span>
               </button>
             ) : activeTab === 'branches' ? null : isWriteAuthorized ? (
               <button 
                 onClick={openAddModal} 
                 className="btn primary"
-                style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '36px', flexShrink: 0 }}
+                style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '32px', fontSize: '0.8125rem', flexShrink: 0 }}
               >
-                <Plus size={16} />
+                <Plus size={15} />
                 <span>{t('Thêm TVV')}</span>
               </button>
             ) : null}
@@ -1179,96 +1179,96 @@ const ConsultantsInner = () => {
       <div key={activeTab} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
         {/* Summary Cards */}
         {activeTab === 'consultants' && (
-        <div className="responsive-grid-4" style={{ display: isMobile ? 'none' : 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+        <div className="responsive-grid-4" style={{ display: isMobile ? 'none' : 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
           {/* Card 1: Tổng TVV */}
-          <div className="stat-card total-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', minHeight: '130px', boxShadow: '0 4px 12px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
-            <div className="decor-svg" style={{ color: '#64748b' }}>
+          <div className="stat-card total-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.625rem 0.875rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '68px', boxShadow: '0 2px 8px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
+            <div className="decor-svg" style={{ color: '#64748b', opacity: 0.5, transform: 'scale(0.85) translate(10px, -10px)' }}>
               <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
                 <circle cx="50" cy="35" r="15" stroke="currentColor" strokeWidth="2" />
                 <path d="M15 80 C 15 60, 31 48, 50 48 C 69 48, 85 60, 85 80" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span className="stat-label" style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tổng TVV')}</span>
-              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: '#64748b', flexShrink: 0 }}>
-                <Users size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tổng TVV')}</span>
+              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '6px', background: 'rgba(100, 116, 139, 0.08)', color: '#64748b', flexShrink: 0 }}>
+                <Users size={14} />
               </div>
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {loading ? (
-                <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
+                <div style={{ height: '22px', width: '40px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.1 }}>{users.length}</span>
+                <span className="stat-value" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>{users.length}</span>
               )}
             </div>
           </div>
 
           {/* Card 2: Đang nhận Data */}
-          <div className="stat-card distributed-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', minHeight: '130px', boxShadow: '0 4px 12px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
-            <div className="decor-svg" style={{ color: 'var(--color-success)' }}>
+          <div className="stat-card distributed-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.625rem 0.875rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '68px', boxShadow: '0 2px 8px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
+            <div className="decor-svg" style={{ color: 'var(--color-success)', opacity: 0.5, transform: 'scale(0.85) translate(10px, -10px)' }}>
               <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
                 <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="2" />
                 <path d="M35 50 L 45 60 L 65 40" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span className="stat-label" style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nhận Data')}</span>
-              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)', flexShrink: 0 }}>
-                <CheckCircle size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nhận Data')}</span>
+              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)', flexShrink: 0 }}>
+                <CheckCircle size={14} />
               </div>
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {loading ? (
-                <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
+                <div style={{ height: '22px', width: '40px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-success)', lineHeight: 1.1 }}>{activeCount}</span>
+                <span className="stat-value" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-success)', lineHeight: 1 }}>{activeCount}</span>
               )}
             </div>
           </div>
 
           {/* Card 3: Đang nghỉ phép */}
-          <div className="stat-card duplicates-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', minHeight: '130px', boxShadow: '0 4px 12px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
-            <div className="decor-svg" style={{ color: 'var(--color-warning)' }}>
+          <div className="stat-card duplicates-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.625rem 0.875rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '68px', boxShadow: '0 2px 8px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
+            <div className="decor-svg" style={{ color: 'var(--color-warning)', opacity: 0.5, transform: 'scale(0.85) translate(10px, -10px)' }}>
               <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
                 <rect x="20" y="25" width="60" height="55" rx="5" stroke="currentColor" strokeWidth="2" />
                 <path d="M20 40 H 80 M 35 15 V 25 M 65 15 V 25" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span className="stat-label" style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nghỉ phép')}</span>
-              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)', flexShrink: 0 }}>
-                <Calendar size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nghỉ phép')}</span>
+              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '6px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)', flexShrink: 0 }}>
+                <Calendar size={14} />
               </div>
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {loading ? (
-                <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
+                <div style={{ height: '22px', width: '40px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-warning)', lineHeight: 1.1 }}>{leaveCount}</span>
+                <span className="stat-value" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-warning)', lineHeight: 1 }}>{leaveCount}</span>
               )}
             </div>
           </div>
 
           {/* Card 4: Ngừng hoạt động */}
-          <div className="stat-card errors-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', minHeight: '130px', boxShadow: '0 4px 12px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
-            <div className="decor-svg" style={{ color: 'var(--color-danger)' }}>
+          <div className="stat-card errors-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.625rem 0.875rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '68px', boxShadow: '0 2px 8px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
+            <div className="decor-svg" style={{ color: 'var(--color-danger)', opacity: 0.5, transform: 'scale(0.85) translate(10px, -10px)' }}>
               <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
                 <circle cx="45" cy="35" r="15" stroke="currentColor" strokeWidth="2" />
                 <path d="M15 75 C 15 60, 27 50, 45 50 C 53 50, 60 54, 65 60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 <path d="M75 55 L 90 70 M 90 55 L 75 70" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span className="stat-label" style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Ngừng hoạt động')}</span>
-              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', flexShrink: 0 }}>
-                <UserX size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Ngừng hoạt động')}</span>
+              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', flexShrink: 0 }}>
+                <UserX size={14} />
               </div>
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {loading ? (
-                <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
+                <div style={{ height: '22px', width: '40px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-danger)', lineHeight: 1.1 }}>{inactiveCount}</span>
+                <span className="stat-value" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-danger)', lineHeight: 1 }}>{inactiveCount}</span>
               )}
             </div>
           </div>
@@ -1279,7 +1279,7 @@ const ConsultantsInner = () => {
       {activeTab === 'consultants' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
           <div style={{
-            padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.5rem',
+            padding: isMobile ? '0.5rem 0.75rem' : '0.5rem 1rem',
             borderBottom: '1px solid var(--color-border)',
             display: 'flex',
             justifyContent: 'space-between',
@@ -1288,7 +1288,7 @@ const ConsultantsInner = () => {
             gap: '0.75rem',
             flexWrap: 'wrap'
           }}>
-            <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: isMobile ? '100%' : '480px', maxWidth: isMobile ? '100%' : '480px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: isMobile ? '100%' : '360px', maxWidth: isMobile ? '100%' : '440px', alignItems: 'center' }}>
               <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
                 <input
                   type="text"
@@ -1300,11 +1300,11 @@ const ConsultantsInner = () => {
                   }}
                   className="form-input"
                   style={{
-                    paddingLeft: '12px',
-                    borderRadius: '10px',
-                    fontSize: '0.875rem',
+                    paddingLeft: '10px',
+                    borderRadius: '8px',
+                    fontSize: '0.8125rem',
                     width: '100%',
-                    height: '38px'
+                    height: '32px'
                   }}
                 />
                 {searchQuery && (
@@ -1315,7 +1315,7 @@ const ConsultantsInner = () => {
                     }}
                     style={{
                       position: 'absolute',
-                      right: '12px',
+                      right: '10px',
                       top: '50%',
                       transform: 'translateY(-50%)',
                       background: 'none',
@@ -1328,7 +1328,7 @@ const ConsultantsInner = () => {
                       justifyContent: 'center'
                     }}
                   >
-                    <X size={14} />
+                    <X size={13} />
                   </button>
                 )}
               </div>
@@ -1339,19 +1339,19 @@ const ConsultantsInner = () => {
                   <button
                     onClick={() => setShowMobileTabMenu(!showMobileTabMenu)}
                     style={{
-                      height: '38px',
-                      width: '38px',
+                      height: '32px',
+                      width: '32px',
                       padding: 0,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: '10px',
+                      borderRadius: '8px',
                       border: '1px solid var(--color-border)',
                       background: 'transparent',
                       color: 'var(--color-text)'
                     }}
                   >
-                    <MoreHorizontal size={18} />
+                    <MoreHorizontal size={16} />
                   </button>
 
                   {showMobileTabMenu && (
@@ -1362,7 +1362,7 @@ const ConsultantsInner = () => {
                       />
                       <div style={{
                         position: 'absolute',
-                        top: '44px',
+                        top: '38px',
                         right: 0,
                         width: '160px',
                         backgroundColor: 'var(--color-surface)',
@@ -1412,7 +1412,7 @@ const ConsultantsInner = () => {
               )}
             </div>
 
-            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+            <div style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
               {t('Tổng số')}: <strong style={{ color: 'var(--color-text)' }}>{filteredUsers.length}</strong> / {users.length} {t('tư vấn viên')}
             </div>
           </div>
@@ -1470,16 +1470,16 @@ const ConsultantsInner = () => {
               )}
             </div>
           ) : (
-            <div className="table-wrap mobile-card-table custom-scrollbar" style={{ border: 'none', borderRadius: 0, maxHeight: '480px', overflowY: 'auto' }}>
-              <table className="mobile-table-compact">
+            <div className="table-wrap mobile-card-table custom-scrollbar" style={{ border: 'none', borderRadius: 0, overflowX: 'auto' }}>
+              <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Tên TVV')}</th>
-                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin liên hệ')}</th>
-                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
-                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Telegram Bot')}</th>
-                    {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Truy cập gần nhất')}</th>}
-                    {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>}
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', padding: '0.5rem 0.875rem', fontSize: '0.7rem' }}>{t('Tên TVV')}</th>
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', padding: '0.5rem 0.875rem', fontSize: '0.7rem' }}>{t('Thông tin liên hệ')}</th>
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', padding: '0.5rem 0.875rem', fontSize: '0.7rem' }}>{t('Zalo Bot')}</th>
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', padding: '0.5rem 0.875rem', fontSize: '0.7rem' }}>{t('Telegram Bot')}</th>
+                    {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', padding: '0.5rem 0.875rem', fontSize: '0.7rem' }}>{t('Truy cập gần nhất')}</th>}
+                    {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right', padding: '0.5rem 0.875rem', fontSize: '0.7rem' }}>{t('Thao tác')}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -1507,12 +1507,12 @@ const ConsultantsInner = () => {
                       onClick={() => openEditModal(u)}
                       title={t("Nhấp để xem chi tiết")}
                     >
-                      <td data-label={t('Tên TVV')}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <td data-label={t('Tên TVV')} style={{ padding: '0.375rem 0.875rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                           <Avatar
                             src={u.avatar}
                             name={u.name}
-                            size={32}
+                            size={28}
                             style={{
                               filter: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
                               opacity: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 0.5 : 1
@@ -1520,39 +1520,39 @@ const ConsultantsInner = () => {
                           />
                           <div>
                             <div
-                              style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', transition: 'color 0.15s' }}
+                              style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.2, transition: 'color 0.15s' }}
                               onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
                               onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text)'}
                             >
                               {u.name}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>ID: {u.id}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: 1 }}>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>ID: {u.id}</span>
                               <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-text-muted)' }} />
                               {u.work_schedule ? (
                                 <span
                                   style={{
-                                    fontSize: '0.75rem',
+                                    fontSize: '0.7rem',
                                     color: '#0ea5e9',
                                     fontWeight: 600,
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: 4,
+                                    gap: 3,
                                     cursor: 'help',
                                     borderBottom: '1px dotted #0ea5e9'
                                   }}
                                   title={formatScheduleTooltip(u.work_schedule, t)}
                                 >
-                                  <Clock size={12} /> {t('Lịch tuần')}
+                                  <Clock size={11} /> {t('Lịch tuần')}
                                 </span>
                               ) : (
                                 (u.work_start_time === '00:00' && u.work_end_time === '23:59') || (!u.work_start_time && !u.work_end_time) ? (
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Nhận data 24/24")}>
-                                    <Clock size={12} /> 24/24
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 3 }} title={t("Nhận data 24/24")}>
+                                    <Clock size={11} /> 24/24
                                   </span>
                                 ) : (
-                                  <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }} title={`${t('Nhận data từ')} ${u.work_start_time} ${t('đến')} ${u.work_end_time}`}>
-                                    <Clock size={12} /> {u.work_start_time} - {u.work_end_time}
+                                  <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }} title={`${t('Nhận data từ')} ${u.work_start_time} ${t('đến')} ${u.work_end_time}`}>
+                                    <Clock size={11} /> {u.work_start_time} - {u.work_end_time}
                                   </span>
                                 )
                               )}
@@ -1560,39 +1560,39 @@ const ConsultantsInner = () => {
                           </div>
                         </div>
                       </td>
-                      <td data-label={t('Thông tin liên hệ')} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 14, height: 14, objectFit: 'contain', flexShrink: 0 }} />
+                      <td data-label={t('Thông tin liên hệ')} style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', padding: '0.375rem 0.875rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.775rem' }}>
+                            <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 13, height: 13, objectFit: 'contain', flexShrink: 0 }} />
                             <span>{u.email}</span>
                           </div>
                           {u.phone && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text)' }}>
-                              <Phone size={12} style={{ color: 'var(--color-primary)' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.725rem', color: 'var(--color-text)' }}>
+                              <Phone size={11} style={{ color: 'var(--color-primary)' }} />
                               <span>{u.phone}</span>
                             </div>
                           )}
                         </div>
                       </td>
 
-                      <td data-label={t('Zalo Bot')} onClick={e => e.stopPropagation()}>
+                      <td data-label={t('Zalo Bot')} style={{ padding: '0.375rem 0.875rem' }} onClick={e => e.stopPropagation()}>
                         {u.zalo_chat_id ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                             <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 6,
-                              padding: '4px 10px', borderRadius: 20,
-                              background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              padding: '2px 8px', borderRadius: 20,
+                              background: '#e5f0ff', color: '#0068ff', fontSize: '0.7rem', fontWeight: 600
                             }}>
-                              <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Đã liên kết')}
+                              <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 13, height: 13, borderRadius: '2px' }} /> {t('Đã liên kết')}
                             </span>
                             <CopyButton text={u.zalo_chat_id} />
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                             <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 6,
-                              padding: '4px 10px', borderRadius: 20,
-                              background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              padding: '2px 8px', borderRadius: 20,
+                              background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 500
                             }}>
                               {t('Chưa liên kết')}
                             </span>
@@ -1600,22 +1600,22 @@ const ConsultantsInner = () => {
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleConnectZalo(); }}
                                 style={{
-                                  fontSize: '0.725rem', padding: '3px 8px', borderRadius: '6px',
+                                  fontSize: '0.7rem', padding: '2px 7px', borderRadius: '5px',
                                   background: '#0068ff', color: 'white', border: 'none',
-                                  display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700, cursor: 'pointer'
+                                  display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 700, cursor: 'pointer'
                                 }}
                               >
-                                {t('Liên kết')} <ExternalLink size={12} />
+                                {t('Liên kết')} <ExternalLink size={11} />
                               </button>
                             ) : (
                               u.email && (
                                 zaloRemindedId === u.id ? (
-                                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                                    <Check size={12} /> {t('Đã nhắc')}
+                                  <span style={{ fontSize: '0.675rem', padding: '2px 5px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 600 }}>
+                                    <Check size={11} /> {t('Đã nhắc')}
                                   </span>
                                 ) : (
-                                  <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc xác thực Zalo")} disabled={zaloRemindingId === u.id}>
-                                    {zaloRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
+                                  <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.675rem', padding: '2px 5px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 3 }} title={t("Gửi email nhắc xác thực Zalo")} disabled={zaloRemindingId === u.id}>
+                                    {zaloRemindingId === u.id ? <RefreshCw size={11} className="spin" /> : <Send size={11} />} {zaloRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
                                   </button>
                                 )
                               )
@@ -1623,24 +1623,24 @@ const ConsultantsInner = () => {
                           </div>
                         )}
                         </td>
-                        <td data-label={t('Telegram Bot')} onClick={e => e.stopPropagation()}>
+                        <td data-label={t('Telegram Bot')} style={{ padding: '0.375rem 0.875rem' }} onClick={e => e.stopPropagation()}>
                           {u.telegram_chat_id ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                               <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                padding: '4px 10px', borderRadius: 20,
-                                background: '#e8f4fd', color: '#0088cc', fontSize: '0.75rem', fontWeight: 600
+                                display: 'inline-flex', alignItems: 'center', gap: 5,
+                                padding: '2px 8px', borderRadius: 20,
+                                background: '#e8f4fd', color: '#0088cc', fontSize: '0.7rem', fontWeight: 600
                               }}>
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 14, height: 14, borderRadius: '50%' }} /> {t('Đã liên kết')}
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 13, height: 13, borderRadius: '50%' }} /> {t('Đã liên kết')}
                               </span>
                               <CopyButton text={u.telegram_chat_id} />
                             </div>
                           ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                               <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                padding: '4px 10px', borderRadius: 20,
-                                background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
+                                display: 'inline-flex', alignItems: 'center', gap: 5,
+                                padding: '2px 8px', borderRadius: 20,
+                                background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 500
                               }}>
                                 {t('Chưa liên kết')}
                               </span>
@@ -1648,22 +1648,22 @@ const ConsultantsInner = () => {
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleConnectTelegram(u.id); }}
                                   style={{
-                                    fontSize: '0.725rem', padding: '3px 8px', borderRadius: '6px',
+                                    fontSize: '0.7rem', padding: '2px 7px', borderRadius: '5px',
                                     background: '#0284c7', color: 'white', border: 'none',
-                                    display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700, cursor: 'pointer'
+                                    display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 700, cursor: 'pointer'
                                   }}
                                 >
-                                  {t('Liên kết')} <ExternalLink size={12} />
+                                  {t('Liên kết')} <ExternalLink size={11} />
                                 </button>
                               ) : (
                                 u.email && (
                                   tgRemindedId === u.id ? (
-                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                                      <Check size={12} /> {t('Đã nhắc')}
+                                    <span style={{ fontSize: '0.675rem', padding: '2px 5px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 600 }}>
+                                      <Check size={11} /> {t('Đã nhắc')}
                                     </span>
                                   ) : (
-                                    <button onClick={(e) => { e.stopPropagation(); handleResendTelegramVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc liên kết Telegram")} disabled={tgRemindingId === u.id}>
-                                      {tgRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {tgRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
+                                    <button onClick={(e) => { e.stopPropagation(); handleResendTelegramVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.675rem', padding: '2px 5px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 3 }} title={t("Gửi email nhắc liên kết Telegram")} disabled={tgRemindingId === u.id}>
+                                      {tgRemindingId === u.id ? <RefreshCw size={11} className="spin" /> : <Send size={11} />} {tgRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
                                     </button>
                                   )
                                 )
@@ -1672,12 +1672,12 @@ const ConsultantsInner = () => {
                           )}
                         </td>
                       {isWriteAuthorized && (
-                        <td data-label={t('Truy cập gần nhất')} onClick={e => e.stopPropagation()}>
+                        <td data-label={t('Truy cập gần nhất')} style={{ padding: '0.375rem 0.875rem' }} onClick={e => e.stopPropagation()}>
                           {renderLastLogin(u.last_login)}
                         </td>
                       )}
                       {isWriteAuthorized && (
-                        <td className="col-actions" data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                        <td className="col-actions" data-label={t('Thao tác')} style={{ textAlign: 'right', padding: '0.375rem 0.875rem' }} onClick={e => e.stopPropagation()}>
                           <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
                             <button
                               onClick={() => {
@@ -1688,13 +1688,13 @@ const ConsultantsInner = () => {
                                 setStatsModalOpen(true);
                               }}
                               className="btn ghost sm"
-                              style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }}
+                              style={{ width: 28, height: 28, padding: 0, borderRadius: 6, color: 'var(--color-primary)' }}
                               title={t("Thống kê hiệu suất")}
                             >
-                              <BarChart2 size={14} />
+                              <BarChart2 size={13} />
                             </button>
-                            <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }} title={t("Xóa nhân sự")}>
-                              <Trash2 size={14} />
+                            <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 28, height: 28, padding: 0, borderRadius: 6, color: 'var(--color-danger)' }} title={t("Xóa nhân sự")}>
+                              <Trash2 size={13} />
                             </button>
                           </div>
                         </td>

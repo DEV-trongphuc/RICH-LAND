@@ -420,7 +420,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
       campaign_id: currentCampId,
       round_type: r.round_type || 'round_robin',
       grab_countdown_minutes: r.grab_countdown_seconds ? Math.round(Number(r.grab_countdown_seconds) / 60) : 5,
-      grab_cooldown_hours: r.grab_cooldown_seconds ? Math.round(Number(r.grab_cooldown_seconds) / 3600) : 1,
+      grab_cooldown_hours: r.grab_cooldown_seconds ? (Number(r.grab_cooldown_seconds) / 3600) : 1,
       grab_fallback_to_databank: r.grab_fallback_to_databank ? Number(r.grab_fallback_to_databank) : 0,
       grab_max_attempts: r.grab_max_attempts !== null && r.grab_max_attempts !== undefined ? String(r.grab_max_attempts) : ''
     });
@@ -1168,7 +1168,9 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                         <div style={{ padding: '0.375rem 0.5rem', background: theme === 'dark' ? '#374151' : 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Clock size={14} color="var(--color-text-muted)" />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                            {t("Chờ: {cooldown} giờ").replace('{cooldown}', String(Math.round((r.grab_cooldown_seconds || 3600) / 3600)))}
+                            {Number(r.grab_cooldown_seconds || 3600) < 3600
+                              ? t("Chờ: {cooldown} phút").replace('{cooldown}', String(Math.round(Number(r.grab_cooldown_seconds || 3600) / 60)))
+                              : t("Chờ: {cooldown} giờ").replace('{cooldown}', (Number(r.grab_cooldown_seconds || 3600) / 3600) % 1 === 0 ? String(Number(r.grab_cooldown_seconds || 3600) / 3600) : String(parseFloat((Number(r.grab_cooldown_seconds || 3600) / 3600).toFixed(1))))}
                           </span>
                         </div>
                       </div>
@@ -1425,7 +1427,9 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Clock size={12} color="var(--color-text-muted)" />
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                          {t("Cooldown: {cooldown}h").replace('{cooldown}', String(Math.round((r.grab_cooldown_seconds || 3600) / 3600)))}
+                          {Number(r.grab_cooldown_seconds || 3600) < 3600
+                            ? t("Cooldown: {cooldown}m").replace('{cooldown}', String(Math.round(Number(r.grab_cooldown_seconds || 3600) / 60)))
+                            : t("Cooldown: {cooldown}h").replace('{cooldown}', (Number(r.grab_cooldown_seconds || 3600) / 3600) % 1 === 0 ? String(Number(r.grab_cooldown_seconds || 3600) / 3600) : String(parseFloat((Number(r.grab_cooldown_seconds || 3600) / 3600).toFixed(1))))}
                         </span>
                       </div>
                     </div>
@@ -1598,14 +1602,21 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                               />
                             </div>
                             <div className="form-group">
-                              <label className="form-label">{t("Thời gian chờ nhận tiếp (giờ)")}</label>
+                              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span>{t("Thời gian chờ nhận tiếp (giờ)")}</span>
+                                {formData.grab_cooldown_hours ? (
+                                  <span style={{ fontSize: '0.725rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                                    ({Math.round(Number(formData.grab_cooldown_hours) * 60)} {t("phút")})
+                                  </span>
+                                ) : null}
+                              </label>
                               <input
                                 type="number"
                                 className="form-input"
-                                min={0.5}
-                                step={0.5}
+                                min={0.1}
+                                step={0.1}
                                 value={formData.grab_cooldown_hours}
-                                onChange={e => setFormData({ ...formData, grab_cooldown_hours: Math.max(0.1, parseFloat(e.target.value) || 1) })}
+                                onChange={e => setFormData({ ...formData, grab_cooldown_hours: Math.max(0.05, parseFloat(e.target.value) || 0.5) })}
                               />
                             </div>
                             <div className="form-group" style={{ gridColumn: 'span 2', marginTop: '-0.5rem' }}>
