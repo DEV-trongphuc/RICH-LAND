@@ -2953,6 +2953,90 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
+  const renderMarketingNoteSection = (margin = '1rem 0 0 0') => {
+    const marketingNote = (contact?.lead_note || contact?.marketing_note || contact?.lead_notes || contact?.notes || formData.lead_note || '').trim();
+    const locationPref = contact?.lead_preferred_location || contact?.preferred_location;
+    const bedroomPref = contact?.lead_bedroom_count || contact?.bedroom_count;
+    const demandPref = contact?.lead_demand_type || contact?.demand_type;
+    const budgetPref = contact?.lead_budget || contact?.budget;
+    const dataType = contact?.lead_type || contact?.customer_type || contact?.type;
+    const hasMarketingInfo = !!(marketingNote || locationPref || bedroomPref || demandPref || budgetPref || dataType);
+
+    if (!hasMarketingInfo) return null;
+
+    return (
+      <div 
+        style={{ 
+          padding: '1.25rem', 
+          background: '#fffdf0', 
+          border: '1px solid #fef08a', 
+          borderLeft: '5px solid #eab308', 
+          borderRadius: '12px', 
+          margin: margin,
+          boxShadow: '0 4px 14px rgba(234, 179, 8, 0.06)',
+          animation: 'fadeIn 0.3s ease'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
+          <FileText size={18} style={{ color: '#d97706' }} />
+          <h4 style={{ fontWeight: 800, fontSize: '0.9375rem', color: '#92400e', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            {t('Ghi chú & Nhu cầu từ Marketing')}
+          </h4>
+          {dataType && (
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: '#fef3c7', color: '#b45309', marginLeft: 'auto' }}>
+              {dataType}
+            </span>
+          )}
+        </div>
+
+        {marketingNote && (
+          <div style={{ marginBottom: (locationPref || bedroomPref || demandPref || budgetPref) ? '1rem' : '0' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', marginBottom: '4px' }}>
+              {t('Nội dung ghi chú:')}
+            </div>
+            <div style={{ fontSize: '0.875rem', color: '#78350f', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500, background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
+              {formatNote(marketingNote)}
+            </div>
+          </div>
+        )}
+
+        {(locationPref || bedroomPref || demandPref || budgetPref) && (
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', marginBottom: '6px' }}>
+              {t('Nhu cầu & Bất động sản quan tâm:')}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+              {locationPref && (
+                <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Khu vực / Dự án')}</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{locationPref}</div>
+                </div>
+              )}
+              {bedroomPref && (
+                <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Loại hình / Phòng ngủ')}</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{bedroomPref}</div>
+                </div>
+              )}
+              {demandPref && (
+                <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Nhu cầu')}</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{demandPref}</div>
+                </div>
+              )}
+              {budgetPref && (
+                <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Ngân sách')}</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{budgetPref}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const fetchData = useCallback(async (targetTab?: string, forceFreshContact = false) => {
     if (!contact?.id) return;
     const tabToLoad = targetTab || activeTab;
@@ -6923,6 +7007,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
                           </div>
                         )}
+
+                        {/* Ghi chú & Nhu cầu từ Marketing (Lead Inbound) */}
+                        {renderMarketingNoteSection('1rem 0 0 0')}
                       </div>
 
                       {/* PHẦN 2: THÔNG TIN SALE KHAI THÁC */}
@@ -7483,89 +7570,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           }} style={{ fontWeight: 600 }}><Plus size={14} /> Thêm ghi chú</button>
                         </div>
 
-                        {(() => {
-                          const marketingNote = (contact?.lead_note || contact?.notes || formData.notes || '').trim();
-                          const locationPref = contact?.lead_preferred_location || contact?.preferred_location;
-                          const bedroomPref = contact?.lead_bedroom_count || contact?.bedroom_count;
-                          const demandPref = contact?.lead_demand_type || contact?.demand_type;
-                          const budgetPref = contact?.lead_budget || contact?.budget;
-                          const dataType = contact?.lead_type || contact?.customer_type || contact?.type;
-                          const hasMarketingInfo = !!(marketingNote || locationPref || bedroomPref || demandPref || budgetPref || dataType);
-
-                          if (!hasMarketingInfo) return null;
-
-                          return (
-                            <div 
-                              style={{ 
-                                padding: '1.25rem', 
-                                background: '#fffdf0', 
-                                border: '1px solid #fef08a', 
-                                borderLeft: '5px solid #eab308', 
-                                borderRadius: '12px', 
-                                marginBottom: '1.5rem',
-                                boxShadow: '0 4px 14px rgba(234, 179, 8, 0.06)',
-                                animation: 'fadeIn 0.3s ease'
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
-                                <FileText size={18} style={{ color: '#d97706' }} />
-                                <h4 style={{ fontWeight: 800, fontSize: '0.9375rem', color: '#92400e', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                                  {t('Ghi chú & Nhu cầu từ Marketing')}
-                                </h4>
-                                {dataType && (
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: '#fef3c7', color: '#b45309', marginLeft: 'auto' }}>
-                                    {dataType}
-                                  </span>
-                                )}
-                              </div>
-
-                              {marketingNote && (
-                                <div style={{ marginBottom: (locationPref || bedroomPref || demandPref || budgetPref) ? '1rem' : '0' }}>
-                                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', marginBottom: '4px' }}>
-                                    {t('Nội dung ghi chú:')}
-                                  </div>
-                                  <div style={{ fontSize: '0.875rem', color: '#78350f', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500, background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                    {formatNote(marketingNote)}
-                                  </div>
-                                </div>
-                              )}
-
-                              {(locationPref || bedroomPref || demandPref || budgetPref) && (
-                                <div>
-                                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', marginBottom: '6px' }}>
-                                    {t('Nhu cầu & Bất động sản quan tâm:')}
-                                  </div>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                                    {locationPref && (
-                                      <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Khu vực / Dự án')}</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{locationPref}</div>
-                                      </div>
-                                    )}
-                                    {bedroomPref && (
-                                      <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Loại hình / Phòng ngủ')}</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{bedroomPref}</div>
-                                      </div>
-                                    )}
-                                    {demandPref && (
-                                      <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Nhu cầu')}</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{demandPref}</div>
-                                      </div>
-                                    )}
-                                    {budgetPref && (
-                                      <div style={{ background: '#ffffff', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Ngân sách')}</div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginTop: '2px' }}>{budgetPref}</div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
+                        {renderMarketingNoteSection('0 0 1.5rem 0')}
 
                       </div>
                     </div>
