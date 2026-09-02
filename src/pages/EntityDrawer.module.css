@@ -202,6 +202,12 @@
   :global(.card-panel) {
     padding: 1rem !important;
   }
+  :global(.grid),
+  :global(.grid-2),
+  :global(.grid-3),
+  :global(.grid-4) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 /* Internal Components */

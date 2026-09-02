@@ -154,6 +154,27 @@ const DEFAULT_PIPELINE_STAGES = [
   { id: 'dat_coc', name: 'Đặt cọc', color: '#14b8a6', order_index: 5 },
   { id: 'cham_soc_dai_han', name: 'Chăm sóc dài hạn', color: '#8b5cf6', order_index: 6 }
 ];
+
+export const getPrettyStageName = (slug: string, rawLabel?: string): string => {
+  if (rawLabel && rawLabel !== slug && !rawLabel.includes('_')) {
+    return rawLabel;
+  }
+  const defaultLabels: Record<string, string> = {
+    chua_xac_dinh: 'Chưa xác định',
+    quan_tam: 'Quan tâm',
+    dong_y_gap: 'Đồng ý gặp',
+    da_gap: 'Đã gặp',
+    booking: 'Booking',
+    dat_coc: 'Đặt cọc',
+    cham_soc_dai_han: 'Chăm sóc dài hạn',
+    dong_deal: 'Đóng deal',
+    not_lead: 'Không phải Lead',
+    huy_coc: 'Hủy cọc'
+  };
+  if (defaultLabels[slug]) return defaultLabels[slug];
+  return slug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+};
+
 // Keep for pipelineModal and status label lookups
 const CONTACT_STATUSES = [
   ...DEFAULT_PIPELINE_STAGES.map(s => ({ id: s.id, label: s.name, color: s.color })),
@@ -826,6 +847,8 @@ const DrawerSkeleton = () => {
     );
   }
 
+  const isMobileSkeleton = typeof window !== 'undefined' ? window.innerWidth <= 1024 : false;
+
   return (
     <div className="skeleton-wrapper" style={{ display: 'flex', flex: 1, gap: '2rem', height: '100%', background: 'var(--color-surface)' }}>
       {/* Sidebar Skeleton */}
@@ -837,7 +860,7 @@ const DrawerSkeleton = () => {
 
       {/* Content Area Skeleton */}
       <div className="skeleton-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem 2rem 1.5rem 0' }}>
-        <div className="skeleton-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <div className="skeleton-grid" style={{ display: 'grid', gridTemplateColumns: isMobileSkeleton ? '1fr' : '1fr 1fr', gap: '1.5rem' }}>
           {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <Skeleton width="30%" height={14} borderRadius={4} />
@@ -2077,21 +2100,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const [decayDays, setDecayDays] = useState<number>(5);
   const [scoringRules, setScoringRules] = useState<any>(null);
-  const handleSaveTTL1 = async (updatedData: typeof ttl1Data) => {
+  const handleSaveTTL1 = async (rawUpdatedData: typeof ttl1Data) => {
     setIsSavingTTL1(true);
-    const count = Object.values(updatedData).filter(Boolean).length;
+    const sanitizedData = {
+      group1: Boolean(rawUpdatedData?.group1),
+      group2: Boolean(rawUpdatedData?.group2),
+      group3: Boolean(rawUpdatedData?.group3),
+      group4: Boolean(rawUpdatedData?.group4),
+      group5: Boolean(rawUpdatedData?.group5)
+    };
+    const count = Object.values(sanitizedData).filter(Boolean).length;
     const completed = count >= 4 ? 1 : 0;
     
     // Optimistic local state update
-    setFormData((prev: any) => ({ ...prev, ttl1_completed: completed, ttl1_data: JSON.stringify(updatedData) }));
+    setFormData((prev: any) => ({ ...prev, ttl1_completed: completed, ttl1_data: JSON.stringify(sanitizedData) }));
 
     try {
       await api.put(`/contacts/${contact.id}`, {
         ttl1_completed: completed,
-        ttl1_data: JSON.stringify(updatedData)
+        ttl1_data: JSON.stringify(sanitizedData)
       });
       addToast('Cập nhật Form TTL1 thành công!', 'success');
-      onUpdate?.({ ...formData, ttl1_completed: completed, ttl1_data: JSON.stringify(updatedData) });
+      onUpdate?.({ ...formData, ttl1_completed: completed, ttl1_data: JSON.stringify(sanitizedData) });
       window.dispatchEvent(new CustomEvent('contact-updated'));
     } catch (e: any) {
       addToast('Lỗi khi lưu Form TTL1', 'error');
@@ -3444,15 +3474,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 setCoopDefaultFiles(res.data.coop_default_files.split(',').map((s: string) => s.trim()).filter(Boolean));
               }
             }
-            if (res.data.pipeline_status_hierarchy && res.data.pipeline_status_labels) {
+            if (res.data.pipeline_status_hierarchy) {
               try {
                 const hierarchy = JSON.parse(res.data.pipeline_status_hierarchy);
-                const labels = JSON.parse(res.data.pipeline_status_labels);
+                let labels: Record<string, string> = {};
+                if (res.data.pipeline_status_labels) {
+                  try {
+                    labels = JSON.parse(res.data.pipeline_status_labels);
+                  } catch (e) {}
+                }
                 if (Array.isArray(hierarchy) && hierarchy.length > 0) {
                   const mappedStages = hierarchy.map((slug: string, idx: number) => ({
                     id: slug,
-                    name: labels[slug] || slug,
-                    color: slug === 'dat_coc' || slug === 'dong_deal' ? '#10b981' : slug === 'booking' || slug === 'da_gap' || slug === 'dong_y_gap' ? '#f59e0b' : '#3b82f6',
+                    name: getPrettyStageName(slug, labels[slug]),
+                    color: slug === 'dat_coc' || slug === 'dong_deal' ? '#10b981' : slug === 'cham_soc_dai_han' ? '#8b5cf6' : slug === 'booking' || slug === 'da_gap' || slug === 'dong_y_gap' ? '#f59e0b' : '#3b82f6',
                     order_index: idx
                   }));
                   setPipelineStages(mappedStages);
@@ -4989,7 +5024,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 key={st.id}
                 onClick={() => {
                   if (isCurrent || isBackward) return;
-                  handleStageTransition(String(st.id), st.name);
+                  handleStageTransition(String(st.id), getPrettyStageName(st.id, st.name));
                 }}
                 style={{
                   flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '32px', cursor: isCurrent ? 'default' : (isBackward ? 'not-allowed' : 'pointer'),
@@ -5016,7 +5051,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}>
                   {isCurrent && <UserCheck size={12} />}
-                  {st.name}
+                  {getPrettyStageName(st.id, st.name)}
                 </div>
               </div>
             );
@@ -6657,33 +6692,42 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                       {/* PHẦN 1: THÔNG TIN BAN ĐẦU & FORM QUẢNG CÁO */}
                       <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)', marginBottom: '1.25rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: isMobileOrTablet ? 'column' : 'row',
+                          justifyContent: isMobileOrTablet ? 'flex-start' : 'space-between',
+                          alignItems: isMobileOrTablet ? 'flex-start' : 'center',
+                          gap: '0.75rem',
+                          marginBottom: '1rem',
+                          borderBottom: '1px solid var(--color-border-light)',
+                          paddingBottom: '0.5rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <User size={16} />
                             </div>
-                            <div>
-                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>1. Thông tin ban đầu (Inbound Lead Data)</h4>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Dữ liệu gốc từ nguồn đăng ký / chiến dịch Marketing</span>
+                            <div style={{ minWidth: 0 }}>
+                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, wordBreak: 'break-word' }}>1. Thông tin ban đầu (Inbound Lead Data)</h4>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Dữ liệu gốc từ nguồn đăng ký / chiến dịch Marketing</span>
                             </div>
                           </div>
-                          <span className="badge info" style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
+                          <span className="badge info" style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
                             Nguồn: {formData.source || 'Quảng cáo'}
                           </span>
                         </div>
 
-                        <div className="grid grid-3" style={{ gap: '0.875rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(3, 1fr)', gap: '0.875rem' }}>
                           <div className="form-group">
                             <label className="form-label">Họ &amp; Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <input className="form-input" placeholder="Họ" value={formData.first_name || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, first_name: val }));
-                              }} />
+                              }} style={{ flex: 1, minWidth: 0 }} />
                               <input className="form-input" placeholder="Tên" value={formData.last_name || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, last_name: val }));
-                              }} />
+                              }} style={{ flex: 1, minWidth: 0 }} />
                             </div>
                           </div>
 
@@ -6883,17 +6927,26 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                       {/* PHẦN 2: THÔNG TIN SALE KHAI THÁC */}
                       <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)', marginBottom: '1.25rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: isMobileOrTablet ? 'column' : 'row',
+                          justifyContent: isMobileOrTablet ? 'flex-start' : 'space-between',
+                          alignItems: isMobileOrTablet ? 'flex-start' : 'center',
+                          gap: '0.75rem',
+                          marginBottom: '1rem',
+                          borderBottom: '1px solid var(--color-border-light)',
+                          paddingBottom: '0.5rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <Target size={16} />
                             </div>
-                            <div>
-                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>2. Thông tin Sale Khai thác (TTL1 &amp; Điều hướng chăm sóc)</h4>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Cụm tiêu chí xác nhận nhu cầu &amp; Dự án/Chiến dịch điều hướng thực tế</span>
+                            <div style={{ minWidth: 0 }}>
+                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, wordBreak: 'break-word' }}>2. Thông tin Sale Khai thác (TTL1 &amp; Điều hướng chăm sóc)</h4>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Cụm tiêu chí xác nhận nhu cầu &amp; Dự án/Chiến dịch điều hướng thực tế</span>
                             </div>
                           </div>
-                          <span className={`badge ${formData.ttl1_completed ? 'success' : 'warning'}`} style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px' }}>
+                          <span className={`badge ${formData.ttl1_completed ? 'success' : 'warning'}`} style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px', flexShrink: 0, whiteSpace: 'nowrap' }}>
                             {formData.ttl1_completed ? '✓ Đã hoàn tất TTL1' : 'Đang khai thác TTL1'}
                           </span>
                         </div>
@@ -6903,12 +6956,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
                             Bộ 4 Tiêu Chí Xác Minh Nhu Cầu (TTL1):
                           </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group1 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group1 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
                               <CustomCheckbox 
-                                checked={ttl1Data.group1} 
-                                onChange={(val) => {
-                                  const next = { ...ttl1Data, group1: val };
+                                checked={Boolean(ttl1Data.group1)} 
+                                onChange={(e) => {
+                                  const isChecked = typeof e === 'boolean' ? e : (e?.target ? Boolean(e.target.checked) : !ttl1Data.group1);
+                                  const next = { ...ttl1Data, group1: isChecked };
                                   setTtl1Data(next);
                                   handleSaveTTL1(next);
                                 }} 
@@ -6921,9 +6975,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group2 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group2 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
                               <CustomCheckbox 
-                                checked={ttl1Data.group2} 
-                                onChange={(val) => {
-                                  const next = { ...ttl1Data, group2: val };
+                                checked={Boolean(ttl1Data.group2)} 
+                                onChange={(e) => {
+                                  const isChecked = typeof e === 'boolean' ? e : (e?.target ? Boolean(e.target.checked) : !ttl1Data.group2);
+                                  const next = { ...ttl1Data, group2: isChecked };
                                   setTtl1Data(next);
                                   handleSaveTTL1(next);
                                 }} 
@@ -6936,9 +6991,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group3 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group3 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
                               <CustomCheckbox 
-                                checked={ttl1Data.group3} 
-                                onChange={(val) => {
-                                  const next = { ...ttl1Data, group3: val };
+                                checked={Boolean(ttl1Data.group3)} 
+                                onChange={(e) => {
+                                  const isChecked = typeof e === 'boolean' ? e : (e?.target ? Boolean(e.target.checked) : !ttl1Data.group3);
+                                  const next = { ...ttl1Data, group3: isChecked };
                                   setTtl1Data(next);
                                   handleSaveTTL1(next);
                                 }} 
@@ -6951,9 +7007,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group4 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group4 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
                               <CustomCheckbox 
-                                checked={ttl1Data.group4} 
-                                onChange={(val) => {
-                                  const next = { ...ttl1Data, group4: val };
+                                checked={Boolean(ttl1Data.group4)} 
+                                onChange={(e) => {
+                                  const isChecked = typeof e === 'boolean' ? e : (e?.target ? Boolean(e.target.checked) : !ttl1Data.group4);
+                                  const next = { ...ttl1Data, group4: isChecked };
                                   setTtl1Data(next);
                                   handleSaveTTL1(next);
                                 }} 
@@ -6967,7 +7024,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
 
                         {/* Dự án & Chiến dịch điều hướng chăm sóc thực tế */}
-                        <div className="grid grid-2" style={{ gap: '0.875rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, 1fr)', gap: '0.875rem' }}>
                           <div className="form-group">
                             <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-primary)' }}>Dự án Chăm sóc Hiện tại (Điều hướng)</label>
                             <CustomSelect
@@ -7053,19 +7110,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                       {/* PHẦN 3: THÔNG TIN VẬN HÀNH & HỢP TÁC */}
                       <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: isMobileOrTablet ? 'column' : 'row',
+                          justifyContent: isMobileOrTablet ? 'flex-start' : 'space-between',
+                          alignItems: isMobileOrTablet ? 'flex-start' : 'center',
+                          gap: '0.75rem',
+                          marginBottom: '1rem',
+                          borderBottom: '1px solid var(--color-border-light)',
+                          paddingBottom: '0.5rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <Users size={16} />
                             </div>
-                            <div>
-                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>3. Thông tin Hoạt động &amp; Vận hành</h4>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Phân quyền phụ trách, đồng chăm sóc, nhân khẩu học &amp; đối tác</span>
+                            <div style={{ minWidth: 0 }}>
+                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, wordBreak: 'break-word' }}>3. Thông tin Hoạt động &amp; Vận hành</h4>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Phân quyền phụ trách, đồng chăm sóc, nhân khẩu học &amp; đối tác</span>
                             </div>
                           </div>
                         </div>
 
-                        <div className="grid grid-2" style={{ gap: '0.875rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, 1fr)', gap: '0.875rem' }}>
                           <div className="form-group">
                             <label className="form-label">Người đang phụ trách (Owner Sale)</label>
                             {currentUser?.role === 'sale' ? (
@@ -7236,8 +7302,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                           <div className="form-group">
                             <label className="form-label">Giới tính &amp; Ngày sinh</label>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexDirection: isMobileOrTablet ? 'column' : 'row' }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
                                 <CustomSelect
                                   options={[
                                     { value: '', label: '— Giới tính —' },
@@ -7249,11 +7315,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   onChange={val => setFormData((prev: any) => ({ ...prev, gender: val as string }))}
                                 />
                               </div>
-                              <div style={{ flex: 1 }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
                                 <input className="form-input" type="date" value={formData.birthday || ''} onChange={e => {
                                   const val = e.target.value;
                                   setFormData((prev: any) => ({ ...prev, birthday: val }));
-                                }} />
+                                }} style={{ width: '100%', boxSizing: 'border-box' }} />
                               </div>
                             </div>
                           </div>
@@ -7269,15 +7335,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                           <div className="form-group">
                             <label className="form-label">Mạng xã hội (Zalo / Facebook)</label>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexDirection: isMobileOrTablet ? 'column' : 'row' }}>
                               <input className="form-input" placeholder="Zalo Link (https://zalo.me/...)" value={formData.zalo_link || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, zalo_link: val }));
-                              }} />
+                              }} style={{ flex: 1, minWidth: 0 }} />
                               <input className="form-input" placeholder="FB Link (https://facebook.com/...)" value={formData.fb_link || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, fb_link: val }));
-                              }} />
+                              }} style={{ flex: 1, minWidth: 0 }} />
                             </div>
                           </div>
 
@@ -7330,17 +7396,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 }} />
                               </div>
 
-                              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                              <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 2' }}>
                                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <Clock size={13} style={{ color: 'var(--color-text-muted)' }} /> Thời gian khởi tạo &amp; Cập nhật
                                 </label>
-                                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                  <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', gap: isMobileOrTablet ? '0.75rem' : '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                  <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px', width: isMobileOrTablet ? '100%' : 'auto' }}>
                                     <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Tạo lúc:</span>
                                     <input
                                       type="datetime-local"
                                       className="form-input sm"
-                                      style={{ padding: '4px 8px', fontSize: '0.8125rem', width: '220px' }}
+                                      style={{ padding: '4px 8px', fontSize: '0.8125rem', width: isMobileOrTablet ? '100%' : '220px' }}
                                       value={formData.created_at ? formData.created_at.substring(0, 16).replace(' ', 'T') : ''}
                                       onChange={e => {
                                         const val = e.target.value.replace('T', ' ') + ':00';
@@ -11939,7 +12005,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1.2fr 1fr', gap: isMobileOrTablet ? '1rem' : '1.75rem' }}>
                   {/* Left Column: Project & Price */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="form-group">
@@ -12341,7 +12407,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </span>
                   )}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Tiêu đề hỗ trợ *</label>
                     <input className="form-input" placeholder="Tóm tắt yêu cầu/lỗi..." value={ticketForm.subject} onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })} autoFocus />
@@ -13576,16 +13642,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             {/* Brief Info with Customer Details and Sales Team */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr',
-              gap: '1.5rem',
+              gridTemplateColumns: isMobileOrTablet ? '1fr' : '1.2fr 1fr',
+              gap: isMobileOrTablet ? '1rem' : '1.5rem',
               background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-hover) 100%)',
-              padding: '1.5rem',
+              padding: isMobileOrTablet ? '1rem' : '1.5rem',
               borderRadius: '12px',
               border: '1px solid var(--color-border-light)',
               boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
             }}>
               {/* Left Column: Customer details */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderRight: isMobileOrTablet ? 'none' : '1px solid var(--color-border-light)', paddingRight: isMobileOrTablet ? 0 : '1.5rem', borderBottom: isMobileOrTablet ? '1px solid var(--color-border-light)' : 'none', paddingBottom: isMobileOrTablet ? '1rem' : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div>
                     <Avatar
@@ -13713,7 +13779,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
               {/* Right Column: Transaction details */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
                   <div>
                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Dự án & Căn hộ</span>
                     <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>{selectedDepForManage.project_name} - Căn {selectedDepForManage.unit_code}</span>

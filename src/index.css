@@ -1806,11 +1806,14 @@ select:focus {
   .grid-2,
   .grid-3,
   .grid-4 {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
 @media (max-width: 1024px) {
+  .grid-2,
+  .grid-3,
+  .grid-4,
   [class*="drawer"] .grid-2,
   [class*="drawer"] .grid-3,
   [class*="drawer"] .grid-4,
