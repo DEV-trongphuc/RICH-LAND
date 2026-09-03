@@ -613,8 +613,10 @@ class ContactController {
         }
 
         if ($newStatus && $newStatus !== $currStatus) {
-            // Exceptions: not_lead can be set from any state
-            if ($newStatus !== 'not_lead') {
+            // Exceptions: not_lead or cham_soc_dai_han can be transitioned without linear restrictions (ngoài luồng)
+            $isOutsideFlow = ($newStatus === 'cham_soc_dai_han' || $currStatus === 'cham_soc_dai_han' || $newStatus === 'not_lead');
+
+            if (!$isOutsideFlow) {
                 $currIdx = $statusHierarchy[$currStatus] ?? 0;
                 $newIdx = $statusHierarchy[$newStatus] ?? 0;
 
@@ -640,11 +642,27 @@ class ContactController {
                     respond(400, null, "Không được phép nhảy cóc trạng thái từ '$currStatus' sang '$newStatus' (Phải đi tuần tự)", false);
                 }
 
-                // Check TTL1 completion before moving to dong_y_gap or later
+                // Check TTL1 completion before moving to dong_y_gap / thien_chi or later
                 if ($newIdx >= 2) {
-                    $reqTtl1 = isset($b['ttl1_completed']) ? (int)$b['ttl1_completed'] : $currTtl1;
-                    if ($reqTtl1 !== 1) {
-                        respond(400, null, 'Trước khi sang giai đoạn Đồng ý gặp, bạn bắt buộc phải điền đầy đủ thông tin Form TTL1', false);
+                    $src = strtolower($currentContact['source'] ?? '');
+                    $isPersonalOrDatabank = in_array($src, ['ca_nhan', 'cá nhân', 'manual', 'self', 'databank', 'kho_data'], true);
+                    if (!$isPersonalOrDatabank) {
+                        $reqTtl1 = isset($b['ttl1_completed']) ? (int)$b['ttl1_completed'] : $currTtl1;
+                        if ($reqTtl1 !== 1) {
+                            $tData = isset($b['ttl1_data']) ? (is_array($b['ttl1_data']) ? $b['ttl1_data'] : json_decode($b['ttl1_data'], true)) : (is_array($currentContact['ttl1_data'] ?? null) ? $currentContact['ttl1_data'] : json_decode($currentContact['ttl1_data'] ?? '{}', true));
+                            $tCount = 0;
+                            if (!empty(trim($b['address'] ?? $currentContact['address'] ?? ''))) $tCount++;
+                            if (!empty(trim($b['job_title'] ?? $currentContact['job_title'] ?? ''))) $tCount++;
+                            if (!empty(trim($tData['gia_dinh'] ?? ''))) $tCount++;
+                            if (!empty(trim($tData['hien_trang'] ?? ''))) $tCount++;
+                            if (!empty(trim($tData['nhu_cau'] ?? ''))) $tCount++;
+                            if (!empty(trim($tData['rao_can'] ?? ''))) $tCount++;
+                            if (!empty(trim($tData['giai_phap'] ?? $b['notes'] ?? $currentContact['notes'] ?? ''))) $tCount++;
+                            if ((float)($b['budget'] ?? $currentContact['budget'] ?? 0) > 0 || !empty(trim($b['budget_range'] ?? $currentContact['budget_range'] ?? ''))) $tCount++;
+                            if ($tCount < 5) {
+                                respond(400, null, "Khách được chia cần điền tối thiểu 5/8 trường thông tin Tương tác lần 1 (TTL1) trước khi chuyển lên Đồng ý gặp! (Hiện tại: $tCount/8)", false);
+                            }
+                        }
                     }
                 }
             }
@@ -970,7 +988,7 @@ class ContactController {
         $newStatus = $this->getSlugFromStageId($stageId, $auth['tenant_id']);
 
         // Check current status for CAPI/Timer trigger
-        $stmtC = $this->db->prepare("SELECT pipeline_status, owner_id, first_name, last_name, ttl1_completed FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtC = $this->db->prepare("SELECT pipeline_status, owner_id, first_name, last_name, ttl1_completed, source FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtC->execute([$id, $auth['tenant_id']]);
         $currentContact = $stmtC->fetch();
         $currStatus = $currentContact['pipeline_status'] ?? 'chua_xac_dinh';
@@ -995,35 +1013,40 @@ class ContactController {
             $statusHierarchy[trim($statusName)] = $idxVal;
         }
 
-        $currIdx = $statusHierarchy[$currStatus] ?? 0;
-        $newIdx = $statusHierarchy[$newStatus] ?? 0;
+        $isOutsideFlow = ($newStatus === 'cham_soc_dai_han' || $currStatus === 'cham_soc_dai_han' || $newStatus === 'not_lead');
+        if (!$isOutsideFlow) {
+            $currIdx = $statusHierarchy[$currStatus] ?? 0;
+            $newIdx = $statusHierarchy[$newStatus] ?? 0;
 
-        $allowBackward = (int)$this->getSetting('allow_pipeline_backward', '0') === 1;
-        $allowSkip = (int)$this->getSetting('allow_pipeline_skip', '0') === 1;
+            $allowBackward = (int)$this->getSetting('allow_pipeline_backward', '0') === 1;
+            $allowSkip = (int)$this->getSetting('allow_pipeline_skip', '0') === 1;
 
-        $stmtWonSetting = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
-        $dealWonSetting = $stmtWonSetting ? $stmtWonSetting->fetchColumn() : 'dat_coc';
-        if (empty($dealWonSetting)) $dealWonSetting = 'dat_coc';
+            $stmtWonSetting = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
+            $dealWonSetting = $stmtWonSetting ? $stmtWonSetting->fetchColumn() : 'dat_coc';
+            if (empty($dealWonSetting)) $dealWonSetting = 'dat_coc';
 
-        $isFromDeposit = strpos(strtolower($currStatus), 'coc') !== false || strpos(strtolower($currStatus), 'deposit') !== false || $currStatus === 'dat_coc' || $currStatus === $dealWonSetting;
-        $isToSuccess = strpos(strtolower($newStatus), 'success') !== false || strpos(strtolower($newStatus), 'thanh_cong') !== false || $newStatus === 'dong_deal' || $newStatus === 'thanh_cong';
-        $isCancellation = $isFromDeposit && !$isToSuccess;
+            $isFromDeposit = strpos(strtolower($currStatus), 'coc') !== false || strpos(strtolower($currStatus), 'deposit') !== false || $currStatus === 'dat_coc' || $currStatus === $dealWonSetting;
+            $isToSuccess = strpos(strtolower($newStatus), 'success') !== false || strpos(strtolower($newStatus), 'thanh_cong') !== false || $newStatus === 'dong_deal' || $newStatus === 'thanh_cong';
+            $isCancellation = $isFromDeposit && !$isToSuccess;
 
-        // Enforce forward-only
-        if ($newIdx < $currIdx) {
-            if (!$isCancellation && !$allowBackward) {
-                respond(400, null, "Không được phép chuyển lùi trạng thái từ '$currStatus' về '$newStatus'", false);
+            // Enforce forward-only
+            if ($newIdx < $currIdx) {
+                if (!$isCancellation && !$allowBackward) {
+                    respond(400, null, "Không được phép chuyển lùi trạng thái từ '$currStatus' về '$newStatus'", false);
+                }
             }
-        }
-        // Enforce no skipping stages
-        if ($newIdx > $currIdx + 1 && !$allowSkip) {
-            respond(400, null, "Không được phép nhảy cóc trạng thái từ '$currStatus' sang '$newStatus' (Phải đi tuần tự)", false);
-        }
+            // Enforce no skipping stages
+            if ($newIdx > $currIdx + 1 && !$allowSkip) {
+                respond(400, null, "Không được phép nhảy cóc trạng thái từ '$currStatus' sang '$newStatus' (Phải đi tuần tự)", false);
+            }
 
-        // Check TTL1 completion before moving to dong_y_gap or later
-        if ($newIdx >= 2) {
-            if ($currTtl1 !== 1) {
-                respond(400, null, 'Trước khi sang giai đoạn Đồng ý gặp, bạn bắt buộc phải điền đầy đủ thông tin Form TTL1', false);
+            // Check TTL1 completion before moving to dong_y_gap / thien_chi or later
+            if ($newIdx >= 2) {
+                $src = strtolower($currentContact['source'] ?? '');
+                $isPersonalOrDatabank = in_array($src, ['ca_nhan', 'cá nhân', 'manual', 'self', 'databank', 'kho_data'], true);
+                if (!$isPersonalOrDatabank && $currTtl1 !== 1) {
+                    respond(400, null, 'Khách được chia cần điền tối thiểu 5/8 trường thông tin Tương tác lần 1 (TTL1) trước khi chuyển lên Đồng ý gặp!', false);
+                }
             }
         }
 

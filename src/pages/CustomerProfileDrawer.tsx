@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe } from 'lucide-react';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -143,16 +143,36 @@ const buildTasks = (c: any): any[] => {
   return [];
 };
 
-/* ─── Helpers ────────────────────────────────────────────────── */
-// Fallback statuses used when pipeline-stages API has no data or in DEV_MODE
+/* ─── 8 Trạng Thái Khách Hàng (Mã màu chuẩn hệ thống) ───────── */
+export const STAGE_COLOR_MAP: Record<string, string> = {
+  not_lead: '#54585D',          // 1. Not Lead (gạch ngang)
+  chua_xac_dinh: '#54585D',     // 2. Chưa Xác Định (#54585D)
+  cham_soc_dai_han: '#04C7B4',  // 3. Chăm Sóc Dài Hạn (#04C7B4 - ngoài luồng)
+  quan_tam: '#BBA300',          // 4. Quan Tâm (#BBA300)
+  thien_chi: '#D56F00',         // 5. Thiện Chí (#D56F00)
+  dong_y_gap: '#D56F00',        // 5. Thiện Chí (Đồng ý gặp)
+  da_gap: '#C50E0E',            // 6. Đã Gặp (#C50E0E)
+  booking: '#0770E0',           // 7. Booking (#0770E0)
+  dat_coc: '#00A81D',           // 8. Đặt Cọc (#00A81D)
+  dong_deal: '#00A81D'
+};
+
+export const getStageColor = (slug: string): string => {
+  if (!slug) return '#54585D';
+  const s = slug.toLowerCase().trim();
+  return STAGE_COLOR_MAP[s] || '#54585D';
+};
+
+// 8 Trạng thái khách hàng theo yêu cầu
 const DEFAULT_PIPELINE_STAGES = [
-  { id: 'chua_xac_dinh', name: 'Chưa xác định', color: '#3b82f6', order_index: 0 },
-  { id: 'quan_tam', name: 'Quan tâm', color: '#6366f1', order_index: 1 },
-  { id: 'dong_y_gap', name: 'Đồng ý gặp', color: '#ec4899', order_index: 2 },
-  { id: 'da_gap', name: 'Đã gặp', color: '#f59e0b', order_index: 3 },
-  { id: 'booking', name: 'Booking', color: '#10b981', order_index: 4 },
-  { id: 'dat_coc', name: 'Đặt cọc', color: '#14b8a6', order_index: 5 },
-  { id: 'cham_soc_dai_han', name: 'Chăm sóc dài hạn', color: '#8b5cf6', order_index: 6 }
+  { id: 'not_lead', name: 'Not Lead', color: '#54585D', isNotLead: true, order_index: 0 },
+  { id: 'chua_xac_dinh', name: 'Chưa xác định', color: '#54585D', order_index: 1 },
+  { id: 'cham_soc_dai_han', name: 'Chăm sóc dài hạn', color: '#04C7B4', isNurture: true, order_index: 2 },
+  { id: 'quan_tam', name: 'Quan tâm', color: '#BBA300', order_index: 3 },
+  { id: 'thien_chi', name: 'Thiện Chí', color: '#D56F00', order_index: 4 },
+  { id: 'da_gap', name: 'Đã gặp', color: '#C50E0E', order_index: 5 },
+  { id: 'booking', name: 'Booking', color: '#0770E0', order_index: 6 },
+  { id: 'dat_coc', name: 'Đặt cọc', color: '#00A81D', order_index: 7 }
 ];
 
 export const getPrettyStageName = (slug: string, rawLabel?: string): string => {
@@ -160,15 +180,16 @@ export const getPrettyStageName = (slug: string, rawLabel?: string): string => {
     return rawLabel;
   }
   const defaultLabels: Record<string, string> = {
+    not_lead: 'Not Lead',
     chua_xac_dinh: 'Chưa xác định',
+    cham_soc_dai_han: 'Chăm sóc dài hạn',
     quan_tam: 'Quan tâm',
-    dong_y_gap: 'Đồng ý gặp',
+    thien_chi: 'Thiện Chí',
+    dong_y_gap: 'Thiện Chí',
     da_gap: 'Đã gặp',
     booking: 'Booking',
     dat_coc: 'Đặt cọc',
-    cham_soc_dai_han: 'Chăm sóc dài hạn',
     dong_deal: 'Đóng deal',
-    not_lead: 'Không phải Lead',
     huy_coc: 'Hủy cọc'
   };
   if (defaultLabels[slug]) return defaultLabels[slug];
@@ -178,7 +199,7 @@ export const getPrettyStageName = (slug: string, rawLabel?: string): string => {
 // Keep for pipelineModal and status label lookups
 const CONTACT_STATUSES = [
   ...DEFAULT_PIPELINE_STAGES.map(s => ({ id: s.id, label: s.name, color: s.color })),
-  { id: 'dong_deal', label: 'Đóng deal', color: '#10b981' }
+  { id: 'dong_deal', label: 'Đóng deal', color: '#00A81D' }
 ];
 
 const AGO = (iso: string) => {
@@ -190,12 +211,7 @@ const AGO = (iso: string) => {
 };
 
 const overridePurpleColor = (c: string | null | undefined): string => {
-  if (!c) return 'var(--color-primary)';
-  const hex = c.toLowerCase().trim();
-  if (hex === '#6366f1' || hex === '#8b5cf6' || hex === '#7c3aed' || hex === '#6d28d9' || hex === '#4c1d95' || hex === '#a855f7' || hex === '#3b82f6') {
-    return 'var(--color-primary)';
-  }
-  return c;
+  return c || 'var(--color-primary)';
 };
 
 const resolveAttachmentUrl = (url: string | null | undefined): string => {
@@ -239,7 +255,6 @@ const TABS = [
   { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <Paperclip size={16} /> },
   { id: 'timeline', label: 'Lịch sử tương tác', icon: <History size={16} /> },
   { id: 'scoring', label: 'Scoring', icon: <Target size={16} /> },
-  { id: 'ttl1', label: 'Xác minh TTL1', icon: <UserCheck size={16} /> },
   { id: 'invoices', label: 'Hóa đơn', icon: <FileText size={16} /> },
   { id: 'deals', label: 'Phiếu đặt cọc', icon: <CreditCard size={16} /> },
   { id: 'quotes', label: 'Báo giá', icon: <ShoppingCart size={16} /> },
@@ -257,7 +272,6 @@ const renderColoredTabIcon = (tabId: string, IconComponent: any) => {
     case 'docs': bgColor = '#8b5cf6'; break;
     case 'timeline': bgColor = '#3b82f6'; break;
     case 'scoring': bgColor = '#06b6d4'; break;
-    case 'ttl1': bgColor = '#14b8a6'; break;
     case 'invoices': bgColor = '#f43f5e'; break;
     case 'deals': bgColor = '#eab308'; break;
     case 'quotes': bgColor = '#10b981'; break;
@@ -929,12 +943,12 @@ const TimelineItem = React.memo<TimelineItemProps>(({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.25) }}
       id={`activity-item-${ev.id}`}
-      style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', position: 'relative' }}
+      style={{ display: 'flex', gap: '0.625rem', marginBottom: '0.625rem', position: 'relative' }}
       className="timeline-event-item gpu-accelerated"
     >
       {/* Step Node */}
-      <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${ev.color}15`, border: `2px solid ${ev.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, backgroundColor: 'var(--color-surface)', boxShadow: `0 0 0 4px var(--color-bg)` }}>
-        <div style={{ color: ev.color, display: 'flex' }}>{ev.icon}</div>
+      <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${ev.color}15`, border: `2px solid ${ev.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, backgroundColor: 'var(--color-surface)', boxShadow: `0 0 0 3px var(--color-bg)` }}>
+        <div style={{ color: ev.color, display: 'flex', transform: 'scale(0.8)' }}>{ev.icon}</div>
       </div>
 
       {/* Step Content */}
@@ -942,9 +956,9 @@ const TimelineItem = React.memo<TimelineItemProps>(({
         onClick={() => handleTimelineItemClick(ev)}
         style={{ 
           flex: 1, 
-          padding: '8px 10px', 
+          padding: '6px 10px', 
           background: 'var(--color-surface)', 
-          borderRadius: '12px', 
+          borderRadius: '10px', 
           border: '1px solid var(--color-border-light)', 
           boxShadow: 'var(--shadow-sm)', 
           transition: 'all 0.2s', 
@@ -954,28 +968,47 @@ const TimelineItem = React.memo<TimelineItemProps>(({
         onMouseEnter={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = ev.color; }}
         onMouseLeave={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = 'var(--color-border-light)'; }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) ? '54px' : '0px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingRight: currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) ? '50px' : '0px' }}>
           {ev.title && (
-            <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0, paddingRight: '8px' }}>
+            <h4 style={{ fontWeight: 800, fontSize: '0.825rem', color: 'var(--color-text)', margin: 0, paddingRight: '8px' }}>
               {ev.title}
             </h4>
           )}
           
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: ev.color, background: `${ev.color}12`, padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
-              {ev.type === 'meeting' ? (ev.status === 'cancelled' ? 'Hủy gặp' : (ev.status === 'planned' ? 'Lịch gặp' : 'Đã gặp')) : ev.type === 'zalo_connect' ? 'Zalo' : ev.type.toUpperCase()}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+            {/* 1. Ngày nhắn */}
+            <span style={{ fontWeight: 600, color: 'var(--color-text)', background: 'var(--color-bg)', padding: '1px 5px', borderRadius: '4px', border: '1px solid var(--color-border-light)', fontSize: '0.7rem' }}>
+              {new Date(ev.time).toLocaleDateString('vi-VN')} {new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
             </span>
             <span>•</span>
+
+            {/* 2. Trạng thái khách lúc sale để lại bình luận */}
+            <span style={{ 
+              fontSize: '0.65rem', 
+              fontWeight: 800, 
+              color: ev.stageColor || 'var(--color-primary)', 
+              background: `${ev.stageColor || '#BD1D2D'}14`, 
+              padding: '1px 6px', 
+              borderRadius: '4px',
+              border: `1px solid ${ev.stageColor || '#BD1D2D'}30`
+            }} title="Trạng thái khách lúc sale để lại bình luận">
+              {ev.stageName || 'Quan tâm'}
+            </span>
+            <span>•</span>
+
+            {/* 3. Người nhắn */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <Avatar name={ev.user} src={ev.avatar} size="sm" style={{ width: '15px', height: '15px' }} />
-              <strong>{ev.user}</strong>
+              <strong style={{ color: 'var(--color-text)', fontSize: '0.72rem' }}>{ev.user}</strong>
             </div>
-            <span>•</span>
-            <span>{new Date(ev.time).toLocaleDateString('vi-VN')} {new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+
+            {/* Loại tương tác tag */}
+            <span style={{ fontSize: '0.62rem', fontWeight: 700, color: ev.color, background: `${ev.color}12`, padding: '1px 5px', borderRadius: '4px', textTransform: 'uppercase', marginLeft: 'auto' }}>
+              {ev.type === 'meeting' ? (ev.status === 'cancelled' ? 'Hủy gặp' : (ev.status === 'planned' ? 'Lịch gặp' : 'Đã gặp')) : ev.type === 'zalo_connect' ? 'Zalo' : ev.type.toUpperCase()}
+            </span>
             {ev.type === 'meeting' && ev.due_date && (
               <>
-                <span>•</span>
-                <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>
+                <span style={{ color: 'var(--color-warning)', fontWeight: 600, fontSize: '0.68rem' }}>
                   Lịch gặp: {formatMeetingTime(ev.due_date)}
                 </span>
               </>
@@ -1052,9 +1085,9 @@ const TimelineItem = React.memo<TimelineItemProps>(({
           if (!hasContent) return null;
 
           return (
-            <div style={{ padding: '0.5rem 0.75rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', marginTop: '0.375rem', border: '1px solid var(--color-border-light)' }}>
+            <div style={{ padding: '0.375rem 0.625rem', background: 'var(--color-bg)', borderRadius: '6px', marginTop: '0.25rem', border: '1px solid var(--color-border-light)' }}>
               {displayNoteText && (
-                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', lineHeight: 1.5, margin: 0 }}>{formatNote(displayNoteText)}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text)', lineHeight: 1.5, margin: 0 }}>{formatNote(displayNoteText)}</div>
               )}
 
               {linkUrl && (
@@ -1824,6 +1857,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryCommentsMap, setSummaryCommentsMap] = useState<Record<number, any[]>>({});
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [allTags, setAllTags] = useState<any[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -1845,15 +1880,77 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     group3: boolean;
     group4: boolean;
     group5: boolean;
+    gia_dinh?: string;
+    hien_trang?: string;
+    nhu_cau?: string;
+    rao_can?: string;
+    giai_phap?: string;
   }>(() => {
     try {
       if (contact.ttl1_data) {
-        return typeof contact.ttl1_data === 'string' ? JSON.parse(contact.ttl1_data) : contact.ttl1_data;
+        const parsed = typeof contact.ttl1_data === 'string' ? JSON.parse(contact.ttl1_data) : contact.ttl1_data;
+        return {
+          group1: Boolean(parsed.group1),
+          group2: Boolean(parsed.group2),
+          group3: Boolean(parsed.group3),
+          group4: Boolean(parsed.group4),
+          group5: Boolean(parsed.group5),
+          gia_dinh: parsed.gia_dinh || '',
+          hien_trang: parsed.hien_trang || '',
+          nhu_cau: parsed.nhu_cau || '',
+          rao_can: parsed.rao_can || '',
+          giai_phap: parsed.giai_phap || ''
+        };
       }
     } catch {}
-    return { group1: false, group2: false, group3: false, group4: false, group5: false };
+    return { group1: false, group2: false, group3: false, group4: false, group5: false, gia_dinh: '', hien_trang: '', nhu_cau: '', rao_can: '', giai_phap: '' };
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
+  const [ttl1ViewMode, setTtl1ViewMode] = useState<'fields' | 'text'>('fields');
+
+  // Đếm số trường TTL1 đã điền (Tổng 8 trường)
+  const filledTTL1Count = useMemo(() => {
+    let count = 0;
+    if ((formData.address || '').trim()) count++;
+    if ((formData.job_title || '').trim()) count++;
+    if ((ttl1Data.gia_dinh || '').trim()) count++;
+    if ((ttl1Data.hien_trang || '').trim()) count++;
+    if ((ttl1Data.nhu_cau || '').trim()) count++;
+    if ((ttl1Data.rao_can || '').trim()) count++;
+    if ((ttl1Data.giai_phap || formData.notes || '').trim()) count++;
+    if (Number(formData.budget) > 0 || (formData.budget_range || '').trim()) count++;
+    return count;
+  }, [formData.address, formData.job_title, formData.notes, formData.budget, formData.budget_range, ttl1Data]);
+
+  // Cụm văn bản gộp 8 trường TTL1 để xem nhanh hoặc sao chép chia sẻ
+  const ttl1SummaryText = useMemo(() => {
+    const contactName = `${formData.last_name || ''} ${formData.first_name || ''}`.trim() || 'Khách hàng';
+    const formatCurrency = (val: any) => {
+      const num = Number(val);
+      if (isNaN(num) || num <= 0) return 'Chưa cập nhật';
+      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
+    };
+
+    return [
+      `📋 THÔNG TIN TƯƠNG TÁC LẦN 1 (TTL1) - ${contactName} (${formData.phone || ''})`,
+      `1. Ở đâu: ${formData.address || 'Chưa cập nhật'}`,
+      `2. Làm gì: ${formData.job_title || 'Chưa cập nhật'}`,
+      `3. Gia đình: ${ttl1Data.gia_dinh || 'Chưa cập nhật'}`,
+      `4. Hiện trạng: ${ttl1Data.hien_trang || 'Chưa cập nhật'}`,
+      `5. Nhu cầu: ${ttl1Data.nhu_cau || 'Chưa cập nhật'}`,
+      `6. Rào cản: ${ttl1Data.rao_can || 'Chưa cập nhật'}`,
+      `7. Giải pháp tiếp theo: ${ttl1Data.giai_phap || formData.notes || 'Chưa cập nhật'}`,
+      `8. Ngân sách: ${Number(formData.budget) > 0 ? formatCurrency(formData.budget) : (formData.budget_range || 'Chưa cập nhật')}`
+    ].join('\n');
+  }, [formData.last_name, formData.first_name, formData.phone, formData.address, formData.job_title, formData.notes, formData.budget, formData.budget_range, ttl1Data]);
+
+  // Tự động đồng bộ trạng thái hoàn thành TTL1 (ngầm - khi đạt đủ 5/8 trường)
+  useEffect(() => {
+    const isCompleted = filledTTL1Count >= 5 ? 1 : 0;
+    if (formData.ttl1_completed !== isCompleted) {
+      setFormData((prev: any) => ({ ...prev, ttl1_completed: isCompleted }));
+    }
+  }, [filledTTL1Count]);
 
   const parsedAdFormData = useMemo(() => {
     const sources = [
@@ -2855,6 +2952,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [drawerExpenses, setDrawerExpenses] = useState<any[]>([]);
   const [drawerTickets, setDrawerTickets] = useState<any[]>([]);
   const [drawerActivities, setDrawerActivities] = useState<any[]>([]);
+
+  // Auto-fetch comments for activities when quick summary modal is opened
+  useEffect(() => {
+    if (!showSummaryModal || drawerActivities.length === 0) return;
+    let isCancelled = false;
+    const loadSummaryData = async () => {
+      setIsLoadingSummary(true);
+      try {
+        const targetActs = drawerActivities.filter((a: any) => Number(a.comment_count) > 0);
+        const map: Record<number, any[]> = { ...summaryCommentsMap };
+        await Promise.all(
+          targetActs.map(async (act: any) => {
+            if (map[act.id]) return;
+            try {
+              const res = await api.get(`/activities/${act.id}/comments`);
+              map[act.id] = res.data?.data || [];
+            } catch {
+              map[act.id] = [];
+            }
+          })
+        );
+        if (!isCancelled) {
+          setSummaryCommentsMap(map);
+        }
+      } catch (err) {
+        console.error('Error fetching summary comments:', err);
+      } finally {
+        if (!isCancelled) setIsLoadingSummary(false);
+      }
+    };
+    loadSummaryData();
+    return () => { isCancelled = true; };
+  }, [showSummaryModal, drawerActivities]);
   const [showQuoteEditor, setShowQuoteEditor] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [loadingRelated, setLoadingRelated] = useState(false);
@@ -3570,7 +3700,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   const mappedStages = hierarchy.map((slug: string, idx: number) => ({
                     id: slug,
                     name: getPrettyStageName(slug, labels[slug]),
-                    color: slug === 'dat_coc' || slug === 'dong_deal' ? '#10b981' : slug === 'cham_soc_dai_han' ? '#8b5cf6' : slug === 'booking' || slug === 'da_gap' || slug === 'dong_y_gap' ? '#f59e0b' : '#3b82f6',
+                    color: getStageColor(slug),
                     order_index: idx
                   }));
                   setPipelineStages(mappedStages);
@@ -3720,37 +3850,101 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const timeline = useMemo(() => {
     if (!contact?.id) return [];
+
+    // Track chronological stage transitions to determine customer stage at any given activity time
+    const chronologicalActs = [...drawerActivities].sort((a: any, b: any) => 
+      new Date(a.created_at || a.time).getTime() - new Date(b.created_at || b.time).getTime()
+    );
+
+    const stageMilestones: { time: number; stageName: string; stageColor: string }[] = [];
+    chronologicalActs.forEach((a: any) => {
+      const subj = a.subject || '';
+      const body = a.body || a.note || '';
+      const match = subj.match(/Chuyển trạng thái Pipeline →\s*(.+)/i) || body.match(/Chuyển trạng thái Pipeline →\s*(.+)/i);
+      if (match) {
+        const targetName = match[1].trim();
+        const found = pipelineStages.find(s => s.name?.toLowerCase() === targetName.toLowerCase() || s.id?.toLowerCase() === targetName.toLowerCase());
+        const sName = getPrettyStageName(found?.id, found?.name || targetName);
+        const sColor = overridePurpleColor(found?.color || '#BD1D2D');
+        stageMilestones.push({
+          time: new Date(a.created_at || a.time).getTime(),
+          stageName: sName,
+          stageColor: sColor
+        });
+      }
+    });
+
+    const getStageAtTime = (actTime: number, actSubject: string) => {
+      const match = (actSubject || '').match(/Chuyển trạng thái Pipeline →\s*(.+)/i);
+      if (match) {
+        const targetName = match[1].trim();
+        const found = pipelineStages.find(s => s.name?.toLowerCase() === targetName.toLowerCase() || s.id?.toLowerCase() === targetName.toLowerCase());
+        return {
+          stageName: getPrettyStageName(found?.id, found?.name || targetName),
+          stageColor: overridePurpleColor(found?.color || '#BD1D2D')
+        };
+      }
+      const pastMilestones = stageMilestones.filter(m => m.time <= actTime);
+      if (pastMilestones.length > 0) {
+        const last = pastMilestones[pastMilestones.length - 1];
+        return { stageName: last.stageName, stageColor: last.stageColor };
+      }
+      const currStageObj = pipelineStages.find(s => String(s.id) === String(formData.pipeline_status || contact.pipeline_status));
+      return {
+        stageName: getPrettyStageName(currStageObj?.id, currStageObj?.name || 'Quan tâm'),
+        stageColor: overridePurpleColor(currStageObj?.color || '#3b82f6')
+      };
+    };
+
     let source = drawerActivities;
     if (timelineFilter !== 'all') {
       source = source.filter((a: any) => a.type === timelineFilter);
     }
-    return source.map((a: any) => ({
-      id: a.id,
-      title: a.subject,
-      type: a.type,
-      status: a.status,
-      user: a.user_name || 'Hệ thống',
-      avatar: a.avatar_url || undefined,
-      time: a.created_at,
-      due_date: a.due_date,
-      color: a.status === 'cancelled' ? '#6b7280' : (a.type === 'zalo_connect' ? '#0084FF' : a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : a.type === 'note' ? '#6366f1' : '#10b981'),
-      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'zalo_connect' ? <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 16, height: 16, objectFit: 'contain', borderRadius: '4px' }} alt="Zalo" /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : a.type === 'system' ? <History size={16} /> : a.type === 'note' ? <FileText size={16} /> : <Mail size={16} />,
-      note: a.body || a.note || '',
-      comment_count: a.comment_count,
-      expense_image_url: a.expense_image_url,
-      rawActivity: a
-    })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-  }, [drawerActivities, contact?.id, timelineFilter]);
+    return source.map((a: any) => {
+      const actTime = new Date(a.created_at || a.time).getTime();
+      const stageInfo = getStageAtTime(actTime, a.subject);
+      return {
+        id: a.id,
+        title: a.subject,
+        type: a.type,
+        status: a.status,
+        user: a.user_name || 'Hệ thống',
+        avatar: a.avatar_url || undefined,
+        time: a.created_at || a.time,
+        due_date: a.due_date,
+        color: a.status === 'cancelled' ? '#6b7280' : (a.type === 'zalo_connect' ? '#0084FF' : a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : a.type === 'note' ? '#6366f1' : '#10b981'),
+        icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'zalo_connect' ? <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 16, height: 16, objectFit: 'contain', borderRadius: '4px' }} alt="Zalo" /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : a.type === 'system' ? <History size={16} /> : a.type === 'note' ? <FileText size={16} /> : <Mail size={16} />,
+        note: a.body || a.note || '',
+        comment_count: a.comment_count,
+        expense_image_url: a.expense_image_url,
+        stageName: stageInfo.stageName,
+        stageColor: stageInfo.stageColor,
+        rawActivity: a
+      };
+    }).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  }, [drawerActivities, contact?.id, timelineFilter, pipelineStages, formData.pipeline_status, contact?.pipeline_status]);
   const fullName = `${formData.last_name || ''} ${formData.first_name || ''}`.trim() || 'Chưa cập nhật tên';
   const ownerUser = users.find(u => u.full_name === formData.owner_name || u.name === formData.owner_name || u.username === formData.owner_name);
   const ownerAvatarUrl = ownerUser?.avatar_url || ownerUser?.avatar || undefined;
 
   const isSelfCreated = useMemo(() => {
     const src = (formData?.source || contact?.source || '').toLowerCase();
-    const isManual = src === 'manual' || src === 'self' || Boolean((formData as any)?.is_self_created || (contact as any)?.is_self_created);
+    const isManual = src === 'manual' || src === 'self' || src === 'ca_nhan' || src === 'cá nhân' || Boolean((formData as any)?.is_self_created || (contact as any)?.is_self_created);
     const isMyLead = Number(formData?.owner_id || contact?.owner_id) === Number(currentUser?.id) || Number(formData?.created_by || contact?.created_by) === Number(currentUser?.id);
     return isManual && (isMyLead || isOwnerOrAdmin);
   }, [formData?.source, contact?.source, formData?.owner_id, contact?.owner_id, formData?.created_by, contact?.created_by, currentUser?.id, isOwnerOrAdmin]);
+
+  const isDatabankLead = useMemo(() => {
+    const src = (formData?.source || contact?.source || '').toLowerCase();
+    return Boolean(
+      (contact as any)?.dl_status === 'databank_claim' ||
+      (contact as any)?.from_databank ||
+      (formData as any)?.from_databank ||
+      src.includes('databank') ||
+      src.includes('kho data') ||
+      src.includes('kho_data')
+    );
+  }, [formData?.source, contact?.source, (contact as any)?.dl_status, (contact as any)?.from_databank, (formData as any)?.from_databank]);
 
   const executeStageTransition = async (targetId: string, targetLabel: string, proofUrl?: string, customNote?: string) => {
     let calculatedStatus = 'lead';
@@ -3845,37 +4039,127 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
+  // Build summarized conversation threads grouped by date & stage session (as illustrated in Image 3)
+  const summarizedSessions = useMemo(() => {
+    if (!drawerActivities || drawerActivities.length === 0) return [];
+    
+    // Sort chronological: oldest to newest for narrative dialogue progression
+    const chronologicalActs = [...drawerActivities].sort((a: any, b: any) => 
+      new Date(a.created_at || a.time).getTime() - new Date(b.created_at || b.time).getTime()
+    );
+
+    const groups: {
+      dateStr: string;
+      stageName: string;
+      ownerName: string;
+      latestTime: Date;
+      lines: { speaker?: string; content: string; isStatusTransition?: boolean }[];
+    }[] = [];
+
+    chronologicalActs.forEach((act: any) => {
+      const actDate = new Date(act.created_at || act.time);
+      const dateStr = actDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      
+      const foundItem = timeline.find((t: any) => t.id === act.id);
+      const stageName = foundItem?.stageName || 'Quan tâm';
+      const speakerName = act.user_name || act.user || formData.owner_name || 'Sale';
+
+      let grp = groups.find(g => g.dateStr === dateStr);
+      if (!grp) {
+        grp = {
+          dateStr,
+          stageName,
+          ownerName: speakerName,
+          latestTime: actDate,
+          lines: []
+        };
+        groups.push(grp);
+      } else {
+        grp.stageName = stageName;
+        grp.ownerName = speakerName;
+        if (actDate > grp.latestTime) grp.latestTime = actDate;
+      }
+
+      let noteText = (act.body || act.note || '').trim();
+      if (noteText) {
+        noteText = noteText.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+        if (noteText.startsWith('{"erp_task')) {
+          try {
+            const p = JSON.parse(noteText);
+            noteText = p.erp_task?.description || '';
+          } catch {}
+        }
+      }
+
+      if (noteText) {
+        if (act.subject?.includes('Chuyển trạng thái Pipeline')) {
+          grp.lines.push({
+            content: noteText,
+            isStatusTransition: true
+          });
+        } else {
+          const colonMatch = noteText.match(/^([^:\n]+):\s*([\s\S]+)$/);
+          if (colonMatch && colonMatch[1].length < 30) {
+            grp.lines.push({
+              speaker: colonMatch[1].trim(),
+              content: colonMatch[2].trim()
+            });
+          } else {
+            grp.lines.push({
+              speaker: speakerName,
+              content: noteText
+            });
+          }
+        }
+      } else if (act.subject && !act.subject.includes('Chuyển trạng thái Pipeline')) {
+        grp.lines.push({
+          speaker: speakerName,
+          content: act.subject
+        });
+      }
+
+      // Append comments for this activity
+      const comments = summaryCommentsMap[act.id] || [];
+      comments.forEach((c: any) => {
+        if (c.content && c.content.trim()) {
+          grp!.lines.push({
+            speaker: c.user_name || c.user?.full_name || 'Đồng nghiệp',
+            content: c.content.trim()
+          });
+        }
+      });
+    });
+
+    return groups.map(g => ({
+      title: `${g.dateStr} - ${g.stageName} - ${g.ownerName}`,
+      timeAgo: AGO(g.latestTime.toISOString()),
+      lines: g.lines.length > 0 ? g.lines : [{ content: 'Không có nội dung ghi chú chi tiết' }]
+    }));
+  }, [drawerActivities, summaryCommentsMap, timeline, formData.owner_name]);
+
   const quickSummaryContent = useMemo(() => {
     if (!contact) return '';
-    const totalActs = drawerActivities.length;
-    const lastAct = drawerActivities[0];
-    const lastActTime = lastAct?.time ? formatDateTime(lastAct.time) : 'Chưa có';
-    const owner = formData.owner_name || 'Chưa nhận';
-    const collabs = (formData.collaborator_ids || '').split(',').map((id: string) => users.find(u => String(u.id) === String(id.trim()))?.full_name).filter(Boolean).join(', ') || 'Không có';
     const currentStage = pipelineStages.find(s => String(s.id) === String(formData.pipeline_status))?.name || 'Chưa xác định';
-    
-    const recentNotes = drawerActivities
-      .filter((a: any) => a.note && !a.note.startsWith('{"erp_task'))
-      .slice(0, 5)
-      .map((a: any) => `- [${a.user || 'Nhân viên'} lúc ${formatDateTime(a.time)}]: ${a.note.split('\n')[0].substring(0, 120)}`);
+    const owner = formData.owner_name || 'Chưa nhận';
 
-    const lines = [
-      `👤 Khách hàng: ${fullName}`,
-      `📞 Số điện thoại: ${formData.phone || formData.mobile || '—'}`,
-      `🏢 Dự án: ${formData.project_name || formData.source_project_name || 'Chưa gán'}`,
-      `📊 Giai đoạn Pipeline: ${currentStage}`,
-      `👨‍💼 Phụ trách: ${owner} | Đồng hợp tác: ${collabs}`,
-      `📈 Tương tác: ${totalActs} hoạt động (Gần nhất: ${lastActTime})`,
-      `🎯 Đánh giá TTL1:`,
-      `  • Nơi ở/Việc làm: ${ttl1Data.group1 ? 'Đã nắm' : 'Chưa rõ'}`,
-      `  • Ngân sách/Tài chính: ${ttl1Data.group2 ? 'Đã xác định' : 'Chưa rõ'}`,
-      `  • Nhu cầu cấp thiết: ${ttl1Data.group3 ? 'Có' : 'Chưa rõ'}`,
-      `  • Dự án phù hợp: ${ttl1Data.group4 ? 'Phù hợp' : 'Chưa rõ'}`,
-      `📝 Ghi chú gần nhất:`,
-      ...(recentNotes.length > 0 ? recentNotes : ['  • Chưa có ghi chú chi tiết'])
-    ];
-    return lines.join('\n');
-  }, [contact, drawerActivities, formData, fullName, users, pipelineStages, ttl1Data]);
+    const headerBlock = [
+      `👤 KHÁCH HÀNG: ${fullName} (${formData.phone || formData.mobile || '—'})`,
+      `🏢 Dự án: ${formData.project_name || formData.source_project_name || 'Chưa gán'} | Giai đoạn: ${currentStage}`,
+      `👨‍💼 Phụ trách: ${owner}`,
+      `----------------------------------------`
+    ].join('\n');
+
+    if (summarizedSessions.length === 0) {
+      return `${headerBlock}\nChưa có nhật ký trao đổi nào được ghi nhận.`;
+    }
+
+    const sessionBlocks = summarizedSessions.map(s => {
+      const lines = s.lines.map(l => l.speaker ? `${l.speaker}: ${l.content}` : l.content).join('\n');
+      return `[${s.title}]\n${lines}`;
+    }).join('\n\n');
+
+    return `${headerBlock}\n\n${sessionBlocks}`;
+  }, [contact, fullName, formData, pipelineStages, summarizedSessions]);
 
   const handleAddCustomField = () => {
     const key = customFieldKey.trim();
@@ -5002,9 +5286,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   if (typeof document === 'undefined') return null;
 
   const handleStageTransition = (targetId: string, targetName: string) => {
-    const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
-    const safeIndex = currentIdx === -1 ? 0 : currentIdx;
-
     // Guard: Only owner or admin can change pipeline status
     const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
     const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
@@ -5014,24 +5295,45 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return;
     }
 
-    const targetIdx = pipelineStages.findIndex(s => String(s.id) === String(targetId));
-    const isBackward = targetIdx !== -1 && targetIdx < safeIndex;
-
-    const currentStageObj = pipelineStages[safeIndex];
-    const targetStageObj = pipelineStages[targetIdx];
-    const isFromDeposit = currentStageObj?.name?.toLowerCase()?.includes('cọc') || currentStageObj?.name?.toLowerCase()?.includes('deposit');
-    const isToSuccess = targetStageObj?.name?.toLowerCase()?.includes('hợp đồng') || targetStageObj?.name?.toLowerCase()?.includes('won') || targetStageObj?.name?.toLowerCase()?.includes('thành công') || targetStageObj?.is_won;
-    const isCancellation = isFromDeposit && !isToSuccess;
-
-    if (isBackward && !isCancellation && !allowPipelineBackward) {
-      addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
+    // 3.2 => "Chăm Sóc Dài Hạn" là 1 trạng thái ngoài luồng không có điều kiện giới hạn gì khi chuyển
+    if (targetId === 'cham_soc_dai_han') {
+      executeStageTransition(targetId, targetName);
       return;
     }
 
-    const isForwardSkip = (targetIdx !== -1 && targetIdx > safeIndex + 1);
-    if (isForwardSkip && !allowPipelineSkip) {
-      addToast("Không được phép nhảy cóc giai đoạn. Tiến trình chuyển giai đoạn phải đi tuần tự từng bước.", "error");
+    // Chuyển đến Not Lead
+    if (targetId === 'not_lead') {
+      executeStageTransition('not_lead', 'Not Lead');
       return;
+    }
+
+    const currentStatus = String(formData.pipeline_status || 'chua_xac_dinh');
+    if (targetId === currentStatus) return;
+
+    // Các trạng thái chính tuyến tuần tự
+    const mainFlowStages = ['chua_xac_dinh', 'quan_tam', 'thien_chi', 'da_gap', 'booking', 'dat_coc'];
+    const currMainIdx = mainFlowStages.indexOf(currentStatus === 'dong_y_gap' ? 'thien_chi' : currentStatus);
+    const targetMainIdx = mainFlowStages.indexOf(targetId === 'dong_y_gap' ? 'thien_chi' : targetId);
+
+    // Nếu chuyển từ ngoài luồng (như cham_soc_dai_han) vào lại luồng chính: Cho phép vào bất kỳ giai đoạn nào mà không chặn lùi/nhảy
+    const isFromOutside = currentStatus === 'cham_soc_dai_han' || currentStatus === 'not_lead';
+
+    if (!isFromOutside && currMainIdx !== -1 && targetMainIdx !== -1) {
+      const isBackward = targetMainIdx < currMainIdx;
+      const isFromDeposit = currentStatus.includes('coc') || currentStatus === 'dat_coc';
+      const isToSuccess = targetId === 'dong_deal';
+      const isCancellation = isFromDeposit && !isToSuccess;
+
+      if (isBackward && !isCancellation && !allowPipelineBackward) {
+        addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
+        return;
+      }
+
+      const isForwardSkip = (targetMainIdx > currMainIdx + 1);
+      if (isForwardSkip && !allowPipelineSkip) {
+        addToast("Không được phép nhảy cóc giai đoạn. Tiến trình chuyển giai đoạn phải đi tuần tự từng bước.", "error");
+        return;
+      }
     }
 
     // Check interaction guardrail: if transitioning to 'churned' or 'dong_deal' (Đã rời bỏ/Đóng), must have at least 1 activity
@@ -5040,12 +5342,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return;
     }
 
-    // Check TTL1 constraint: moving to status index >= 2 (e.g. 'dong_y_gap' / 'Đồng Ý Gặp' or later)
-    if (targetIdx >= 2) {
-      const count = Object.values(ttl1Data).filter(Boolean).length;
-      if (count < 4) {
-        addToast('Chặn chuyển giai đoạn: Yêu cầu hoàn thành tối thiểu 4/5 nhóm thông tin trong Form TTL1!', 'error');
-        return;
+    // 2.1 => Điền đủ 5/8 trường -> Được Chuyển lên Đồng ý Gặp / Thiện chí - (Chỉ áp dụng cho khách được chia) (không áp dụng với khách cá nhân, kho data, .....)
+    const isMovingToMeetingOrHigher = ['thien_chi', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc'].includes(targetId);
+    if (isMovingToMeetingOrHigher) {
+      const isDistributedLead = !isSelfCreated && !isDatabankLead;
+      if (isDistributedLead) {
+        if (filledTTL1Count < 5) {
+          addToast(`Chặn chuyển giai đoạn: Khách được chia cần điền tối thiểu 5/8 trường thông tin Tương tác lần 1 (TTL1) trước khi chuyển lên ${targetName}! (Hiện tại: ${filledTTL1Count}/8)`, 'error');
+          return;
+        }
       }
     }
     
@@ -5083,58 +5388,60 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const pipelineStepperBar = (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden', width: '100%', flexShrink: 0 }}>
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden', width: '100%', flexShrink: 0, height: '36px' }}>
       {!isMobileOrTablet && (
-        <button className="btn outline sm" style={{ padding: '4px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '0.75rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
-          <ChevronLeft size={14} />
+        <button className="btn outline sm" style={{ padding: '2px', height: 22, width: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '0.5rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
+          <ChevronLeft size={12} />
         </button>
       )}
 
-      <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: isMobileOrTablet ? '0.625rem 1rem' : '0.625rem 3rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
+      <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: isMobileOrTablet ? '0.25rem 0.5rem' : '0.25rem 2.25rem', gap: '8px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
         <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
         {(() => {
-          const linearStages = pipelineStages.filter(s => String(s.id) !== 'dong_deal');
-          const currentIdx = linearStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
-          const safeIndex = currentIdx === -1 ? 0 : currentIdx;
+          const linearStages = DEFAULT_PIPELINE_STAGES;
+          const currentStatus = String(formData.pipeline_status || 'chua_xac_dinh');
 
-          return linearStages.map((st, i) => {
-            const isActive = i <= safeIndex;
-            const isCurrent = i === safeIndex;
-            const isBackward = i < safeIndex;
-            const stColor = overridePurpleColor(st.color);
+          return linearStages.map((st) => {
+            const isCurrent = String(st.id) === currentStatus || (st.id === 'thien_chi' && currentStatus === 'dong_y_gap');
+            const isNurture = st.id === 'cham_soc_dai_han';
+            const isNotLead = st.id === 'not_lead';
+            const stColor = getStageColor(st.id);
+
             return (
               <div
                 key={st.id}
                 onClick={() => {
-                  if (isCurrent || isBackward) return;
+                  if (isCurrent) return;
                   handleStageTransition(String(st.id), getPrettyStageName(st.id, st.name));
                 }}
                 style={{
-                  flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '32px', cursor: isCurrent ? 'default' : (isBackward ? 'not-allowed' : 'pointer'),
-                  display: 'flex', alignItems: 'center', transition: 'all 0.3s',
-                  opacity: isBackward ? 0.5 : 1
+                  flex: '1 0 auto', minWidth: '110px', position: 'relative', height: '26px', cursor: isCurrent ? 'default' : 'pointer',
+                  display: 'flex', alignItems: 'center', transition: 'all 0.3s'
                 }}
+                title={isNurture ? 'Chăm sóc dài hạn (Trạng thái ngoài luồng - có thể chuyển bất kỳ lúc nào)' : undefined}
               >
                 <div style={{
-                  position: 'absolute', left: 0, right: 0, height: '4px',
-                  background: isActive ? stColor : 'var(--color-border-light)',
+                  position: 'absolute', left: 0, right: 0, height: '3px',
+                  background: isCurrent ? stColor : 'var(--color-border-light)',
                   borderRadius: '2px',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }} />
 
                 <div style={{
                   position: 'relative', zIndex: 2, flex: 1,
-                  background: isCurrent ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: isCurrent ? '#fff' : 'var(--color-text-muted)',
-                  border: isCurrent ? '2px solid var(--color-primary)' : '1px solid var(--color-border-light)',
-                  padding: '4px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  background: isCurrent ? stColor : 'var(--color-surface)',
+                  color: isCurrent ? '#fff' : (isNotLead ? '#9ca3af' : 'var(--color-text-muted)'),
+                  border: isCurrent ? `1.5px solid ${stColor}` : `1px solid ${stColor}40`,
+                  padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
                   whiteSpace: 'nowrap',
-                  boxShadow: isCurrent ? '0 4px 12px rgba(189, 29, 45, 0.2)' : 'none',
+                  textDecoration: isNotLead ? 'line-through' : 'none',
+                  boxShadow: isCurrent ? `0 2px 8px ${stColor}40` : 'none',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}>
-                  {isCurrent && <UserCheck size={12} />}
-                  {getPrettyStageName(st.id, st.name)}
+                  {isCurrent && <UserCheck size={11} />}
+                  {st.name}
+                  {isNurture && <span style={{ fontSize: '0.62rem', opacity: 0.85, marginLeft: '2px' }}>★</span>}
                 </div>
               </div>
             );
@@ -5143,8 +5450,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       </div>
 
       {!isMobileOrTablet && (
-        <button className="btn outline sm" style={{ padding: '4px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '0.75rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
-          <ChevronRight size={14} />
+        <button className="btn outline sm" style={{ padding: '2px', height: 22, width: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '0.5rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
+          <ChevronRight size={12} />
         </button>
       )}
     </div>
@@ -5630,8 +5937,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <div
                         style={{
-                          width: 56,
-                          height: 56,
+                          width: 44,
+                          height: 44,
                           borderRadius: '50%',
                           overflow: 'hidden',
                           cursor: 'pointer',
@@ -5645,7 +5952,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <Avatar 
                           src={formData.avatar_url} 
                           name={fullName} 
-                          size={56} 
+                          size={44} 
                         />
                         <div
                           style={{
@@ -5662,51 +5969,51 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                           onMouseLeave={e => e.currentTarget.style.opacity = '0'}
                         >
-                          <Pencil size={16} color="white" />
+                          <Pencil size={13} color="white" />
                         </div>
                       </div>
-                      <div style={{ position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: '50%', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid var(--color-surface)' }}>
-                        <UserCheck size={11} className="text-success" />
+                      <div style={{ position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: '50%', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid var(--color-surface)' }}>
+                        <UserCheck size={10} className="text-success" />
                       </div>
                     </div>
 
                     {/* Info Section */}
                     <div className={styles.profileInfoSection}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px', flexWrap: 'wrap' }}>
-                        <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px', flexWrap: 'wrap' }}>
+                        <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
                           {fullName}
                           {((formData.dl_status || contact?.dl_status) === 'databank_claim' || (formData.source || contact?.source) === 'databank') ? (
-                            <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
-                              <Layers size={15} />
+                            <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '4px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                              <Layers size={13} />
                             </span>
                           ) : (!(formData.dl_status || contact?.dl_status) && (formData.source || contact?.source) !== 'databank') ? (
-                            <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
-                              <User size={15} />
+                            <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '4px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                              <User size={13} />
                             </span>
                           ) : null}
                           <button
                             className="btn-icon xs"
-                            style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}
+                            style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px' }}
                             onClick={() => copyToClipboard(fullName, 'name')}
                             title="Sao chép tên"
                           >
-                            {copiedField === 'name' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                            {copiedField === 'name' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
                           </button>
                         </h2>
-                        <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 8px', fontSize: '0.6875rem', borderRadius: '6px' }}>
+                        <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '1px 6px', fontSize: '0.65rem', borderRadius: '4px' }}>
                           {formData.status === 'customer' ? 'Khách hàng VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
                         </span>
                         {formData.temperature && tempLabels[formData.temperature] && (
                           <span 
                             style={{ 
-                              padding: '2px 8px', 
-                              fontSize: '0.6875rem', 
-                              borderRadius: '6px',
+                              padding: '1px 6px', 
+                              fontSize: '0.65rem', 
+                              borderRadius: '4px',
                               fontWeight: 700,
                               color: tempLabels[formData.temperature].color,
                               background: tempLabels[formData.temperature].bg,
                               border: `1px solid ${tempLabels[formData.temperature].color}33`,
-                              marginLeft: '6px'
+                              marginLeft: '2px'
                             }}
                             title={`Nhiệt độ sale chốt: ${tempLabels[formData.temperature].label}`}
                           >
@@ -5716,14 +6023,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         {formData.suggested_temperature && tempLabels[formData.suggested_temperature] && (
                           <span 
                             style={{ 
-                              padding: '2px 8px', 
-                              fontSize: '0.6875rem', 
-                              borderRadius: '6px',
+                              padding: '1px 6px', 
+                              fontSize: '0.65rem', 
+                              borderRadius: '4px',
                               fontWeight: 600,
                               color: '#64748b',
                               background: 'var(--color-bg)',
                               border: '1px solid var(--color-border-light)',
-                              marginLeft: '6px'
+                              marginLeft: '2px'
                             }}
                             title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
                           >
@@ -5732,46 +6039,46 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '6px', flexWrap: 'wrap' }}>
-                        <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
-                          <Clock size={12} /> <span>Tạo lúc: <strong style={{ color: 'var(--color-text)' }}>{formatDateTime(formData.created_at)}</strong></span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '2px 0 4px 0', flexWrap: 'wrap' }}>
+                        <p style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-light)', fontSize: '0.72rem', margin: 0 }}>
+                          <Clock size={11} /> <span>Tạo lúc: <strong style={{ color: 'var(--color-text)' }}>{formatDateTime(formData.created_at)}</strong></span>
                         </p>
-                        <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
-                          <span style={{ color: 'var(--color-text-muted)' }}>|</span>
+                        <p style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-light)', fontSize: '0.72rem', margin: 0 }}>
+                          <span style={{ color: 'var(--color-border)' }}>|</span>
                           <span>Cập nhật: <strong style={{ color: 'var(--color-text)' }}>{formatDateTime(formData.updated_at || formData.created_at)}</strong></span>
                         </p>
                       </div>
 
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => formData.phone && showCall(formData.phone)}>
-                            <Phone size={12} style={{ color: 'var(--color-primary)' }} />
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => formData.phone && showCall(formData.phone)}>
+                            <Phone size={11} style={{ color: 'var(--color-primary)' }} />
                           </div>
-                          <PhoneLink phone={formData.phone} style={{ fontSize: '0.8125rem' }} />
+                          <PhoneLink phone={formData.phone} style={{ fontSize: '0.78rem' }} />
                           {formData.phone && (
                             <button
                               className="btn-icon xs"
-                              style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', marginLeft: '-2px' }}
+                              style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px', marginLeft: '-2px' }}
                               onClick={() => copyToClipboard(formData.phone, 'phone')}
                               title="Sao chép số điện thoại"
                             >
-                              {copiedField === 'phone' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                              {copiedField === 'phone' ? <Check size={11} className="text-success" /> : <Copy size={11} />}
                             </button>
                           )}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Mail size={12} className="text-muted" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Mail size={11} className="text-muted" />
                           </div>
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
                           {formData.email && (
                             <button
                               className="btn-icon xs"
-                              style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', marginLeft: '-2px' }}
+                              style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px', marginLeft: '-2px' }}
                               onClick={() => copyToClipboard(formData.email, 'email')}
                               title="Sao chép email"
                             >
-                              {copiedField === 'email' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                              {copiedField === 'email' ? <Check size={11} className="text-success" /> : <Copy size={11} />}
                             </button>
                           )}
                         </div>
@@ -5780,21 +6087,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             style={{ 
                               display: 'flex', 
                               alignItems: 'center', 
-                              gap: '6px', 
-                              padding: '2px 8px 2px 4px', 
+                              gap: '4px', 
+                              padding: '1px 6px', 
                               background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(163, 20, 34, 0.01) 100%)', 
                               border: '1px solid rgba(163, 20, 34, 0.15)', 
-                              borderRadius: '20px',
+                              borderRadius: '16px',
                               boxShadow: 'var(--shadow-sm)'
                             }}
                           >
                             <span style={{ 
-                              fontSize: '0.65rem', 
+                              fontSize: '0.62rem', 
                               fontWeight: 800, 
                               color: 'var(--color-primary)', 
                               textTransform: 'uppercase', 
                               letterSpacing: '0.05em',
-                              padding: '2px 6px',
+                              padding: '1px 5px',
                               background: 'var(--color-surface)',
                               borderRadius: '9999px',
                               border: '1px solid rgba(163, 20, 34, 0.1)'
@@ -5806,7 +6113,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <div 
                                   key={shIdx} 
                                   style={{ 
-                                    marginLeft: shIdx > 0 ? '-8px' : '0', 
+                                    marginLeft: shIdx > 0 ? '-6px' : '0', 
                                     position: 'relative',
                                     cursor: 'pointer'
                                   }}
@@ -5816,10 +6123,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <Avatar 
                                     src={resolveAttachmentUrl(sh.avatar)}
                                     name={sh.name} 
-                                    size={22}
+                                    size={20}
                                     style={{
-                                      border: '2px solid var(--color-primary)',
-                                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                      border: '1.5px solid var(--color-primary)',
+                                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                                     }}
                                   />
                                 </div>
@@ -5831,21 +6138,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             style={{ 
                               display: 'flex', 
                               alignItems: 'center', 
-                              gap: '6px', 
-                              padding: '2px 8px 2px 4px', 
+                              gap: '4px', 
+                              padding: '1px 6px', 
                               background: '#e2e8f0', 
                               border: '1px solid var(--color-border-light)', 
-                              borderRadius: '20px',
+                              borderRadius: '16px',
                               boxShadow: 'var(--shadow-sm)'
                             }}
                           >
                             <span style={{ 
-                              fontSize: '0.65rem', 
+                              fontSize: '0.62rem', 
                               fontWeight: 800, 
                               color: 'var(--color-primary)', 
                               textTransform: 'uppercase', 
                               letterSpacing: '0.05em',
-                              padding: '2px 6px',
+                              padding: '1px 5px',
                               background: 'var(--color-surface)',
                               borderRadius: '9999px',
                               border: '1px solid var(--color-border-light)'
@@ -5864,10 +6171,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <Avatar 
                                   src={ownerAvatarUrl}
                                   name={formData.owner_name} 
-                                  size={22}
+                                  size={20}
                                   style={{
-                                    border: '2px solid var(--color-primary)',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    border: '1.5px solid var(--color-primary)',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                                   }}
                                 />
                               </div>
@@ -5875,7 +6182,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <div 
                                   key={cIdx} 
                                   style={{ 
-                                    marginLeft: '-8px', 
+                                    marginLeft: '-6px', 
                                     position: 'relative',
                                     cursor: 'pointer'
                                   }}
@@ -5885,10 +6192,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <Avatar 
                                     src={collab.avatar_url}
                                     name={collab.full_name} 
-                                    size={22}
+                                    size={20}
                                     style={{
-                                      border: '2px solid #9333ea',
-                                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                      border: '1.5px solid #9333ea',
+                                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                                     }}
                                   />
                                 </div>
@@ -5897,15 +6204,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                         ) : (
                           <div
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '1px 6px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer' }}
                             onClick={(e) => showUserCard(e, formData.owner_name)}
                           >
                             <Avatar 
                               src={ownerAvatarUrl}
                               name={formData.owner_name} 
-                              size={20} 
+                              size={18} 
                             />
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
                           </div>
                         )}
                       </div>
@@ -5921,7 +6228,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         title="Xem chi tiết Scoring"
                       >
-                        <LeadScoreRing score={score} size={44} showLabel={true} />
+                        <LeadScoreRing score={score} size={36} showLabel={true} />
                       </div>
 
                       {/* Đóng deal Action */}
@@ -5930,16 +6237,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           display: 'flex',
                           alignItems: 'center',
                           gap: '6px',
-                          padding: '0 14px',
-                          height: '40px',
-                          borderRadius: '10px',
+                          padding: '0 12px',
+                          height: '34px',
+                          borderRadius: '8px',
                           background: 'rgba(16, 185, 129, 0.12)',
                           border: '1px solid rgba(16, 185, 129, 0.3)',
                           color: '#059669',
-                          fontSize: '0.85rem',
+                          fontSize: '0.8rem',
                           fontWeight: 800
                         }}>
-                          <CheckCircle2 size={16} />
+                          <CheckCircle2 size={15} />
                           <span>Đã Đóng Deal</span>
                         </div>
                       ) : (
@@ -5949,21 +6256,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            padding: '0 14px',
-                            height: '40px',
-                            borderRadius: '10px',
+                            gap: '5px',
+                            padding: '0 12px',
+                            height: '34px',
+                            borderRadius: '8px',
                             background: '#10b981',
                             borderColor: '#10b981',
                             color: 'white',
-                            fontSize: '0.85rem',
+                            fontSize: '0.8rem',
                             fontWeight: 800,
                             cursor: 'pointer',
-                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
+                            boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)'
                           }}
                           title="Xác nhận đóng deal (giao dịch thành công)"
                         >
-                          <CheckCircle2 size={15} />
+                          <CheckCircle2 size={14} />
                           <span>Đóng Deal</span>
                         </button>
                       )}
@@ -5975,19 +6282,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         style={{ 
                           display: 'flex', 
                           alignItems: 'center', 
-                          gap: '8px', 
-                          padding: '8px 18px', 
-                          borderRadius: '10px', 
-                          height: '40px', 
-                          fontSize: '0.875rem',
+                          gap: '6px', 
+                          padding: '0 14px', 
+                          borderRadius: '8px', 
+                          height: '34px', 
+                          fontSize: '0.825rem',
                           background: 'var(--color-primary)',
                           borderColor: 'var(--color-primary)',
                           color: 'white',
                           cursor: 'pointer',
+                          fontWeight: 700,
                           transition: 'all 0.2s ease'
                         }}
                       >
-                        <Save size={14} /> Lưu thay đổi
+                        <Save size={13} /> Lưu thay đổi
                       </button>
                     </div>
                   </div>
@@ -6267,7 +6575,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               const tabGroups = [
                                 {
                                   title: 'Thông tin & Nhật ký',
-                                  tabs: ['timeline', 'info', 'tags', 'ttl1', 'tasks', 'scoring']
+                                  tabs: ['timeline', 'info', 'tags', 'tasks', 'scoring']
                                 },
                                 {
                                   title: 'Giao dịch & Tài liệu',
@@ -6358,7 +6666,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               const tabGroups = [
                                 {
                                   title: 'Thông tin & Nhật ký',
-                                  tabs: ['timeline', 'info', 'tags', 'ttl1', 'tasks', 'scoring']
+                                  tabs: ['timeline', 'info', 'tags', 'tasks', 'scoring']
                                 },
                                 {
                                   title: 'Giao dịch & Tài liệu',
@@ -6682,172 +6990,147 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <>
                           {/* INFO TAB */}
                           {activeTab === 'info' && (
-                    <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                       {/* Quick Stats Dashboard */}
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'repeat(2, 1fr)' : (currentUser?.role === 'sale' ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)'), gap: '0.75rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'repeat(2, 1fr)' : (currentUser?.role === 'sale' ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)'), gap: '0.5rem' }}>
                         {/* Hide expected revenue card for Sale role */}
                         {currentUser?.role !== 'sale' && (
                           <div className="card-panel stat-card hover-lift" style={{ 
-                            padding: isMobileOrTablet ? '0.75rem 0.875rem' : '0.875rem 1rem', 
+                            padding: '0.5rem 0.75rem', 
                             display: 'flex', 
                             flexDirection: 'column', 
-                            borderRadius: '12px', 
+                            borderRadius: '10px', 
                             background: 'var(--color-surface)',
                             border: '1px solid var(--color-border-light)',
                             position: 'relative',
                             overflow: 'hidden'
                           }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DỰ KIẾN DOANH THU</span>
-                              <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <TrendingUp size={15} />
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.04em' }}>DỰ KIẾN DOANH THU</span>
+                              <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <TrendingUp size={13} />
                               </div>
                             </div>
-                            <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>{FMT(formData.expected_revenue || 0)}</span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}><span style={{ color: '#3b82f6', fontWeight: 700 }}>{formData.win_probability || 0}%</span> xác suất</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>{FMT(formData.expected_revenue || 0)}</span>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '2px' }}><span style={{ color: '#3b82f6', fontWeight: 700 }}>{formData.win_probability || 0}%</span> xác suất</span>
                           </div>
                         )}
 
                         <div className="card-panel stat-card hover-lift" style={{ 
-                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '0.875rem 1rem', 
+                          padding: '0.5rem 0.75rem', 
                           display: 'flex', 
                           flexDirection: 'column', 
-                          borderRadius: '12px', 
+                          borderRadius: '10px', 
                           background: 'var(--color-surface)',
                           border: '1px solid var(--color-border-light)',
                           position: 'relative',
                           overflow: 'hidden'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DOANH THU THỰC TẾ</span>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <CheckCircle2 size={15} />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>DOANH THU THỰC TẾ</span>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <CheckCircle2 size={13} />
                             </div>
                           </div>
-                          <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#10b981' }}>{FMT(formData.actual_revenue || 0)}</span>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}><span style={{ color: '#10b981', fontWeight: 700 }}>{formData.paid_invoice_count || 0}</span> hóa đơn</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#10b981' }}>{FMT(formData.actual_revenue || 0)}</span>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '2px' }}><span style={{ color: '#10b981', fontWeight: 700 }}>{formData.paid_invoice_count || 0}</span> hóa đơn</span>
                         </div>
 
                         <div className="card-panel stat-card hover-lift" style={{ 
-                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '0.875rem 1rem', 
+                          padding: '0.5rem 0.75rem', 
                           display: 'flex', 
                           flexDirection: 'column', 
-                          borderRadius: '12px', 
+                          borderRadius: '10px', 
                           background: 'var(--color-surface)',
                           border: '1px solid var(--color-border-light)',
                           position: 'relative',
                           overflow: 'hidden'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CHI TIÊU</span>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Wallet size={15} />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>CHI TIÊU</span>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Wallet size={13} />
                             </div>
                           </div>
-                          <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>{FMT(formData.total_spent || 0)}</span>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}><span style={{ color: '#f59e0b', fontWeight: 700 }}>{formData.expense_count || 0}</span> khoản chi</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>{FMT(formData.total_spent || 0)}</span>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '2px' }}><span style={{ color: '#f59e0b', fontWeight: 700 }}>{formData.expense_count || 0}</span> khoản chi</span>
                         </div>
 
                         <div className="card-panel stat-card hover-lift" style={{ 
-                          padding: isMobileOrTablet ? '0.75rem 0.875rem' : '0.875rem 1rem', 
+                          padding: '0.5rem 0.75rem', 
                           display: 'flex', 
                           flexDirection: 'column', 
-                          borderRadius: '12px', 
+                          borderRadius: '10px', 
                           background: 'var(--color-surface)',
                           border: '1px solid var(--color-border-light)',
                           position: 'relative',
                           overflow: 'hidden'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>LẦN LIÊN HỆ CUỐI</span>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Clock size={15} />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>LẦN LIÊN HỆ CUỐI</span>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Clock size={13} />
                             </div>
                           </div>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{ fontSize: '0.825rem', fontWeight: 800, color: 'var(--color-text)' }}>
                             {formData.last_contact ? formatDateTime(formData.last_contact) : 'Chưa có'}
                           </span>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
                             {formData.last_contact ? AGO(formData.last_contact) : 'Cần liên hệ ngay'}
                           </span>
                         </div>
                       </div>
 
-                      {/* PHẦN 1: THÔNG TIN BAN ĐẦU & FORM QUẢNG CÁO */}
-                      <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)', marginBottom: '1.25rem' }}>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '0.75rem',
-                          marginBottom: '1rem',
-                          paddingBottom: '0.625rem',
-                          borderBottom: '1px solid var(--color-border-light)',
-                          flexWrap: 'wrap'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <User size={14} />
+                      {/* 2-COLUMN LAYOUT: INBOUND LEAD (LEFT) & SALE KHAI THÁC (RIGHT) */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, 1fr)',
+                        gap: '0.875rem',
+                        alignItems: 'start'
+                      }}>
+                        {/* CỘT TRÁI: 1. THÔNG TIN BAN ĐẦU (INBOUND LEAD) */}
+                        <div className="card-panel" style={{ padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            paddingBottom: '0.5rem',
+                            borderBottom: '1px solid var(--color-border-light)',
+                            flexWrap: 'wrap'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '22px', height: '22px', borderRadius: '5px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <User size={13} />
+                              </div>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                                1. Thông tin ban đầu (Inbound Lead)
+                              </span>
                             </div>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                              1. Thông tin ban đầu (Inbound Lead)
+                            <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                              Nguồn: {formData.source || 'Quảng cáo'}
                             </span>
                           </div>
-                          <span className="badge info" style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                            Nguồn: {formData.source || 'Quảng cáo'}
-                          </span>
-                        </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(3, 1fr)', gap: '0.875rem' }}>
-                          <div className="form-group">
-                            <label className="form-label">Họ &amp; Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                          {/* Họ & Tên */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '3px' }}>Họ &amp; Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <input className="form-input" placeholder="Họ" value={formData.first_name || ''} onChange={e => {
+                              <input className="form-input sm" placeholder="Họ" value={formData.first_name || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, first_name: val }));
-                              }} style={{ flex: 1, minWidth: 0 }} />
-                              <input className="form-input" placeholder="Tên" value={formData.last_name || ''} onChange={e => {
+                              }} style={{ flex: 1, minWidth: 0, height: '32px', fontSize: '0.8rem' }} />
+                              <input className="form-input sm" placeholder="Tên" value={formData.last_name || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, last_name: val }));
-                              }} style={{ flex: 1, minWidth: 0 }} />
+                              }} style={{ flex: 1, minWidth: 0, height: '32px', fontSize: '0.8rem' }} />
                             </div>
                           </div>
 
-                          <div className="form-group">
-                            <label className="form-label">Phân loại Lead (Lead Score)</label>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              <div style={{ flex: 1 }}>
-                                <CustomSelect
-                                  options={[
-                                    { value: 'hot', label: '🔥 R1 - Nóng (Rất tiềm năng)' },
-                                    { value: 'warm', label: '⚡ R2 - Ấm (Quan tâm)' },
-                                    { value: 'cold', label: '❄️ R3 - Lạnh (Chưa rõ nhu cầu)' }
-                                  ]}
-                                  value={formData.temperature || 'cold'}
-                                  onChange={(val) => setFormData((prev: any) => ({ ...prev, temperature: val }))}
-                                />
-                              </div>
-                              <div style={{ padding: '6px 12px', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                                {score} pts
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="form-group">
-                            <label className="form-label">Dự án &amp; Chiến dịch nguồn</label>
-                            <div style={{ padding: '8px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-text)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                              <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-                                {formData.source_project_name || contact?.source_project_name || formData.project_name || 'Quảng cáo chung'}
-                              </span>
-                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                                {formData.campaign_name || contact?.campaign_name || 'Chiến dịch Marketing'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="form-group">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                              <label className="form-label" style={{ margin: 0 }}>Số điện thoại chính <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                          {/* Số điện thoại chính */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                              <label className="form-label" style={{ margin: 0, fontSize: '0.75rem' }}>Số điện thoại chính <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                               <span 
                                 onClick={() => {
                                   if (!formData.phone?.trim()) return;
@@ -6861,13 +7144,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   }
                                 }}
                                 style={{
-                                  fontSize: '0.68rem',
+                                  fontSize: '0.65rem',
                                   fontWeight: 700,
                                   cursor: formData.phone?.trim() ? 'pointer' : 'not-allowed',
                                   color: zaloSource === 'primary' ? '#0068FF' : 'var(--color-text-muted)',
                                   background: zaloSource === 'primary' ? 'rgba(0, 104, 255, 0.1)' : 'var(--color-bg)',
                                   border: `1px solid ${zaloSource === 'primary' ? '#0068FF' : 'var(--color-border)'}`,
-                                  padding: '1px 6px',
+                                  padding: '1px 5px',
                                   borderRadius: '4px'
                                 }}
                               >
@@ -6876,17 +7159,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                               <input 
-                                className="form-input" 
+                                className="form-input sm" 
                                 placeholder="09..." 
                                 value={formData.phone || ''} 
                                 onChange={e => setFormData((prev: any) => ({ ...prev, phone: e.target.value }))}
-                                style={{ paddingRight: '60px' }}
+                                style={{ paddingRight: '54px', height: '32px', fontSize: '0.8rem' }}
                               />
-                              <div style={{ position: 'absolute', right: '6px', display: 'flex', gap: '4px' }}>
+                              <div style={{ position: 'absolute', right: '4px', display: 'flex', gap: '2px' }}>
                                 <button 
                                   type="button" 
-                                  className="btn-icon sm" 
-                                  style={{ height: '26px', width: '26px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)' }} 
+                                  className="btn-icon xs" 
+                                  style={{ height: '24px', width: '24px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)' }} 
                                   title="Sao chép"
                                   onClick={() => {
                                     if (formData.phone) {
@@ -6895,300 +7178,470 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     }
                                   }}
                                 >
-                                  <Copy size={13} />
+                                  <Copy size={12} />
                                 </button>
                                 <button 
                                   type="button" 
-                                  className="btn-icon sm" 
-                                  style={{ height: '26px', width: '26px', border: 'none', background: 'transparent', color: 'var(--color-success)' }} 
+                                  className="btn-icon xs" 
+                                  style={{ height: '24px', width: '24px', border: 'none', background: 'transparent', color: 'var(--color-success)' }} 
                                   title="Gọi điện"
                                   onClick={() => {
                                     if (formData.phone) showCall(formData.phone);
                                   }}
                                 >
-                                  <Phone size={13} />
+                                  <Phone size={12} />
                                 </button>
                               </div>
                             </div>
                           </div>
 
-                          <div className="form-group">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                              <label className="form-label" style={{ margin: 0 }}>Số điện thoại phụ</label>
-                              <span 
-                                onClick={() => {
-                                  if (!formData.mobile?.trim()) return;
-                                  if (zaloSource === 'secondary') {
-                                    setZaloSource('none');
-                                    setFormData((prev: any) => ({ ...prev, zalo_link: '' }));
-                                  } else {
-                                    setZaloSource('secondary');
-                                    const cleanPhone = (formData.mobile || '').replace(/[^0-9]/g, '');
-                                    setFormData((prev: any) => ({ ...prev, zalo_link: cleanPhone ? `https://zalo.me/${cleanPhone}` : '' }));
-                                  }
-                                }}
-                                style={{
-                                  fontSize: '0.68rem',
-                                  fontWeight: 700,
-                                  cursor: formData.mobile?.trim() ? 'pointer' : 'not-allowed',
-                                  color: zaloSource === 'secondary' ? '#0068FF' : 'var(--color-text-muted)',
-                                  background: zaloSource === 'secondary' ? 'rgba(0, 104, 255, 0.1)' : 'var(--color-bg)',
-                                  border: `1px solid ${zaloSource === 'secondary' ? '#0068FF' : 'var(--color-border)'}`,
-                                  padding: '1px 6px',
-                                  borderRadius: '4px'
-                                }}
-                              >
-                                {zaloSource === 'secondary' ? '✓ Dùng làm Zalo' : '+ Dùng làm Zalo'}
-                              </span>
-                            </div>
-                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                              <input 
-                                className="form-input" 
-                                placeholder="09..." 
-                                value={formData.mobile || ''} 
-                                onChange={e => setFormData((prev: any) => ({ ...prev, mobile: e.target.value }))}
-                                style={{ paddingRight: '60px' }}
-                              />
-                              <div style={{ position: 'absolute', right: '6px', display: 'flex', gap: '4px' }}>
-                                <button 
-                                  type="button" 
-                                  className="btn-icon sm" 
-                                  style={{ height: '26px', width: '26px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)' }} 
-                                  title="Sao chép"
-                                  onClick={() => {
-                                    if (formData.mobile) {
-                                      navigator.clipboard.writeText(formData.mobile);
-                                      addToast('Đã sao chép SĐT!', 'success');
-                                    }
-                                  }}
-                                >
-                                  <Copy size={13} />
-                                </button>
-                                <button 
-                                  type="button" 
-                                  className="btn-icon sm" 
-                                  style={{ height: '26px', width: '26px', border: 'none', background: 'transparent', color: 'var(--color-success)' }} 
-                                  title="Gọi điện"
-                                  onClick={() => {
-                                    if (formData.mobile) showCall(formData.mobile);
-                                  }}
-                                >
-                                  <Phone size={13} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="form-group">
-                            <label className="form-label">Email</label>
-                            <input className="form-input" placeholder="email@domain.com" value={formData.email || ''} onChange={e => {
+                          {/* Email */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '3px' }}>Email</label>
+                            <input className="form-input sm" placeholder="email@domain.com" value={formData.email || ''} onChange={e => {
                               const val = e.target.value;
                               setFormData((prev: any) => ({ ...prev, email: val }));
-                            }} />
+                            }} style={{ height: '32px', fontSize: '0.8rem' }} />
                           </div>
-                        </div>
 
-                        {/* Dynamic Inbound Ads Form Fields */}
-                        {parsedAdFormData && parsedAdFormData.length > 0 && (
-                          <div style={{ marginTop: '0.875rem', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <FileText size={14} style={{ color: 'var(--color-primary)' }} />
-                              <span>Dữ liệu đăng ký trong Form quảng cáo ({parsedAdFormData.length} thông tin)</span>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
-                              {parsedAdFormData.map((item, idx) => (
-                                <div key={idx} style={{ background: 'var(--color-surface)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{item.label}</span>
-                                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '2px', wordBreak: 'break-word' }}>{item.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Ghi chú & Nhu cầu từ Marketing (Lead Inbound) */}
-                        {renderMarketingNoteSection('1rem 0 0 0')}
-                      </div>
-
-                      {/* PHẦN 2: THÔNG TIN SALE KHAI THÁC */}
-                      <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)', marginBottom: '1.25rem' }}>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '0.75rem',
-                          marginBottom: '1rem',
-                          paddingBottom: '0.625rem',
-                          borderBottom: '1px solid var(--color-border-light)',
-                          flexWrap: 'wrap'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <Target size={14} />
-                            </div>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                              2. Thông tin Sale khai thác &amp; TTL1
-                            </span>
-                          </div>
-                          <span className={`badge ${formData.ttl1_completed ? 'success' : 'warning'}`} style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                            {formData.ttl1_completed ? '✓ Đã hoàn tất TTL1' : 'Đang khai thác TTL1'}
-                          </span>
-                        </div>
-
-                        {/* Cụm tương tác lần 1 (TTL1) - 4 nhóm check */}
-                        <div style={{ marginBottom: '1rem', background: 'var(--color-bg)', padding: '0.875rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                            Bộ 4 Tiêu Chí Xác Minh Nhu Cầu (TTL1):
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group1 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group1 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
-                              <CustomCheckbox 
-                                checked={Boolean(ttl1Data.group1)} 
-                                onChange={(e) => {
-                                  const isChecked = typeof e === 'boolean' ? e : (e?.target ? Boolean(e.target.checked) : !ttl1Data.group1);
-                                  const next = { ...ttl1Data, group1: isChecked };
-                                  setTtl1Data(next);
-                                  handleSaveTTL1(next);
-                                }} 
-                              />
-                              <div>
-                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: ttl1Data.group1 ? '#059669' : 'var(--color-text)' }}>📍 Nơi ở / Việc làm / Gia đình</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Đã nắm thông tin cư trú, công việc</div>
-                              </div>
+                          {/* 1. Trường Phân Loại Lead là 1 trường bình thường để phân Rank (không phải trường chấm điểm) */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '3px', fontWeight: 700 }}>
+                              Phân loại Lead (Rank)
                             </label>
-
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group2 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group2 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
-                              <CustomCheckbox 
-                                checked={Boolean(ttl1Data.group2)} 
-                                onChange={(e) => {
-                                  const isChecked = typeof e === 'boolean' ? e : (e?.target ? Boolean(e.target.checked) : !ttl1Data.group2);
-                                  const next = { ...ttl1Data, group2: isChecked };
-                                  setTtl1Data(next);
-                                  handleSaveTTL1(next);
-                                }} 
-                              />
-                              <div>
-                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: ttl1Data.group2 ? '#059669' : 'var(--color-text)' }}>💰 Ngân sách / Tài chính</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Đã xác định tầm tài chính &amp; vốn</div>
-                              </div>
-                            </label>
-
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group3 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group3 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
-                              <CustomCheckbox 
-                                checked={Boolean(ttl1Data.group3)} 
-                                onChange={(e) => {
-                                  const isChecked = typeof e === 'boolean' ? e : (e?.target ? Boolean(e.target.checked) : !ttl1Data.group3);
-                                  const next = { ...ttl1Data, group3: isChecked };
-                                  setTtl1Data(next);
-                                  handleSaveTTL1(next);
-                                }} 
-                              />
-                              <div>
-                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: ttl1Data.group3 ? '#059669' : 'var(--color-text)' }}>⚡ Nhu cầu cấp thiết</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Cần mua ngay trong 1-3 tháng</div>
-                              </div>
-                            </label>
-
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: ttl1Data.group4 ? 'rgba(16, 185, 129, 0.08)' : 'var(--color-surface)', border: `1px solid ${ttl1Data.group4 ? '#10b981' : 'var(--color-border)'}`, borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
-                              <CustomCheckbox 
-                                checked={Boolean(ttl1Data.group4)} 
-                                onChange={(e) => {
-                                  const isChecked = typeof e === 'boolean' ? e : (e?.target ? Boolean(e.target.checked) : !ttl1Data.group4);
-                                  const next = { ...ttl1Data, group4: isChecked };
-                                  setTtl1Data(next);
-                                  handleSaveTTL1(next);
-                                }} 
-                              />
-                              <div>
-                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: ttl1Data.group4 ? '#059669' : 'var(--color-text)' }}>🏢 Dự án phù hợp</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Khớp sản phẩm công ty đang phân phối</div>
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Dự án & Chiến dịch điều hướng chăm sóc thực tế */}
-                        <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, 1fr)', gap: '0.875rem' }}>
-                          <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-primary)' }}>Dự án Chăm sóc Hiện tại (Điều hướng)</label>
                             <CustomSelect
                               searchable
                               options={[
-                                { value: '', label: '— Chưa chọn dự án —' },
-                                ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
+                                { value: 'R3', label: 'R3' },
+                                { value: 'R3_Fb', label: 'R3_Fb' },
+                                { value: 'R2', label: 'R2' },
+                                { value: 'R3_Zalo', label: 'R3_Zalo' },
+                                { value: 'broadcast', label: 'Broadcast' },
+                                { value: 'ca_nhan', label: 'Cá nhân' },
+                                { value: 'gioi_thieu', label: 'Giới thiệu' },
+                                { value: 'databank', label: 'Kho Data' }
                               ]}
-                              value={String(formData.project_id || '')}
-                              onChange={val => {
-                                const selectedId = val ? Number(val) : null;
-                                let nextCampaignId = formData.campaign_id;
-                                if (!selectedId) {
-                                  nextCampaignId = null;
-                                } else if (nextCampaignId) {
-                                  const campObj = allowedCampaigns.find(c => Number(c.id) === Number(nextCampaignId));
-                                  if (campObj && Number(campObj.project_id) !== selectedId) {
-                                    nextCampaignId = null;
-                                  }
-                                }
-                                setFormData((prev: any) => ({
-                                  ...prev,
-                                  project_id: selectedId,
-                                  campaign_id: nextCampaignId
-                                }));
-                              }}
+                              value={formData.source || ''}
+                              onChange={(val) => setFormData((prev: any) => ({ ...prev, source: val, customer_type: val }))}
+                              placeholder="Chọn hoặc nhập Rank..."
                             />
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                              Dự án mà Sale đang thực tế tư vấn và dẫn khách đi xem.
+                            <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '2px', display: 'block' }}>
+                              Phân loại Rank nguồn lead được map lúc Tích hợp Data
                             </span>
                           </div>
 
-                          <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-primary)' }}>Chiến dịch Chăm sóc Hiện tại (Điều hướng)</label>
-                            {(() => {
-                              const filteredCamps = formData.project_id
-                                ? allowedCampaigns.filter(c => Number(c.project_id) === Number(formData.project_id))
-                                : allowedCampaigns;
-                              return (
-                                <CustomSelect
-                                  searchable
-                                  options={[
-                                    { value: '', label: '— Không chọn chiến dịch —' },
-                                    ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
-                                  ]}
-                                  value={formData.campaign_id ? String(formData.campaign_id) : ''}
-                                  onChange={val => {
-                                    const nextCampaign = val ? Number(val) : null;
-                                    let nextProjectId = formData.project_id;
-                                    if (nextCampaign) {
-                                      const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
-                                      if (campObj && campObj.project_id) {
-                                        nextProjectId = Number(campObj.project_id);
-                                      }
+                          {/* Dự án & Chiến dịch (Quan hệ Cha - Con) */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '3px', fontWeight: 700 }}>Dự án nguồn</label>
+                              <CustomSelect
+                                searchable
+                                options={[
+                                  { value: '', label: '— Chọn dự án —' },
+                                  ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
+                                ]}
+                                value={String(formData.project_id || '')}
+                                onChange={val => {
+                                  const selectedId = val ? Number(val) : null;
+                                  let nextCampaignId = formData.campaign_id;
+                                  if (!selectedId) {
+                                    nextCampaignId = null;
+                                  } else if (nextCampaignId) {
+                                    const campObj = allowedCampaigns.find(c => Number(c.id) === Number(nextCampaignId));
+                                    if (campObj && Number(campObj.project_id) !== selectedId) {
+                                      nextCampaignId = null;
                                     }
-                                    setFormData((prev: any) => ({
-                                      ...prev,
-                                      campaign_id: nextCampaign,
-                                      project_id: nextProjectId
-                                    }));
-                                  }}
-                                />
-                              );
-                            })()}
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                              Chiến dịch bán hàng tương ứng với dự án đang điều hướng.
-                            </span>
+                                  }
+                                  setFormData((prev: any) => ({
+                                    ...prev,
+                                    project_id: selectedId,
+                                    campaign_id: nextCampaignId
+                                  }));
+                                }}
+                              />
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
+                                <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Con của dự án</span>
+                              </div>
+                              {(() => {
+                                const filteredCamps = formData.project_id
+                                  ? allowedCampaigns.filter(c => Number(c.project_id) === Number(formData.project_id))
+                                  : allowedCampaigns;
+                                return (
+                                  <CustomSelect
+                                    searchable
+                                    options={[
+                                      { value: '', label: '— Chọn chiến dịch —' },
+                                      ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
+                                    ]}
+                                    value={formData.campaign_id ? String(formData.campaign_id) : ''}
+                                    onChange={val => {
+                                      const nextCampaign = val ? Number(val) : null;
+                                      let nextProjectId = formData.project_id;
+                                      if (nextCampaign) {
+                                        const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
+                                        if (campObj && campObj.project_id) {
+                                          nextProjectId = Number(campObj.project_id);
+                                        }
+                                      }
+                                      setFormData((prev: any) => ({
+                                        ...prev,
+                                        campaign_id: nextCampaign,
+                                        project_id: nextProjectId
+                                      }));
+                                    }}
+                                  />
+                                );
+                              })()}
+                            </div>
                           </div>
+
+                          {/* CỤC GOM THÔNG TIN FORM ĐĂNG KÝ (FACEBOOK LEAD ADS / SCORE) */}
+                          <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                                <FileText size={13} style={{ color: 'var(--color-primary)' }} />
+                                <span>Thông Tin Form Đăng Ký (Facebook Lead Ads)</span>
+                              </div>
+                              <span className="badge warning" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Form Leads</span>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '0.75rem' }}>
+                              <div style={{ background: 'var(--color-surface)', padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Tỉnh/TP</div>
+                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.city || parsedAdFormData.find(x => x.key?.includes('city') || x.key?.includes('tinh'))?.value || 'TP. Hồ Chí Minh'}</div>
+                              </div>
+                              <div style={{ background: 'var(--color-surface)', padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Ứng dụng liên hệ</div>
+                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.platform || parsedAdFormData.find(x => x.key?.includes('platform') || x.key?.includes('kenh'))?.value || 'Facebook Lead Ads'}</div>
+                              </div>
+                              <div style={{ background: 'var(--color-surface)', padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Loại hình căn hộ</div>
+                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.property_type || parsedAdFormData.find(x => x.key?.includes('loai_hinh') || x.key?.includes('can_ho') || x.key?.includes('type'))?.value || '1PN / Studio (33-51m2)'}</div>
+                              </div>
+                              <div style={{ background: 'var(--color-surface)', padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Đăng Ký Form</div>
+                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{formData.form_name || parsedAdFormData.find(x => x.key?.includes('form'))?.value || 'Mẫu Lead Ads Marketing'}</div>
+                              </div>
+                              <div style={{ background: 'var(--color-surface)', padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--color-border)', gridColumn: 'span 2' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Mẫu Quảng Cáo</div>
+                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', wordBreak: 'break-word' }}>{formData.utm_content || parsedAdFormData.find(x => x.key?.includes('ad') || x.key?.includes('campaign'))?.value || formData.campaign_name || 'Chiến dịch Quảng cáo Meta'}</div>
+                              </div>
+                              {parsedAdFormData.filter(x => !['city', 'tinh', 'platform', 'kenh', 'loai_hinh', 'can_ho', 'form'].some(k => x.key?.includes(k))).slice(0, 4).map((item, idx) => (
+                                <div key={idx} style={{ background: 'var(--color-surface)', padding: '5px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                                  <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{item.label}</div>
+                                  <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', wordBreak: 'break-word' }}>{item.value}</div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Link Facebook */}
+                            <div className="form-group" style={{ marginTop: '4px', marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                                <Globe size={11} style={{ color: '#1877F2' }} /> Link Facebook
+                              </label>
+                              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <input
+                                  className="form-input sm"
+                                  placeholder="https://facebook.com/profile..."
+                                  value={formData.fb_link || formData.facebook_link || ''}
+                                  onChange={e => {
+                                    const val = e.target.value;
+                                    setFormData((prev: any) => ({ ...prev, fb_link: val, facebook_link: val }));
+                                  }}
+                                  style={{ paddingRight: (formData.fb_link || formData.facebook_link) ? '32px' : '8px', height: '30px', fontSize: '0.78rem' }}
+                                />
+                                {(formData.fb_link || formData.facebook_link) && (
+                                  <a
+                                    href={formData.fb_link || formData.facebook_link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn-icon xs"
+                                    style={{ position: 'absolute', right: '4px', height: '22px', width: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1877F2' }}
+                                    title="Mở link Facebook"
+                                  >
+                                    <ExternalLink size={12} />
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Nhu cầu từ Marketing (Lead Inbound) */}
+                          {renderMarketingNoteSection('0.25rem 0 0 0')}
                         </div>
 
-                        <div className="form-group" style={{ marginTop: '0.875rem', marginBottom: 0 }}>
-                          <label className="form-label">Ghi chú nhu cầu, rào cản &amp; giải pháp tiếp theo</label>
-                          <textarea
-                            className="form-input"
-                            rows={3}
-                            placeholder="Ghi chú chi tiết về nhu cầu mua, tài chính, rào cản lăn tăn của khách và hướng xử lý tiếp theo..."
-                            value={formData.notes || ''}
-                            onChange={e => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
-                            style={{ width: '100%', resize: 'none' }}
-                          />
+                        {/* CỘT PHẢI: 2. THÔNG TIN SALE KHAI THÁC */}
+                        {/* CỘT PHẢI: 2. THÔNG TIN SALE KHAI THÁC (TTL1) */}
+                        <div className="card-panel" style={{ padding: '0.875rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            paddingBottom: '0.5rem',
+                            borderBottom: '1px solid var(--color-border-light)',
+                            flexWrap: 'wrap'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '22px', height: '22px', borderRadius: '5px', background: 'rgba(234, 179, 8, 0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Target size={13} />
+                              </div>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                                Thông tin sale khai thác (TTL1)
+                              </span>
+                              <span 
+                                className={`badge ${filledTTL1Count >= 5 ? 'success' : 'secondary'}`} 
+                                style={{ fontSize: '0.68rem', padding: '1px 6px', fontWeight: 800 }}
+                                title={filledTTL1Count >= 5 ? 'Đã đạt đủ tối thiểu 5/8 trường TTL1 (Đủ điều kiện chuyển Đồng ý gặp)' : 'Cần đạt tối thiểu 5/8 trường để chuyển Đồng ý gặp'}
+                              >
+                                {filledTTL1Count}/8 trường
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ display: 'inline-flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                                <button
+                                  type="button"
+                                  className={`btn xs ${ttl1ViewMode === 'fields' ? 'primary' : 'ghost'}`}
+                                  onClick={() => setTtl1ViewMode('fields')}
+                                  style={{ padding: '2px 6px', fontSize: '0.68rem', height: '22px', borderRadius: '4px' }}
+                                  title="Xem và chỉnh sửa từng trường"
+                                >
+                                  Từng trường
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`btn xs ${ttl1ViewMode === 'text' ? 'primary' : 'ghost'}`}
+                                  onClick={() => setTtl1ViewMode('text')}
+                                  style={{ padding: '2px 6px', fontSize: '0.68rem', height: '22px', borderRadius: '4px' }}
+                                  title="Gộp 8 trường thành đoạn văn bản xem nhanh"
+                                >
+                                  Dạng văn bản
+                                </button>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn outline xs"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(ttl1SummaryText);
+                                  addToast('Đã sao chép 8 trường thông tin TTL1!', 'success');
+                                }}
+                                style={{ padding: '2px 6px', fontSize: '0.68rem', height: '22px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                                title="Sao chép toàn bộ thông tin TTL1 để chia sẻ"
+                              >
+                                <Copy size={11} />
+                                <span>Sao chép</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {ttl1ViewMode === 'text' ? (
+                            <div style={{ background: 'var(--color-bg)', padding: '0.875rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>Nội dung tổng hợp 8 trường TTL1:</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Xem nhanh &amp; chia sẻ</span>
+                              </div>
+                              <pre style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--color-text)' }}>
+                                {ttl1SummaryText}
+                              </pre>
+                            </div>
+                          ) : (
+                            <>
+                              {/* KHỐI 1: CHÂN DUNG KHÁCH HÀNG (1) */}
+                              <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)' }}>1. Chân dung khách hàng</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span 
+                                      onClick={() => setActiveTab('scoring')}
+                                      style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-primary)', cursor: 'pointer', background: 'var(--color-surface)', padding: '1px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+                                      title="Xem chi tiết Scoring"
+                                    >
+                                      {score} pts
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                                  <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Ở đâu (1)</label>
+                                    <input
+                                      className="form-input sm"
+                                      placeholder="Nơi ở / địa chỉ..."
+                                      value={formData.address || ''}
+                                      onChange={e => setFormData((prev: any) => ({ ...prev, address: e.target.value }))}
+                                      style={{ height: '30px', fontSize: '0.78rem' }}
+                                    />
+                                  </div>
+                                  <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Làm gì (2)</label>
+                                    <input
+                                      className="form-input sm"
+                                      placeholder="Nghề nghiệp..."
+                                      value={formData.job_title || ''}
+                                      onChange={e => setFormData((prev: any) => ({ ...prev, job_title: e.target.value }))}
+                                      style={{ height: '30px', fontSize: '0.78rem' }}
+                                    />
+                                  </div>
+                                  <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Gia đình (3)</label>
+                                    <input
+                                      className="form-input sm"
+                                      placeholder="Tình trạng gia đình..."
+                                      value={ttl1Data.gia_dinh || ''}
+                                      onChange={e => {
+                                        const val = e.target.value;
+                                        const next = { ...ttl1Data, gia_dinh: val };
+                                        setTtl1Data(next);
+                                        setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
+                                      }}
+                                      style={{ height: '30px', fontSize: '0.78rem' }}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Dự án &amp; Chiến dịch nguồn:</span>
+                                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                                    {formData.source_project_name || formData.project_name || 'Quảng cáo chung'} {formData.campaign_name ? `• ${formData.campaign_name}` : ''}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* KHỐI 2: KHAI THÁC 3 TIÊU CHÍ CỐT LÕI (2) */}
+                              <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)' }}>2. Khai thác 3 tiêu chí cốt lõi</span>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Hiện trạng (4):</label>
+                                  <input
+                                    className="form-input sm"
+                                    placeholder="Hiện trạng nơi ở / đầu tư hiện tại..."
+                                    value={ttl1Data.hien_trang || ''}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      const next = { ...ttl1Data, hien_trang: val };
+                                      setTtl1Data(next);
+                                      setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
+                                    }}
+                                    style={{ height: '30px', fontSize: '0.78rem' }}
+                                  />
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Nhu cầu (5):</label>
+                                  <input
+                                    className="form-input sm"
+                                    placeholder="Nhu cầu cụ thể (diện tích, dòng tiền, mục đích...)"
+                                    value={ttl1Data.nhu_cau || ''}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      const next = { ...ttl1Data, nhu_cau: val };
+                                      setTtl1Data(next);
+                                      setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
+                                    }}
+                                    style={{ height: '30px', fontSize: '0.78rem' }}
+                                  />
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Rào cản (6):</label>
+                                  <input
+                                    className="form-input sm"
+                                    placeholder="Rào cản lăn tăn (tài chính, pháp lý, người quyết định...)"
+                                    value={ttl1Data.rao_can || ''}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      const next = { ...ttl1Data, rao_can: val };
+                                      setTtl1Data(next);
+                                      setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
+                                    }}
+                                    style={{ height: '30px', fontSize: '0.78rem' }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* KHỐI 3: KÊNH KẾT NỐI BỔ SUNG (3) */}
+                              <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Kênh kết nối bổ sung</span>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                                  <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                      <span style={{ color: '#0068FF', fontWeight: 700 }}>Nhóm Zalo:</span>
+                                    </label>
+                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                      <input
+                                        className="form-input sm"
+                                        placeholder="SĐT / Link Zalo..."
+                                        value={formData.zalo_link || ''}
+                                        onChange={e => setFormData((prev: any) => ({ ...prev, zalo_link: e.target.value }))}
+                                        style={{ paddingRight: formData.zalo_link ? '30px' : '8px', height: '30px', fontSize: '0.78rem' }}
+                                      />
+                                      {formData.zalo_link && (
+                                        <a
+                                          href={formData.zalo_link.startsWith('http') ? formData.zalo_link : `https://zalo.me/${formData.zalo_link.replace(/[^0-9]/g, '')}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="btn-icon xs"
+                                          style={{ position: 'absolute', right: '4px', height: '22px', width: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0068FF' }}
+                                          title="Mở Zalo"
+                                        >
+                                          <ExternalLink size={11} />
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Email:</label>
+                                    <input
+                                      className="form-input sm"
+                                      placeholder="Email liên hệ..."
+                                      value={formData.email || ''}
+                                      onChange={e => setFormData((prev: any) => ({ ...prev, email: e.target.value }))}
+                                      style={{ height: '30px', fontSize: '0.78rem' }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* KHỐI 4: KẾ HOẠCH CHỐT DEAL & NGÂN SÁCH (4) */}
+                              <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)' }}>4. Kế hoạch chốt deal &amp; Ngân sách</span>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Giải pháp tiếp theo (7):</label>
+                                  <textarea
+                                    className="form-input sm"
+                                    rows={2}
+                                    placeholder="Kế hoạch xử lý tiếp theo của Sale (gọi lại, gửi layout, chốt lịch hẹn...)"
+                                    value={ttl1Data.giai_phap || formData.notes || ''}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      const next = { ...ttl1Data, giai_phap: val };
+                                      setTtl1Data(next);
+                                      setFormData((prev: any) => ({ ...prev, notes: val, ttl1_data: next }));
+                                    }}
+                                    style={{ width: '100%', resize: 'none', fontSize: '0.78rem' }}
+                                  />
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px' }}>Ngân sách (8):</label>
+                                  <CurrencyInput
+                                    value={formData.budget || formData.budget_range || 0}
+                                    onChange={val => setFormData((prev: any) => ({ ...prev, budget: val, budget_range: String(val) }))}
+                                    placeholder="0.00 đ"
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -9004,117 +9457,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                         </CustomModal>
                       )}
-                    </div>
-                  )}
-
-                  {/* TTL1 VERIFICATION TAB */}
-                  {activeTab === 'ttl1' && (
-                    <div className="animate-fade">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                        <div>
-                          <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Form xác minh điều kiện gặp (TTL1)</h3>
-                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                            Yêu cầu đạt tối thiểu <strong>4/5 nhóm thông tin</strong> để chuyển sang giai đoạn Đồng Ý Gặp hoặc cao hơn.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="card-panel" style={{ padding: '1.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '1.5rem' }}>
-                          
-                          {/* Group 1 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
-                            <CustomCheckbox
-                              checked={ttl1Data.group1}
-                              onChange={(e) => setTtl1Data(p => ({ ...p, group1: e.target.checked }))}
-                              disabled={isViewer}
-                            />
-                            <div>
-                              <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 1: Nhân khẩu học (Demographics)</p>
-                              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Có đầy đủ Họ tên, Ngày sinh, Nghề nghiệp và thông tin liên hệ chính thống.</p>
-                            </div>
-                          </label>
-
-                          {/* Group 2 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
-                            <CustomCheckbox
-                              checked={ttl1Data.group2}
-                              onChange={(e) => setTtl1Data(p => ({ ...p, group2: e.target.checked }))}
-                              disabled={isViewer}
-                            />
-                            <div>
-                              <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 2: Khả năng tài chính (Financial Readiness)</p>
-                              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Xác định nguồn ngân sách đầu tư rõ ràng, có khả năng chứng minh vốn tự có hoặc bảo lãnh vay.</p>
-                            </div>
-                          </label>
-
-                          {/* Group 3 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
-                            <CustomCheckbox
-                              checked={ttl1Data.group3}
-                              onChange={(e) => setTtl1Data(p => ({ ...p, group3: e.target.checked }))}
-                              disabled={isViewer}
-                            />
-                            <div>
-                              <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 3: Mức độ cấp thiết (Urgency)</p>
-                              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Nhu cầu mua hàng thật sự, có lộ trình ra quyết định trong thời hạn 1 - 3 tháng tới.</p>
-                            </div>
-                          </label>
-
-                          {/* Group 4 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
-                            <CustomCheckbox
-                              checked={ttl1Data.group4}
-                              onChange={(e) => setTtl1Data(p => ({ ...p, group4: e.target.checked }))}
-                              disabled={isViewer}
-                            />
-                            <div>
-                              <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 4: Mức độ phù hợp với dự án (Project Fit)</p>
-                              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Dòng sản phẩm của dự án phù hợp với yêu cầu diện tích, vị trí và mục tiêu sinh lời của khách hàng.</p>
-                            </div>
-                          </label>
-
-                          {/* Group 5 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
-                            <CustomCheckbox
-                              checked={ttl1Data.group5}
-                              onChange={(e) => setTtl1Data(p => ({ ...p, group5: e.target.checked }))}
-                              disabled={isViewer}
-                            />
-                            <div>
-                              <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 5: Vai trò quyết định (Decision Role)</p>
-                              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Xác định người đứng tên cọc/hợp đồng hoặc có vai trò quyết định mua hàng cuối cùng.</p>
-                            </div>
-                          </label>
-                          
-
-
-                        </div>
-
-                        {/* Status Summary & Action */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', marginTop: '1.5rem' }}>
-                          <div>
-                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                              Tổng điều kiện đạt: <strong>{Object.values(ttl1Data).filter(Boolean).length}/5</strong>
-                            </span>
-                            <span style={{
-                              marginLeft: '12px', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700,
-                              background: Object.values(ttl1Data).filter(Boolean).length >= 4 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                              color: Object.values(ttl1Data).filter(Boolean).length >= 4 ? '#059669' : '#dc2626'
-                            }}>
-                              {Object.values(ttl1Data).filter(Boolean).length >= 4 ? 'Đủ điều kiện chuyển giai đoạn' : 'Chưa đủ điều kiện'}
-                            </span>
-                          </div>
-                          <button
-                            className="btn primary sm"
-                            onClick={() => handleSaveTTL1(ttl1Data)}
-                            disabled={isSavingTTL1 || isViewer}
-                          >
-                            {isSavingTTL1 ? 'Đang lưu...' : (isViewer ? 'Bạn không có quyền chỉnh sửa' : 'Lưu Form TTL1')}
-                          </button>
-                        </div>
-
-                      </div>
                     </div>
                   )}
 
@@ -14379,33 +14721,89 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         </div>
       </CustomModal>
 
-      {/* SMART SUMMARY MODAL (✨ Tóm tắt nhanh) */}
+      {/* SMART SUMMARY MODAL (✨ Tóm tắt lịch sử tương tác) */}
       <CustomModal
         isOpen={showSummaryModal}
         onClose={() => setShowSummaryModal(false)}
-        title="✨ Tóm Tắt Nhanh Khách Hàng (Smart Overview)"
-        width="620px"
+        title="✨ Tóm tắt lịch sử tương tác"
+        width={isMobileOrTablet ? '95vw' : '680px'}
       >
-        <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(59, 130, 246, 0.08))', borderRadius: '10px', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+        <div style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(59, 130, 246, 0.08))', borderRadius: '10px', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Avatar name={`${formData.first_name || ''} ${formData.last_name || ''}`} src={formData.avatar_url} size={40} />
+              <Avatar name={fullName} src={formData.avatar_url} size={36} />
               <div>
-                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>{`${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Khách hàng'}</h4>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{formData.phone} • {formData.project_name || formData.source_project_name || 'Chưa gán dự án'}</span>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>{fullName}</h4>
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{formData.phone} • {formData.project_name || formData.source_project_name || 'Chưa gán dự án'}</span>
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <span className="badge primary" style={{ fontSize: '0.75rem', fontWeight: 800 }}>{score} pts</span>
-              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{formData.temperature?.toUpperCase() || 'COLD'}</div>
+            <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="badge primary" style={{ fontSize: '0.72rem', fontWeight: 800 }}>{score} pts</span>
+              <span className="badge warning" style={{ fontSize: '0.7rem', fontWeight: 700 }}>{summarizedSessions.length} phiên</span>
             </div>
           </div>
 
-          <div style={{ background: 'var(--color-bg)', padding: '12px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-            <pre style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--color-text)' }}>
-              {quickSummaryContent}
-            </pre>
-          </div>
+          {isLoadingSummary ? (
+            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <Loader2 className="animate-spin" size={24} style={{ color: 'var(--color-primary)' }} />
+              <span style={{ fontSize: '0.85rem' }}>Đang tổng hợp nội dung lịch sử tương tác...</span>
+            </div>
+          ) : summarizedSessions.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>Chưa có nội dung cuộc trò chuyện nào được ghi nhận.</p>
+            </div>
+          ) : (
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {summarizedSessions.map((session, sIdx) => (
+                <div
+                  key={sIdx}
+                  style={{
+                    background: 'rgba(254, 240, 138, 0.12)',
+                    border: '1.5px solid #eab308',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                    position: 'relative'
+                  }}
+                >
+                  {/* Header: [Ngày/Tháng/Năm] - [Trạng thái khách lúc đó] - [Sale phụ trách] */}
+                  <div style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    color: '#854d0e',
+                    marginBottom: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderBottom: '1px solid rgba(234, 179, 8, 0.3)',
+                    paddingBottom: '6px'
+                  }}>
+                    <span>{session.title}</span>
+                    <span style={{ fontSize: '0.7rem', color: '#a16207', fontWeight: 600 }}>{session.timeAgo}</span>
+                  </div>
+
+                  {/* Diễn biến trao đổi */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.825rem', color: 'var(--color-text)', lineHeight: 1.55 }}>
+                    {session.lines.map((line: any, lIdx: number) => (
+                      <div key={lIdx} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                        {line.speaker ? (
+                          <>
+                            <span style={{ fontWeight: 700, color: '#0369a1', flexShrink: 0 }}>
+                              {line.speaker}:
+                            </span>
+                            <span style={{ flex: 1 }}>{formatNote(line.content)}</span>
+                          </>
+                        ) : (
+                          <span style={{ fontStyle: line.isStatusTransition ? 'italic' : 'normal', color: line.isStatusTransition ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
+                            {formatNote(line.content)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
             <button
