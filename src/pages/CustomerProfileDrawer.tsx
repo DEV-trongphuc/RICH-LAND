@@ -6069,54 +6069,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </span>
                     </div>
 
-                    {/* Middle: 1-Click Fast Tab Switcher (Timeline <-> Info) */}
-                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)', flexShrink: 0 }}>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('timeline')}
-                        style={{
-                          padding: '3px 10px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          fontSize: '0.75rem',
-                          fontWeight: activeTab === 'timeline' ? 800 : 500,
-                          background: activeTab === 'timeline' ? 'var(--color-surface)' : 'transparent',
-                          color: activeTab === 'timeline' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                          boxShadow: activeTab === 'timeline' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          transition: 'all 0.15s'
-                        }}
-                      >
-                        <History size={12} />
-                        <span>Lịch sử ({timeline.length})</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('info')}
-                        style={{
-                          padding: '3px 10px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          fontSize: '0.75rem',
-                          fontWeight: activeTab === 'info' ? 800 : 500,
-                          background: activeTab === 'info' ? 'var(--color-surface)' : 'transparent',
-                          color: activeTab === 'info' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                          boxShadow: activeTab === 'info' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          transition: 'all 0.15s'
-                        }}
-                      >
-                        <User size={12} />
-                        <span>Thông tin chung</span>
-                      </button>
-                    </div>
-
                     {/* Right: Actions (Summary, Close Deal, Save, Close X) */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                       {/* Smart Summary Button */}
@@ -6207,15 +6159,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           width: '28px',
                           height: '28px',
                           borderRadius: '6px',
-                          background: 'transparent',
-                          border: '1px solid var(--color-border-light)',
-                          color: 'var(--color-text-muted)',
+                          background: 'var(--color-bg)',
+                          border: '1px solid var(--color-border)',
+                          color: 'var(--color-text)',
                           cursor: 'pointer',
-                          padding: 0
+                          padding: 0,
+                          marginLeft: '2px'
                         }}
                         title="Đóng cửa sổ (Esc)"
                       >
-                        <X size={15} />
+                        <X size={16} />
                       </button>
                     </div>
                   </div>
@@ -6927,23 +6880,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {/* Họ & Tên (Gộp 1 hàng) */}
                           <div style={{ display: 'grid', gridTemplateColumns: '38% 62%', gap: '4px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Họ & Đệm:</label>
+                              <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Họ & Đệm:</label>
                               <input
                                 className="form-input sm"
                                 placeholder="Họ..."
                                 value={formData.last_name || ''}
                                 onChange={e => handleInputChange('last_name', e.target.value)}
-                                style={{ height: '27px', fontSize: '0.76rem', padding: '0 6px' }}
+                                style={{ height: '26px', fontSize: '0.74rem', padding: '0 6px' }}
                               />
                             </div>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Tên (*):</label>
+                              <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Tên (*):</label>
                               <input
                                 className="form-input sm"
                                 placeholder="Tên khách hàng..."
                                 value={formData.first_name || ''}
                                 onChange={e => handleInputChange('first_name', e.target.value)}
-                                style={{ height: '27px', fontSize: '0.76rem', padding: '0 6px', fontWeight: 700 }}
+                                style={{ height: '26px', fontSize: '0.74rem', padding: '0 6px', fontWeight: 700 }}
                               />
                             </div>
                           </div>
@@ -6951,8 +6904,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {/* SĐT chính + Phân loại Rank */}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1px' }}>
-                                <label className="form-label" style={{ fontSize: '0.68rem', margin: 0 }}>SĐT chính (*):</label>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '1px' }}>
+                                <label className="form-label" style={{ fontSize: '0.65rem', margin: 0 }}>SĐT chính (*):</label>
                                 {formData.phone && (
                                   <span
                                     style={{ fontSize: '0.62rem', color: (formData.zalo_link || '').includes(formData.phone) ? 'var(--color-success)' : 'var(--color-primary)', cursor: 'pointer', fontWeight: 600 }}
@@ -6973,13 +6926,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 placeholder="0901234567"
                                 value={formData.phone || ''}
                                 onChange={e => handleInputChange('phone', e.target.value)}
-                                style={{ height: '27px', fontSize: '0.76rem', padding: '0 6px', fontWeight: 700 }}
+                                style={{ height: '26px', fontSize: '0.74rem', padding: '0 6px', fontWeight: 700 }}
                               />
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Phân loại Lead (Rank):</label>
+                              <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Phân loại Lead (Rank):</label>
                               <CustomSelect
+                                size="xs"
                                 options={[
                                   { label: 'Hạng A (Rất tiềm năng)', value: 'A' },
                                   { label: 'Hạng B (Tiềm năng vừa)', value: 'B' },
@@ -6995,19 +6949,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {/* Email & Kênh nguồn */}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Email:</label>
+                              <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Email:</label>
                               <input
                                 className="form-input sm"
                                 placeholder="email@gmail.com"
                                 value={formData.email || ''}
                                 onChange={e => handleInputChange('email', e.target.value)}
-                                style={{ height: '27px', fontSize: '0.76rem', padding: '0 6px' }}
+                                style={{ height: '26px', fontSize: '0.74rem', padding: '0 6px' }}
                               />
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Nguồn Lead:</label>
+                              <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Nguồn Lead:</label>
                               <CustomSelect
+                                size="xs"
                                 options={[
                                   { label: 'Facebook Ads', value: 'Facebook Ads' },
                                   { label: 'Google Ads', value: 'Google Ads' },
@@ -7026,24 +6981,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {/* Dự án nguồn & Chiến dịch */}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Dự án quảng cáo:</label>
+                              <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Dự án quảng cáo:</label>
                               <input
                                 className="form-input sm"
                                 placeholder="Tên dự án..."
                                 value={formData.source_project_name || formData.project_name || ''}
                                 onChange={e => handleInputChange('source_project_name', e.target.value)}
-                                style={{ height: '27px', fontSize: '0.76rem', padding: '0 6px' }}
+                                style={{ height: '26px', fontSize: '0.74rem', padding: '0 6px' }}
                               />
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Chiến dịch:</label>
+                              <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Chiến dịch:</label>
                               <input
                                 className="form-input sm"
                                 placeholder="Tên campaign..."
                                 value={formData.campaign_name || formData.campaign || ''}
                                 onChange={e => handleInputChange('campaign_name', e.target.value)}
-                                style={{ height: '27px', fontSize: '0.76rem', padding: '0 6px' }}
+                                style={{ height: '26px', fontSize: '0.74rem', padding: '0 6px' }}
                               />
                             </div>
                           </div>
@@ -7057,7 +7012,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  padding: '4px 8px',
+                                  padding: '3px 8px',
                                   cursor: 'pointer',
                                   userSelect: 'none',
                                   fontSize: '0.72rem',
@@ -7087,13 +7042,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                           {/* Link Facebook profile */}
                           <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Link Facebook / MXH:</label>
+                            <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Link Facebook / MXH:</label>
                             <input
                               className="form-input sm"
                               placeholder="https://facebook.com/..."
                               value={formData.facebook_url || ''}
                               onChange={e => handleInputChange('facebook_url', e.target.value)}
-                              style={{ height: '27px', fontSize: '0.76rem', padding: '0 6px' }}
+                              style={{ height: '26px', fontSize: '0.74rem', padding: '0 6px' }}
                             />
                           </div>
                         </div>
@@ -7182,8 +7137,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             /* DẠNG TỪNG TRƯỜNG: 4 Khối siêu gọn gàng */
                             <>
                               {/* KHỐI 1: NGHIÊN CỨU KHÁCH HÀNG (Ở đâu, Làm gì, Gia đình) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.35rem 0.5rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text)' }}>1. Nghiên cứu khách hàng</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-text)' }}>1. Nghiên cứu khách hàng</span>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
                                     <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Ở đâu (1):</label>
@@ -7224,8 +7179,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
 
                               {/* KHỐI 2: TIẾP CẬN KHÁCH HÀNG - KHAI THÁC NHU CẦU */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.35rem 0.5rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text)' }}>2. TIẾP CẬN KHÁCH HÀNG - KHAI THÁC NHU CẦU</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '3px' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-text)' }}>2. TIẾP CẬN KHÁCH HÀNG - KHAI THÁC NHU CẦU</span>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
                                     <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>a. Hiện trạng (4):</label>
@@ -7276,8 +7231,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
 
                               {/* KHỐI 3: THÔNG TIN BỔ SUNG (NẾU CÓ) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.35rem 0.5rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text)' }}>3. THÔNG TIN BỔ SUNG (nếu có)</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '3px' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-text)' }}>3. THÔNG TIN BỔ SUNG (nếu có)</span>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                   <input
                                     className="form-input sm"
@@ -7295,8 +7250,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
 
                               {/* KHỐI 4: GIẢI PHÁP TIẾP THEO & NGÂN SÁCH */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.35rem 0.5rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text)' }}>4. GIẢI PHÁP TIẾP THEO & NGÂN SÁCH</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '3px' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-text)' }}>4. GIẢI PHÁP TIẾP THEO & NGÂN SÁCH</span>
                                 <div style={{ display: 'grid', gridTemplateColumns: '62% 38%', gap: '4px' }}>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
                                     <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '1px' }}>Giải pháp tiếp theo (7):</label>
@@ -7320,6 +7275,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       onChange={(val: any) => handleInputChange('budget', val)}
                                       placeholder="5 tỷ, 10 tỷ..."
                                       style={{ height: '26px', fontSize: '0.74rem', padding: '0 5px' }}
+                                      showTextHelper={false}
                                     />
                                   </div>
                                 </div>
