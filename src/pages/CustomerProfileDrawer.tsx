@@ -2970,7 +2970,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           padding: '1.25rem', 
           background: '#fffdf0', 
           border: '1px solid #fef08a', 
-          borderLeft: '5px solid #eab308', 
           borderRadius: '12px', 
           margin: margin,
           boxShadow: '0 4px 14px rgba(234, 179, 8, 0.06)',
@@ -6778,22 +6777,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)', marginBottom: '1.25rem' }}>
                         <div style={{
                           display: 'flex',
-                          flexDirection: isMobileOrTablet ? 'column' : 'row',
-                          justifyContent: isMobileOrTablet ? 'flex-start' : 'space-between',
-                          alignItems: isMobileOrTablet ? 'flex-start' : 'center',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
                           gap: '0.75rem',
                           marginBottom: '1rem',
+                          paddingBottom: '0.625rem',
                           borderBottom: '1px solid var(--color-border-light)',
-                          paddingBottom: '0.5rem'
+                          flexWrap: 'wrap'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <User size={16} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <User size={14} />
                             </div>
-                            <div style={{ minWidth: 0 }}>
-                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, wordBreak: 'break-word' }}>1. Thông tin ban đầu (Inbound Lead Data)</h4>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Dữ liệu gốc từ nguồn đăng ký / chiến dịch Marketing</span>
-                            </div>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                              1. Thông tin ban đầu (Inbound Lead)
+                            </span>
                           </div>
                           <span className="badge info" style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
                             Nguồn: {formData.source || 'Quảng cáo'}
@@ -7016,22 +7014,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)', marginBottom: '1.25rem' }}>
                         <div style={{
                           display: 'flex',
-                          flexDirection: isMobileOrTablet ? 'column' : 'row',
-                          justifyContent: isMobileOrTablet ? 'flex-start' : 'space-between',
-                          alignItems: isMobileOrTablet ? 'flex-start' : 'center',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
                           gap: '0.75rem',
                           marginBottom: '1rem',
+                          paddingBottom: '0.625rem',
                           borderBottom: '1px solid var(--color-border-light)',
-                          paddingBottom: '0.5rem'
+                          flexWrap: 'wrap'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.1)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <Target size={16} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Target size={14} />
                             </div>
-                            <div style={{ minWidth: 0 }}>
-                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, wordBreak: 'break-word' }}>2. Thông tin Sale Khai thác (TTL1 &amp; Điều hướng chăm sóc)</h4>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Cụm tiêu chí xác nhận nhu cầu &amp; Dự án/Chiến dịch điều hướng thực tế</span>
-                            </div>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                              2. Thông tin Sale khai thác &amp; TTL1
+                            </span>
                           </div>
                           <span className={`badge ${formData.ttl1_completed ? 'success' : 'warning'}`} style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px', flexShrink: 0, whiteSpace: 'nowrap' }}>
                             {formData.ttl1_completed ? '✓ Đã hoàn tất TTL1' : 'Đang khai thác TTL1'}
@@ -7199,22 +7196,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '14px', border: '1px solid var(--color-border-light)' }}>
                         <div style={{
                           display: 'flex',
-                          flexDirection: isMobileOrTablet ? 'column' : 'row',
-                          justifyContent: isMobileOrTablet ? 'flex-start' : 'space-between',
-                          alignItems: isMobileOrTablet ? 'flex-start' : 'center',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
                           gap: '0.75rem',
                           marginBottom: '1rem',
+                          paddingBottom: '0.625rem',
                           borderBottom: '1px solid var(--color-border-light)',
-                          paddingBottom: '0.5rem'
+                          flexWrap: 'wrap'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <Users size={16} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Users size={14} />
                             </div>
-                            <div style={{ minWidth: 0 }}>
-                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, wordBreak: 'break-word' }}>3. Thông tin Hoạt động &amp; Vận hành</h4>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Phân quyền phụ trách, đồng chăm sóc, nhân khẩu học &amp; đối tác</span>
-                            </div>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                              3. Hoạt động &amp; Vận hành
+                            </span>
                           </div>
                         </div>
 
