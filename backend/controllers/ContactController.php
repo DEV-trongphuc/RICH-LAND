@@ -657,7 +657,6 @@ class ContactController {
                             if (!empty(trim($tData['hien_trang'] ?? ''))) $tCount++;
                             if (!empty(trim($tData['nhu_cau'] ?? ''))) $tCount++;
                             if (!empty(trim($tData['rao_can'] ?? ''))) $tCount++;
-                            if (!empty(trim($tData['thong_tin_bo_sung'] ?? ''))) $tCount++;
                             if (!empty(trim($tData['giai_phap'] ?? $b['notes'] ?? $currentContact['notes'] ?? ''))) $tCount++;
                             if ((float)($b['budget'] ?? $currentContact['budget'] ?? 0) > 0 || !empty(trim($b['budget_range'] ?? $currentContact['budget_range'] ?? ''))) $tCount++;
                             if ($tCount < 5) {

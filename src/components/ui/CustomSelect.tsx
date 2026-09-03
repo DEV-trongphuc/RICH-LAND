@@ -35,7 +35,7 @@ interface CustomSelectProps {
   direction?: 'up' | 'down';
   multiple?: boolean;
   align?: 'left' | 'right';
-  size?: 'xs' | 'sm' | 'md';
+  size?: 'sm' | 'md';
   disabled?: boolean;
 }
 
@@ -356,28 +356,22 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           backgroundColor: disabled ? 'var(--color-bg-light)' : undefined,
           maxWidth: '100%',
           overflow: 'hidden',
-          ...(size === 'xs' ? {
-            minHeight: '26px',
-            height: '26px',
-            padding: '0 6px',
-            fontSize: '0.74rem',
-            borderRadius: '5px'
-          } : size === 'sm' ? {
+          ...(size === 'sm' ? {
             minHeight: '38px',
             height: '38px',
             padding: '6px 12px',
             fontSize: '0.875rem',
             borderRadius: 'var(--radius-md)'
           } : {}),
-          ...(((size === 'sm' || size === 'xs') && isOpen) ? {
+          ...((size === 'sm' && isOpen) ? {
             boxShadow: '0 0 0 3px rgba(163, 20, 34, 0.1)'
           } : {})
         }}
       >
-        <span className={(multiple && Array.isArray(value) && value.length > 0) || selectedOption ? styles.selectedValue : styles.placeholder} style={size === 'xs' ? { fontSize: '0.74rem', lineHeight: 1.2 } : undefined}>
+        <span className={(multiple && Array.isArray(value) && value.length > 0) || selectedOption ? styles.selectedValue : styles.placeholder}>
           {renderTriggerContent()}
         </span>
-        <ChevronDown size={size === 'xs' ? 12 : size === 'sm' ? 14 : 16} className={`${styles.icon} ${isOpen ? styles.iconOpen : ''}`} />
+        <ChevronDown size={size === 'sm' ? 14 : 16} className={`${styles.icon} ${isOpen ? styles.iconOpen : ''}`} />
       </div>
 
       <AnimatePresence>
