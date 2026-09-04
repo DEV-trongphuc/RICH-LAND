@@ -1891,6 +1891,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     hien_trang?: string;
     nhu_cau?: string;
     rao_can?: string;
+    thong_tin_bo_sung?: string;
     giai_phap?: string;
   }>(() => {
     try {
@@ -1906,11 +1907,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           hien_trang: parsed.hien_trang || '',
           nhu_cau: parsed.nhu_cau || '',
           rao_can: parsed.rao_can || '',
+          thong_tin_bo_sung: parsed.thong_tin_bo_sung || '',
           giai_phap: parsed.giai_phap || ''
         };
       }
     } catch {}
-    return { group1: false, group2: false, group3: false, group4: false, group5: false, gia_dinh: '', hien_trang: '', nhu_cau: '', rao_can: '', giai_phap: '' };
+    return { group1: false, group2: false, group3: false, group4: false, group5: false, gia_dinh: '', hien_trang: '', nhu_cau: '', rao_can: '', thong_tin_bo_sung: '', giai_phap: '' };
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
   const [ttl1ViewMode, setTtl1ViewMode] = useState<'fields' | 'text'>('fields');
@@ -1924,31 +1926,45 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if ((ttl1Data.hien_trang || '').trim()) count++;
     if ((ttl1Data.nhu_cau || '').trim()) count++;
     if ((ttl1Data.rao_can || '').trim()) count++;
+    if ((ttl1Data.thong_tin_bo_sung || '').trim()) count++;
     if ((ttl1Data.giai_phap || formData.notes || '').trim()) count++;
     if (Number(formData.budget) > 0 || (formData.budget_range || '').trim()) count++;
-    return count;
+    return Math.min(count, 8);
   }, [formData.address, formData.job_title, formData.notes, formData.budget, formData.budget_range, ttl1Data]);
 
-  // Cụm văn bản gộp 8 trường TTL1 để xem nhanh hoặc sao chép chia sẻ
+  // Cụm văn bản gộp TTL1 chuẩn mẫu Phản hồi khách hàng lần 1 để xem nhanh hoặc sao chép chia sẻ
   const ttl1SummaryText = useMemo(() => {
     const contactName = `${formData.last_name || ''} ${formData.first_name || ''}`.trim() || 'Khách hàng';
     const formatCurrency = (val: any) => {
       const num = Number(val);
-      if (isNaN(num) || num <= 0) return 'Chưa cập nhật';
+      if (isNaN(num) || num <= 0) return '';
       return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
     };
 
-    return [
+    const budgetVal = Number(formData.budget) > 0 ? formatCurrency(formData.budget) : (formData.budget_range || '');
+
+    const lines = [
       `📋 THÔNG TIN TƯƠNG TÁC LẦN 1 (TTL1) - ${contactName} (${formData.phone || ''})`,
-      `1. Ở đâu: ${formData.address || 'Chưa cập nhật'}`,
-      `2. Làm gì: ${formData.job_title || 'Chưa cập nhật'}`,
-      `3. Gia đình: ${ttl1Data.gia_dinh || 'Chưa cập nhật'}`,
-      `4. Hiện trạng: ${ttl1Data.hien_trang || 'Chưa cập nhật'}`,
-      `5. Nhu cầu: ${ttl1Data.nhu_cau || 'Chưa cập nhật'}`,
-      `6. Rào cản: ${ttl1Data.rao_can || 'Chưa cập nhật'}`,
-      `7. Giải pháp tiếp theo: ${ttl1Data.giai_phap || formData.notes || 'Chưa cập nhật'}`,
-      `8. Ngân sách: ${Number(formData.budget) > 0 ? formatCurrency(formData.budget) : (formData.budget_range || 'Chưa cập nhật')}`
-    ].join('\n');
+      '',
+      '1. Chân dung khách hàng:',
+      `- Ở đâu: ${formData.address || 'Chưa cập nhật'}`,
+      `- Làm gì: ${formData.job_title || 'Chưa cập nhật'}`,
+      `- Gia đình: ${ttl1Data.gia_dinh || 'Chưa cập nhật'}`,
+      '',
+      '2. Tiếp cận & Khai thác nhu cầu:',
+      `- Hiện trạng: ${ttl1Data.hien_trang || 'Chưa cập nhật'}`,
+      `- Nhu cầu: ${ttl1Data.nhu_cau || 'Chưa cập nhật'}`,
+      `- Rào cản: ${ttl1Data.rao_can || 'Chưa cập nhật'}`,
+      '',
+      '3. Thông tin bổ sung (nếu có):',
+      `- ${ttl1Data.thong_tin_bo_sung || 'Chưa cập nhật'}`,
+      '',
+      '4. Kế hoạch chốt deal & Ngân sách:',
+      `- Giải pháp tiếp theo: ${ttl1Data.giai_phap || formData.notes || 'Chưa cập nhật'}`,
+      `- Ngân sách: ${budgetVal || 'Chưa cập nhật'}`
+    ];
+
+    return lines.join('\n');
   }, [formData.last_name, formData.first_name, formData.phone, formData.address, formData.job_title, formData.notes, formData.budget, formData.budget_range, ttl1Data]);
 
   // Tự động đồng bộ trạng thái hoàn thành TTL1 (ngầm - khi đạt đủ 5/8 trường)
@@ -7511,50 +7527,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               </div>
 
-                              {/* KHỐI 3: KÊNH KẾT NỐI BỔ SUNG (3) */}
+                              {/* KHỐI 3: THÔNG TIN BỔ SUNG (NẾU CÓ) */}
                               <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Kênh kết nối bổ sung</span>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '5px' }}>
-                                  <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                      <span style={{ color: '#0068FF', fontWeight: 700 }}>Nhóm Zalo:</span>
-                                    </label>
-                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start' }}>
-                                      <textarea
-                                        className="form-input sm"
-                                        rows={2}
-                                        placeholder="SĐT / Link Zalo..."
-                                        value={formData.zalo_link || ''}
-                                        onChange={e => setFormData((prev: any) => ({ ...prev, zalo_link: e.target.value }))}
-                                        style={{ width: '100%', minHeight: '36px', paddingRight: formData.zalo_link ? '26px' : '6px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
-                                      />
-                                      {formData.zalo_link && (
-                                        <a
-                                          href={formData.zalo_link.trim().startsWith('http') ? formData.zalo_link.trim() : `https://zalo.me/${formData.zalo_link.replace(/[^0-9]/g, '')}`}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="btn-icon xs"
-                                          style={{ position: 'absolute', top: '4px', right: '3px', height: '20px', width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0068FF' }}
-                                          title="Mở Zalo"
-                                        >
-                                          <ExternalLink size={10} />
-                                        </a>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Email:</label>
-                                    <textarea
-                                      className="form-input sm"
-                                      rows={2}
-                                      placeholder="Email liên hệ..."
-                                      value={formData.email || ''}
-                                      onChange={e => setFormData((prev: any) => ({ ...prev, email: e.target.value }))}
-                                      style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
-                                    />
-                                  </div>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Thông tin bổ sung (nếu có)</span>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <textarea
+                                    className="form-input sm"
+                                    rows={2}
+                                    placeholder="Đã báo giá, thắc mắc thủ tục, hẹn tháng 09 vào xem nhà mẫu..."
+                                    value={ttl1Data.thong_tin_bo_sung || ''}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      const next = { ...ttl1Data, thong_tin_bo_sung: val };
+                                      setTtl1Data(next);
+                                      setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
+                                    }}
+                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                  />
                                 </div>
                               </div>
 

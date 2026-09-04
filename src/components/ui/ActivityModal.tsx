@@ -211,13 +211,13 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
           className="modal-sheet" 
           style={{ 
             width: '100%', 
-            maxWidth: isMobile ? '100%' : 540, 
+            maxWidth: isMobile ? '100%' : 880, 
             padding: 0,
             borderTopLeftRadius: '24px',
             borderTopRightRadius: '24px',
             borderBottomLeftRadius: isMobile ? '0' : '24px',
             borderBottomRightRadius: isMobile ? '0' : '24px',
-            maxHeight: isMobile ? '85vh' : '90vh',
+            maxHeight: isMobile ? '90vh' : '90vh',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -236,7 +236,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
           <div 
             className="modal-header"
             style={{
-              padding: isMobile ? '12px 16px' : '16px 24px',
+              padding: isMobile ? '12px 16px' : '14px 24px',
               borderBottom: '1px solid var(--color-border-light)',
               display: 'flex',
               alignItems: 'center',
@@ -257,13 +257,13 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
             className="modal-body no-scrollbar"
             style={{
               overflowY: 'auto',
-              padding: isMobile ? '16px' : '24px',
+              padding: isMobile ? '14px 16px' : '18px 24px',
               display: 'flex',
               flexDirection: 'column',
-              gap: isMobile ? '12px' : '18px'
+              gap: isMobile ? '12px' : '16px'
             }}
           >
-            {/* Type selector */}
+            {/* Type selector across top */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: isMobile ? '6px' : '10px' }}>
               {TYPES.map(t => (
                 <button 
@@ -280,8 +280,8 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                     });
                   }}
                   style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
-                    padding: isMobile ? '8px 0' : '12px 0', borderRadius: '12px', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                    padding: isMobile ? '8px 0' : '10px 0', borderRadius: '12px', cursor: 'pointer',
                     background: formData.type === t.id ? `${t.color}15` : 'var(--color-bg-alt)',
                     border: formData.type === t.id ? `1.5px solid ${t.color}` : '1px solid var(--color-border)',
                     color: formData.type === t.id ? t.color : 'var(--color-text-muted)',
@@ -293,350 +293,363 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                   <div style={{ transform: formData.type === t.id ? 'scale(1.08)' : 'scale(1)', transition: 'transform 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {t.icon}
                   </div>
-                  <span style={{ fontSize: isMobile ? '0.7rem' : '0.8125rem' }}>{t.label}</span>
+                  <span style={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}>{t.label}</span>
                 </button>
               ))}
             </div>
 
-            {formData.type === 'call' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '15px' }}>
-                {/* Loại cuộc gọi */}
-                <div>
-                  <label className="form-label">Loại cuộc gọi</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, call_direction: 'outbound' })}
-                      className={`btn sm ${formData.call_direction === 'outbound' ? 'primary' : 'outline'}`}
-                      style={{ flex: 1, height: isMobile ? 32 : 36, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                    >
-                      <PhoneOutgoing size={13} /> Gọi đi
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, call_direction: 'inbound' })}
-                      className={`btn sm ${formData.call_direction === 'inbound' ? 'primary' : 'outline'}`}
-                      style={{ flex: 1, height: isMobile ? 32 : 36, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                    >
-                      <PhoneIncoming size={13} /> Gọi đến
-                    </button>
-                  </div>
-                </div>
+            {/* Bố cục 2 cột: Cột trái (Thông số hoạt động) & Cột phải (Ghi chú chi tiết) */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'minmax(310px, 360px) 1fr',
+              gap: isMobile ? '12px' : '20px',
+              alignItems: 'start'
+            }}>
+              {/* CỘT TRÁI: THIẾT LẬP THÔNG SỐ HOẠT ĐỘNG */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '14px' }}>
+                {formData.type === 'call' ? (
+                  <>
+                    {/* Loại cuộc gọi */}
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '4px' }}>Loại cuộc gọi</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, call_direction: 'outbound' })}
+                          className={`btn sm ${formData.call_direction === 'outbound' ? 'primary' : 'outline'}`}
+                          style={{ flex: 1, height: 34, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        >
+                          <PhoneOutgoing size={13} /> Gọi đi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, call_direction: 'inbound' })}
+                          className={`btn sm ${formData.call_direction === 'inbound' ? 'primary' : 'outline'}`}
+                          style={{ flex: 1, height: 34, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        >
+                          <PhoneIncoming size={13} /> Gọi đến
+                        </button>
+                      </div>
+                    </div>
 
-                {/* Kết quả cuộc gọi */}
-                <div>
-                  <label className="form-label">Kết quả cuộc gọi</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(88px, 1fr))', gap: '6px' }}>
-                    {[
-                      { value: 'reached', label: 'Đã kết nối', color: '#10b981' },
-                      { value: 'no_answer', label: 'Không nghe máy', color: '#f59e0b' },
-                      { value: 'voicemail', label: 'Hộp thư thoại', color: '#BD1D2D' },
-                      { value: 'busy', label: 'Máy bận', color: '#ef4444' },
-                      { value: 'wrong_number', label: 'Sai số', color: '#6b7280' }
-                    ].map(out => (
-                      <button
-                        key={out.value}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, call_outcome: out.value as any })}
-                        className="btn sm"
-                        style={{
-                          height: isMobile ? 32 : 36,
-                          border: `1px solid ${formData.call_outcome === out.value ? out.color : 'var(--color-border)'}`,
-                          background: formData.call_outcome === out.value ? `${out.color}15` : 'var(--color-surface)',
-                          color: formData.call_outcome === out.value ? out.color : 'var(--color-text)',
-                          fontWeight: formData.call_outcome === out.value ? 700 : 500,
-                          cursor: 'pointer',
-                          fontSize: isMobile ? '0.72rem' : '0.8rem',
-                          padding: '0 4px'
-                        }}
-                      >
-                        {out.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Thời lượng - Only show if Đã kết nối (reached) */}
-                {formData.call_outcome === 'reached' && (
-                  <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <label className="form-label" style={{ margin: 0 }}>Thời lượng: <strong style={{ color: 'var(--color-primary)' }}>{formData.call_duration} phút</strong></label>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        {[3, 5, 10, 20].map(mins => (
+                    {/* Kết quả cuộc gọi */}
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '4px' }}>Kết quả cuộc gọi</label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(88px, 1fr))', gap: '6px' }}>
+                        {[
+                          { value: 'reached', label: 'Đã kết nối', color: '#10b981' },
+                          { value: 'no_answer', label: 'Không nghe máy', color: '#f59e0b' },
+                          { value: 'voicemail', label: 'Hộp thư thoại', color: '#BD1D2D' },
+                          { value: 'busy', label: 'Máy bận', color: '#ef4444' },
+                          { value: 'wrong_number', label: 'Sai số', color: '#6b7280' }
+                        ].map(out => (
                           <button
-                            key={mins}
+                            key={out.value}
                             type="button"
-                            onClick={() => setFormData({ ...formData, call_duration: mins })}
-                            className="btn sm outline"
-                            style={{ padding: '2px 6px', fontSize: '0.7rem', height: 22, cursor: 'pointer' }}
+                            onClick={() => setFormData({ ...formData, call_outcome: out.value as any })}
+                            className="btn sm"
+                            style={{
+                              height: 32,
+                              border: `1px solid ${formData.call_outcome === out.value ? out.color : 'var(--color-border)'}`,
+                              background: formData.call_outcome === out.value ? `${out.color}15` : 'var(--color-surface)',
+                              color: formData.call_outcome === out.value ? out.color : 'var(--color-text)',
+                              fontWeight: formData.call_outcome === out.value ? 700 : 500,
+                              cursor: 'pointer',
+                              fontSize: isMobile ? '0.72rem' : '0.78rem',
+                              padding: '0 4px'
+                            }}
                           >
-                            {mins}p
+                            {out.label}
                           </button>
                         ))}
                       </div>
                     </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="120"
-                      value={formData.call_duration}
-                      onChange={e => setFormData({ ...formData, call_duration: Number(e.target.value) })}
-                      style={{ width: '100%', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                      <span>1 phút</span>
-                      <span>30 phút</span>
-                      <span>60 phút</span>
-                      <span>120 phút</span>
-                    </div>
-                  </div>
-                )}
 
-                {/* Thời gian thực hiện */}
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Calendar size={13} /> Thời gian thực hiện
-                  </label>
-                  <input 
-                    type="datetime-local" 
-                    className="form-input" 
-                    value={formData.due_date}
-                    onChange={e => setFormData({ ...formData, due_date: e.target.value })}
-                  />
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Tiêu đề hoạt động <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <input 
-                    className="form-input" 
-                    placeholder={PLACEHOLDERS[formData.type] || 'Nhập tiêu đề hoạt động...'} 
-                    value={formData.subject}
-                    onChange={e => setFormData({ ...formData, subject: e.target.value })}
-                    autoFocus
-                    style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', padding: '0.5rem 0.75rem' }}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: (isMobile || formData.type === 'zalo_connect') ? '1fr' : '1fr 1fr 1fr', gap: isMobile ? '10px' : '16px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Calendar size={13} /> Thời gian thực hiện
-                    </label>
-                    <input 
-                      type="datetime-local" 
-                      className="form-input" 
-                      value={formData.due_date}
-                      onChange={e => setFormData({ ...formData, due_date: e.target.value })}
-                    />
-                  </div>
-                  {formData.type !== 'zalo_connect' && (
-                    <>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Mức độ ưu tiên</label>
-                        <CustomSelect 
-                          options={[
-                            { value: 'low', label: 'Thấp' },
-                            { value: 'medium', label: 'Bình thường' },
-                            { value: 'high', label: 'Quan trọng' }
-                          ]}
-                          value={formData.priority}
-                          onChange={val => setFormData({ ...formData, priority: val as string })}
+                    {/* Thời lượng - Only show if Đã kết nối (reached) */}
+                    {formData.call_outcome === 'reached' && (
+                      <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <label className="form-label" style={{ margin: 0, fontSize: '0.78rem', fontWeight: 700 }}>
+                            Thời lượng: <strong style={{ color: 'var(--color-primary)' }}>{formData.call_duration} phút</strong>
+                          </label>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            {[3, 5, 10, 20].map(mins => (
+                              <button
+                                key={mins}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, call_duration: mins })}
+                                className="btn sm outline"
+                                style={{ padding: '2px 6px', fontSize: '0.7rem', height: 22, cursor: 'pointer' }}
+                              >
+                                {mins}p
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="120"
+                          value={formData.call_duration}
+                          onChange={e => setFormData({ ...formData, call_duration: Number(e.target.value) })}
+                          style={{ width: '100%', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
                         />
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Trạng thái</label>
-                        <div style={{ 
-                          display: 'flex', 
-                          background: 'rgba(100, 116, 139, 0.08)', 
-                          borderRadius: '30px', 
-                          padding: '3px', 
-                          border: '1px solid var(--color-border-light)',
-                          height: 38,
-                          alignItems: 'center'
-                        }}>
-                          <button 
-                            type="button" 
-                            style={{ 
-                              flex: 1, 
-                              height: '100%',
-                              border: 'none', 
-                              borderRadius: '30px', 
-                              padding: '4px 6px', 
-                              fontSize: '0.75rem', 
-                              fontWeight: formData.status === 'planned' ? 700 : 500, 
-                              cursor: 'pointer', 
-                              transition: 'all 0.2s',
-                              background: formData.status === 'planned' ? 'var(--color-surface)' : 'transparent',
-                              color: formData.status === 'planned' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                              boxShadow: formData.status === 'planned' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                              outline: 'none',
-                              whiteSpace: 'nowrap'
-                            }} 
-                            onClick={() => setFormData({...formData, status: 'planned'})}
-                          >
-                            Kế hoạch
-                          </button>
-                          <button 
-                            type="button" 
-                            style={{ 
-                              flex: 1, 
-                              height: '100%',
-                              border: 'none', 
-                              borderRadius: '30px', 
-                              padding: '4px 6px', 
-                              fontSize: '0.75rem', 
-                              fontWeight: formData.status === 'done' ? 700 : 500, 
-                              cursor: 'pointer', 
-                              transition: 'all 0.2s',
-                              background: formData.status === 'done' ? 'var(--color-success)' : 'transparent',
-                              color: formData.status === 'done' ? 'white' : 'var(--color-text-muted)',
-                              boxShadow: formData.status === 'done' ? '0 2px 6px rgba(16, 185, 129, 0.2)' : 'none',
-                              outline: 'none',
-                              whiteSpace: 'nowrap'
-                            }} 
-                            onClick={() => setFormData({...formData, status: 'done'})}
-                          >
-                            Đã xong
-                          </button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                          <span>1 phút</span>
+                          <span>30 phút</span>
+                          <span>60 phút</span>
+                          <span>120 phút</span>
                         </div>
                       </div>
-                    </>
-                  )}
-                </div>
-              </>
-            )}
+                    )}
 
-            {formData.type === 'meeting' && formData.status === 'done' && (
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text)', fontWeight: 600 }}>
-                  <Camera size={13} style={{ color: '#10b981' }} /> Ảnh minh chứng gặp gỡ <span style={{ color: 'var(--color-danger)' }}>*</span>
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {proofImagePreview ? (
-                    <div style={{ position: 'relative', width: '100%', height: '150px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
-                      <img src={proofImagePreview} alt="Proof preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setProofImageFile(null);
-                          setProofImagePreview(null);
-                        }}
-                        style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s', padding: '0.5rem' }} className="hover-lift">
-                      <Camera size={24} style={{ color: 'var(--color-text-muted)', marginBottom: '4px' }} />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>Tải ảnh minh chứng gặp gỡ lên</span>
+                    {/* Thời gian thực hiện */}
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 700 }}>
+                        <Calendar size={13} /> Thời gian thực hiện
+                      </label>
                       <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (file.size > 5 * 1024 * 1024) {
-                            addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
-                            return;
-                          }
-                          const previewUrl = URL.createObjectURL(file);
-                          setProofImageFile(file);
-                          setProofImagePreview(previewUrl);
-                        }}
-                        style={{ display: 'none' }}
+                        type="datetime-local" 
+                        className="form-input" 
+                        value={formData.due_date}
+                        onChange={e => setFormData({ ...formData, due_date: e.target.value })}
                       />
-                    </label>
-                  )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 700 }}>Tiêu đề hoạt động <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <input 
+                        className="form-input" 
+                        placeholder={PLACEHOLDERS[formData.type] || 'Nhập tiêu đề hoạt động...'} 
+                        value={formData.subject}
+                        onChange={e => setFormData({ ...formData, subject: e.target.value })}
+                        autoFocus
+                        style={{ fontSize: '0.85rem', padding: '0.45rem 0.65rem' }}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 700 }}>
+                        <Calendar size={13} /> Thời gian thực hiện
+                      </label>
+                      <input 
+                        type="datetime-local" 
+                        className="form-input" 
+                        value={formData.due_date}
+                        onChange={e => setFormData({ ...formData, due_date: e.target.value })}
+                      />
+                    </div>
+
+                    {formData.type !== 'zalo_connect' && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 700 }}>Mức ưu tiên</label>
+                          <CustomSelect 
+                            options={[
+                              { value: 'low', label: 'Thấp' },
+                              { value: 'medium', label: 'Bình thường' },
+                              { value: 'high', label: 'Quan trọng' }
+                            ]}
+                            value={formData.priority}
+                            onChange={val => setFormData({ ...formData, priority: val as string })}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 700 }}>Trạng thái</label>
+                          <div style={{ 
+                            display: 'flex', 
+                            background: 'rgba(100, 116, 139, 0.08)', 
+                            borderRadius: '30px', 
+                            padding: '3px', 
+                            border: '1px solid var(--color-border-light)',
+                            height: 36,
+                            alignItems: 'center'
+                          }}>
+                            <button 
+                              type="button" 
+                              style={{ 
+                                flex: 1, 
+                                height: '100%',
+                                border: 'none', 
+                                borderRadius: '30px', 
+                                padding: '4px 6px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: formData.status === 'planned' ? 700 : 500, 
+                                cursor: 'pointer', 
+                                transition: 'all 0.2s',
+                                background: formData.status === 'planned' ? 'var(--color-surface)' : 'transparent',
+                                color: formData.status === 'planned' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                boxShadow: formData.status === 'planned' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                outline: 'none',
+                                whiteSpace: 'nowrap'
+                              }} 
+                              onClick={() => setFormData({...formData, status: 'planned'})}
+                            >
+                              Kế hoạch
+                            </button>
+                            <button 
+                              type="button" 
+                              style={{ 
+                                flex: 1, 
+                                height: '100%',
+                                border: 'none', 
+                                borderRadius: '30px', 
+                                padding: '4px 6px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: formData.status === 'done' ? 700 : 500, 
+                                cursor: 'pointer', 
+                                transition: 'all 0.2s',
+                                background: formData.status === 'done' ? 'var(--color-success)' : 'transparent',
+                                color: formData.status === 'done' ? 'white' : 'var(--color-text-muted)',
+                                boxShadow: formData.status === 'done' ? '0 2px 6px rgba(16, 185, 129, 0.2)' : 'none',
+                                outline: 'none',
+                                whiteSpace: 'nowrap'
+                              }} 
+                              onClick={() => setFormData({...formData, status: 'done'})}
+                            >
+                              Đã xong
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.type === 'meeting' && formData.status === 'done' && (
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text)', fontWeight: 700, fontSize: '0.78rem' }}>
+                          <Camera size={13} style={{ color: '#10b981' }} /> Ảnh minh chứng gặp gỡ <span style={{ color: 'var(--color-danger)' }}>*</span>
+                        </label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {proofImagePreview ? (
+                            <div style={{ position: 'relative', width: '100%', height: '140px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                              <img src={proofImagePreview} alt="Proof preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  setProofImageFile(null);
+                                  setProofImagePreview(null);
+                                }}
+                                style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '90px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s', padding: '0.5rem' }} className="hover-lift">
+                              <Camera size={22} style={{ color: 'var(--color-text-muted)', marginBottom: '4px' }} />
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>Tải ảnh minh chứng gặp gỡ lên</span>
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+                                    return;
+                                  }
+                                  const previewUrl = URL.createObjectURL(file);
+                                  setProofImageFile(file);
+                                  setProofImagePreview(previewUrl);
+                                }}
+                                style={{ display: 'none' }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* CỘT PHẢI: GHI CHÚ CHI TIẾT & MẪU KHAI THÁC LẦN 1 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: 0, fontSize: '0.78rem', fontWeight: 700 }}>
+                    <AlignLeft size={13} /> Ghi chú chi tiết
+                  </label>
+                  <button
+                    type="button"
+                    className="btn xs outline"
+                    onClick={() => {
+                      const templateHtml = [
+                        '<div><b>1. Nghiên cứu khách hàng:</b></div>',
+                        `<div>- Ở đâu: ${customerData?.address || ''}</div>`,
+                        `<div>- Làm gì: ${customerData?.job_title || ''}</div>`,
+                        `<div>- Gia đình: ${customerData?.ttl1_data?.gia_dinh || ''}</div>`,
+                        '<div><br></div>',
+                        '<div><b>2. TIẾP CẬN KHÁCH HÀNG - KHAI THÁC NHU CẦU:</b></div>',
+                        `<div>- Hiện trạng: ${customerData?.ttl1_data?.hien_trang || ''}</div>`,
+                        `<div>- Nhu cầu mua: ${customerData?.ttl1_data?.nhu_cau || ''}</div>`,
+                        `<div>- Rào cản: ${customerData?.ttl1_data?.rao_can || ''}</div>`,
+                        '<div><br></div>',
+                        '<div><b>3. THÔNG TIN BỔ SUNG (nếu có):</b></div>',
+                        `<div>- ${customerData?.ttl1_data?.thong_tin_bo_sung || ''}</div>`,
+                        '<div><br></div>',
+                        '<div><b>4. GIẢI PHÁP TIẾP THEO & NGÂN SÁCH:</b></div>',
+                        `<div>- Giải pháp: ${customerData?.ttl1_data?.giai_phap || ''}</div>`,
+                        '<div>- Ngân sách: </div>'
+                      ].join('');
+
+                      if (formData.body && formData.body.trim()) {
+                        setFormData(prev => ({ ...prev, body: prev.body + '<div><br></div>' + templateHtml }));
+                        addToast('Đã chèn thêm mẫu Khai thác lần 1!', 'success');
+                      } else {
+                        setFormData(prev => ({ ...prev, body: templateHtml }));
+                        addToast('Đã áp dụng mẫu Khai thác lần 1!', 'success');
+                      }
+                    }}
+                    style={{
+                      fontSize: '0.7rem',
+                      padding: '2px 8px',
+                      height: '24px',
+                      borderRadius: '6px',
+                      color: 'var(--color-primary)',
+                      borderColor: 'var(--color-primary)',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'rgba(163, 20, 34, 0.05)',
+                      cursor: 'pointer'
+                    }}
+                    title="Chèn khung 4 phần chuẩn: 1. Nghiên cứu KH - 2. Tiếp cận & Nhu cầu - 3. Thông tin bổ sung - 4. Giải pháp tiếp theo"
+                  >
+                    <span>📋 Mẫu Khai thác Lần 1</span>
+                  </button>
                 </div>
-              </div>
-            )}
-
-            <div className="form-group" style={{ margin: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: 0 }}>
-                  <AlignLeft size={13} /> Ghi chú chi tiết
-                </label>
-                <button
-                  type="button"
-                  className="btn xs outline"
-                  onClick={() => {
-                    const template = [
-                      '1. Nghiên cứu khách hàng:',
-                      `- Ở đâu: ${customerData?.address || ''}`,
-                      `- Làm gì: ${customerData?.job_title || ''}`,
-                      `- Gia đình: ${customerData?.ttl1_data?.gia_dinh || ''}`,
-                      '',
-                      '2. TIẾP CẬN KHÁCH HÀNG - KHAI THÁC NHU CẦU:',
-                      `a. Hiện trạng: ${customerData?.ttl1_data?.hien_trang || ''}`,
-                      `b. NHU CẦU MUA: ${customerData?.ttl1_data?.nhu_cau || ''}`,
-                      `c. Rào Cản: ${customerData?.ttl1_data?.rao_can || ''}`,
-                      '',
-                      '3. THÔNG TIN BỔ SUNG (nếu có):',
-                      '- ',
-                      '',
-                      '4. GIẢI PHÁP tiếp theo:',
-                      '1. ',
-                      '2. '
-                    ].join('\n');
-
-                    if (formData.body && formData.body.trim()) {
-                      setFormData(prev => ({ ...prev, body: prev.body + '\n\n' + template }));
-                      addToast('Đã chèn thêm mẫu Khai thác lần 1!', 'success');
-                    } else {
-                      setFormData(prev => ({ ...prev, body: template }));
-                      addToast('Đã áp dụng mẫu Khai thác lần 1!', 'success');
+                <MentionInput 
+                  className="form-input" 
+                  rows={isMobile ? 4 : 8} 
+                  placeholder="Nhập nội dung chi tiết của hoạt động (Dán ảnh trực tiếp Ctrl+V)..."
+                  value={formData.body}
+                  onChange={e => setFormData({ ...formData, body: e.target.value })}
+                  onImagePaste={(file: File) => {
+                    if (file.size > 5 * 1024 * 1024) {
+                      addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+                      return;
                     }
+                    const previewUrl = URL.createObjectURL(file);
+                    setProofImageFile(file);
+                    setProofImagePreview(previewUrl);
+                    addToast('Đã dán ảnh minh chứng từ clipboard!', 'success');
                   }}
-                  style={{
-                    fontSize: '0.7rem',
-                    padding: '2px 8px',
-                    height: '24px',
-                    borderRadius: '6px',
-                    color: 'var(--color-primary)',
-                    borderColor: 'var(--color-primary)',
-                    fontWeight: 700,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    background: 'rgba(163, 20, 34, 0.05)',
-                    cursor: 'pointer'
+                  onFilePaste={(file: File) => {
+                    if (file.size > 5 * 1024 * 1024) {
+                      addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+                      return;
+                    }
+                    const previewUrl = URL.createObjectURL(file);
+                    setProofImageFile(file);
+                    setProofImagePreview(previewUrl);
+                    addToast('Đã dán tệp từ clipboard!', 'success');
                   }}
-                  title="Chèn khung 4 phần chuẩn: 1. Nghiên cứu KH - 2. Tiếp cận & Nhu cầu - 3. Thông tin bổ sung - 4. Giải pháp tiếp theo"
-                >
-                  <span>📋 Mẫu Khai thác Lần 1</span>
-                </button>
+                  style={{ minHeight: isMobile ? '140px' : '260px' }}
+                />
               </div>
-              <MentionInput 
-                className="form-input" 
-                rows={isMobile ? 3 : 4} 
-                placeholder="Nhập nội dung chi tiết của hoạt động (Dán ảnh trực tiếp Ctrl+V)..."
-                value={formData.body}
-                onChange={e => setFormData({ ...formData, body: e.target.value })}
-                onImagePaste={(file: File) => {
-                  if (file.size > 5 * 1024 * 1024) {
-                    addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
-                    return;
-                  }
-                  const previewUrl = URL.createObjectURL(file);
-                  setProofImageFile(file);
-                  setProofImagePreview(previewUrl);
-                  addToast('Đã dán ảnh minh chứng từ clipboard!', 'success');
-                }}
-                onFilePaste={(file: File) => {
-                  if (file.size > 5 * 1024 * 1024) {
-                    addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
-                    return;
-                  }
-                  const previewUrl = URL.createObjectURL(file);
-                  setProofImageFile(file);
-                  setProofImagePreview(previewUrl);
-                  addToast('Đã dán tệp từ clipboard!', 'success');
-                }}
-                style={{ resize: 'none' }}
-              />
             </div>
           </form>
 

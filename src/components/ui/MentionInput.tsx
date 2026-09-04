@@ -114,7 +114,11 @@ export const MentionInput: React.FC<MentionInputProps> = ({
       const currentHtml = editorRef.current.innerHTML;
       if (value !== currentHtml) {
         if (!isFocusedRef.current || !value) {
-          editorRef.current.innerHTML = value || '';
+          // If value is plain text without html tags, convert newlines to <br/>
+          const formatted = (value && !/<(p|br|div|b|strong|span|ul|ol|li)[^>]*>/i.test(value))
+            ? value.replace(/\n/g, '<br/>')
+            : (value || '');
+          editorRef.current.innerHTML = formatted;
           checkEmpty();
         }
       }
@@ -455,6 +459,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
     outline: 'none',
     fontSize: '0.85rem',
     lineHeight: '1.5',
+    whiteSpace: 'pre-wrap',
     overflowY: 'auto',
     color: 'var(--color-text)',
     background: 'transparent',
