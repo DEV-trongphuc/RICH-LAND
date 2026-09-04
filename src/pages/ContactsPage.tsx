@@ -292,6 +292,45 @@ export const ContactsPage: React.FC = () => {
   const [pipelineStages, setPipelineStages] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
 
+  // Quick Pipeline Stage Tabs (1-Click Switching)
+  const [quickPipelineStage, setQuickPipelineStage] = useState<string>('all');
+  const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
+
+  const PIPELINE_TABS = useMemo(() => {
+    const baseTabs = [
+      { id: 'all', label: 'Tất cả', color: '#64748b' },
+      { id: 'chua_xac_dinh', label: '2. Chưa xác định', color: '#BD1D2D' },
+      { id: 'cham_soc_dai_han', label: '3. Chăm sóc dài hạn', color: '#0D9488' },
+      { id: 'quan_tam', label: '4. Quan tâm', color: '#EAB308' },
+      { id: 'dong_y_gap', label: '5. Thiện chí', color: '#F97316' },
+      { id: 'da_gap', label: '6. Đã gặp', color: '#C026D3' },
+      { id: 'booking', label: '7. Booking', color: '#2563EB' },
+      { id: 'dat_coc', label: '8. Đặt cọc', color: '#059669' },
+      { id: 'dong_deal', label: '9. Đã đóng deal', color: '#10B981' }
+    ];
+
+    if (!isSale) {
+      baseTabs.push({ id: 'not_lead', label: 'Not Lead / Chờ duyệt', color: '#6b7280' });
+    }
+
+    return baseTabs;
+  }, [isSale]);
+
+  const getTotalActiveCount = () => {
+    if (stageCounts && Object.keys(stageCounts).length > 0) {
+      return Object.entries(stageCounts).reduce((acc, [st, cnt]) => {
+        if (isSale && st === 'not_lead') return acc;
+        return acc + Number(cnt || 0);
+      }, 0);
+    }
+    return total;
+  };
+
+  const handleSelectQuickTab = (tabId: string) => {
+    setQuickPipelineStage(tabId);
+    setPage(1);
+  };
+
 
   const getEffectiveTeamId = () => {
     if ((user as any)?.team_id) return (user as any).team_id;
@@ -476,6 +515,10 @@ export const ContactsPage: React.FC = () => {
         order: 'DESC'
       };
       
+      if (quickPipelineStage && quickPipelineStage !== 'all') {
+        params.pipeline_status = quickPipelineStage;
+      }
+
       if (activeFilters.status) {
         if (/^\d+$/.test(activeFilters.status)) {
           params.stage_id = activeFilters.status;
@@ -510,8 +553,15 @@ export const ContactsPage: React.FC = () => {
       const r = await api.get('/contacts', { params });
       const data = r.data.data;
       const items = data.items || [];
-      setContacts(items.map((c: any) => ({ ...c, score: calcScore(c, scoringRules, decayDays) })));
-      setTotal(data.total || items.length);
+      // Double guard: Ensure not_lead and proposed not_lead are hidden from sales
+      const filteredItems = isSale 
+        ? items.filter((c: any) => c.pipeline_status !== 'not_lead' && Number(c.not_lead_proposed || 0) !== 1)
+        : items;
+      setContacts(filteredItems.map((c: any) => ({ ...c, score: calcScore(c, scoringRules, decayDays) })));
+      setTotal(data.total || filteredItems.length);
+      if (data.stage_counts) {
+        setStageCounts(data.stage_counts);
+      }
     } catch (e: any) {
       setContacts([]);
       setTotal(0);
@@ -525,7 +575,7 @@ export const ContactsPage: React.FC = () => {
     if (initialMetadataLoaded) {
       fetchData();
     }
-  }, [page, pageSize, debouncedSearch, sortBy, activeFilters, initialMetadataLoaded]);
+  }, [page, pageSize, debouncedSearch, sortBy, activeFilters, initialMetadataLoaded, quickPipelineStage]);
 
   useEffect(() => {
     const handleRefresh = () => {
@@ -653,6 +703,7 @@ export const ContactsPage: React.FC = () => {
     setFilterToDate('');
     setFilterBeforeDate('');
     setFilterAfterDate('');
+    setQuickPipelineStage('all');
     setPage(1);
     setActiveFilters({
       status: '',
@@ -882,6 +933,83 @@ export const ContactsPage: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* QUICK STATUS TABS (Chuyển nhanh theo từng trạng thái phễu) */}
+      <div
+        className="custom-scrollbar"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          overflowX: 'auto',
+          paddingBottom: '8px',
+          marginBottom: '0.75rem',
+          scrollbarWidth: 'thin',
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
+        {PIPELINE_TABS.map((tab) => {
+          const isActive = quickPipelineStage === tab.id;
+          const count = tab.id === 'all' 
+            ? getTotalActiveCount() 
+            : tab.id === 'dong_y_gap' 
+              ? (Number(stageCounts['dong_y_gap'] || 0) + Number(stageCounts['thien_chi'] || 0))
+              : Number(stageCounts[tab.id] || 0);
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleSelectQuickTab(tab.id)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px',
+                padding: isMobile ? '5px 10px' : '6px 14px',
+                borderRadius: '20px',
+                fontSize: isMobile ? '0.74rem' : '0.79rem',
+                fontWeight: isActive ? 700 : 500,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                border: isActive ? `1.5px solid ${tab.color}` : '1px solid var(--color-border)',
+                background: isActive ? `${tab.color}15` : 'var(--color-surface)',
+                color: isActive ? tab.color : 'var(--color-text)',
+                boxShadow: isActive ? `0 2px 8px ${tab.color}25` : 'var(--shadow-sm)'
+              }}
+            >
+              <span
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  backgroundColor: tab.color,
+                  flexShrink: 0
+                }}
+              />
+              <span>{tab.label}</span>
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  background: isActive ? tab.color : 'var(--color-bg-light)',
+                  color: isActive ? '#ffffff' : 'var(--color-text-muted)',
+                  marginLeft: '2px',
+                  minWidth: '18px',
+                  textAlign: 'center',
+                  lineHeight: '1.4'
+                }}
+              >
+                {loading && !Object.keys(stageCounts).length ? '...' : count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Search + filter row */}
       <div className={isMobile ? "" : "card"} style={{ padding: isMobile ? '0' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, boxShadow: isMobile ? 'none' : undefined }}>

@@ -22,6 +22,7 @@ class ContactController {
         $source  = $_GET['source'] ?? '';
         $owner   = $_GET['owner_id'] ?? '';
         $stage   = $_GET['stage_id'] ?? '';
+        $pipelineStatus = $_GET['pipeline_status'] ?? '';
         $companyId = $_GET['company_id'] ?? '';
         $projectId = $_GET['project_id'] ?? '';
         $campaignId = $_GET['campaign_id'] ?? '';
@@ -107,7 +108,6 @@ class ContactController {
         if ($status) { $where[] = 'c.status = ?'; $params[] = $status; }
         if ($source) { $where[] = 'c.source = ?'; $params[] = $source; }
         if ($owner)  { $where[] = 'c.owner_id = ?'; $params[] = (int)$owner; }
-        if ($stage)  { $where[] = 'c.stage_id = ?'; $params[] = (int)$stage; }
         if ($companyId) { $where[] = 'c.company_id = ?'; $params[] = (int)$companyId; }
         if ($projectId !== '') { $where[] = 'c.project_id = ?'; $params[] = (int)$projectId; }
         if ($campaignId !== '') { $where[] = 'c.campaign_id = ?'; $params[] = (int)$campaignId; }
@@ -174,6 +174,8 @@ class ContactController {
                 )
             )";
             $where[] = "NOT $errorCond";
+            // Rule: Not Lead is completely hidden from Sales (only visible to Managers/Admins for review)
+            $where[] = "(c.pipeline_status != 'not_lead' AND COALESCE(c.not_lead_proposed, 0) = 0)";
         }
         
         if ($from !== '') {
@@ -196,11 +198,37 @@ class ContactController {
             case 'new_week':   $where[] = "c.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"; break;
         }
 
+        // Snapshot base WHERE and params for computing stage counts across all tabs
+        $stageCountWhere = $where;
+        $stageCountParams = $params;
+
+        // Apply stage filter or pipeline_status filter to the specific query
+        if ($pipelineStatus !== '') {
+            if ($pipelineStatus === 'dong_y_gap' || $pipelineStatus === 'thien_chi') {
+                $where[] = "(c.pipeline_status IN ('dong_y_gap', 'thien_chi'))";
+            } else {
+                $where[] = 'c.pipeline_status = ?';
+                $params[] = $pipelineStatus;
+            }
+        }
+        if ($stage)  { $where[] = 'c.stage_id = ?'; $params[] = (int)$stage; }
+
         $whereStr = implode(' AND ', $where);
 
         $count = $this->db->prepare("SELECT COUNT(*) FROM contacts c WHERE $whereStr");
         $count->execute($params);
         $total = (int)$count->fetchColumn();
+
+        // Calculate counts per pipeline stage for quick status tabs
+        $stageCounts = [];
+        try {
+            $scWhereStr = implode(' AND ', $stageCountWhere);
+            $scStmt = $this->db->prepare("SELECT c.pipeline_status, COUNT(*) as cnt FROM contacts c WHERE $scWhereStr GROUP BY c.pipeline_status");
+            $scStmt->execute($stageCountParams);
+            $stageCounts = $scStmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+        } catch (\Exception $e) {
+            $stageCounts = [];
+        }
 
         $stmt = $this->db->prepare("
             SELECT c.*, 
@@ -256,7 +284,8 @@ class ContactController {
         respond(200, [
             'items' => $data, 'total' => $total,
             'page' => $page, 'limit' => $limit,
-            'total_pages' => ceil($total / $limit)
+            'total_pages' => ceil($total / $limit),
+            'stage_counts' => $stageCounts
         ]);
     }
 
@@ -597,7 +626,7 @@ class ContactController {
         $newStatus = $b['pipeline_status'] ?? null;
 
         if ($newStatus === 'not_lead') {
-            if (in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true)) {
+            if (in_array($auth['role'], ['sale', 'sales'], true)) {
                 $stmtProp = $this->db->prepare("
                     UPDATE contacts 
                     SET not_lead_proposed = 1, 
@@ -607,8 +636,12 @@ class ContactController {
                 ");
                 $stmtProp->execute([$auth['user_id'], $id, $auth['tenant_id']]);
                 
-                logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'PROPOSE_NOT_LEAD', 'contact', $id, "Đề xuất loại khỏi phễu (Not Lead) cho khách hàng ID: $id");
-                respond(200, null, 'Đề xuất loại khỏi phễu (Not Lead) đã được gửi đến Marketing để phê duyệt.');
+                $reasonMsg = !empty($b['not_lead_reason']) ? (" Lý do: " . trim($b['not_lead_reason'])) : '';
+                logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'PROPOSE_NOT_LEAD', 'contact', $id, "Báo cáo Not Lead cho khách hàng ID: $id.$reasonMsg");
+                respond(200, null, 'Báo cáo Not Lead đã được gửi đến Quản lý để phê duyệt.');
+            } else {
+                // Manager/Admin can directly approve or transition to Not Lead
+                $b['not_lead_proposed'] = 0;
             }
         }
 

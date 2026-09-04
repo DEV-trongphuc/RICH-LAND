@@ -16,6 +16,7 @@ interface ActivityModalProps {
   userId?: number;
   activity?: any; // If passed, we are in edit mode
   onSwitchToTask?: () => void;
+  customerData?: any;
 }
 
 const TYPES = [
@@ -42,7 +43,7 @@ const PLACEHOLDERS: Record<string, string> = {
   note: 'Ví dụ: Ghi chú yêu cầu tài chính của khách...'
 };
 
-export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, entityType, entityId, onSuccess, userId, activity, onSwitchToTask }) => {
+export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, entityType, entityId, onSuccess, userId, activity, onSwitchToTask, customerData }) => {
   const { addToast } = useUIStore();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -554,9 +555,60 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
             )}
 
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <AlignLeft size={13} /> Ghi chú chi tiết
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: 0 }}>
+                  <AlignLeft size={13} /> Ghi chú chi tiết
+                </label>
+                <button
+                  type="button"
+                  className="btn xs outline"
+                  onClick={() => {
+                    const template = [
+                      '1. Nghiên cứu khách hàng:',
+                      `- Ở đâu: ${customerData?.address || ''}`,
+                      `- Làm gì: ${customerData?.job_title || ''}`,
+                      `- Gia đình: ${customerData?.ttl1_data?.gia_dinh || ''}`,
+                      '',
+                      '2. TIẾP CẬN KHÁCH HÀNG - KHAI THÁC NHU CẦU:',
+                      `a. Hiện trạng: ${customerData?.ttl1_data?.hien_trang || ''}`,
+                      `b. NHU CẦU MUA: ${customerData?.ttl1_data?.nhu_cau || ''}`,
+                      `c. Rào Cản: ${customerData?.ttl1_data?.rao_can || ''}`,
+                      '',
+                      '3. THÔNG TIN BỔ SUNG (nếu có):',
+                      '- ',
+                      '',
+                      '4. GIẢI PHÁP tiếp theo:',
+                      '1. ',
+                      '2. '
+                    ].join('\n');
+
+                    if (formData.body && formData.body.trim()) {
+                      setFormData(prev => ({ ...prev, body: prev.body + '\n\n' + template }));
+                      addToast('Đã chèn thêm mẫu Khai thác lần 1!', 'success');
+                    } else {
+                      setFormData(prev => ({ ...prev, body: template }));
+                      addToast('Đã áp dụng mẫu Khai thác lần 1!', 'success');
+                    }
+                  }}
+                  style={{
+                    fontSize: '0.7rem',
+                    padding: '2px 8px',
+                    height: '24px',
+                    borderRadius: '6px',
+                    color: 'var(--color-primary)',
+                    borderColor: 'var(--color-primary)',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(163, 20, 34, 0.05)',
+                    cursor: 'pointer'
+                  }}
+                  title="Chèn khung 4 phần chuẩn: 1. Nghiên cứu KH - 2. Tiếp cận & Nhu cầu - 3. Thông tin bổ sung - 4. Giải pháp tiếp theo"
+                >
+                  <span>📋 Mẫu Khai thác Lần 1</span>
+                </button>
+              </div>
               <MentionInput 
                 className="form-input" 
                 rows={isMobile ? 3 : 4} 
