@@ -5423,23 +5423,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const pipelineStepperBar = (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden', width: '100%', flexShrink: 0, height: '36px' }}>
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden', width: '100%', flexShrink: 0, height: '42px' }}>
       {!isMobileOrTablet && (
-        <button className="btn outline sm" style={{ padding: '2px', height: 22, width: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '0.5rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
-          <ChevronLeft size={12} />
+        <button className="btn outline sm" style={{ padding: '2px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '0.5rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
+          <ChevronLeft size={14} />
         </button>
       )}
 
-      <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: isMobileOrTablet ? '0.25rem 0.5rem' : '0.25rem 2.25rem', gap: '8px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
+      <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: isMobileOrTablet ? '0.35rem 0.5rem' : '0.35rem 2.25rem', gap: '8px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
         <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
         {(() => {
-          const linearStages = DEFAULT_PIPELINE_STAGES;
+          const linearStages = DEFAULT_PIPELINE_STAGES.filter((st) => st.id !== 'not_lead');
           const currentStatus = String(formData.pipeline_status || 'chua_xac_dinh');
 
           return linearStages.map((st) => {
             const isCurrent = String(st.id) === currentStatus || (st.id === 'thien_chi' && currentStatus === 'dong_y_gap');
             const isNurture = st.id === 'cham_soc_dai_han';
-            const isNotLead = st.id === 'not_lead';
             const stColor = getStageColor(st.id);
 
             return (
@@ -5450,7 +5449,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   handleStageTransition(String(st.id), getPrettyStageName(st.id, st.name));
                 }}
                 style={{
-                  flex: '1 0 auto', minWidth: '110px', position: 'relative', height: '26px', cursor: isCurrent ? 'default' : 'pointer',
+                  flex: '1 0 auto', minWidth: '115px', position: 'relative', height: '30px', cursor: isCurrent ? 'default' : 'pointer',
                   display: 'flex', alignItems: 'center', transition: 'all 0.3s'
                 }}
                 title={isNurture ? 'Chăm sóc dài hạn (Trạng thái ngoài luồng - có thể chuyển bất kỳ lúc nào)' : undefined}
@@ -5465,18 +5464,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div style={{
                   position: 'relative', zIndex: 2, flex: 1,
                   background: isCurrent ? stColor : 'var(--color-surface)',
-                  color: isCurrent ? '#fff' : (isNotLead ? '#9ca3af' : 'var(--color-text-muted)'),
+                  color: isCurrent ? '#fff' : 'var(--color-text-muted)',
                   border: isCurrent ? `1.5px solid ${stColor}` : `1px solid ${stColor}40`,
-                  padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                  padding: '3px 10px', borderRadius: '7px', fontSize: '0.78rem', fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
                   whiteSpace: 'nowrap',
-                  textDecoration: isNotLead ? 'line-through' : 'none',
                   boxShadow: isCurrent ? `0 2px 8px ${stColor}40` : 'none',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}>
-                  {isCurrent && <UserCheck size={11} />}
+                  {isCurrent && <UserCheck size={12} />}
                   {st.name}
-                  {isNurture && <span style={{ fontSize: '0.62rem', opacity: 0.85, marginLeft: '2px' }}>★</span>}
+                  {isNurture && <span style={{ fontSize: '0.68rem', opacity: 0.85, marginLeft: '2px' }}>★</span>}
                 </div>
               </div>
             );
@@ -5485,8 +5483,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       </div>
 
       {!isMobileOrTablet && (
-        <button className="btn outline sm" style={{ padding: '2px', height: 22, width: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '0.5rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
-          <ChevronRight size={12} />
+        <button className="btn outline sm" style={{ padding: '2px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '0.5rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
+          <ChevronRight size={14} />
         </button>
       )}
     </div>
@@ -5962,17 +5960,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </div>
                   )}
 
-                  <div className={styles.profileHeaderContent} style={{ gap: '0.625rem', alignItems: 'center' }}>
+                  <div className={styles.profileHeaderContent} style={{ gap: '0.875rem', alignItems: 'center' }}>
                     {/* Avatar Section */}
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <div
                         style={{
-                          width: 34,
-                          height: 34,
+                          width: 44,
+                          height: 44,
                           borderRadius: '50%',
                           overflow: 'hidden',
                           cursor: 'pointer',
-                          position: 'relative'
+                          position: 'relative',
+                          boxShadow: 'var(--shadow-sm)'
                         }}
                         onClick={() => {
                           setTempAvatar(formData.avatar_url || '');
@@ -5983,7 +5982,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <Avatar 
                           src={formData.avatar_url} 
                           name={fullName} 
-                          size={34} 
+                          size={44} 
                         />
                         <div
                           style={{
@@ -6000,72 +5999,47 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                           onMouseLeave={e => e.currentTarget.style.opacity = '0'}
                         >
-                          <Pencil size={11} color="white" />
+                          <Pencil size={13} color="white" />
                         </div>
                       </div>
                     </div>
 
-                    {/* Info Section - Ultra Compact Inline Layout */}
-                    <div className={styles.profileInfoSection} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {/* Info Section - Clean 2-Row Layout */}
+                    <div className={styles.profileInfoSection} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {/* Row 1: Name, Badges */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <h2 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', display: 'inline-flex', alignItems: 'center', gap: '5px', margin: 0 }}>
+                        <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', display: 'inline-flex', alignItems: 'center', gap: '6px', margin: 0 }}>
                           {fullName}
                           {((formData.dl_status || contact?.dl_status) === 'databank_claim' || (formData.source || contact?.source) === 'databank') ? (
                             <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', color: 'var(--color-text-muted)', flexShrink: 0 }}>
-                              <Layers size={12} />
+                              <Layers size={14} />
                             </span>
                           ) : (!(formData.dl_status || contact?.dl_status) && (formData.source || contact?.source) !== 'databank') ? (
                             <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', color: 'var(--color-text-muted)', flexShrink: 0 }}>
-                              <User size={12} />
+                              <User size={14} />
                             </span>
                           ) : null}
                           <button
                             className="btn-icon xs"
-                            style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '1px' }}
+                            style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}
                             onClick={() => copyToClipboard(fullName, 'name')}
                             title="Sao chép tên"
                           >
-                            {copiedField === 'name' ? <Check size={11} className="text-success" /> : <Copy size={11} />}
+                            {copiedField === 'name' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
                           </button>
                         </h2>
 
-                        {/* Phone */}
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'var(--color-bg)', padding: '1px 6px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
-                          <Phone size={10} style={{ color: 'var(--color-primary)' }} />
-                          <PhoneLink phone={formData.phone} style={{ fontSize: '0.75rem', fontWeight: 700 }} />
-                          {formData.phone && (
-                            <>
-                              <button
-                                className="btn-icon xs"
-                                style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px' }}
-                                onClick={() => copyToClipboard(formData.phone, 'phone')}
-                                title="Sao chép số điện thoại"
-                              >
-                                {copiedField === 'phone' ? <Check size={10} className="text-success" /> : <Copy size={10} />}
-                              </button>
-                              <button
-                                className="btn-icon xs"
-                                style={{ color: 'var(--color-primary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px' }}
-                                onClick={() => showCall(formData.phone)}
-                                title="Gọi điện thoại"
-                              >
-                                <Phone size={10} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Badges */}
-                        <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '1px 5px', fontSize: '0.625rem', borderRadius: '4px' }}>
+                        {/* Status Badges */}
+                        <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 7px', fontSize: '0.72rem', borderRadius: '5px', fontWeight: 700 }}>
                           {formData.status === 'customer' ? 'Khách VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
                         </span>
 
                         {formData.temperature && tempLabels[formData.temperature] && (
                           <span 
                             style={{ 
-                              padding: '1px 5px', 
-                              fontSize: '0.625rem', 
-                              borderRadius: '4px',
+                              padding: '2px 7px', 
+                              fontSize: '0.72rem', 
+                              borderRadius: '5px', 
                               fontWeight: 700,
                               color: tempLabels[formData.temperature].color,
                               background: tempLabels[formData.temperature].bg,
@@ -6076,6 +6050,42 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             Nhiệt: {tempLabels[formData.temperature].label}
                           </span>
                         )}
+                      </div>
+
+                      {/* Row 2: Phone, Email, Owner / Collab Badges */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                        {/* Phone */}
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                          <Phone size={11} style={{ color: 'var(--color-primary)' }} />
+                          <PhoneLink phone={formData.phone} style={{ fontSize: '0.8rem', fontWeight: 700 }} />
+                          {formData.phone && (
+                            <>
+                              <button
+                                className="btn-icon xs"
+                                style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px' }}
+                                onClick={() => copyToClipboard(formData.phone, 'phone')}
+                                title="Sao chép số điện thoại"
+                              >
+                                {copiedField === 'phone' ? <Check size={11} className="text-success" /> : <Copy size={11} />}
+                              </button>
+                              <button
+                                className="btn-icon xs"
+                                style={{ color: 'var(--color-primary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px' }}
+                                onClick={() => showCall(formData.phone)}
+                                title="Gọi điện thoại"
+                              >
+                                <Phone size={11} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+
+                        {formData.email && (
+                          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: '4px' }} title={formData.email}>
+                            <Mail size={11} />
+                            <span style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formData.email}</span>
+                          </span>
+                        )}
 
                         {/* Owner / Collab Badges */}
                         {coopSlip ? (
@@ -6083,19 +6093,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             style={{ 
                               display: 'inline-flex', 
                               alignItems: 'center', 
-                              gap: '3px', 
-                              padding: '1px 5px', 
+                              gap: '4px', 
+                              padding: '2px 7px', 
                               background: 'rgba(163, 20, 34, 0.08)', 
                               border: '1px solid rgba(163, 20, 34, 0.15)', 
                               borderRadius: '12px'
                             }}
                             title="Giao dịch Hợp tác"
                           >
-                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase' }}>Hợp tác</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase' }}>Hợp tác</span>
                             <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
                               {(coopSlip.shareholders || []).map((sh: any, shIdx: number) => (
                                 <div key={shIdx} style={{ marginLeft: shIdx > 0 ? '-4px' : '0', cursor: 'pointer' }} onClick={(e) => showUserCard(e, sh.name)} title={sh.name}>
-                                  <Avatar src={resolveAttachmentUrl(sh.avatar)} name={sh.name} size={16} />
+                                  <Avatar src={resolveAttachmentUrl(sh.avatar)} name={sh.name} size={18} />
                                 </div>
                               ))}
                             </div>
@@ -6105,55 +6115,48 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             style={{ 
                               display: 'inline-flex', 
                               alignItems: 'center', 
-                              gap: '3px', 
-                              padding: '1px 5px', 
+                              gap: '4px', 
+                              padding: '2px 7px', 
                               background: '#e2e8f0', 
                               border: '1px solid var(--color-border-light)', 
                               borderRadius: '12px'
                             }}
                             title="Chăm sóc chung"
                           >
-                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase' }}>Chăm sóc chung</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase' }}>Chăm sóc chung</span>
                             <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
                               <div style={{ cursor: 'pointer' }} onClick={(e) => showUserCard(e, formData.owner_name)} title={`${formData.owner_name} (Chính)`}>
-                                <Avatar src={ownerAvatarUrl} name={formData.owner_name} size={16} />
+                                <Avatar src={ownerAvatarUrl} name={formData.owner_name} size={18} />
                               </div>
                               {collabsList.map((collab: any, cIdx: number) => (
                                 <div key={cIdx} style={{ marginLeft: '-4px', cursor: 'pointer' }} onClick={(e) => showUserCard(e, collab.full_name)} title={`${collab.full_name} (Phụ)`}>
-                                  <Avatar src={collab.avatar_url} name={collab.full_name} size={16} />
+                                  <Avatar src={collab.avatar_url} name={collab.full_name} size={18} />
                                 </div>
                               ))}
                             </div>
                           </div>
                         ) : (
                           <div
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '1px 5px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '4px', cursor: 'pointer' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 7px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer' }}
                             onClick={(e) => showUserCard(e, formData.owner_name)}
                             title={`Sale phụ trách: ${formData.owner_name || 'Chưa nhận'}`}
                           >
-                            <Avatar src={ownerAvatarUrl} name={formData.owner_name} size={15} />
-                            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
+                            <Avatar src={ownerAvatarUrl} name={formData.owner_name} size={17} />
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
                           </div>
-                        )}
-
-                        {formData.email && (
-                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: '3px' }} title={formData.email}>
-                            <Mail size={10} />
-                            <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formData.email}</span>
-                          </span>
                         )}
                       </div>
                     </div>
 
                     {/* Actions Section */}
-                    <div className={styles.profileActionsSection} style={{ gap: '6px' }}>
+                    <div className={styles.profileActionsSection} style={{ gap: '8px' }}>
                       {/* Lead Score inline card */}
                       <div 
                         onClick={() => setActiveTab('scoring')}
                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         title="Xem chi tiết Scoring"
                       >
-                        <LeadScoreRing score={score} size={28} showLabel={true} />
+                        <LeadScoreRing score={score} size={32} showLabel={true} />
                       </div>
 
                       {/* Đóng deal Action */}
@@ -6161,17 +6164,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '4px',
-                          padding: '0 8px',
-                          height: '28px',
-                          borderRadius: '6px',
+                          gap: '5px',
+                          padding: '0 10px',
+                          height: '32px',
+                          borderRadius: '8px',
                           background: 'rgba(16, 185, 129, 0.12)',
                           border: '1px solid rgba(16, 185, 129, 0.3)',
                           color: '#059669',
-                          fontSize: '0.75rem',
+                          fontSize: '0.8rem',
                           fontWeight: 800
                         }}>
-                          <CheckCircle2 size={13} />
+                          <CheckCircle2 size={14} />
                           <span>Đã Đóng Deal</span>
                         </div>
                       ) : (
@@ -6181,20 +6184,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            padding: '0 8px',
-                            height: '28px',
-                            borderRadius: '6px',
+                            gap: '5px',
+                            padding: '0 12px',
+                            height: '32px',
+                            borderRadius: '8px',
                             background: '#10b981',
                             borderColor: '#10b981',
                             color: 'white',
-                            fontSize: '0.75rem',
+                            fontSize: '0.8rem',
                             fontWeight: 700,
                             cursor: 'pointer'
                           }}
                           title="Xác nhận đóng deal (giao dịch thành công)"
                         >
-                          <CheckCircle2 size={12} />
+                          <CheckCircle2 size={13} />
                           <span>Đóng Deal</span>
                         </button>
                       )}
@@ -6206,20 +6209,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         style={{ 
                           display: 'flex', 
                           alignItems: 'center', 
-                          gap: '5px', 
-                          padding: '0 10px', 
-                          borderRadius: '6px', 
-                          height: '28px', 
-                          fontSize: '0.78rem',
+                          gap: '6px', 
+                          padding: '0 14px', 
+                          borderRadius: '8px', 
+                          height: '32px', 
+                          fontSize: '0.8125rem',
                           background: 'var(--color-primary)',
                           borderColor: 'var(--color-primary)',
                           color: 'white',
                           cursor: 'pointer',
                           fontWeight: 700,
-                          transition: 'all 0.2s ease'
+                          transition: 'all 0.2s ease',
+                          boxShadow: '0 1px 3px rgba(163, 20, 34, 0.2)'
                         }}
                       >
-                        <Save size={12} /> Lưu thay đổi
+                        <Save size={13} /> Lưu thay đổi
                       </button>
                     </div>
                   </div>
@@ -6616,13 +6620,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 return (
                                   <div key={groupIdx} className={styles.tabGroup} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: groupIdx !== tabGroups.length - 1 ? '0.75rem' : 0 }}>
                                     <div className={styles.tabGroupTitle} style={{ 
-                                      padding: '0.375rem 0.5rem', 
-                                      fontSize: '0.65rem', 
+                                      padding: '0.45rem 0.6rem', 
+                                      fontSize: '0.72rem', 
                                       fontWeight: 800, 
                                       color: 'var(--color-text-muted)', 
                                       textTransform: 'uppercase', 
-                                      letterSpacing: '0.08em',
-                                      opacity: 0.8
+                                      letterSpacing: '0.06em',
+                                      opacity: 0.85
                                     }}>
                                       {group.title}
                                     </div>
@@ -7010,22 +7014,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          padding: '5px 10px',
+                          padding: '7px 12px',
                           background: 'var(--color-surface)',
                           borderRadius: '8px',
                           border: '1px solid var(--color-border-light)',
-                          fontSize: '0.72rem',
+                          fontSize: '0.78rem',
                           color: 'var(--color-text-muted)',
-                          gap: '6px',
+                          gap: '8px',
                           flexWrap: 'wrap'
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Clock size={12} style={{ color: 'var(--color-primary)' }} />
+                            <Clock size={13} style={{ color: 'var(--color-primary)' }} />
                             <span>Lần liên hệ cuối: <strong style={{ color: 'var(--color-text)' }}>{formData.last_contact ? formatDateTime(formData.last_contact) : 'Chưa có'}</strong> {formData.last_contact ? `(${AGO(formData.last_contact)})` : '• Cần liên hệ ngay'}</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span>Dự án: <strong style={{ color: 'var(--color-primary)' }}>{formData.project_name || formData.source_project_name || 'Quảng cáo'}</strong></span>
-                            {formData.source && <span className="badge secondary" style={{ fontSize: '0.625rem', padding: '1px 5px' }}>Rank: {formData.source}</span>}
+                            {formData.source && <span className="badge secondary" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>Rank: {formData.source}</span>}
                           </div>
                         </div>
                       )}
@@ -7034,128 +7038,133 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{
                         display: 'grid',
                         gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, 1fr)',
-                        gap: '0.5rem',
+                        gap: '0.625rem',
                         alignItems: 'start'
                       }}>
                         {/* CỘT TRÁI: 1. THÔNG TIN BAN ĐẦU (INBOUND LEAD) */}
-                        <div className="card-panel" style={{ padding: '0.4rem 0.55rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        <div className="card-panel" style={{ padding: '0.625rem 0.8rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             gap: '0.4rem',
-                            paddingBottom: '0.3rem',
+                            paddingBottom: '0.45rem',
                             borderBottom: '1px solid var(--color-border-light)',
                             flexWrap: 'wrap'
                           }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                              <div style={{ width: '18px', height: '18px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <User size={11} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <User size={13} />
                               </div>
-                              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                              <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>
                                 1. Thông tin ban đầu (Inbound Lead)
                               </span>
                             </div>
-                            <span className="badge info" style={{ fontSize: '0.6rem', padding: '1px 5px', borderRadius: '4px', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                            <span className="badge info" style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
                               Nguồn: {formData.source || 'Quảng cáo'}
                             </span>
                           </div>
 
                           {/* Họ & Tên */}
                           <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '0.7rem', marginBottom: '1px' }}>Họ &amp; Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                            <div style={{ display: 'flex', gap: '0.3rem' }}>
+                            <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Họ &amp; Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                            <div style={{ display: 'flex', gap: '0.35rem' }}>
                               <input className="form-input sm" placeholder="Họ" value={formData.first_name || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, first_name: val }));
-                              }} style={{ flex: 1, minWidth: 0, height: '26px', fontSize: '0.76rem' }} />
+                              }} style={{ flex: 1, minWidth: 0, height: '28px', fontSize: '0.78rem' }} />
                               <input className="form-input sm" placeholder="Tên" value={formData.last_name || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, last_name: val }));
-                              }} style={{ flex: 1, minWidth: 0, height: '26px', fontSize: '0.76rem' }} />
+                              }} style={{ flex: 1, minWidth: 0, height: '28px', fontSize: '0.78rem' }} />
                             </div>
                           </div>
 
-                          {/* Số điện thoại chính */}
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                              <label className="form-label" style={{ margin: 0, fontSize: '0.7rem' }}>Số điện thoại chính <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                              <span 
-                                onClick={() => {
-                                  if (!formData.phone?.trim()) return;
-                                  if (zaloSource === 'primary') {
-                                    setZaloSource('none');
-                                    setFormData((prev: any) => ({ ...prev, zalo_link: '' }));
-                                  } else {
-                                    setZaloSource('primary');
-                                    const cleanPhone = (formData.phone || '').replace(/[^0-9]/g, '');
-                                    setFormData((prev: any) => ({ ...prev, zalo_link: cleanPhone ? `https://zalo.me/${cleanPhone}` : '' }));
-                                  }
-                                }}
-                                style={{
-                                  fontSize: '0.62rem',
-                                  fontWeight: 700,
-                                  cursor: formData.phone?.trim() ? 'pointer' : 'not-allowed',
-                                  color: zaloSource === 'primary' ? '#0068FF' : 'var(--color-text-muted)',
-                                  background: zaloSource === 'primary' ? 'rgba(0, 104, 255, 0.1)' : 'var(--color-bg)',
-                                  border: `1px solid ${zaloSource === 'primary' ? '#0068FF' : 'var(--color-border)'}`,
-                                  padding: '1px 4px',
-                                  borderRadius: '4px'
-                                }}
-                              >
-                                {zaloSource === 'primary' ? '✓ Dùng làm Zalo' : '+ Dùng làm Zalo'}
-                              </span>
-                            </div>
-                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                              <input 
-                                className="form-input sm" 
-                                placeholder="09..." 
-                                value={formData.phone || ''} 
-                                onChange={e => setFormData((prev: any) => ({ ...prev, phone: e.target.value }))}
-                                style={{ paddingRight: '48px', height: '26px', fontSize: '0.76rem' }}
-                              />
-                              <div style={{ position: 'absolute', right: '3px', display: 'flex', gap: '1px' }}>
-                                <button 
-                                  type="button" 
-                                  className="btn-icon xs" 
-                                  style={{ height: '20px', width: '20px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer' }} 
-                                  title="Sao chép"
+                          {/* SĐT chính & Email gộp chung 1 hàng */}
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '0.45rem', marginBottom: 0 }}>
+                            {/* Số điện thoại chính */}
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px', minHeight: '18px' }}>
+                                <label className="form-label" style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700 }}>Số điện thoại chính <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                                <span 
                                   onClick={() => {
-                                    if (formData.phone) {
-                                      navigator.clipboard.writeText(formData.phone);
-                                      addToast('Đã sao chép SĐT!', 'success');
+                                    if (!formData.phone?.trim()) return;
+                                    if (zaloSource === 'primary') {
+                                      setZaloSource('none');
+                                      setFormData((prev: any) => ({ ...prev, zalo_link: '' }));
+                                    } else {
+                                      setZaloSource('primary');
+                                      const cleanPhone = (formData.phone || '').replace(/[^0-9]/g, '');
+                                      setFormData((prev: any) => ({ ...prev, zalo_link: cleanPhone ? `https://zalo.me/${cleanPhone}` : '' }));
                                     }
                                   }}
-                                >
-                                  <Copy size={10} />
-                                </button>
-                                <button 
-                                  type="button" 
-                                  className="btn-icon xs" 
-                                  style={{ height: '20px', width: '20px', border: 'none', background: 'transparent', color: 'var(--color-success)', cursor: 'pointer' }} 
-                                  title="Gọi điện"
-                                  onClick={() => {
-                                    if (formData.phone) showCall(formData.phone);
+                                  style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    cursor: formData.phone?.trim() ? 'pointer' : 'not-allowed',
+                                    color: zaloSource === 'primary' ? '#0068FF' : 'var(--color-text-muted)',
+                                    background: zaloSource === 'primary' ? 'rgba(0, 104, 255, 0.1)' : 'var(--color-bg)',
+                                    border: `1px solid ${zaloSource === 'primary' ? '#0068FF' : 'var(--color-border)'}`,
+                                    padding: '1px 5px',
+                                    borderRadius: '4px'
                                   }}
                                 >
-                                  <Phone size={10} />
-                                </button>
+                                  {zaloSource === 'primary' ? '✓ Dùng làm Zalo' : '+ Dùng làm Zalo'}
+                                </span>
+                              </div>
+                              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <input 
+                                  className="form-input sm" 
+                                  placeholder="09..." 
+                                  value={formData.phone || ''} 
+                                  onChange={e => setFormData((prev: any) => ({ ...prev, phone: e.target.value }))}
+                                  style={{ paddingRight: '48px', height: '28px', fontSize: '0.78rem' }}
+                                />
+                                <div style={{ position: 'absolute', right: '3px', display: 'flex', gap: '1px' }}>
+                                  <button 
+                                    type="button" 
+                                    className="btn-icon xs" 
+                                    style={{ height: '22px', width: '22px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer' }} 
+                                    title="Sao chép"
+                                    onClick={() => {
+                                      if (formData.phone) {
+                                        navigator.clipboard.writeText(formData.phone);
+                                        addToast('Đã sao chép SĐT!', 'success');
+                                      }
+                                    }}
+                                  >
+                                    <Copy size={11} />
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    className="btn-icon xs" 
+                                    style={{ height: '22px', width: '22px', border: 'none', background: 'transparent', color: 'var(--color-success)', cursor: 'pointer' }} 
+                                    title="Gọi điện"
+                                    onClick={() => {
+                                      if (formData.phone) showCall(formData.phone);
+                                    }}
+                                  >
+                                    <Phone size={11} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Email */}
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '0.7rem', marginBottom: '1px' }}>Email</label>
-                            <input className="form-input sm" placeholder="email@domain.com" value={formData.email || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, email: val }));
-                            }} style={{ height: '26px', fontSize: '0.76rem' }} />
+                            {/* Email */}
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', minHeight: '18px' }}>
+                                <label className="form-label" style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700 }}>Email</label>
+                              </div>
+                              <input className="form-input sm" placeholder="email@domain.com" value={formData.email || ''} onChange={e => {
+                                const val = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, email: val }));
+                              }} style={{ height: '28px', fontSize: '0.78rem' }} />
+                            </div>
                           </div>
 
                           {/* 1. Trường Phân Loại Lead là 1 trường bình thường để phân Rank (không phải trường chấm điểm) */}
                           <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '0.7rem', marginBottom: '1px', fontWeight: 700 }}>
+                            <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', fontWeight: 700 }}>
                               Phân loại Lead (Rank)
                             </label>
                             <CustomSelect
@@ -7180,9 +7189,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* Dự án & Chiến dịch (Quan hệ Cha - Con) */}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.7rem', marginBottom: '1px', fontWeight: 700 }}>Dự án nguồn</label>
+                              <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', fontWeight: 700 }}>Dự án nguồn</label>
                               <CustomSelect
                                 searchable
                                 options={[
@@ -7211,9 +7220,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1px' }}>
-                                <label className="form-label" style={{ fontSize: '0.7rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
-                                <span style={{ fontSize: '0.58rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Con dự án</span>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                <label className="form-label" style={{ fontSize: '0.72rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
+                                <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Con dự án</span>
                               </div>
                               {(() => {
                                 const filteredCamps = formData.project_id
@@ -7249,42 +7258,42 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* CỤC GOM THÔNG TIN FORM ĐĂNG KÝ (FACEBOOK LEAD ADS / SCORE) */}
-                          <div style={{ background: 'var(--color-bg)', padding: '0.3rem 0.5rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                                <FileText size={10} style={{ color: 'var(--color-primary)' }} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                                <FileText size={12} style={{ color: 'var(--color-primary)' }} />
                                 <span>Thông Tin Form Đăng Ký (Facebook Lead Ads)</span>
                               </div>
-                              <span className="badge warning" style={{ fontSize: '0.58rem', padding: '1px 4px' }}>Form Leads</span>
+                              <span className="badge warning" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Form Leads</span>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '3px', fontSize: '0.7rem' }}>
-                              <div style={{ background: 'var(--color-surface)', padding: '2px 5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>Tỉnh/TP</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px', fontSize: '0.72rem' }}>
+                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Tỉnh/TP</div>
                                 <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.city || parsedAdFormData.find(x => x.key?.includes('city') || x.key?.includes('tinh'))?.value || 'TP. Hồ Chí Minh'}</div>
                               </div>
-                              <div style={{ background: 'var(--color-surface)', padding: '2px 5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>Kênh liên hệ</div>
+                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Kênh liên hệ</div>
                                 <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.platform || parsedAdFormData.find(x => x.key?.includes('platform') || x.key?.includes('kenh'))?.value || 'Facebook Lead Ads'}</div>
                               </div>
-                              <div style={{ background: 'var(--color-surface)', padding: '2px 5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>Loại hình</div>
+                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Loại hình</div>
                                 <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.property_type || parsedAdFormData.find(x => x.key?.includes('loai_hinh') || x.key?.includes('can_ho') || x.key?.includes('type'))?.value || '1PN / Studio'}</div>
                               </div>
-                              <div style={{ background: 'var(--color-surface)', padding: '2px 5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>Tên Form</div>
+                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Tên Form</div>
                                 <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{formData.form_name || parsedAdFormData.find(x => x.key?.includes('form'))?.value || 'Mẫu Lead Ads'}</div>
                               </div>
-                              <div style={{ background: 'var(--color-surface)', padding: '2px 5px', borderRadius: '4px', border: '1px solid var(--color-border)', gridColumn: 'span 2' }}>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>Mẫu Quảng Cáo</div>
+                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)', gridColumn: 'span 2' }}>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Mẫu Quảng Cáo</div>
                                 <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', wordBreak: 'break-word' }}>{formData.utm_content || parsedAdFormData.find(x => x.key?.includes('ad') || x.key?.includes('campaign'))?.value || formData.campaign_name || 'Chiến dịch Quảng cáo Meta'}</div>
                               </div>
                             </div>
 
                             {/* Link Facebook */}
-                            <div className="form-group" style={{ marginTop: '1px', marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.66rem', display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '1px' }}>
-                                <Globe size={9} style={{ color: '#1877F2' }} /> Link Facebook
+                            <div className="form-group" style={{ marginTop: '2px', marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px' }}>
+                                <Globe size={10} style={{ color: '#1877F2' }} /> Link Facebook
                               </label>
                               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                 <input
@@ -7295,7 +7304,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     const val = e.target.value;
                                     setFormData((prev: any) => ({ ...prev, fb_link: val, facebook_link: val }));
                                   }}
-                                  style={{ paddingRight: (formData.fb_link || formData.facebook_link) ? '26px' : '6px', height: '26px', fontSize: '0.76rem' }}
+                                  style={{ paddingRight: (formData.fb_link || formData.facebook_link) ? '26px' : '6px', height: '28px', fontSize: '0.78rem' }}
                                 />
                                 {(formData.fb_link || formData.facebook_link) && (
                                   <a
@@ -7303,10 +7312,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     target="_blank"
                                     rel="noreferrer"
                                     className="btn-icon xs"
-                                    style={{ position: 'absolute', right: '3px', height: '18px', width: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1877F2' }}
+                                    style={{ position: 'absolute', right: '3px', height: '22px', width: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1877F2' }}
                                     title="Mở link Facebook"
                                   >
-                                    <ExternalLink size={9} />
+                                    <ExternalLink size={11} />
                                   </a>
                                 )}
                               </div>
@@ -7318,39 +7327,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
 
                         {/* CỘT PHẢI: 2. THÔNG TIN SALE KHAI THÁC (TTL1) */}
-                        <div className="card-panel" style={{ padding: '0.5rem 0.65rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <div className="card-panel" style={{ padding: '0.625rem 0.8rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             gap: '0.4rem',
-                            paddingBottom: '0.35rem',
+                            paddingBottom: '0.45rem',
                             borderBottom: '1px solid var(--color-border-light)',
                             flexWrap: 'wrap'
                           }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                              <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(234, 179, 8, 0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <Target size={12} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Target size={14} />
                               </div>
-                              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                              <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>
                                 Thông tin sale khai thác (TTL1)
                               </span>
                               <span 
                                 className={`badge ${filledTTL1Count >= 5 ? 'success' : 'secondary'}`} 
-                                style={{ fontSize: '0.625rem', padding: '1px 5px', fontWeight: 800 }}
+                                style={{ fontSize: '0.68rem', padding: '2px 7px', fontWeight: 800 }}
                                 title={filledTTL1Count >= 5 ? 'Đã đạt đủ tối thiểu 5/8 trường TTL1 (Đủ điều kiện chuyển Đồng ý gặp)' : 'Cần đạt tối thiểu 5/8 trường để chuyển Đồng ý gặp'}
                               >
                                 {filledTTL1Count}/8 trường
                               </span>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                              <div style={{ display: 'inline-flex', background: 'var(--color-bg)', padding: '1px', borderRadius: '5px', border: '1px solid var(--color-border-light)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ display: 'inline-flex', background: 'var(--color-bg)', padding: '1px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
                                 <button
                                   type="button"
                                   className={`btn xs ${ttl1ViewMode === 'fields' ? 'primary' : 'ghost'}`}
                                   onClick={() => setTtl1ViewMode('fields')}
-                                  style={{ padding: '1px 5px', fontSize: '0.65rem', height: '20px', borderRadius: '3px' }}
+                                  style={{ padding: '2px 8px', fontSize: '0.72rem', height: '24px', borderRadius: '4px' }}
                                   title="Xem và chỉnh sửa từng trường"
                                 >
                                   Từng trường
@@ -7359,8 +7368,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   type="button"
                                   className={`btn xs ${ttl1ViewMode === 'text' ? 'primary' : 'ghost'}`}
                                   onClick={() => setTtl1ViewMode('text')}
-                                  style={{ padding: '1px 5px', fontSize: '0.65rem', height: '20px', borderRadius: '3px' }}
-                                  title="Gộp 8 trường thành đoạn văn bản xem nhanh"
+                                  style={{ padding: '2px 8px', fontSize: '0.72rem', height: '24px', borderRadius: '4px' }}
                                 >
                                   Dạng văn bản
                                 </button>
@@ -7372,10 +7380,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   navigator.clipboard.writeText(ttl1SummaryText);
                                   addToast('Đã sao chép 8 trường thông tin TTL1!', 'success');
                                 }}
-                                style={{ padding: '1px 5px', fontSize: '0.65rem', height: '20px', display: 'flex', alignItems: 'center', gap: '2px' }}
+                                style={{ padding: '2px 8px', fontSize: '0.72rem', height: '24px', display: 'flex', alignItems: 'center', gap: '3px' }}
                                 title="Sao chép toàn bộ thông tin TTL1 để chia sẻ"
                               >
-                                <Copy size={10} />
+                                <Copy size={11} />
                                 <span>Sao chép</span>
                               </button>
                             </div>
@@ -7384,23 +7392,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {ttl1ViewMode === 'text' ? (
                             <div style={{ background: 'var(--color-bg)', padding: '0.5rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-primary)' }}>Nội dung tổng hợp 8 trường TTL1:</span>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Xem nhanh &amp; chia sẻ</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>Nội dung tổng hợp 8 trường TTL1:</span>
+                                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Xem nhanh &amp; chia sẻ</span>
                               </div>
-                              <pre style={{ margin: 0, fontSize: '0.75rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--color-text)' }}>
+                              <pre style={{ margin: 0, fontSize: '0.78rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--color-text)' }}>
                                 {ttl1SummaryText}
                               </pre>
                             </div>
                           ) : (
                             <>
                               {/* KHỐI 1: CHÂN DUNG KHÁCH HÀNG (1) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.35rem 0.55rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-text)' }}>1. Chân dung khách hàng</span>
+                                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>1. Chân dung khách hàng</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <span 
                                       onClick={() => setActiveTab('scoring')}
-                                      style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-primary)', cursor: 'pointer', background: 'var(--color-surface)', padding: '1px 5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+                                      style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-primary)', cursor: 'pointer', background: 'var(--color-surface)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
                                       title="Xem chi tiết Scoring"
                                     >
                                       {score} pts
@@ -7408,29 +7416,29 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Ở đâu (1)</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Ở đâu (1)</label>
                                     <input
                                       className="form-input sm"
                                       placeholder="Nơi ở / địa chỉ..."
                                       value={formData.address || ''}
                                       onChange={e => setFormData((prev: any) => ({ ...prev, address: e.target.value }))}
-                                      style={{ height: '28px', fontSize: '0.76rem' }}
+                                      style={{ height: '28px', fontSize: '0.78rem' }}
                                     />
                                   </div>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Làm gì (2)</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Làm gì (2)</label>
                                     <input
                                       className="form-input sm"
                                       placeholder="Nghề nghiệp..."
                                       value={formData.job_title || ''}
                                       onChange={e => setFormData((prev: any) => ({ ...prev, job_title: e.target.value }))}
-                                      style={{ height: '28px', fontSize: '0.76rem' }}
+                                      style={{ height: '28px', fontSize: '0.78rem' }}
                                     />
                                   </div>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Gia đình (3)</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Gia đình (3)</label>
                                     <input
                                       className="form-input sm"
                                       placeholder="Gia đình..."
@@ -7441,25 +7449,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         setTtl1Data(next);
                                         setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                       }}
-                                      style={{ height: '28px', fontSize: '0.76rem' }}
+                                      style={{ height: '28px', fontSize: '0.78rem' }}
                                     />
                                   </div>
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '5px', border: '1px solid var(--color-border)' }}>
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Dự án &amp; Chiến dịch nguồn:</span>
-                                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                                    {formData.source_project_name || formData.project_name || 'Quảng cáo chung'} {formData.campaign_name ? `• ${formData.campaign_name}` : ''}
-                                  </span>
                                 </div>
                               </div>
 
                               {/* KHỐI 2: KHAI THÁC 3 TIÊU CHÍ CỐT LÕI (2) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.35rem 0.55rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-text)' }}>2. Khai thác 3 tiêu chí cốt lõi</span>
+                              <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>2. Khai thác 3 tiêu chí cốt lõi</span>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Hiện trạng (4):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Hiện trạng (4):</label>
                                   <textarea
                                     className="form-input sm"
                                     rows={2}
@@ -7471,12 +7472,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.76rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
                                   />
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Nhu cầu (5):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Nhu cầu (5):</label>
                                   <textarea
                                     className="form-input sm"
                                     rows={2}
@@ -7488,12 +7489,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.76rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
                                   />
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Rào cản (6):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Rào cản (6):</label>
                                   <textarea
                                     className="form-input sm"
                                     rows={2}
@@ -7505,18 +7506,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.76rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
                                   />
                                 </div>
                               </div>
 
                               {/* KHỐI 3: KÊNH KẾT NỐI BỔ SUNG (3) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.35rem 0.55rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Kênh kết nối bổ sung</span>
+                              <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Kênh kết nối bổ sung</span>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '5px' }}>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
                                       <span style={{ color: '#0068FF', fontWeight: 700 }}>Nhóm Zalo:</span>
                                     </label>
                                     <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start' }}>
@@ -7526,7 +7527,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         placeholder="SĐT / Link Zalo..."
                                         value={formData.zalo_link || ''}
                                         onChange={e => setFormData((prev: any) => ({ ...prev, zalo_link: e.target.value }))}
-                                        style={{ width: '100%', minHeight: '36px', paddingRight: formData.zalo_link ? '26px' : '6px', fontSize: '0.76rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                        style={{ width: '100%', minHeight: '36px', paddingRight: formData.zalo_link ? '26px' : '6px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
                                       />
                                       {formData.zalo_link && (
                                         <a
@@ -7544,25 +7545,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
 
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Email:</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Email:</label>
                                     <textarea
                                       className="form-input sm"
                                       rows={2}
                                       placeholder="Email liên hệ..."
                                       value={formData.email || ''}
                                       onChange={e => setFormData((prev: any) => ({ ...prev, email: e.target.value }))}
-                                      style={{ width: '100%', minHeight: '36px', fontSize: '0.76rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                      style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
                                     />
                                   </div>
                                 </div>
                               </div>
 
                               {/* KHỐI 4: KẾ HOẠCH CHỐT DEAL & NGÂN SÁCH (4) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.35rem 0.55rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-text)' }}>4. Kế hoạch chốt deal &amp; Ngân sách</span>
+                              <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>4. Kế hoạch chốt deal &amp; Ngân sách</span>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Giải pháp tiếp theo (7):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Giải pháp tiếp theo (7):</label>
                                   <textarea
                                     className="form-input sm"
                                     rows={2}
@@ -7574,12 +7575,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, notes: val, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', minHeight: '44px', resize: 'vertical', fontSize: '0.76rem', lineHeight: 1.35, padding: '4px 6px' }}
+                                    style={{ width: '100%', minHeight: '44px', resize: 'vertical', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
                                   />
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.68rem', marginBottom: '1px' }}>Ngân sách (8):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Ngân sách (8):</label>
                                   <CurrencyInput
                                     value={formData.budget || formData.budget_range || 0}
                                     onChange={val => setFormData((prev: any) => ({ ...prev, budget: val, budget_range: String(val) }))}
