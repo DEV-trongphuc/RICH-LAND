@@ -609,6 +609,14 @@ class ContactController {
             $statusHierarchy[trim($statusName)] = $idxVal;
         }
 
+        // Symmetrical alias for 'dong_y_gap' and 'thien_chi' (Thiện Chí / Đồng ý gặp)
+        if (isset($statusHierarchy['dong_y_gap']) && !isset($statusHierarchy['thien_chi'])) {
+            $statusHierarchy['thien_chi'] = $statusHierarchy['dong_y_gap'];
+        }
+        if (isset($statusHierarchy['thien_chi']) && !isset($statusHierarchy['dong_y_gap'])) {
+            $statusHierarchy['dong_y_gap'] = $statusHierarchy['thien_chi'];
+        }
+
         // Synchronize stage_id and pipeline_status if only one is updated
         $reqStageId = array_key_exists('stage_id', $b) ? (int)$b['stage_id'] : null;
         $reqStatus = array_key_exists('pipeline_status', $b) ? $b['pipeline_status'] : null;
@@ -1046,6 +1054,14 @@ class ContactController {
             $statusHierarchy[trim($statusName)] = $idxVal;
         }
 
+        // Symmetrical alias for 'dong_y_gap' and 'thien_chi' (Thiện Chí / Đồng ý gặp)
+        if (isset($statusHierarchy['dong_y_gap']) && !isset($statusHierarchy['thien_chi'])) {
+            $statusHierarchy['thien_chi'] = $statusHierarchy['dong_y_gap'];
+        }
+        if (isset($statusHierarchy['thien_chi']) && !isset($statusHierarchy['dong_y_gap'])) {
+            $statusHierarchy['dong_y_gap'] = $statusHierarchy['thien_chi'];
+        }
+
         $isOutsideFlow = ($newStatus === 'cham_soc_dai_han' || $currStatus === 'cham_soc_dai_han' || $newStatus === 'not_lead');
         if (!$isOutsideFlow) {
             $currIdx = $statusHierarchy[$currStatus] ?? 0;
@@ -1271,8 +1287,9 @@ class ContactController {
     }
 
     private function getStageIdFromSlug(string $slug, int $tenantId): int {
-        $stmt = $this->db->prepare("SELECT id FROM pipeline_stages WHERE system_slug = ? AND tenant_id = ? LIMIT 1");
-        $stmt->execute([$slug, $tenantId]);
+        $searchSlug = ($slug === 'thien_chi') ? 'dong_y_gap' : (($slug === 'dong_y_gap') ? 'thien_chi' : $slug);
+        $stmt = $this->db->prepare("SELECT id FROM pipeline_stages WHERE (system_slug = ? OR system_slug = ?) AND tenant_id = ? LIMIT 1");
+        $stmt->execute([$slug, $searchSlug, $tenantId]);
         return (int)($stmt->fetchColumn() ?: 0);
     }
 

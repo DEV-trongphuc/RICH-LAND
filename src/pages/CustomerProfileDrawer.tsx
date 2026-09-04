@@ -25,6 +25,7 @@ import { Skeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { numberToText } from '../utils/numberToText';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
+import { AutoResizeTextarea } from '../components/ui/AutoResizeTextarea';
 import { useUIStore } from '../store/uiStore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
@@ -7477,9 +7478,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                   <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Hiện trạng (4):</label>
-                                  <textarea
+                                  <AutoResizeTextarea
                                     className="form-input sm"
-                                    rows={2}
+                                    minRows={1}
+                                    maxRows={5}
                                     placeholder="Hiện trạng nơi ở / đầu tư hiện tại..."
                                     value={ttl1Data.hien_trang || ''}
                                     onChange={e => {
@@ -7488,15 +7490,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
                                   />
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                   <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Nhu cầu (5):</label>
-                                  <textarea
+                                  <AutoResizeTextarea
                                     className="form-input sm"
-                                    rows={2}
+                                    minRows={1}
+                                    maxRows={5}
                                     placeholder="Nhu cầu cụ thể (diện tích, dòng tiền, mục đích...)"
                                     value={ttl1Data.nhu_cau || ''}
                                     onChange={e => {
@@ -7505,15 +7508,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
                                   />
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                   <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Rào cản (6):</label>
-                                  <textarea
+                                  <AutoResizeTextarea
                                     className="form-input sm"
-                                    rows={2}
+                                    minRows={1}
+                                    maxRows={5}
                                     placeholder="Rào cản lăn tăn (tài chính, pháp lý, người quyết định...)"
                                     value={ttl1Data.rao_can || ''}
                                     onChange={e => {
@@ -7522,7 +7526,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
                                   />
                                 </div>
                               </div>
@@ -7531,9 +7535,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Thông tin bổ sung (nếu có)</span>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <textarea
+                                  <AutoResizeTextarea
                                     className="form-input sm"
-                                    rows={2}
+                                    minRows={1}
+                                    maxRows={5}
                                     placeholder="Đã báo giá, thắc mắc thủ tục, hẹn tháng 09 vào xem nhà mẫu..."
                                     value={ttl1Data.thong_tin_bo_sung || ''}
                                     onChange={e => {
@@ -7542,7 +7547,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', minHeight: '36px', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px', resize: 'vertical' }}
+                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
                                   />
                                 </div>
                               </div>
@@ -7553,9 +7558,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                   <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Giải pháp tiếp theo (7):</label>
-                                  <textarea
+                                  <AutoResizeTextarea
                                     className="form-input sm"
-                                    rows={2}
+                                    minRows={1}
+                                    maxRows={5}
                                     placeholder="Kế hoạch xử lý tiếp theo của Sale (gọi lại, gửi layout, chốt lịch hẹn...)"
                                     value={ttl1Data.giai_phap || formData.notes || ''}
                                     onChange={e => {
@@ -7564,7 +7570,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, notes: val, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', minHeight: '44px', resize: 'vertical', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
+                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
                                   />
                                 </div>
 
