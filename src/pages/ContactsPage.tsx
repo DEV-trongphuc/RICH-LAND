@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers, MoreHorizontal, ChevronRight, Share2, DollarSign } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers, MoreHorizontal, ChevronRight, Share2, DollarSign, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -466,6 +466,25 @@ export const ContactsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'card'>(() => window.innerWidth <= 991 ? 'card' : 'list');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 991);
   const [showMobileActions, setShowMobileActions] = useState(false);
+  const [showMobileFilterDrawer, setShowMobileFilterDrawer] = useState(false);
+
+  useEffect(() => {
+    if (showMobileFilterDrawer) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showMobileFilterDrawer) {
+        setShowMobileFilterDrawer(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showMobileFilterDrawer]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -944,6 +963,409 @@ export const ContactsPage: React.FC = () => {
     return counts;
   }, [contacts]);
 
+  // Render Filter Content (Used for Desktop Left Sidebar and Mobile Slide Drawer)
+  const renderFilterContent = (inDrawer: boolean) => {
+    const hasActiveQuickFilters = 
+      quickPipelineStage !== 'all' || 
+      !!activeFilters.ownership || 
+      !!activeFilters.source || 
+      !!activeFilters.budgetRange || 
+      !!activeFilters.tag || 
+      !!tagInput;
+
+    const handleResetQuickFilters = () => {
+      setQuickPipelineStage('all');
+      setTagInput('');
+      setActiveFilters(prev => ({
+        ...prev,
+        ownership: '',
+        source: '',
+        budgetRange: '',
+        tag: ''
+      }));
+      setPage(1);
+    };
+
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: 0
+      }}>
+        {/* Filter Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingBottom: '0.625rem',
+          borderBottom: '1px solid var(--color-border-light)',
+          marginBottom: '0.75rem',
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <SlidersHorizontal size={15} style={{ color: 'var(--color-primary)' }} />
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+              Bộ lọc & Phân loại
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {hasActiveQuickFilters && (
+              <button
+                type="button"
+                onClick={handleResetQuickFilters}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-danger)',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  borderRadius: '4px'
+                }}
+                title="Đặt lại bộ lọc"
+              >
+                <RotateCcw size={11} />
+                <span>Đặt lại</span>
+              </button>
+            )}
+            {inDrawer && (
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterDrawer(false)}
+                className="btn-icon-bare"
+                style={{
+                  padding: '4px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: 'var(--color-bg-light)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--color-text)'
+                }}
+                title="Đóng menu"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Scrollable Body */}
+        <div
+          className="custom-scrollbar"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            paddingRight: '2px'
+          }}
+        >
+          {/* Section 1: Quyền sở hữu */}
+          <div>
+            <div style={{
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              color: 'var(--color-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              marginBottom: '6px'
+            }}>
+              Quyền sở hữu
+            </div>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '3px',
+              background: 'var(--color-bg-alt)',
+              padding: '3px',
+              borderRadius: '9px',
+              border: '1px solid var(--color-border-light)'
+            }}>
+              {[
+                { id: '', label: 'Tất cả khách', icon: <Users size={14} /> },
+                { id: 'mine', label: 'Bản thân (Của tôi)', icon: <User size={14} /> },
+                { id: 'cooperation', label: 'Hợp tác', icon: <Share2 size={14} /> }
+              ].map(opt => {
+                const active = (activeFilters.ownership || '') === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveFilters(prev => ({ ...prev, ownership: opt.id }));
+                      setPage(1);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '7px 10px',
+                      borderRadius: '7px',
+                      fontSize: '0.78rem',
+                      fontWeight: active ? 700 : 500,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: active ? 'var(--color-surface)' : 'transparent',
+                      color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      transition: 'all 0.15s ease',
+                      width: '100%',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <span style={{ display: 'flex', flexShrink: 0 }}>{opt.icon}</span>
+                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: Trạng thái phễu (Tabs dọc) */}
+          <div>
+            <div style={{
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              color: 'var(--color-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              marginBottom: '6px'
+            }}>
+              Trạng thái phễu
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              {PIPELINE_TABS.map((tab) => {
+                const isActive = quickPipelineStage === tab.id;
+                const count = tab.id === 'all' 
+                  ? getTotalActiveCount() 
+                  : tab.id === 'dong_y_gap' 
+                    ? (Number(stageCounts['dong_y_gap'] || 0) + Number(stageCounts['thien_chi'] || 0))
+                    : Number(stageCounts[tab.id] || 0);
+
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => handleSelectQuickTab(tab.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 9px',
+                      borderRadius: '8px',
+                      fontSize: '0.78rem',
+                      fontWeight: isActive ? 700 : 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                      border: isActive ? `1.5px solid ${tab.color}60` : '1px solid transparent',
+                      background: isActive ? `${tab.color}15` : 'transparent',
+                      color: isActive ? tab.color : 'var(--color-text)',
+                      width: '100%',
+                      textAlign: 'left'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'var(--color-bg-light)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'transparent';
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      <span
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: tab.color,
+                          flexShrink: 0
+                        }}
+                      />
+                      <span style={{
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {tab.label}
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: '10px',
+                        background: isActive ? tab.color : 'var(--color-bg-light)',
+                        color: isActive ? '#ffffff' : 'var(--color-text-muted)',
+                        minWidth: '20px',
+                        textAlign: 'center',
+                        lineHeight: '1.4',
+                        flexShrink: 0,
+                        marginLeft: '6px'
+                      }}
+                    >
+                      {loading && !Object.keys(stageCounts).length ? '...' : count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 3: Tiêu chí lọc (Nguồn / Rank, Ngân sách, Tag) */}
+          <div>
+            <div style={{
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              color: 'var(--color-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              marginBottom: '8px'
+            }}>
+              Tiêu chí lọc
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+              {/* Quick Source / Rank Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                  Nguồn / Rank:
+                </span>
+                <CustomSelect
+                  options={availableSourceOptions}
+                  value={activeFilters.source || ''}
+                  onChange={val => {
+                    setActiveFilters(prev => ({ ...prev, source: String(val) }));
+                    setPage(1);
+                  }}
+                  width="100%"
+                />
+              </div>
+
+              {/* Quick Budget Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                  Ngân sách:
+                </span>
+                <CustomSelect
+                  options={[
+                    { value: '', label: 'Tất cả ngân sách' },
+                    { value: 'under_2b', label: '< 2 tỷ' },
+                    { value: '2b_5b', label: '2 - 5 tỷ' },
+                    { value: '5b_10b', label: '5 - 10 tỷ' },
+                    { value: 'over_10b', label: '> 10 tỷ' }
+                  ]}
+                  value={activeFilters.budgetRange || ''}
+                  onChange={val => {
+                    setActiveFilters(prev => ({ ...prev, budgetRange: String(val) }));
+                    setPage(1);
+                  }}
+                  width="100%"
+                />
+              </div>
+
+              {/* Quick Tag Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                  Tag:
+                </span>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <input
+                    placeholder="Lọc tag..."
+                    value={tagInput}
+                    onChange={e => setTagInput(e.target.value)}
+                    style={{
+                      height: '34px',
+                      width: '100%',
+                      padding: '0 24px 0 9px',
+                      fontSize: '0.76rem',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      boxSizing: 'border-box',
+                      outline: 'none'
+                    }}
+                  />
+                  {tagInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTagInput('');
+                        setActiveFilters(prev => ({ ...prev, tag: '' }));
+                        setPage(1);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: '7px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        color: 'var(--color-text-muted)',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                      title="Xóa tag"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Drawer Footer (Chỉ hiển thị trong Mobile Drawer) */}
+        {inDrawer && (
+          <div style={{
+            paddingTop: '10px',
+            borderTop: '1px solid var(--color-border-light)',
+            marginTop: 'auto',
+            flexShrink: 0
+          }}>
+            <button
+              type="button"
+              onClick={() => setShowMobileFilterDrawer(false)}
+              style={{
+                width: '100%',
+                height: '38px',
+                background: 'var(--color-primary)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)'
+              }}
+            >
+              <span>Xem {total} liên hệ</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div>
       {/* Sale uncontacted warning badge (nếu có) */}
@@ -1007,232 +1429,39 @@ export const ContactsPage: React.FC = () => {
         </div>
       )}
 
-      {/* QUICK FILTER BAR: Ownership (Bản thân / Hợp tác), Tag Filter & Budget Filter */}
+      {/* 2-COLUMN LAYOUT ON PC / SINGLE COLUMN ON MOBILE */}
       <div style={{
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '8px',
-        marginBottom: '0.625rem'
+        gap: '1rem',
+        alignItems: 'flex-start',
+        width: '100%'
       }}>
-        {/* Left: Ownership Switcher (Bản thân vs Hợp tác vs Tất cả) */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          background: 'var(--color-bg-alt)',
-          padding: '3px',
-          borderRadius: '10px',
-          border: '1px solid var(--color-border-light)',
-          gap: '2px'
-        }}>
-          {[
-            { id: '', label: 'Tất cả khách', icon: <Users size={13} /> },
-            { id: 'mine', label: 'Bản thân (Của tôi)', icon: <User size={13} /> },
-            { id: 'cooperation', label: 'Hợp tác', icon: <Share2 size={13} /> }
-          ].map(opt => {
-            const active = (activeFilters.ownership || '') === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  setActiveFilters(prev => ({ ...prev, ownership: opt.id }));
-                  setPage(1);
-                }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: isMobile ? '4px 8px' : '5px 12px',
-                  borderRadius: '7px',
-                  fontSize: isMobile ? '0.72rem' : '0.76rem',
-                  fontWeight: active ? 700 : 500,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: active ? 'var(--color-surface)' : 'transparent',
-                  color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                  boxShadow: active ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                {opt.icon}
-                <span>{opt.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* DESKTOP SIDEBAR ("Tabs dọc" ở PC) */}
+        {!isMobile && (
+          <aside
+            className="card custom-scrollbar"
+            style={{
+              width: '260px',
+              minWidth: '260px',
+              maxWidth: '260px',
+              position: 'sticky',
+              top: '70px',
+              maxHeight: 'calc(100vh - 90px)',
+              height: 'calc(100vh - 90px)',
+              overflowY: 'auto',
+              padding: '0.85rem',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              flexShrink: 0
+            }}
+          >
+            {renderFilterContent(false)}
+          </aside>
+        )}
 
-        {/* Right: Quick Source/Rank, Quick Budget Filter & Quick Tag Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {/* Quick Source / Rank Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-              Nguồn/Rank:
-            </span>
-            <CustomSelect
-              options={availableSourceOptions}
-              value={activeFilters.source || ''}
-              onChange={val => {
-                setActiveFilters(prev => ({ ...prev, source: String(val) }));
-                setPage(1);
-              }}
-              width={isMobile ? 125 : 155}
-            />
-          </div>
-
-          {/* Quick Budget Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-              Ngân sách:
-            </span>
-            <CustomSelect
-              options={[
-                { value: '', label: 'Tất cả ngân sách' },
-                { value: 'under_2b', label: '< 2 tỷ' },
-                { value: '2b_5b', label: '2 - 5 tỷ' },
-                { value: '5b_10b', label: '5 - 10 tỷ' },
-                { value: 'over_10b', label: '> 10 tỷ' }
-              ]}
-              value={activeFilters.budgetRange || ''}
-              onChange={val => {
-                setActiveFilters(prev => ({ ...prev, budgetRange: String(val) }));
-                setPage(1);
-              }}
-              width={isMobile ? 115 : 135}
-            />
-          </div>
-
-          {/* Quick Tag Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-              Tag:
-            </span>
-            <div style={{ position: 'relative', width: isMobile ? 100 : 120 }}>
-              <input
-                placeholder="Lọc tag..."
-                value={tagInput}
-                onChange={e => setTagInput(e.target.value)}
-                style={{
-                  height: '32px',
-                  width: '100%',
-                  padding: '0 22px 0 8px',
-                  fontSize: '0.74rem',
-                  borderRadius: '8px',
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
-                  boxSizing: 'border-box',
-                  outline: 'none'
-                }}
-              />
-              {tagInput && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTagInput('');
-                    setActiveFilters(prev => ({ ...prev, tag: '' }));
-                    setPage(1);
-                  }}
-                  style={{
-                    position: 'absolute',
-                    right: '6px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
-                    color: 'var(--color-text-muted)',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  title="Xóa tag"
-                >
-                  <X size={11} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* QUICK STATUS TABS (Chuyển nhanh theo từng trạng thái phễu) */}
-      <div
-        className="custom-scrollbar"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          overflowX: 'auto',
-          paddingBottom: '8px',
-          marginBottom: '0.75rem',
-          scrollbarWidth: 'thin',
-          msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch'
-        }}
-      >
-        {PIPELINE_TABS.map((tab) => {
-          const isActive = quickPipelineStage === tab.id;
-          const count = tab.id === 'all' 
-            ? getTotalActiveCount() 
-            : tab.id === 'dong_y_gap' 
-              ? (Number(stageCounts['dong_y_gap'] || 0) + Number(stageCounts['thien_chi'] || 0))
-              : Number(stageCounts[tab.id] || 0);
-
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => handleSelectQuickTab(tab.id)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '7px',
-                padding: isMobile ? '5px 10px' : '6px 14px',
-                borderRadius: '20px',
-                fontSize: isMobile ? '0.74rem' : '0.79rem',
-                fontWeight: isActive ? 700 : 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                border: isActive ? `1.5px solid ${tab.color}` : '1px solid var(--color-border)',
-                background: isActive ? `${tab.color}15` : 'var(--color-surface)',
-                color: isActive ? tab.color : 'var(--color-text)',
-                boxShadow: isActive ? `0 2px 8px ${tab.color}25` : 'var(--shadow-sm)'
-              }}
-            >
-              <span
-                style={{
-                  width: '7px',
-                  height: '7px',
-                  borderRadius: '50%',
-                  backgroundColor: tab.color,
-                  flexShrink: 0
-                }}
-              />
-              <span>{tab.label}</span>
-              <span
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: 700,
-                  padding: '1px 6px',
-                  borderRadius: '10px',
-                  background: isActive ? tab.color : 'var(--color-bg-light)',
-                  color: isActive ? '#ffffff' : 'var(--color-text-muted)',
-                  marginLeft: '2px',
-                  minWidth: '18px',
-                  textAlign: 'center',
-                  lineHeight: '1.4'
-                }}
-              >
-                {loading && !Object.keys(stageCounts).length ? '...' : count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+        {/* MAIN COLUMN: Search row + Filters + Contacts Table/Cards */}
+        <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
       {/* Search + filter row */}
       <div className={isMobile ? "" : "card"} style={{ padding: isMobile ? '0' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, boxShadow: isMobile ? 'none' : undefined }}>
@@ -1264,7 +1493,66 @@ export const ContactsPage: React.FC = () => {
                 </AnimatePresence>
               </div>
             </div>
- 
+
+            {/* Mobile Filter Drawer Trigger ("Lọc") */}
+            <button
+              type="button"
+              onClick={() => setShowMobileFilterDrawer(true)}
+              style={{
+                height: '36px',
+                padding: '0 9px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+                border: (quickPipelineStage !== 'all' || activeFilters.ownership || activeFilters.source || activeFilters.budgetRange || activeFilters.tag)
+                  ? '1px solid var(--color-primary)' 
+                  : '1px solid var(--color-border)',
+                borderRadius: '8px',
+                background: (quickPipelineStage !== 'all' || activeFilters.ownership || activeFilters.source || activeFilters.budgetRange || activeFilters.tag)
+                  ? 'rgba(189, 29, 45, 0.08)' 
+                  : 'var(--color-surface)',
+                color: (quickPipelineStage !== 'all' || activeFilters.ownership || activeFilters.source || activeFilters.budgetRange || activeFilters.tag)
+                  ? 'var(--color-primary)' 
+                  : 'var(--color-text)',
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                flexShrink: 0,
+                outline: 'none',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+              title="Bộ lọc & Phân loại"
+            >
+              <SlidersHorizontal size={14} />
+              <span>Lọc</span>
+              {(quickPipelineStage !== 'all' || activeFilters.ownership || activeFilters.source || activeFilters.budgetRange || activeFilters.tag) && (
+                <span
+                  style={{
+                    background: 'var(--color-primary)',
+                    color: '#ffffff',
+                    fontSize: '0.62rem',
+                    fontWeight: 700,
+                    borderRadius: '50%',
+                    minWidth: '15px',
+                    height: '15px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    lineHeight: 1,
+                    padding: '0 3px'
+                  }}
+                >
+                  {
+                    (quickPipelineStage !== 'all' ? 1 : 0) +
+                    (activeFilters.ownership ? 1 : 0) +
+                    (activeFilters.source ? 1 : 0) +
+                    (activeFilters.budgetRange ? 1 : 0) +
+                    (activeFilters.tag ? 1 : 0)
+                  }
+                </span>
+              )}
+            </button>
+
             {/* More Actions Trigger (...) */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <button 
@@ -1998,9 +2286,9 @@ export const ContactsPage: React.FC = () => {
             boxShadow: isMobile ? 'none' : undefined,
             display: 'flex',
             flexDirection: 'column',
-            height: isMobile ? 'auto' : 'calc(100vh - 315px)',
-            minHeight: isMobile ? 'auto' : '440px',
-            marginBottom: isMobile ? '1rem' : '2.5rem',
+            height: isMobile ? 'auto' : 'calc(100vh - 205px)',
+            minHeight: isMobile ? 'auto' : '500px',
+            marginBottom: isMobile ? '1rem' : '1.25rem',
             overflow: 'hidden'
           }}
         >
@@ -2655,6 +2943,55 @@ export const ContactsPage: React.FC = () => {
           </div>
         </div>
       )}
+        </main>
+      </div>
+
+      {/* MOBILE FILTER DRAWER ("Tabs dọc" dạng menu trượt từ trái) */}
+      <AnimatePresence>
+        {isMobile && showMobileFilterDrawer && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9998, display: 'flex' }}>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setShowMobileFilterDrawer(false)}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0, 0, 0, 0.45)',
+                backdropFilter: 'blur(3px)',
+                WebkitBackdropFilter: 'blur(3px)'
+              }}
+            />
+
+            {/* Drawer Sheet */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+              style={{
+                position: 'relative',
+                width: '85%',
+                maxWidth: '340px',
+                height: '100%',
+                background: 'var(--color-surface)',
+                borderRight: '1px solid var(--color-border)',
+                boxShadow: '4px 0 24px rgba(0, 0, 0, 0.25)',
+                display: 'flex',
+                flexDirection: 'column',
+                zIndex: 9999,
+                padding: '1rem 0.85rem',
+                overflow: 'hidden'
+              }}
+            >
+              {renderFilterContent(true)}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* 360° Profile Drawer */}
       {profileContact && (
