@@ -946,61 +946,31 @@ export const ContactsPage: React.FC = () => {
 
   return (
     <div>
-      {/* Header */}
-      <div className="page-header" style={{ marginBottom: isMobile ? '0.75rem' : '1.5rem' }}>
-        <div style={{ width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: '100%', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1 className="page-title" style={{ margin: 0 }}>Khách hàng tiềm năng</h1>
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-light)', fontWeight: 600, marginTop: '2px' }}>
-                {loading ? '(...)' : `(${total} liên hệ)`}
-              </span>
-              {user?.role === 'sale' && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: uncontactedCount >= 5 
-                    ? 'rgba(239, 68, 68, 0.1)' 
-                    : 'var(--color-bg-light)',
-                  border: uncontactedCount >= 5 
-                    ? '1px solid rgba(239, 68, 68, 0.25)' 
-                    : '1px solid var(--color-border)',
-                  color: uncontactedCount >= 5 
-                    ? 'var(--color-danger)' 
-                    : 'var(--color-text)',
-                  borderRadius: '20px',
-                  padding: '4px 12px',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
-                }}>
-                  <AlertTriangle size={12} style={{ color: uncontactedCount >= 5 ? 'var(--color-danger)' : 'var(--color-warning)' }} />
-                  <span>Chưa tương tác: <strong>{uncontactedCount}/5</strong></span>
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Sale uncontacted warning badge (nếu có) */}
+      {user?.role === 'sale' && uncontactedCount > 0 && (
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          background: uncontactedCount >= 5 
+            ? 'rgba(239, 68, 68, 0.1)' 
+            : 'var(--color-bg-light)',
+          border: uncontactedCount >= 5 
+            ? '1px solid rgba(239, 68, 68, 0.25)' 
+            : '1px solid var(--color-border)',
+          color: uncontactedCount >= 5 
+            ? 'var(--color-danger)' 
+            : 'var(--color-text)',
+          borderRadius: '20px',
+          padding: '3px 10px',
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          marginBottom: '0.5rem'
+        }}>
+          <AlertTriangle size={12} style={{ color: uncontactedCount >= 5 ? 'var(--color-danger)' : 'var(--color-warning)' }} />
+          <span>Chưa tương tác: <strong>{uncontactedCount}/5</strong></span>
         </div>
-        
-        {/* Render export buttons only if not on mobile */}
-        {!isMobile && (
-          <div className="flex gap-2">
-            {user?.role !== 'viewer' && !isSale && (
-              <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
-                <Download size={14}/>
-                <span className="hide-on-mobile"> Nhập/Xuất Dữ liệu</span>
-              </button>
-            )}
-            {user?.role !== 'viewer' && user?.role !== 'sale' && (
-              <button className="btn outline" onClick={bulkExport} title="Xuất dữ liệu theo bộ lọc">
-                <Download size={14}/>
-                <span> Xuất theo bộ lọc</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      )}
 
       {isSale && pendingLeadsCount > 0 && (
         <div 
@@ -1470,66 +1440,6 @@ export const ContactsPage: React.FC = () => {
                           <span>{mode === 'list' ? 'Dạng danh sách' : 'Dạng ô vuông'}</span>
                         </button>
                       ))}
- 
-                      {(user?.role as string) !== 'viewer' && (!isSale || user?.role !== 'sale') && (
-                        <>
-                          <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '4px 0' }} />
-                          {/* Import/Export Action */}
-                          {(user?.role as string) !== 'viewer' && !isSale && (
-                            <button
-                              onClick={() => {
-                                setShowImportExport(true);
-                                setShowMobileActions(false);
-                              }}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                width: '100%',
-                                padding: '8px 12px',
-                                border: 'none',
-                                background: 'transparent',
-                                color: 'var(--color-text)',
-                                borderRadius: '8px',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                textAlign: 'left',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Download size={12} />
-                              <span>Nhập/Xuất Dữ liệu</span>
-                            </button>
-                          )}
-                          {/* Filter Export Action */}
-                          {(user?.role as string) !== 'viewer' && user?.role !== 'sale' && (
-                            <button
-                              onClick={() => {
-                                bulkExport();
-                                setShowMobileActions(false);
-                              }}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                width: '100%',
-                                padding: '8px 12px',
-                                border: 'none',
-                                background: 'transparent',
-                                color: 'var(--color-text)',
-                                borderRadius: '8px',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                textAlign: 'left',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Download size={12} />
-                              <span>Xuất theo bộ lọc</span>
-                            </button>
-                          )}
-                        </>
-                      )}
                     </motion.div>
                   </>
                 )}
