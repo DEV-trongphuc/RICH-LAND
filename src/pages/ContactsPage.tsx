@@ -1998,8 +1998,9 @@ export const ContactsPage: React.FC = () => {
             boxShadow: isMobile ? 'none' : undefined,
             display: 'flex',
             flexDirection: 'column',
-            height: isMobile ? 'auto' : 'calc(100vh - 275px)',
-            minHeight: isMobile ? 'auto' : '480px',
+            height: isMobile ? 'auto' : 'calc(100vh - 315px)',
+            minHeight: isMobile ? 'auto' : '440px',
+            marginBottom: isMobile ? '1rem' : '2.5rem',
             overflow: 'hidden'
           }}
         >
@@ -2629,8 +2630,9 @@ export const ContactsPage: React.FC = () => {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
-            padding: '0.4rem 0.75rem',
+            justifyContent: 'space-between',
+            padding: isMobile ? '0.4rem 0.75rem' : '0.45rem 1rem',
+            paddingRight: isMobile ? '0.75rem' : '90px',
             marginTop: 'auto',
             width: '100%',
             flexShrink: 0,

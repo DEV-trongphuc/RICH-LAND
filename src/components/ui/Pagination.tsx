@@ -42,12 +42,19 @@ export const Pagination: React.FC<PaginationProps> = ({
         alignItems: 'center',
         justifyContent: 'space-between',
         width: '100%',
-        padding: '1rem 0',
+        padding: '0.45rem 0',
         background: 'transparent',
         flexWrap: 'wrap',
-        gap: '1rem'
+        gap: '0.75rem'
       }}
     >
+      <style>{`
+        @media (min-width: 768px) {
+          .pagination-pages-clearance {
+            margin-right: 80px !important;
+          }
+        }
+      `}</style>
       <div 
         className="pagination-info"
         style={{
@@ -63,7 +70,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       </div>
 
       <div 
-        className="pagination-pages"
+        className="pagination-pages pagination-pages-clearance"
         style={{
           display: 'flex',
           alignItems: 'center',
