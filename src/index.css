@@ -5704,5 +5704,14 @@ a,
   }
 }
 
+/* Mobile Filter Drawer Highest Priority Z-Index (Above Top Header & Mobile Bottom Nav) */
+.mobile-filter-drawer-container {
+  z-index: 99999999 !important;
+}
+
+.mobile-filter-drawer-sheet {
+  z-index: 100000000 !important;
+}
+
 
 
