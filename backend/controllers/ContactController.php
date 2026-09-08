@@ -30,6 +30,8 @@ class ContactController {
         $from    = $_GET['from'] ?? '';
         $to      = $_GET['to'] ?? '';
         $dataType = $_GET['data_type'] ?? '';
+        $ownership = $_GET['ownership'] ?? '';
+        $budgetRange = $_GET['budget_range'] ?? '';
         $dateField = $_GET['date_field'] ?? 'created_at';
         $sortBy  = $_GET['sort'] ?? 'created_at';
         $order   = $_GET['order'] ?? 'DESC';
@@ -111,7 +113,11 @@ class ContactController {
         if ($companyId) { $where[] = 'c.company_id = ?'; $params[] = (int)$companyId; }
         if ($projectId !== '') { $where[] = 'c.project_id = ?'; $params[] = (int)$projectId; }
         if ($campaignId !== '') { $where[] = 'c.campaign_id = ?'; $params[] = (int)$campaignId; }
-        if ($tag !== '') { $where[] = 'c.tags LIKE ?'; $params[] = '%"' . $tag . '"%'; }
+        if ($tag !== '') {
+            $where[] = '(c.tags LIKE ? OR c.tags LIKE ?)';
+            $params[] = '%"' . $tag . '"%';
+            $params[] = '%' . $tag . '%';
+        }
         
         if ($dataType !== '') {
             $errorCond = "(
@@ -196,6 +202,37 @@ class ContactController {
             case 'no_contact': $where[] = "c.last_contact < DATE_SUB(NOW(), INTERVAL 30 DAY)"; break;
             case 'not_contacted': $where[] = "NOT EXISTS (SELECT 1 FROM activities WHERE related_type = 'contact' AND related_id = c.id) AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = c.id)"; break;
             case 'new_week':   $where[] = "c.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"; break;
+        }
+
+        if ($ownership === 'mine') {
+            $currentUserId = $owner ? (int)$owner : (int)($auth['user_id'] ?? 0);
+            if ($currentUserId > 0) {
+                $where[] = "(c.owner_id = ? AND (c.collaborator_ids IS NULL OR c.collaborator_ids = '' OR c.collaborator_ids = '0'))";
+                $params[] = $currentUserId;
+            } else {
+                $where[] = "(c.collaborator_ids IS NULL OR c.collaborator_ids = '' OR c.collaborator_ids = '0')";
+            }
+        } else if ($ownership === 'cooperation') {
+            $currentUserId = $owner ? (int)$owner : (int)($auth['user_id'] ?? 0);
+            if ($currentUserId > 0) {
+                $where[] = "((FIND_IN_SET(?, c.collaborator_ids) OR (c.owner_id = ? AND c.collaborator_ids IS NOT NULL AND c.collaborator_ids != '' AND c.collaborator_ids != '0')) OR EXISTS (SELECT 1 FROM cooperation_slips cs WHERE cs.contact_id = c.id AND (cs.created_by = ? OR JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR))))))";
+                $params[] = $currentUserId;
+                $params[] = $currentUserId;
+                $params[] = $currentUserId;
+                $params[] = $currentUserId;
+            } else {
+                $where[] = "((c.collaborator_ids IS NOT NULL AND c.collaborator_ids != '' AND c.collaborator_ids != '0') OR EXISTS (SELECT 1 FROM cooperation_slips cs WHERE cs.contact_id = c.id))";
+            }
+        }
+
+        if ($budgetRange === 'under_2b') {
+            $where[] = "((c.budget > 0 AND c.budget < 2000000000) OR c.budget_range LIKE '%< 2%' OR c.budget_range LIKE '%duoi 2%' OR c.budget_range LIKE '%dưới 2%')";
+        } else if ($budgetRange === '2b_5b') {
+            $where[] = "((c.budget >= 2000000000 AND c.budget <= 5000000000) OR c.budget_range LIKE '%2 - 5%' OR c.budget_range LIKE '%2-5%')";
+        } else if ($budgetRange === '5b_10b') {
+            $where[] = "((c.budget > 5000000000 AND c.budget <= 10000000000) OR c.budget_range LIKE '%5 - 10%' OR c.budget_range LIKE '%5-10%')";
+        } else if ($budgetRange === 'over_10b') {
+            $where[] = "((c.budget > 10000000000) OR c.budget_range LIKE '%> 10%' OR c.budget_range LIKE '%tren 10%' OR c.budget_range LIKE '%trên 10%')";
         }
 
         // Snapshot base WHERE and params for computing stage counts across all tabs

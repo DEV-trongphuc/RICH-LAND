@@ -627,8 +627,15 @@ const RuleSettingsInner = () => {
 
   const getFieldOptions = () => {
     const baseFields = [
-      { value: 'source', label: t('Nguồn Data (Hệ thống)') },
+      { value: 'source', label: t('Nguồn Data / Phân loại Lead (Hệ thống)') },
       { value: 'type', label: t('Loại Data (Hệ thống)') },
+      { value: 'platform', label: t('Nền tảng Ads (Platform: Meta, Google, TikTok,...)') },
+      { value: 'utm_campaign', label: t('Tên Chiến dịch Ads (UTM Campaign)') },
+      { value: 'utm_medium', label: t('Hình thức Ads (UTM Medium)') },
+      { value: 'utm_content', label: t('Nội dung Ads (UTM Content)') },
+      { value: 'utm_term', label: t('Từ khóa Ads (UTM Term)') },
+      { value: 'form_name', label: t('Tên Lead Form / Landing Page') },
+      { value: 'budget', label: t('Ngân sách tài chính (Budget)') },
       { value: 'note', label: t('Ghi Chú (Hệ thống)') },
       { value: 'name', label: t('Họ và Tên (Hệ thống)') },
       { value: 'phone', label: t('Số điện thoại (Hệ thống)') },
@@ -640,7 +647,21 @@ const RuleSettingsInner = () => {
       if (conn && conn.mappings) {
         const customFields = conn.mappings.map((m: any) => ({
           value: m.sheet_column,
-          label: t("Cột: {col}").replace('{col}', m.sheet_column)
+          label: t("Cột Sheets: {col}").replace('{col}', m.sheet_column)
+        }));
+        return [...baseFields, ...customFields];
+      }
+    } else {
+      const allCols = new Set<string>();
+      connections.forEach(c => {
+        (c.mappings || []).forEach((m: any) => {
+          if (m.sheet_column) allCols.add(m.sheet_column);
+        });
+      });
+      if (allCols.size > 0) {
+        const customFields = Array.from(allCols).map(col => ({
+          value: col,
+          label: t("Cột Sheets: {col}").replace('{col}', col)
         }));
         return [...baseFields, ...customFields];
       }
@@ -1053,13 +1074,15 @@ const RuleSettingsInner = () => {
                     {branch.inject?.enabled && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
                         {branch.inject.fields.map((f: any, fi: number) => {
-                          const isCustomMode = f.isCustom || !['source', 'type', 'note', 'name', ''].includes(f.col);
+                          const isCustomMode = f.isCustom || !['source', 'platform', 'type', 'note', 'name', ''].includes(f.col);
+                          const rankOptions = ['R3_Fb', 'R3', 'R2', 'R3_Zalo', 'broadcast', 'ca_nhan', 'gioi_thieu', 'databank'];
                           return (
                             <div key={fi} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.5rem', alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', borderBottom: isMobile ? '1px dashed var(--color-border)' : 'none', paddingBottom: isMobile ? '10px' : '0', marginBottom: isMobile ? '10px' : '0' }}>
-                              <div style={{ flex: isMobile ? 'none' : (isCustomMode ? '0 0 180px' : 1), width: isMobile ? '100%' : 'auto', background: 'var(--color-surface)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
+                              <div style={{ flex: isMobile ? 'none' : (isCustomMode ? '0 0 200px' : 1), width: isMobile ? '100%' : 'auto', background: 'var(--color-surface)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
                                 <CustomSelect
                                   options={[
-                                    { value: 'source', label: t('Nguồn Khách (Source)') },
+                                    { value: 'source', label: t('Phân loại Lead / Rank (Source)') },
+                                    { value: 'platform', label: t('Nền tảng Ads (Platform)') },
                                     { value: 'type', label: t('Loại Khách (Type)') },
                                     { value: 'note', label: t('Ghi Chú (Note)') },
                                     { value: 'name', label: t('Tên Khách Hàng (Name)') },
@@ -1070,7 +1093,7 @@ const RuleSettingsInner = () => {
                                     const newB = [...branches];
                                     if (val === 'custom_trigger') {
                                       newB[bIndex].inject.fields[fi].isCustom = true;
-                                      if (['source', 'type', 'note', 'name'].includes(newB[bIndex].inject.fields[fi].col)) {
+                                      if (['source', 'platform', 'type', 'note', 'name'].includes(newB[bIndex].inject.fields[fi].col)) {
                                         newB[bIndex].inject.fields[fi].col = '';
                                       }
                                     } else {
@@ -1098,10 +1121,10 @@ const RuleSettingsInner = () => {
                                 </div>
                               )}
 
-                              <div style={{ flex: isMobile ? 'none' : (isCustomMode ? 1.5 : 2), width: isMobile ? '100%' : 'auto', minWidth: 150 }}>
+                              <div style={{ flex: isMobile ? 'none' : (isCustomMode ? 1.5 : 2), width: isMobile ? '100%' : 'auto', minWidth: 150, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <input
                                   style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
-                                  placeholder={t("Giá trị muốn gán tự động...")}
+                                  placeholder={f.col === 'source' ? t("VD: R3_Fb, R2, R3...") : t("Giá trị muốn gán tự động...")}
                                   value={f.val}
                                   onChange={e => {
                                     const newB = [...branches];
@@ -1109,6 +1132,34 @@ const RuleSettingsInner = () => {
                                     setBranches(newB);
                                   }}
                                 />
+                                {f.col === 'source' && (
+                                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+                                    <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginRight: 2 }}>{t('Gợi ý Rank:')}</span>
+                                    {rankOptions.map(rOpt => (
+                                      <span
+                                        key={rOpt}
+                                        onClick={() => {
+                                          const newB = [...branches];
+                                          newB[bIndex].inject.fields[fi].val = rOpt;
+                                          setBranches(newB);
+                                        }}
+                                        style={{
+                                          fontSize: '0.68rem',
+                                          fontWeight: f.val === rOpt ? 700 : 500,
+                                          padding: '1px 6px',
+                                          borderRadius: '10px',
+                                          background: f.val === rOpt ? 'var(--color-primary)' : 'var(--color-surface)',
+                                          color: f.val === rOpt ? '#ffffff' : 'var(--color-text)',
+                                          border: `1px solid ${f.val === rOpt ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                          cursor: 'pointer',
+                                          transition: 'all 0.15s'
+                                        }}
+                                      >
+                                        {rOpt}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
 
                               <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)', padding: '6px' }} onClick={() => {

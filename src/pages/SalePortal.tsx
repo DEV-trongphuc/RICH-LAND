@@ -1655,6 +1655,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const [publicLeads, setPublicLeads] = useState<any[]>([]);
   const [showDeletedFilter, setShowDeletedFilter] = useState<'none' | 'only' | 'all'>('none');
+  const [databankProjectFilter, setDatabankProjectFilter] = useState<string>('all');
   const [publicLoading, setPublicLoading] = useState(false);
   const [isClaimingLeadId, setIsClaimingLeadId] = useState<number | null>(null);
   const [publicQuota, setPublicQuota] = useState<any>(null);
@@ -9767,8 +9768,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const renderDatabankView = () => {
     const DATABANK_ITEMS_PER_PAGE = 10;
-    const databankTotalPages = Math.ceil(publicLeads.length / DATABANK_ITEMS_PER_PAGE);
-    const paginatedPublicLeads = publicLeads.slice((databankPage - 1) * DATABANK_ITEMS_PER_PAGE, databankPage * DATABANK_ITEMS_PER_PAGE);
+    const filteredPublicLeads = publicLeads.filter(lead => {
+      if (!databankProjectFilter || databankProjectFilter === 'all') return true;
+      return String(lead.project_id || '') === String(databankProjectFilter) || String(lead.project_name || '') === String(databankProjectFilter);
+    });
+    const databankTotalPages = Math.ceil(filteredPublicLeads.length / DATABANK_ITEMS_PER_PAGE);
+    const paginatedPublicLeads = filteredPublicLeads.slice((databankPage - 1) * DATABANK_ITEMS_PER_PAGE, databankPage * DATABANK_ITEMS_PER_PAGE);
     const isAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
     const isQuotaExceeded = !isAdmin && publicQuota && (
       (publicQuota.claims_hour !== undefined && publicQuota.limit_hour !== undefined && Number(publicQuota.claims_hour) >= Number(publicQuota.limit_hour)) ||
@@ -9903,10 +9908,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   ))}
                 </div>
               )}
+              {/* Project Filter (Dự án nguồn) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('Dự án:')}</span>
+                <CustomSelect
+                  searchable
+                  options={[
+                    { value: 'all', label: t('Tất cả dự án') },
+                    ...allowedProjects.map(p => ({ value: String(p.id), label: p.name }))
+                  ]}
+                  value={databankProjectFilter}
+                  onChange={(val) => {
+                    setDatabankProjectFilter(String(val));
+                    setDatabankPage(1);
+                  }}
+                  width={150}
+                />
+              </div>
+
               {/* Status Filter for Admin */}
               {isAdmin && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('Bộ lọc:')}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('Trạng thái:')}</span>
                   <CustomSelect
                     options={[
                       { value: 'none', label: t('Hoạt động') },
@@ -10112,6 +10135,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
                         {t('Điện thoại')}: {lead.phone || '—'}
                       </span>
+                      {lead.project_name && (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                          <Building2 size={11} /> {lead.project_name}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
@@ -10235,7 +10263,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Avatar name={lead.full_name || t('Khách hàng')} size={32} />
-                            <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.full_name || t('Khách hàng')}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.full_name || t('Khách hàng')}</span>
+                              {lead.project_name && (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                  <Building2 size={11} /> {lead.project_name}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td style={{ padding: '1rem' }}>

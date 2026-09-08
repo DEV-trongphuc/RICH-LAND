@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, AlertTriangle, CheckCircle2, Clock, Sparkles, RefreshCw, X, Fingerprint, MapPin } from 'lucide-react';
+import { Camera, AlertTriangle, CheckCircle2, Clock, Sparkles, RefreshCw, X, Fingerprint, MapPin, HelpCircle, Smartphone, Globe, ExternalLink } from 'lucide-react';
 import { CustomModal } from './CustomModal';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { fetchAPI } from '../../utils/api';
@@ -30,6 +30,8 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [checkInReason, setCheckInReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [lateReasonError, setLateReasonError] = useState(false);
+  const lateReasonRef = useRef<HTMLTextAreaElement>(null);
 
   // Scanner & AI Auto Detection States
   const [faceScanProgress, setFaceScanProgress] = useState(0);
@@ -43,6 +45,8 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
   const [addressLoading, setAddressLoading] = useState<boolean>(false);
   const [locationError, setLocationError] = useState<string>('');
   const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [showGpsHelpModal, setShowGpsHelpModal] = useState(false);
+  const [activeGpsTab, setActiveGpsTab] = useState<'ios' | 'android' | 'zalo'>('ios');
 
   useEffect(() => {
     if (isOpen) {
@@ -352,7 +356,9 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
     if (!imageToUse || submitting) return;
 
     if (isLate && !checkInReason.trim()) {
-      toast.error(t('Bạn đi trễ. Vui lòng điền lý do để gửi duyệt.'));
+      toast.error(t('Vui lòng điền lý do đi trễ để Quản lý duyệt mở cổng nhận data!'));
+      setLateReasonError(true);
+      lateReasonRef.current?.focus();
       return;
     }
 
@@ -450,8 +456,9 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
   const strokeDashoffset = circumference - (circumference * faceScanProgress) / 100;
 
   return (
-    <CustomModal
-      isOpen={isOpen}
+    <>
+      <CustomModal
+        isOpen={isOpen}
       onClose={onClose}
       title={isSuccessScreen ? '' : (
         <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -762,22 +769,178 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
               </div>
             )}
 
-            {/* Captured Actions or Manual Retake */}
-            {capturedImage && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: '1.75rem', marginBottom: '0.5rem', width: '100%' }}>
+          </div>
+
+          {/* Captured Actions or Manual Retake */}
+          {capturedImage && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', marginTop: '1.25rem' }}>
+              {/* 1. LÝ DO ĐI TRỄ (ĐẨY LÊN TRÊN ĐỂ SALES THẤY RÕ & BẮT BUỘC ĐIỀN TRƯỚC KHI XÁC NHẬN) */}
+              {isLate && (
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.04) 0%, rgba(189, 29, 45, 0.09) 100%)',
+                  border: lateReasonError ? '2px solid #ef4444' : '1px solid rgba(189, 29, 45, 0.25)',
+                  borderRadius: '16px',
+                  padding: '14px 16px',
+                  boxShadow: '0 8px 30px rgba(189, 29, 45, 0.06)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  transition: 'all 0.3s ease'
+                }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', color: '#991b1b', fontSize: '0.875rem', fontWeight: 800 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <AlertTriangle size={14} color="#BD1D2D" />
+                    </div>
+                    <span>{t('Bạn đã trễ') + ` ${minutesLate} ` + t('phút!')}</span>
+                  </div>
+                  <p style={{ fontSize: '0.76rem', color: '#4b5563', margin: 0, lineHeight: 1.4 }}>
+                    {t('Vui lòng điền lý do đi trễ để Quản lý duyệt mở cổng nhận data.')}
+                  </p>
+                  <textarea
+                    ref={lateReasonRef}
+                    className="form-control"
+                    style={{
+                      width: '100%',
+                      height: '68px',
+                      fontSize: '0.8125rem',
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      border: lateReasonError ? '1.5px solid #ef4444' : '1px solid var(--color-border)',
+                      background: '#ffffff',
+                      color: '#1e293b',
+                      resize: 'none',
+                      outline: 'none',
+                      boxShadow: lateReasonError ? '0 0 0 3px rgba(239, 68, 68, 0.15)' : 'inset 0 2px 4px rgba(0,0,0,0.02)',
+                      transition: 'all 0.25s ease'
+                    }}
+                    onFocus={(e) => {
+                      setLateReasonError(false);
+                      e.target.style.borderColor = '#BD1D2D';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(189, 29, 45, 0.12)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = lateReasonError ? '#ef4444' : 'var(--color-border)';
+                      e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02)';
+                    }}
+                    placeholder={t('Ví dụ: Kẹt xe, đi gặp khách hàng từ sớm...')}
+                    value={checkInReason}
+                    onChange={(e) => {
+                      setCheckInReason(e.target.value);
+                      if (e.target.value.trim()) setLateReasonError(false);
+                    }}
+                    required
+                  />
+                  {lateReasonError && (
+                    <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 600 }}>
+                      * {t('Bắt buộc nhập lý do đi trễ để tiếp tục')}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* 2. GPS Location Status Block (Có nút thử lại & nút hướng dẫn bật quyền GPS) */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                background: locationError ? 'rgba(239, 68, 68, 0.05)' : 'var(--color-bg-alt)',
+                padding: '12px 14px',
+                borderRadius: '12px',
+                border: locationError ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid var(--color-border-light)',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: locationError ? 'rgba(239, 68, 68, 0.15)' : 'rgba(189, 29, 45, 0.1)', flexShrink: 0, marginTop: '2px' }}>
+                    <MapPin size={14} color={locationError ? '#ef4444' : '#BD1D2D'} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: locationError ? '#ef4444' : 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {locationError ? t('LỖI ĐỊNH VỊ (GPS BẮT BUỘC)') : t('VỊ TRÍ CHẤM CÔNG')}
+                      {addressLoading && <RefreshCw size={10} className="spin" style={{ marginLeft: '4px' }} />}
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: locationError ? '#dc2626' : 'var(--color-text)', marginTop: '3px', wordBreak: 'break-word', lineHeight: 1.4 }}>
+                      {addressLoading ? t('Đang xác định vị trí GPS...') : (locationError || currentAddress || t('Không tìm thấy địa chỉ'))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nút thử lại GPS & Xem hướng dẫn cấp quyền nếu bị lỗi */}
+                {locationError && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed rgba(239, 68, 68, 0.2)' }}>
+                    <button
+                      type="button"
+                      onClick={() => fetchLocation()}
+                      disabled={addressLoading}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        background: '#ef4444',
+                        color: '#fff',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        border: 'none',
+                        cursor: addressLoading ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <RefreshCw size={12} className={addressLoading ? 'spin' : ''} />
+                      <span>{addressLoading ? t('Đang quét...') : t('Thử lại định vị')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowGpsHelpModal(true)}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        background: 'transparent',
+                        color: '#ef4444',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <HelpCircle size={12} />
+                      <span>{t('Hướng dẫn bật GPS')}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. NÚT XÁC NHẬN CHẤM CÔNG & QUÉT LẠI */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: '0.5rem', marginBottom: '0.5rem', width: '100%' }}>
                 <button
                   type="button"
                   className="btn primary"
-                  disabled={submitting || !!locationError || addressLoading}
-                  onClick={() => submitCheckIn()}
+                  disabled={submitting || addressLoading}
+                  onClick={() => {
+                    if (isLate && !checkInReason.trim()) {
+                      toast.error(t('Vui lòng điền lý do đi trễ để Quản lý duyệt mở cổng nhận data!'));
+                      setLateReasonError(true);
+                      lateReasonRef.current?.focus();
+                      return;
+                    }
+                    if (locationError) {
+                      toast.error(t('Chưa xác định được GPS. Vui lòng bấm "Thử lại định vị" hoặc xem Hướng dẫn bật GPS!'));
+                      return;
+                    }
+                    submitCheckIn();
+                  }}
                   style={{
-                    backgroundColor: (!!locationError || addressLoading) ? '#4b5563' : '#BD1D2D',
+                    backgroundColor: (addressLoading || submitting) ? '#94a3b8' : '#BD1D2D',
                     color: '#fff',
                     borderRadius: '24px',
                     padding: '12px 36px',
                     fontWeight: 700,
                     fontSize: '0.95rem',
-                    boxShadow: (!!locationError || addressLoading) ? 'none' : '0 4px 15px rgba(189, 29, 45, 0.4)',
+                    boxShadow: (addressLoading || submitting) ? 'none' : '0 4px 15px rgba(189, 29, 45, 0.4)',
                     border: 'none',
                     display: 'flex',
                     alignItems: 'center',
@@ -785,12 +948,17 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                     gap: '8px',
                     width: '100%',
                     maxWidth: '340px',
-                    cursor: (submitting || !!locationError || addressLoading) ? 'not-allowed' : 'pointer'
+                    cursor: (submitting || addressLoading) ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   {submitting ? (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <RefreshCw size={16} className="spin" /> {t('Đang gửi...')}
+                    </span>
+                  ) : addressLoading ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <RefreshCw size={16} className="spin" /> {t('Đang lấy vị trí GPS...')}
                     </span>
                   ) : (
                     t('Xác nhận Chấm công')
@@ -800,138 +968,213 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                 <span
                   onClick={submitting ? undefined : startCamera}
                   style={{
-                    fontSize: '0.85rem',
+                    fontSize: '0.82rem',
                     color: 'var(--color-text-light)',
                     textDecoration: 'underline',
                     cursor: submitting ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px',
-                    opacity: submitting ? 0.5 : 0.8,
-                    marginTop: '4px'
+                    opacity: submitting ? 0.5 : 0.85,
+                    marginTop: '2px'
                   }}
                 >
                   <RefreshCw size={12} />
                   {t('Quét lại')}
                 </span>
               </div>
-            )}
-          </div>
-
-          {/* GPS Location Status Block */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '8px',
-            background: 'var(--color-bg-alt)',
-            padding: '12px 14px',
-            borderRadius: '12px',
-            border: '1px solid var(--color-border-light)',
-            width: '100%',
-            boxSizing: 'border-box',
-            marginBottom: '0.5rem'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: locationError ? 'rgba(239, 68, 68, 0.15)' : 'rgba(189, 29, 45, 0.1)', flexShrink: 0, marginTop: '2px' }}>
-              <MapPin size={14} color={locationError ? '#ef4444' : '#BD1D2D'} />
             </div>
-            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: locationError ? '#ef4444' : 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {locationError ? t('LỖI ĐỊNH VỊ (GPS BẮT BUỘC)') : t('VỊ TRÍ CHẤM CÔNG')}
-                {addressLoading && <RefreshCw size={10} className="spin" style={{ marginLeft: '4px' }} />}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text)', marginTop: '4px', wordBreak: 'break-word', opacity: 0.9, lineHeight: 1.4 }}>
-                {addressLoading ? t('Đang xác định vị trí...') : (locationError || currentAddress || t('Không tìm thấy địa chỉ'))}
-              </div>
+          )}
+
+          {/* Manual Capture Option (Shown only during active scanning) */}
+          {isCameraActive && !capturedImage && (
+            <div style={{ textAlign: 'center', marginTop: '1rem', paddingBottom: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={handleManualCapture}
+                style={{
+                  background: isManualMode ? '#BD1D2D' : 'transparent',
+                  border: 'none',
+                  color: isManualMode ? '#ffffff' : '#94a3b8',
+                  fontSize: '0.8125rem',
+                  fontWeight: isManualMode ? 700 : 500,
+                  cursor: 'pointer',
+                  padding: isManualMode ? '10px 28px' : '4px 12px',
+                  borderRadius: isManualMode ? '24px' : '0',
+                  textDecoration: isManualMode ? 'none' : 'underline',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  margin: '0 auto',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {isManualMode && <Camera size={16} />}
+                <span>{isManualMode ? t('Chụp ảnh thủ công') : t('Không nhận diện được khuôn mặt')}</span>
+              </button>
             </div>
-          </div>
-
-          {/* Bottom Area: Late Reason & Control Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {/* Late Reason Input */}
-            {isLate && capturedImage && (
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.03) 0%, rgba(189, 29, 45, 0.08) 100%)',
-                border: '1px solid rgba(189, 29, 45, 0.18)',
-                borderRadius: '16px',
-                padding: '16px',
-                boxShadow: '0 8px 30px rgba(189, 29, 45, 0.04)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                transition: 'all 0.3s ease'
-              }}>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', color: '#991b1b', fontSize: '0.875rem', fontWeight: 800 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <AlertTriangle size={15} />
-                  </div>
-                  {t('Bạn đã trễ') + ` ${minutesLate} ` + t('phút!')}
-                </div>
-                <p style={{ fontSize: '0.78rem', color: '#4b5563', margin: 0, lineHeight: 1.4 }}>
-                  {t('Vui lòng điền lý do đi trễ để Quản lý duyệt mở cổng nhận data.')}
-                </p>
-                <textarea
-                  className="form-control"
-                  style={{
-                    width: '100%',
-                    height: '70px',
-                    fontSize: '0.8125rem',
-                    padding: '10px 14px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--color-border)',
-                    background: '#ffffff',
-                    color: '#1e293b',
-                    resize: 'none',
-                    outline: 'none',
-                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)',
-                    transition: 'all 0.25s ease'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#BD1D2D';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(189, 29, 45, 0.12)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'var(--color-border)';
-                    e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02)';
-                  }}
-                  placeholder={t('Ví dụ: Kẹt xe, đi gặp khách hàng từ sớm...')}
-                  value={checkInReason}
-                  onChange={(e) => setCheckInReason(e.target.value)}
-                  required
-                />
-              </div>
-            )}
-
-            {/* Manual Capture Option (Shown only during active scanning) */}
-            {isCameraActive && !capturedImage && (
-              <div style={{ textAlign: 'center', marginTop: '1rem', paddingBottom: '0.5rem' }}>
-                <button
-                  type="button"
-                  onClick={handleManualCapture}
-                  style={{
-                    background: isManualMode ? '#BD1D2D' : 'transparent',
-                    border: 'none',
-                    color: isManualMode ? '#ffffff' : '#94a3b8',
-                    fontSize: '0.8125rem',
-                    fontWeight: isManualMode ? 700 : 500,
-                    cursor: 'pointer',
-                    padding: isManualMode ? '10px 28px' : '4px 12px',
-                    borderRadius: isManualMode ? '24px' : '0',
-                    textDecoration: isManualMode ? 'none' : 'underline',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    margin: '0 auto',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {isManualMode && <Camera size={16} />}
-                  <span>{isManualMode ? t('Chụp ảnh thủ công') : t('Không nhận diện được khuôn mặt')}</span>
-                </button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       )}
     </CustomModal>
-  );
+
+    {/* Modal Hướng Dẫn Bật Quyền Định Vị GPS Chi Tiết Cho Từng Trình Duyệt */}
+    {showGpsHelpModal && (
+      <CustomModal
+        isOpen={showGpsHelpModal}
+        onClose={() => setShowGpsHelpModal(false)}
+        title={t('Hướng dẫn bật quyền định vị GPS')}
+        size="md"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+          {/* Tab Selector */}
+          <div style={{ display: 'flex', gap: '6px', background: 'var(--color-bg-alt)', padding: '4px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+            {[
+              { id: 'ios', label: 'Safari (iPhone/iPad)', icon: <Smartphone size={13} /> },
+              { id: 'android', label: 'Chrome (Android)', icon: <Globe size={13} /> },
+              { id: 'zalo', label: 'Zalo / Facebook', icon: <ExternalLink size={13} /> }
+            ].map(tab => {
+              const active = activeGpsTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveGpsTab(tab.id as any)}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 6px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '0.74rem',
+                    fontWeight: active ? 700 : 500,
+                    cursor: 'pointer',
+                    background: active ? 'var(--color-surface)' : 'transparent',
+                    color: active ? '#BD1D2D' : 'var(--color-text-muted)',
+                    boxShadow: active ? 'var(--shadow-sm)' : 'none',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Content corresponding to selected tab */}
+          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '16px' }}>
+            {activeGpsTab === 'ios' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--color-text)' }}>
+                <div style={{ fontWeight: 700, color: '#BD1D2D', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Smartphone size={15} />
+                  <span>Cách bật trên Safari iPhone / iPad:</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>1</span>
+                    <span>Bấm vào biểu tượng <strong>aA</strong> (hoặc icon Cài đặt) ở bên trái thanh nhập địa chỉ URL của Safari.</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>2</span>
+                    <span>Chọn <strong>Cài đặt trang web</strong> (Website Settings) &rarr; chọn mục <strong>Vị trí</strong> (Location).</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>3</span>
+                    <span>Chuyển từ "Hỏi" hoặc "Từ chối" sang <strong>Cho phép</strong> (Allow).</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>4</span>
+                    <span>Nếu hệ thống máy tắt định vị: Vào <strong>Cài đặt iPhone</strong> &rarr; <strong>Quyền riêng tư &amp; Bảo mật</strong> &rarr; <strong>Dịch vụ định vị</strong> &rarr; Bật Safari sang <em>"Khi dùng ứng dụng"</em>.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeGpsTab === 'android' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--color-text)' }}>
+                <div style={{ fontWeight: 700, color: '#BD1D2D', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Globe size={15} />
+                  <span>Cách bật trên Chrome / Cốc Cốc Android:</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>1</span>
+                    <span>Bấm vào biểu tượng <strong>Ổ khóa 🔒</strong> (hoặc biểu tượng tùy chỉnh thanh địa chỉ) ở góc trái URL.</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>2</span>
+                    <span>Chọn <strong>Quyền</strong> (Permissions) hoặc <strong>Cài đặt trang web</strong>.</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>3</span>
+                    <span>Gạt bật công tắc <strong>Vị trí</strong> (Location) sang trạng thái <strong>Cho phép</strong> (Allow).</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>4</span>
+                    <span>Nhấn nút F5 / Tải lại trang rồi bấm "Thử lại định vị".</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeGpsTab === 'zalo' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--color-text)' }}>
+                <div style={{ fontWeight: 700, color: '#BD1D2D', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ExternalLink size={15} />
+                  <span>Khi mở link trực tiếp trong Zalo hoặc Facebook:</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>1</span>
+                    <span>Trình duyệt web tích hợp sẵn trong ứng dụng Zalo/Facebook thường tự động chặn quyền GPS/Camera.</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>2</span>
+                    <span>Bấm vào dấu <strong>3 chấm (...)</strong> ở góc trên cùng bên phải màn hình.</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>3</span>
+                    <span>Chọn <strong>"Mở bằng trình duyệt"</strong> (Open in Safari hoặc Chrome).</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>4</span>
+                    <span>Khi trình duyệt Safari/Chrome hỏi quyền vị trí, bấm <strong>"Cho phép"</strong> để hoàn tất chấm công.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action Footer */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => {
+                setShowGpsHelpModal(false);
+                fetchLocation();
+              }}
+              style={{
+                backgroundColor: '#BD1D2D',
+                color: '#fff',
+                borderRadius: '20px',
+                padding: '8px 20px',
+                fontWeight: 600,
+                fontSize: '0.8125rem',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {t('Đã hiểu & Thử lại định vị')}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+    )}
+  </>
+);
 };

@@ -142,8 +142,9 @@
   .drawer {
     left: 0 !important;
     right: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
   .drawerBody {
     flex-direction: column;

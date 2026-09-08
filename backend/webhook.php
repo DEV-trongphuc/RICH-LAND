@@ -198,6 +198,13 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
     $source = extractMappedValues($mappings, 'source', $data);
     $note = extractMappedValues($mappings, 'note', $data);
     $name = extractMappedValues($mappings, 'name', $data);
+    $platform = extractMappedValues($mappings, 'platform', $data);
+    $budget = extractMappedValues($mappings, 'budget', $data);
+    $utm_campaign = extractMappedValues($mappings, 'utm_campaign', $data);
+    $utm_medium = extractMappedValues($mappings, 'utm_medium', $data);
+    $utm_content = extractMappedValues($mappings, 'utm_content', $data);
+    $utm_term = extractMappedValues($mappings, 'utm_term', $data);
+    $form_name = extractMappedValues($mappings, 'form_name', $data);
 
     if (!empty($connItem['auto_append_unmapped_note'])) {
         $mappedCols = [];
@@ -301,6 +308,13 @@ $data['name'] = $name;
 $data['note'] = $note;
 $data['source'] = $source;
 $data['type'] = $type;
+if (!empty($platform)) $data['platform'] = $platform;
+if (!empty($budget)) $data['budget'] = $budget;
+if (!empty($utm_campaign)) $data['utm_campaign'] = $utm_campaign;
+if (!empty($utm_medium)) $data['utm_medium'] = $utm_medium;
+if (!empty($utm_content)) $data['utm_content'] = $utm_content;
+if (!empty($utm_term)) $data['utm_term'] = $utm_term;
+if (!empty($form_name)) $data['form_name'] = $form_name;
 
 $ruleResult = evaluateRules($conn, $data, $source, $type, $connectionId, $connectionType);
 $targetRoundId = null;
@@ -313,11 +327,13 @@ if (is_array($ruleResult)) {
     $inject = $ruleResult['inject'] ?? [];
     
     // Áp dụng ghi đè dữ liệu (Inject Fields)
-    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
+    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email', 'platform', 'budget'];
     foreach ($inject as $k => $v) {
         if (in_array($k, $standardFields)) {
             if ($k === 'source') $source = $v;
             if ($k === 'type') $type = $v;
+            if ($k === 'platform') $platform = $v;
+            if ($k === 'budget') $budget = $v;
             if ($k === 'note') $note = $v;
             if ($k === 'name') $name = $v;
             if ($k === 'phone') $phone = normalizePhone($v);

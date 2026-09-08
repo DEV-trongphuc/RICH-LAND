@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers, MoreHorizontal, ChevronRight } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers, MoreHorizontal, ChevronRight, Share2, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -163,11 +163,17 @@ const formatTimeAgo = (dateStr?: string) => {
 const SEGMENTS = [];
 
 const SOURCE_OPTIONS = [
-  { value: '', label: 'Tất cả nguồn' },
+  { value: '', label: 'Tất cả nguồn / Rank' },
+  { value: 'R3_Fb', label: 'R3_Fb (Facebook Ads)' },
+  { value: 'R3', label: 'R3' },
+  { value: 'R2', label: 'R2' },
+  { value: 'R3_Zalo', label: 'R3_Zalo (Zalo Ads)' },
   { value: 'facebook', label: 'Facebook' },
   { value: 'google', label: 'Google Ads' },
+  { value: 'broadcast', label: 'Broadcast' },
   { value: 'gioi_thieu', label: 'Giới thiệu' },
   { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
+  { value: 'databank', label: 'Kho Data' },
   { value: 'website', label: 'Website' },
   { value: 'other', label: 'Khác' }
 ];
@@ -354,8 +360,30 @@ export const ContactsPage: React.FC = () => {
     beforeDate: '',
     afterDate: '',
     dateActive: false,
-    dataType: ''
+    dataType: '',
+    ownership: '',
+    budgetRange: ''
   });
+
+  const [filterOwnership, setFilterOwnership] = useState<'' | 'mine' | 'cooperation'>('');
+  const [filterBudgetRange, setFilterBudgetRange] = useState('');
+
+  // Performance optimization: Debounced tag input (eliminates typing lag & redundant requests)
+  const [tagInput, setTagInput] = useState('');
+  const debouncedTag = useDebounce(tagInput.trim(), 350);
+
+  useEffect(() => {
+    if (debouncedTag !== (activeFilters.tag || '')) {
+      setActiveFilters(prev => ({ ...prev, tag: debouncedTag }));
+      setPage(1);
+    }
+  }, [debouncedTag]);
+
+  useEffect(() => {
+    if (activeFilters.tag !== tagInput) {
+      setTagInput(activeFilters.tag || '');
+    }
+  }, [activeFilters.tag]);
 
   const activeFiltersCount = useMemo(() => {
     return [
@@ -366,12 +394,35 @@ export const ContactsPage: React.FC = () => {
       activeFilters.campaignId,
       activeFilters.tag,
       activeFilters.dataType,
+      activeFilters.ownership,
+      activeFilters.budgetRange,
       activeFilters.dateActive ? 'date' : ''
     ].filter(val => {
       if (typeof val === 'string') return val.trim() !== '';
       return !!val;
     }).length;
   }, [activeFilters]);
+
+  // Dynamic Rank / Source options: includes preset rank options and any custom rank/source from actual data
+  const availableSourceOptions = useMemo(() => {
+    const knownValues = new Set(SOURCE_OPTIONS.map(o => o.value));
+    const extraOptions: { value: string; label: string }[] = [];
+    
+    contacts.forEach(c => {
+      const src = (c.source || '').trim();
+      if (src && !knownValues.has(src)) {
+        knownValues.add(src);
+        extraOptions.push({ value: src, label: src });
+      }
+    });
+
+    if (activeFilters.source && !knownValues.has(activeFilters.source)) {
+      knownValues.add(activeFilters.source);
+      extraOptions.push({ value: activeFilters.source, label: activeFilters.source });
+    }
+
+    return [...SOURCE_OPTIONS, ...extraOptions];
+  }, [contacts, activeFilters.source]);
 
   useEffect(() => {
     const statusParam = searchParams.get('status');
@@ -503,8 +554,24 @@ export const ContactsPage: React.FC = () => {
   };
 
   const [total, setTotal] = useState(0);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const fetchData = async () => {
+    // Abort pending previous request when user rapidly switches filters/tabs
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const currentSignal = abortControllerRef.current.signal;
+
     setLoading(true);
     try {
       const params: any = { 
@@ -532,6 +599,8 @@ export const ContactsPage: React.FC = () => {
       if (activeFilters.campaignId) params.campaign_id = activeFilters.campaignId;
       if (activeFilters.tag) params.tag = activeFilters.tag;
       if (activeFilters.dataType) params.data_type = activeFilters.dataType;
+      if (activeFilters.ownership) params.ownership = activeFilters.ownership;
+      if (activeFilters.budgetRange) params.budget_range = activeFilters.budgetRange;
 
       if (activeFilters.dateActive) {
         params.date_field = activeFilters.dateField;
@@ -550,7 +619,7 @@ export const ContactsPage: React.FC = () => {
         params.team_id = teamId;
       }
 
-      const r = await api.get('/contacts', { params });
+      const r = await api.get('/contacts', { params, signal: currentSignal });
       const data = r.data.data;
       const items = data.items || [];
       // Double guard: Ensure not_lead and proposed not_lead are hidden from sales
@@ -563,11 +632,16 @@ export const ContactsPage: React.FC = () => {
         setStageCounts(data.stage_counts);
       }
     } catch (e: any) {
+      if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED' || e?.message === 'canceled') {
+        return;
+      }
       setContacts([]);
       setTotal(0);
       addToast('Không thể lấy danh sách liên hệ', 'error');
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current?.signal === currentSignal) {
+        setLoading(false);
+      }
     }
   };
 
@@ -671,6 +745,7 @@ export const ContactsPage: React.FC = () => {
       (dateFilterType === 'before' && filterBeforeDate) ||
       (dateFilterType === 'after' && filterAfterDate);
 
+    setTagInput(filterTag.trim());
     setActiveFilters({
       status: filterStatus,
       source: filterSource,
@@ -685,9 +760,32 @@ export const ContactsPage: React.FC = () => {
       beforeDate: filterBeforeDate,
       afterDate: filterAfterDate,
       dateActive: !!dateActive,
-      dataType: filterDataType
+      dataType: filterDataType,
+      ownership: filterOwnership,
+      budgetRange: filterBudgetRange
     });
     setShowAdvancedFilters(false);
+  };
+
+  const toggleAdvancedFilters = () => {
+    if (!showAdvancedFilters) {
+      setFilterStatus(activeFilters.status);
+      setFilterSource(activeFilters.source);
+      setFilterOwnerId(activeFilters.ownerId);
+      setFilterProjectId(activeFilters.projectId);
+      setFilterCampaignId(activeFilters.campaignId);
+      setFilterTag(activeFilters.tag);
+      setFilterOwnership(activeFilters.ownership as any);
+      setFilterBudgetRange(activeFilters.budgetRange);
+      setFilterDataType(activeFilters.dataType);
+      setFilterDateField(activeFilters.dateField as any);
+      setDateFilterType(activeFilters.dateType);
+      setFilterFromDate(activeFilters.fromDate);
+      setFilterToDate(activeFilters.toDate);
+      setFilterBeforeDate(activeFilters.beforeDate);
+      setFilterAfterDate(activeFilters.afterDate);
+    }
+    setShowAdvancedFilters(!showAdvancedFilters);
   };
 
   const handleResetFilters = () => {
@@ -697,6 +795,9 @@ export const ContactsPage: React.FC = () => {
     setFilterProjectId('');
     setFilterCampaignId('');
     setFilterTag('');
+    setTagInput('');
+    setFilterOwnership('');
+    setFilterBudgetRange('');
     setFilterDateField('created_at');
     setDateFilterType('range');
     setFilterFromDate('');
@@ -719,7 +820,9 @@ export const ContactsPage: React.FC = () => {
       beforeDate: '',
       afterDate: '',
       dateActive: false,
-      dataType: ''
+      dataType: '',
+      ownership: '',
+      budgetRange: ''
     });
   };
 
@@ -934,6 +1037,156 @@ export const ContactsPage: React.FC = () => {
         </div>
       )}
 
+      {/* QUICK FILTER BAR: Ownership (Bản thân / Hợp tác), Tag Filter & Budget Filter */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '8px',
+        marginBottom: '0.625rem'
+      }}>
+        {/* Left: Ownership Switcher (Bản thân vs Hợp tác vs Tất cả) */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          background: 'var(--color-bg-alt)',
+          padding: '3px',
+          borderRadius: '10px',
+          border: '1px solid var(--color-border-light)',
+          gap: '2px'
+        }}>
+          {[
+            { id: '', label: 'Tất cả khách', icon: <Users size={13} /> },
+            { id: 'mine', label: 'Bản thân (Của tôi)', icon: <User size={13} /> },
+            { id: 'cooperation', label: 'Hợp tác', icon: <Share2 size={13} /> }
+          ].map(opt => {
+            const active = (activeFilters.ownership || '') === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  setActiveFilters(prev => ({ ...prev, ownership: opt.id }));
+                  setPage(1);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: isMobile ? '4px 8px' : '5px 12px',
+                  borderRadius: '7px',
+                  fontSize: isMobile ? '0.72rem' : '0.76rem',
+                  fontWeight: active ? 700 : 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: active ? 'var(--color-surface)' : 'transparent',
+                  color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  boxShadow: active ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {opt.icon}
+                <span>{opt.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right: Quick Source/Rank, Quick Budget Filter & Quick Tag Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Quick Source / Rank Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+              Nguồn/Rank:
+            </span>
+            <CustomSelect
+              options={availableSourceOptions}
+              value={activeFilters.source || ''}
+              onChange={val => {
+                setActiveFilters(prev => ({ ...prev, source: String(val) }));
+                setPage(1);
+              }}
+              width={isMobile ? 125 : 155}
+            />
+          </div>
+
+          {/* Quick Budget Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+              Ngân sách:
+            </span>
+            <CustomSelect
+              options={[
+                { value: '', label: 'Tất cả ngân sách' },
+                { value: 'under_2b', label: '< 2 tỷ' },
+                { value: '2b_5b', label: '2 - 5 tỷ' },
+                { value: '5b_10b', label: '5 - 10 tỷ' },
+                { value: 'over_10b', label: '> 10 tỷ' }
+              ]}
+              value={activeFilters.budgetRange || ''}
+              onChange={val => {
+                setActiveFilters(prev => ({ ...prev, budgetRange: String(val) }));
+                setPage(1);
+              }}
+              width={isMobile ? 115 : 135}
+            />
+          </div>
+
+          {/* Quick Tag Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+              Tag:
+            </span>
+            <div style={{ position: 'relative', width: isMobile ? 100 : 120 }}>
+              <input
+                placeholder="Lọc tag..."
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                style={{
+                  height: '32px',
+                  width: '100%',
+                  padding: '0 22px 0 8px',
+                  fontSize: '0.74rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  boxSizing: 'border-box',
+                  outline: 'none'
+                }}
+              />
+              {tagInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTagInput('');
+                    setActiveFilters(prev => ({ ...prev, tag: '' }));
+                    setPage(1);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '6px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    color: 'var(--color-text-muted)',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Xóa tag"
+                >
+                  <X size={11} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* QUICK STATUS TABS (Chuyển nhanh theo từng trạng thái phễu) */}
       <div
         className="custom-scrollbar"
@@ -1102,7 +1355,7 @@ export const ContactsPage: React.FC = () => {
                       {/* Advanced Filter Toggle */}
                       <button
                         onClick={() => {
-                          setShowAdvancedFilters(!showAdvancedFilters);
+                          toggleAdvancedFilters();
                           setShowMobileActions(false);
                         }}
                         style={{
@@ -1316,7 +1569,7 @@ export const ContactsPage: React.FC = () => {
               </div>
  
               <button 
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                onClick={toggleAdvancedFilters}
                 style={{
                   height: '38px',
                   padding: '0 0.875rem',
@@ -1575,13 +1828,14 @@ export const ContactsPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Nguồn */}
+                  {/* Nguồn / Rank */}
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Nguồn khách hàng</label>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Nguồn / Rank khách hàng</label>
                     <CustomSelect
                       value={filterSource}
                       onChange={v => setFilterSource(v)}
-                      options={SOURCE_OPTIONS}
+                      options={availableSourceOptions}
+                      searchable={true}
                     />
                   </div>
 
@@ -1626,6 +1880,36 @@ export const ContactsPage: React.FC = () => {
                       value={filterTag}
                       onChange={e => setFilterTag(e.target.value)}
                       style={{ height: '38px', borderRadius: '10px' }}
+                    />
+                  </div>
+
+                  {/* Quyền sở hữu */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Quyền sở hữu (Bản thân / Hợp tác)</label>
+                    <CustomSelect
+                      value={filterOwnership}
+                      onChange={v => setFilterOwnership(v as any)}
+                      options={[
+                        { value: '', label: 'Tất cả khách hàng' },
+                        { value: 'mine', label: 'Bản thân (Của tôi độc quyền)' },
+                        { value: 'cooperation', label: 'Hợp tác (Có cộng tác viên/phiếu)' }
+                      ]}
+                    />
+                  </div>
+
+                  {/* Phân khúc ngân sách */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Phân khúc ngân sách</label>
+                    <CustomSelect
+                      value={filterBudgetRange}
+                      onChange={v => setFilterBudgetRange(v as any)}
+                      options={[
+                        { value: '', label: 'Tất cả ngân sách' },
+                        { value: 'under_2b', label: 'Dưới 2 tỷ (< 2 tỷ)' },
+                        { value: '2b_5b', label: 'Từ 2 đến 5 tỷ (2 - 5 tỷ)' },
+                        { value: '5b_10b', label: 'Từ 5 đến 10 tỷ (5 - 10 tỷ)' },
+                        { value: 'over_10b', label: 'Trên 10 tỷ (> 10 tỷ)' }
+                      ]}
                     />
                   </div>
                 </div>
@@ -1795,17 +2079,35 @@ export const ContactsPage: React.FC = () => {
           </div>
         )
       ) : (
-        <div className={isMobile ? "" : "card"} style={{ overflow: 'visible', background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, padding: isMobile ? 0 : undefined, boxShadow: isMobile ? 'none' : undefined }}>
+        <div
+          className={isMobile ? "" : "card"}
+          style={{
+            background: isMobile ? 'transparent' : undefined,
+            border: isMobile ? 'none' : undefined,
+            padding: isMobile ? 0 : '0.5rem 0.75rem',
+            boxShadow: isMobile ? 'none' : undefined,
+            display: 'flex',
+            flexDirection: 'column',
+            height: isMobile ? 'auto' : 'calc(100vh - 275px)',
+            minHeight: isMobile ? 'auto' : '480px',
+            overflow: 'hidden'
+          }}
+        >
           {viewMode === 'list' ? (
 
-            <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
+            <div className="table-wrap custom-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' }}>
               <style>{`
                 .table-wrap th {
-                  padding: 0.75rem 0.75rem !important;
+                  padding: 0.5rem 0.65rem !important;
                   vertical-align: middle !important;
+                  font-size: 0.68rem !important;
+                  font-weight: 700 !important;
+                  color: var(--color-text-light) !important;
+                  text-transform: uppercase !important;
+                  letter-spacing: 0.5px !important;
                 }
                 .table-wrap td {
-                  padding: 0.95rem 0.75rem !important;
+                  padding: 0.65rem 0.65rem !important;
                   vertical-align: middle !important;
                 }
                 .table-wrap .table-row-hover:hover {
@@ -1814,35 +2116,28 @@ export const ContactsPage: React.FC = () => {
                 [data-theme="dark"] .table-wrap .table-row-hover:hover {
                   background: rgba(255, 255, 255, 0.02) !important;
                 }
-                .table-wrap th {
-                  font-size: 0.7rem !important;
-                  font-weight: 700 !important;
-                  color: var(--color-text-light) !important;
-                  text-transform: uppercase !important;
-                  letter-spacing: 0.5px !important;
-                }
                 .table-wrap td p {
-                  font-size: 0.8125rem !important;
+                  font-size: 0.76rem !important;
                   margin: 0 !important;
                 }
                 .table-wrap td p + p {
-                  font-size: 0.7rem !important;
+                  font-size: 0.68rem !important;
                   margin-top: 1px !important;
                 }
                 .table-wrap td a {
-                  font-size: 0.8125rem !important;
+                  font-size: 0.76rem !important;
                 }
                 .table-wrap td .badge {
-                  font-size: 0.7rem !important;
+                  font-size: 0.68rem !important;
                   padding: 2px 6px !important;
                   border-radius: 4px !important;
                   font-weight: 600 !important;
                 }
                 .table-wrap td span {
-                  font-size: 0.8125rem !important;
+                  font-size: 0.76rem !important;
                 }
                 .table-wrap td span.text-muted, .table-wrap td span + span {
-                  font-size: 0.7rem !important;
+                  font-size: 0.68rem !important;
                 }
               `}</style>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1914,6 +2209,29 @@ export const ContactsPage: React.FC = () => {
                                       <User size={13} />
                                     </span>
                                   ) : null}
+                                  {c.source && (
+                                    <span 
+                                      style={{
+                                        marginLeft: '6px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 700,
+                                        padding: '1px 5px',
+                                        borderRadius: '4px',
+                                        background: String(c.source).toLowerCase().includes('r3') || String(c.source).toLowerCase().includes('r2')
+                                          ? 'rgba(239, 68, 68, 0.1)' 
+                                          : 'var(--color-bg-light)',
+                                        color: String(c.source).toLowerCase().includes('r3') || String(c.source).toLowerCase().includes('r2')
+                                          ? '#dc2626' 
+                                          : 'var(--color-text-muted)',
+                                        border: `1px solid ${String(c.source).toLowerCase().includes('r3') || String(c.source).toLowerCase().includes('r2') 
+                                          ? 'rgba(239, 68, 68, 0.25)' 
+                                          : 'var(--color-border)'}`
+                                      }}
+                                      title={`Nguồn / Rank: ${c.source}`}
+                                    >
+                                      {c.source}
+                                    </span>
+                                  )}
                                 </p>
                                 {columns.find(col => col.id === 'company')?.visible && c.company_name && (
                                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px', whiteSpace: 'nowrap' }}>
@@ -2157,7 +2475,7 @@ export const ContactsPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div style={{ padding: isMobile ? '0.5rem 0' : '1rem', background: 'transparent' }}>
+            <div className="custom-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isMobile ? '0.5rem 0' : '0.5rem 0.25rem', background: 'transparent' }}>
               <div className="grid-cards-responsive">
                 {paged.map(c => {
                   const days = AGO_DAYS(c.last_contact);
@@ -2257,6 +2575,29 @@ export const ContactsPage: React.FC = () => {
                                         <User size={14} />
                                       </span>
                                     ) : null}
+                                    {c.source && (
+                                      <span 
+                                        style={{
+                                          marginLeft: '6px',
+                                          fontSize: '0.68rem',
+                                          fontWeight: 700,
+                                          padding: '1px 5px',
+                                          borderRadius: '4px',
+                                          background: String(c.source).toLowerCase().includes('r3') || String(c.source).toLowerCase().includes('r2')
+                                            ? 'rgba(239, 68, 68, 0.1)' 
+                                            : 'var(--color-bg-light)',
+                                          color: String(c.source).toLowerCase().includes('r3') || String(c.source).toLowerCase().includes('r2')
+                                            ? '#dc2626' 
+                                            : 'var(--color-text-muted)',
+                                          border: `1px solid ${String(c.source).toLowerCase().includes('r3') || String(c.source).toLowerCase().includes('r2') 
+                                            ? 'rgba(239, 68, 68, 0.25)' 
+                                            : 'var(--color-border)'}`
+                                        }}
+                                        title={`Nguồn / Rank: ${c.source}`}
+                                      >
+                                        {c.source}
+                                      </span>
+                                    )}
                                   </h3>
                                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <Building2 size={11} /> {c.company_name || 'Khách hàng cá nhân'}
@@ -2375,7 +2716,18 @@ export const ContactsPage: React.FC = () => {
               )}
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingTop: '0.75rem', marginTop: '0.75rem', width: '100%' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            padding: '0.4rem 0.75rem',
+            marginTop: 'auto',
+            width: '100%',
+            flexShrink: 0,
+            borderTop: isMobile ? 'none' : '1px solid var(--color-border-light)',
+            background: 'var(--color-surface)',
+            zIndex: 5
+          }}>
             <Pagination
               total={total}
               page={page}

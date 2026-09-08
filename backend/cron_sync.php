@@ -2025,6 +2025,13 @@ foreach ($connections as $connItem) {
             $source = extractMappedValues($mappings, 'source', $rowData);
             $type = extractMappedValues($mappings, 'type', $rowData);
             $name = extractMappedValues($mappings, 'name', $rowData);
+            $platform = extractMappedValues($mappings, 'platform', $rowData);
+            $budget = extractMappedValues($mappings, 'budget', $rowData);
+            $utm_campaign = extractMappedValues($mappings, 'utm_campaign', $rowData);
+            $utm_medium = extractMappedValues($mappings, 'utm_medium', $rowData);
+            $utm_content = extractMappedValues($mappings, 'utm_content', $rowData);
+            $utm_term = extractMappedValues($mappings, 'utm_term', $rowData);
+            $form_name = extractMappedValues($mappings, 'form_name', $rowData);
 
             if (!empty($connItem['auto_append_unmapped_note'])) {
                 $mappedCols = [];
@@ -2109,6 +2116,13 @@ foreach ($connections as $connItem) {
                 $rowDataForRules['note'] = $note;
                 $rowDataForRules['source'] = $source;
                 $rowDataForRules['type'] = $type;
+                if (!empty($platform)) $rowDataForRules['platform'] = $platform;
+                if (!empty($budget)) $rowDataForRules['budget'] = $budget;
+                if (!empty($utm_campaign)) $rowDataForRules['utm_campaign'] = $utm_campaign;
+                if (!empty($utm_medium)) $rowDataForRules['utm_medium'] = $utm_medium;
+                if (!empty($utm_content)) $rowDataForRules['utm_content'] = $utm_content;
+                if (!empty($utm_term)) $rowDataForRules['utm_term'] = $utm_term;
+                if (!empty($form_name)) $rowDataForRules['form_name'] = $form_name;
 
                 $ruleResult = evaluateRules($conn, $rowDataForRules, $source, $type, $connItem['id'], 'sheets');
                 $targetRoundId = null;
@@ -2124,11 +2138,13 @@ foreach ($connections as $connItem) {
                     $inject = $ruleResult['inject'] ?? [];
                     
                     // Áp dụng ghi đè dữ liệu (Inject Fields)
-                    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
+                    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email', 'platform', 'budget'];
                     foreach ($inject as $k => $v) {
                         if (in_array($k, $standardFields)) {
                             if ($k === 'source') $source = $v;
                             if ($k === 'type') $type = $v;
+                            if ($k === 'platform') $platform = $v;
+                            if ($k === 'budget') $budget = $v;
                             if ($k === 'note') $note = $v;
                             if ($k === 'name') $name = $v;
                             if ($k === 'phone') $phone = normalizePhone($v);

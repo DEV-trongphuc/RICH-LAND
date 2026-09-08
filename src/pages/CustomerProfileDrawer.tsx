@@ -7206,7 +7206,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* Dự án & Chiến dịch (Quan hệ Cha - Con) */}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', fontWeight: 700 }}>Dự án nguồn</label>
                               <CustomSelect
@@ -7284,7 +7284,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <span className="badge warning" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Form Leads</span>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px', fontSize: '0.72rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px', fontSize: '0.72rem' }}>
                               <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
                                 <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Tỉnh/TP</div>
                                 <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.city || parsedAdFormData.find(x => x.key?.includes('city') || x.key?.includes('tinh'))?.value || 'TP. Hồ Chí Minh'}</div>
