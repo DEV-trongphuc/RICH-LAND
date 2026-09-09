@@ -773,25 +773,29 @@ class NotificationService {
                 $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
                 $authorName = $payload['author_name'] ?? 'Đồng nghiệp';
                 $commentText = $payload['comment'] ?? 'đã nhắc tên bạn';
+                $cleanComment = trim(strip_tags(str_replace(['<br>', '<br/>', '<br />', '</div>', '</p>'], "\n", (string)$commentText)));
+                if (empty($cleanComment)) {
+                    $cleanComment = 'đã nhắc tên bạn';
+                }
                 return [
                     'recipients' => $recipients,
                     'title' => "$authorName vừa nhắc tên bạn",
-                    'body' => "$authorName: \"$commentText\"",
+                    'body' => "$authorName: \"$cleanComment\"",
                     'type' => "mention",
                     'link' => $payload['link'] ?? '/',
                     'zalo_msg' => "🏷️ [ ĐƯỢC TAG TÊN / MENTION ]\n\n"
                         . "$authorName vừa nhắc tên bạn trong ghi chú/thảo luận:\n"
-                        . "  • Nội dung: \"$commentText\"\n\n"
+                        . "  • Nội dung: \"$cleanComment\"\n\n"
                         . "Bấm để xem chi tiết.",
                     'tg_msg' => "🏷️ <b>[ ĐƯỢC TAG TÊN / MENTION ]</b>\n\n"
                         . "<b>" . htmlspecialchars($authorName) . "</b> vừa nhắc tên bạn trong ghi chú/thảo luận:\n"
-                        . "  • Nội dung: <i>\"" . htmlspecialchars($commentText) . "\"</i>\n\n"
+                        . "  • Nội dung: <i>\"" . htmlspecialchars($cleanComment) . "\"</i>\n\n"
                         . "Bấm để xem chi tiết.",
                     'email_subject' => "[RICH LAND] $authorName vừa tag tên bạn trong bình luận",
                     'email_title' => "BẠN ĐƯỢC NHẮC ĐẾN",
                     'email_content' => "Chào bạn,<br/><br/>" .
                                     "<strong>" . htmlspecialchars($authorName) . "</strong> vừa nhắc tên bạn trong bình luận:<br/>" .
-                                    "<em>\"" . htmlspecialchars($commentText) . "\"</em>.<br/>" .
+                                    "<em>\"" . htmlspecialchars($cleanComment) . "\"</em>.<br/>" .
                                     "Vui lòng kiểm tra trên CRM."
                 ];
 

@@ -774,6 +774,19 @@ class DepositController {
                 sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
             }
 
+            // Unified multi-channel notification (In-app bell, Telegram, Zalo) via NotificationService
+            require_once __DIR__ . '/../NotificationService.php';
+            if ($ownerRow && !empty($dep['owner_id'])) {
+                $statusDesc = $approvedCount === 0 ? 'bị hủy / bể cọc (hạ về Booking)' : 'bị hủy / bể cọc (giữ nguyên Đặt cọc)';
+                NotificationService::send($this->db, $auth['tenant_id'], 'MY_DEPOSIT_UPDATE', [
+                    'user_id' => (int)$dep['owner_id'],
+                    'deposit_id' => $id,
+                    'customer_name' => $ownerRow['contact_name'],
+                    'status_text' => $statusDesc,
+                    'reason' => $reason
+                ]);
+            }
+
             $this->db->commit();
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CANCEL_DEPOSIT', 'deposit', $id, "Hủy cọc/Bể cọc. Lý do: $reason");
             respond(200, null, 'Báo cáo hủy cọc và cập nhật trạng thái khách hàng thành công');
