@@ -234,45 +234,6 @@ export const Login = () => {
     setForgotLoading(false);
   };
 
-  const handleQuickLogin = async (emailVal: string, passwordVal: string, roleName: string) => {
-    setLoading(true);
-    setError('');
-
-    if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      let userRole = roleName.toLowerCase();
-      if (userRole === 'sales') userRole = 'sale';
-      login(`demo_token_quick_${userRole}`, {
-        id: emailVal === 'haidang@richland.net' ? 1000 : 999,
-        username: emailVal.split('@')[0],
-        email: emailVal,
-        name: `Dev ${roleName}`,
-        role: userRole as any,
-        consultant_id: emailVal === 'haidang@richland.net' ? 1 : undefined
-      });
-      navigate('/');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailVal, password: passwordVal })
-      });
-      const json = await res.json();
-      if (json.success) {
-        login(json.token, json.user);
-        navigate('/');
-      } else {
-        setError(t(json.message) || `Đăng nhập ${roleName} thất bại`);
-      }
-    } catch (e: any) {
-      setError('Lỗi kết nối: ' + e.message);
-    }
-    setLoading(false);
-  };
 
   const ALL_MODULES = [
     { title: t('Tích Hợp Zalo Bot'), sub: t('Quản lý ticket, nhận thông báo chia số và phản hồi duyệt lỗi tức thì trên Zalo.'), icon: Bot, color: 'linear-gradient(135deg, #3b82f6, #6366f1)' },
@@ -477,38 +438,6 @@ export const Login = () => {
             </p>
           </div>
 
-          {/* Dev Quick Login Section */}
-          <div style={{ padding: '16px', background: 'rgba(15, 23, 42, 0.25)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <p style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '1px', margin: 0 }}>
-              {t("Developer Quick Login")}
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-              <button
-                onClick={() => handleQuickLogin('turniodev@gmail.com', 'pass123', 'Admin')}
-                style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
-              >
-                Admin
-              </button>
-              <button
-                onClick={() => handleQuickLogin('director@richland.test', 'director123', 'Director')}
-                style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
-              >
-                Director
-              </button>
-              <button
-                onClick={() => handleQuickLogin('manager@richland.test', 'manager123', 'Manager')}
-                style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
-              >
-                Manager
-              </button>
-              <button
-                onClick={() => handleQuickLogin('dom.marketing.vn@gmail.com', '123456', 'Sale')}
-                style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
-              >
-                Sale
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Watermark */}
