@@ -12517,7 +12517,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           backgroundSize: '12px 12px'
                         }}>
                           <img 
-                            src={saleSignatureUrl ? (saleSignatureUrl.startsWith('http') || saleSignatureUrl.startsWith('data:') ? saleSignatureUrl : `https://open.domation.net/richland/${saleSignatureUrl.replace(/^\/+/, '')}`) : ''} 
+                            src={saleSignatureUrl ? (saleSignatureUrl.startsWith('http') || saleSignatureUrl.startsWith('data:') ? saleSignatureUrl : `https://crm.richland.city/backend/${saleSignatureUrl.replace(/^\/+/, '')}`) : ''} 
                             alt="Chữ ký mẫu" 
                             style={{ maxHeight: '110px', objectFit: 'contain' }} 
                           />

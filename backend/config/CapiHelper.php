@@ -130,7 +130,7 @@ class CapiHelper {
 
 
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-            $host = $_SERVER['HTTP_HOST'] ?? 'open.domation.net';
+            $host = $_SERVER['HTTP_HOST'] ?? 'crm.richland.city';
             $requestUri = $_SERVER['REQUEST_URI'] ?? '/richland';
             $basePath = preg_replace('#/(api.php|index.php|backend).*$#i', '', $requestUri);
             $eventSourceUrl = $protocol . "://" . $host . rtrim($basePath, '/');

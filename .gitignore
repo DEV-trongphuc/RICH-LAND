@@ -25,4 +25,7 @@ dist-ssr
 
 # Temporary deploy archives
 *.tar.gz
+*.tar
 *.zip
+temp_deploy/
+scratch/*.sql

@@ -1783,7 +1783,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             backgroundSize: '12px 12px'
                           }}>
                             <img 
-                              src={signatureUrl ? (signatureUrl.startsWith('http') || signatureUrl.startsWith('data:') ? signatureUrl : `https://open.domation.net/richland/${signatureUrl.replace(/^\/+/, '')}`) : ''} 
+                              src={signatureUrl ? (signatureUrl.startsWith('http') || signatureUrl.startsWith('data:') ? signatureUrl : `https://crm.richland.city/backend/${signatureUrl.replace(/^\/+/, '')}`) : ''} 
                               alt="Chữ ký mẫu" 
                               style={{ maxHeight: '110px', objectFit: 'contain' }} 
                             />

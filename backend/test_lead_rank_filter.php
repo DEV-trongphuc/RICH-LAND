@@ -9,7 +9,7 @@ echo "====================================================\n";
 
 // Helper function to query Staging API
 function queryStaging(string $sql) {
-    $url = 'https://open.domation.net/richland/exec_db_query.php?key=richland2026&sql=' . urlencode($sql);
+    $url = 'https://crm.richland.city/backend/exec_db_query.php?key=richland2026&sql=' . urlencode($sql);
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);

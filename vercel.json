@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/backend/:path*",
-      "destination": "http://open.domation.net/richland/:path*"
+      "destination": "https://crm.richland.city/backend/:path*"
     },
     {
       "source": "/(.*)",

@@ -234,7 +234,7 @@ const resolveAttachmentUrl = (url: string | null | undefined): string => {
     cleanPath = 'uploads/' + cleanPath;
   }
   
-  const apiBase = import.meta.env.VITE_API_URL || 'https://open.domation.net/richland/api.php';
+  const apiBase = import.meta.env.VITE_API_URL || 'https://crm.richland.city/backend/api.php';
   let baseUrl = apiBase;
   if (baseUrl.includes('api.php')) {
     baseUrl = baseUrl.split('api.php')[0];
@@ -242,7 +242,7 @@ const resolveAttachmentUrl = (url: string | null | undefined): string => {
   baseUrl = baseUrl.replace(/\/+$/, '');
   
   if (!baseUrl.startsWith('http')) {
-    baseUrl = 'https://open.domation.net/richland';
+    baseUrl = 'https://crm.richland.city/backend';
   }
   
   return `${baseUrl}/${cleanPath}`;
@@ -8484,7 +8484,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           {sh.signature_img && (
                                             <div style={{ background: '#f8fafc', padding: '3px 8px', borderRadius: '6px', border: '1px dashed var(--color-border-light)', display: 'inline-flex', justifyContent: 'center', alignItems: 'center' }}>
                                               <img 
-                                                src={sh.signature_img.startsWith('http') || sh.signature_img.startsWith('data:') ? sh.signature_img : `https://open.domation.net/richland/${sh.signature_img.replace(/^\/+/, '')}`} 
+                                                src={sh.signature_img.startsWith('http') || sh.signature_img.startsWith('data:') ? sh.signature_img : `https://crm.richland.city/backend/${sh.signature_img.replace(/^\/+/, '')}`} 
                                                 style={{ height: '36px', maxWidth: '120px', objectFit: 'contain' }} 
                                                 alt="Chữ ký" 
                                               />
@@ -13082,7 +13082,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               {item.name}
                             </p>
                             <a 
-                              href={item.path.startsWith('http') ? item.path : `https://open.domation.net/richland/${item.path}`} 
+                              href={item.path.startsWith('http') ? item.path : `https://crm.richland.city/backend/${item.path}`} 
                               target="_blank" 
                               rel="noreferrer" 
                               style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
@@ -13152,7 +13152,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     flexShrink: 0
                   }}>
                     <img 
-                      src={currentUser.signature_url.startsWith('http') || currentUser.signature_url.startsWith('data:') ? currentUser.signature_url : `https://open.domation.net/richland/${currentUser.signature_url.replace(/^\/+/, '')}`} 
+                      src={currentUser.signature_url.startsWith('http') || currentUser.signature_url.startsWith('data:') ? currentUser.signature_url : `https://crm.richland.city/backend/${currentUser.signature_url.replace(/^\/+/, '')}`} 
                       alt="Chữ ký mẫu" 
                       style={{ maxHeight: '35px', objectFit: 'contain' }} 
                     />

@@ -396,7 +396,7 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
                 backgroundSize: '12px 12px'
               }}>
                 <img 
-                  src={initialSignatureUrl.startsWith('http') || initialSignatureUrl.startsWith('data:') ? initialSignatureUrl : `https://open.domation.net/richland/${initialSignatureUrl.replace(/^\/+/, '')}`} 
+                  src={initialSignatureUrl.startsWith('http') || initialSignatureUrl.startsWith('data:') ? initialSignatureUrl : `https://crm.richland.city/backend/${initialSignatureUrl.replace(/^\/+/, '')}`} 
                   alt="Chữ ký mẫu đã lưu" 
                   style={{ maxHeight: '160px', objectFit: 'contain' }} 
                 />

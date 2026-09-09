@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const targetUrl = env.VITE_API_URL || 'https://open.domation.net/richland';
+  const targetUrl = env.VITE_API_URL || 'https://crm.richland.city/backend';
   
   return {
     plugins: [
