@@ -415,7 +415,7 @@ export const Login = () => {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="remember-checkbox-input"
                   />
-                  <span className="remember-checkbox-text">{t("Ghi nhớ đăng nhập (90 ngày)")}</span>
+                  <span className="remember-checkbox-text">{t("Ghi nhớ đăng nhập")}</span>
                 </label>
 
                 <button
@@ -853,16 +853,20 @@ export const Login = () => {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
+          gap: 10px;
           margin-top: -2px;
           margin-bottom: 2px;
+          width: 100%;
+          flex-wrap: nowrap;
         }
         .remember-checkbox-label {
-          display: flex;
+          display: inline-flex;
           align-items: center;
           gap: 8px;
           cursor: pointer;
           user-select: none;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .remember-checkbox-input {
           width: 16px;
@@ -870,21 +874,25 @@ export const Login = () => {
           accent-color: #ef4444;
           border-radius: 4px;
           cursor: pointer;
+          flex-shrink: 0;
         }
         .remember-checkbox-text {
-          font-size: 12px;
+          font-size: 13px;
           color: #94a3b8;
           font-weight: 500;
+          white-space: nowrap;
         }
         .forgot-pass-btn {
           background: none;
           border: none;
           color: #f43f5e;
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 600;
           cursor: pointer;
           padding: 4px 0;
           transition: color 0.2s;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .forgot-pass-btn:hover {
           color: #fb7185;
@@ -1074,9 +1082,20 @@ export const Login = () => {
             font-size: 15px;
             border-radius: 14px;
           }
+          .remember-forgot-row {
+            flex-wrap: nowrap;
+            width: 100%;
+            gap: 8px;
+          }
+          .remember-checkbox-label {
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
           .remember-checkbox-text,
           .forgot-pass-btn {
             font-size: 13px;
+            white-space: nowrap;
+            flex-shrink: 0;
           }
           .right-side > div {
             gap: 1.25rem !important;
