@@ -31,6 +31,11 @@ export const Login = () => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [showForgotNewPass, setShowForgotNewPass] = useState(false);
+  const [showForgotConfirmPass, setShowForgotConfirmPass] = useState(false);
+  const [maskedEmail, setMaskedEmail] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleGoogleLoginResponse = async (response: any) => {
@@ -96,6 +101,14 @@ export const Login = () => {
 
     return () => clearInterval(intervalId);
   }, []);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,57 +212,80 @@ export const Login = () => {
 
   const handleSendForgotOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!forgotEmail) {
-      toast.error('Vui lòng nhập Email');
+    const account = forgotEmail.trim();
+    if (!account) {
+      toast.error(t('Vui lòng nhập Email hoặc Tên đăng nhập'));
       return;
     }
     setForgotLoading(true);
     try {
       const res = await fetchAPI('auth/forgot-password', {
         method: 'POST',
-        body: JSON.stringify({ email: forgotEmail })
+        body: JSON.stringify({ email: account })
       });
       if (res.success) {
-        toast.success(res.message || 'Đã gửi mã OTP đến email');
+        toast.success(res.message || t('Đã gửi mã xác thực OTP'));
+        if (res.data?.masked_email) {
+          setMaskedEmail(res.data.masked_email);
+        }
         setForgotStep(2);
+        setResendCooldown(60);
       } else {
-        toast.error(res.message || 'Không thể gửi mã OTP');
+        toast.error(res.message || t('Không thể gửi mã OTP'));
       }
     } catch (err: any) {
-      toast.error(err.message || 'Lỗi gửi yêu cầu');
+      toast.error(err.message || t('Lỗi gửi yêu cầu xác thực'));
     }
     setForgotLoading(false);
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!forgotOtp || !forgotNewPassword) {
-      toast.error('Vui lòng nhập đầy đủ OTP và Mật khẩu mới');
+    if (!forgotOtp || forgotOtp.trim().length < 6) {
+      toast.error(t('Vui lòng nhập đủ 6 chữ số mã xác thực OTP'));
       return;
     }
-    if (forgotNewPassword.length < 6) {
-      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
+    if (!forgotNewPassword) {
+      toast.error(t('Vui lòng nhập mật khẩu mới'));
       return;
     }
+    if (forgotNewPassword.length < 6 || !/[a-zA-Z]/.test(forgotNewPassword) || !/[0-9]/.test(forgotNewPassword)) {
+      toast.error(t('Mật khẩu mới phải có ít nhất 6 ký tự, bao gồm cả chữ cái và chữ số'));
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      toast.error(t('Xác nhận mật khẩu mới không khớp'));
+      return;
+    }
+
     setForgotLoading(true);
     try {
       const res = await fetchAPI('auth/reset-password', {
         method: 'POST',
         body: JSON.stringify({
-          email: forgotEmail,
+          email: forgotEmail.trim(),
           otp_code: forgotOtp.trim(),
           new_password: forgotNewPassword
         })
       });
       if (res.success) {
-        toast.success(res.message || 'Đặt lại mật khẩu thành công!');
-        setEmail(forgotEmail);
+        toast.success(res.message || t('Đặt lại mật khẩu thành công!'));
+        if (res.data?.email) {
+          setEmail(res.data.email);
+        } else if (forgotEmail.includes('@')) {
+          setEmail(forgotEmail.trim());
+        }
+        setPassword('');
         setShowForgotPasswordModal(false);
+        setForgotStep(1);
+        setForgotOtp('');
+        setForgotNewPassword('');
+        setForgotConfirmPassword('');
       } else {
-        toast.error(res.message || 'Không thể đặt lại mật khẩu');
+        toast.error(res.message || t('Không thể đặt lại mật khẩu'));
       }
     } catch (err: any) {
-      toast.error(err.message || 'Lỗi đặt lại mật khẩu');
+      toast.error(err.message || t('Lỗi đặt lại mật khẩu'));
     }
     setForgotLoading(false);
   };
@@ -366,16 +402,19 @@ export const Login = () => {
 
             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div className="form-group-custom">
-                <label className="form-label-custom">{t("Email đăng nhập")}</label>
+                <label className="form-label-custom">{t("Email hoặc Tên đăng nhập")}</label>
                 <div className="input-wrapper">
                   <Mail size={18} className="input-icon-left" />
                   <input
-                    type="email"
+                    type="text"
                     className="input-field"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t("VD: ten@richland.net")}
-                    autoComplete="email"
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError('');
+                    }}
+                    placeholder={t("hethong@richland.city hoặc hethong")}
+                    autoComplete="username"
                     required
                   />
                 </div>
@@ -543,17 +582,17 @@ export const Login = () => {
             {forgotStep === 1 ? (
               <form onSubmit={handleSendForgotOtp} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
                 <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                  {t("Nhập email tài khoản của bạn. Hệ thống sẽ gửi mã xác thực OTP 6 chữ số để bạn đặt lại mật khẩu.")}
+                  {t("Nhập Email hoặc Tên đăng nhập của bạn. Hệ thống sẽ gửi mã xác thực OTP 6 chữ số đến email để bạn đặt lại mật khẩu.")}
                 </p>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">{t("Email đăng ký")}</label>
+                  <label className="form-label">{t("Email hoặc Tên đăng nhập")}</label>
                   <input
-                    type="email"
+                    type="text"
                     className="form-input"
                     value={forgotEmail}
                     onChange={e => setForgotEmail(e.target.value)}
-                    placeholder="email@richland.net"
+                    placeholder={t("hethong@richland.city hoặc hethong")}
                     required
                   />
                 </div>
@@ -570,7 +609,7 @@ export const Login = () => {
                   <button
                     type="submit"
                     className="btn primary sm"
-                    disabled={forgotLoading || !forgotEmail}
+                    disabled={forgotLoading || !forgotEmail.trim()}
                   >
                     {forgotLoading ? <Loader2 size={14} className="spin" /> : <Mail size={14} />}
                     {t("Gửi mã OTP")}
@@ -580,7 +619,7 @@ export const Login = () => {
             ) : (
               <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
                 <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 14px', borderRadius: '8px', color: '#166534', fontSize: '0.8125rem' }}>
-                  {t(`Đã gửi mã OTP đến email ${forgotEmail}. Vui lòng kiểm tra hộp thư.`)}
+                  {t(`Đã gửi mã xác nhận OTP đến ${maskedEmail || forgotEmail}. Vui lòng kiểm tra hộp thư.`)}
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
@@ -593,23 +632,67 @@ export const Login = () => {
 
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">{t("Mật khẩu mới")}</label>
-                  <input
-                    type="password"
-                    className="form-input"
-                    value={forgotNewPassword}
-                    onChange={e => setForgotNewPassword(e.target.value)}
-                    placeholder={t("Nhập mật khẩu mới (ít nhất 6 ký tự)")}
-                    required
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showForgotNewPass ? "text" : "password"}
+                      className="form-input"
+                      value={forgotNewPassword}
+                      onChange={e => setForgotNewPassword(e.target.value)}
+                      placeholder={t("Tối thiểu 6 ký tự, gồm cả chữ cái và số")}
+                      style={{ paddingRight: '42px' }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotNewPass(!showForgotNewPass)}
+                      tabIndex={-1}
+                      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
+                      aria-label="Toggle password visibility"
+                    >
+                      {showForgotNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">{t("Xác nhận mật khẩu mới")}</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showForgotConfirmPass ? "text" : "password"}
+                      className="form-input"
+                      value={forgotConfirmPassword}
+                      onChange={e => setForgotConfirmPassword(e.target.value)}
+                      placeholder={t("Nhập lại mật khẩu mới")}
+                      style={{ paddingRight: '42px' }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotConfirmPass(!showForgotConfirmPass)}
+                      tabIndex={-1}
+                      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
+                      aria-label="Toggle password visibility"
+                    >
+                      {showForgotConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <small style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                    {t("Mật khẩu phải có ít nhất 6 ký tự, bao gồm cả chữ cái và chữ số.")}
+                  </small>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
                   <button
                     type="button"
-                    onClick={() => setForgotStep(1)}
-                    style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                    onClick={() => {
+                      if (resendCooldown <= 0) {
+                        handleSendForgotOtp({ preventDefault: () => {} } as any);
+                      }
+                    }}
+                    disabled={resendCooldown > 0 || forgotLoading}
+                    style={{ background: 'none', border: 'none', color: resendCooldown > 0 ? '#94a3b8' : 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 600, cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer' }}
                   >
-                    {t("← Gửi lại OTP")}
+                    {resendCooldown > 0 ? t(`Gửi lại OTP (${resendCooldown}s)`) : t("← Gửi lại OTP")}
                   </button>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
@@ -623,7 +706,7 @@ export const Login = () => {
                     <button
                       type="submit"
                       className="btn primary sm"
-                      disabled={forgotLoading || !forgotOtp || !forgotNewPassword}
+                      disabled={forgotLoading || !forgotOtp || !forgotNewPassword || !forgotConfirmPassword}
                     >
                       {forgotLoading ? <Loader2 size={14} className="spin" /> : <KeyRound size={14} />}
                       {t("Xác nhận đặt lại")}

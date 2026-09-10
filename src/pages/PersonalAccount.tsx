@@ -206,12 +206,16 @@ const PersonalAccountInner = () => {
       toast.error(t('Vui lòng nhập đầy đủ thông tin'));
       return;
     }
-    if (passData.newPassword !== passData.confirmPassword) {
-      toast.error(t('Mật khẩu mới không khớp'));
+    if (passData.newPassword.length < 6 || !/[a-zA-Z]/.test(passData.newPassword) || !/[0-9]/.test(passData.newPassword)) {
+      toast.error(t('Mật khẩu mới phải có ít nhất 6 ký tự, bao gồm cả chữ cái và chữ số'));
       return;
     }
-    if (passData.newPassword.length < 6) {
-      toast.error(t('Mật khẩu mới phải có ít nhất 6 ký tự'));
+    if (passData.oldPassword === passData.newPassword) {
+      toast.error(t('Mật khẩu mới không được trùng với mật khẩu hiện tại'));
+      return;
+    }
+    if (passData.newPassword !== passData.confirmPassword) {
+      toast.error(t('Xác nhận mật khẩu mới không khớp'));
       return;
     }
     setLoading(true);
@@ -572,14 +576,22 @@ const PersonalAccountInner = () => {
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600 }}>{t('Xác nhận mật khẩu mới')}</label>
-                  <input
-                    type={showNewPass ? 'text' : 'password'}
-                    className="form-input"
-                    value={passData.confirmPassword}
-                    onChange={e => setPassData({ ...passData, confirmPassword: e.target.value })}
-                    placeholder={t("Nhập lại mật khẩu mới...")}
-                    style={{ height: '40px' }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showNewPass ? 'text' : 'password'}
+                      className="form-input"
+                      value={passData.confirmPassword}
+                      onChange={e => setPassData({ ...passData, confirmPassword: e.target.value })}
+                      placeholder={t("Nhập lại mật khẩu mới...")}
+                      style={{ paddingRight: '45px', height: '40px' }}
+                    />
+                    <button type="button" onClick={() => setShowNewPass(!showNewPass)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                      {showNewPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <small style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                    {t('Mật khẩu tối thiểu 6 ký tự, bao gồm cả chữ cái và chữ số.')}
+                  </small>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.5rem' }}>

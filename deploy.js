@@ -266,7 +266,7 @@ function fetchUrl(url, extraHeaders = {}) {
       res.on('end', () => {
         try {
           resolve({ status: res.statusCode, data: JSON.parse(data) });
-        } catch(e) {
+        } catch (e) {
           resolve({ status: res.statusCode, raw: data });
         }
       });
@@ -426,7 +426,7 @@ if ($zip->open($file) === TRUE) {
 }
 `;
   await client.uploadFile(CONFIG.cpanel.docRoot, 'extractor.php', Buffer.from(extractorPhp));
-  
+
   const extractRes = await fetchUrl(`${CONFIG.cpanel.baseUrl}/extractor.php`);
   console.log("  ✅ Kết quả giải nén:", JSON.stringify(extractRes.data || extractRes.raw));
 

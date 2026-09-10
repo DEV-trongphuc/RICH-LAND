@@ -1958,12 +1958,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       toast.error(t('Vui lòng điền đầy đủ thông tin mật khẩu'));
       return;
     }
-    if (newPass !== confirmPass) {
-      toast.error(t('Mật khẩu mới không trùng khớp'));
+    if (newPass.length < 6 || !/[a-zA-Z]/.test(newPass) || !/[0-9]/.test(newPass)) {
+      toast.error(t('Mật khẩu mới phải có ít nhất 6 ký tự, bao gồm cả chữ cái và chữ số'));
       return;
     }
-    if (newPass.length < 6) {
-      toast.error(t('Mật khẩu mới phải có ít nhất 6 ký tự'));
+    if (oldPass === newPass) {
+      toast.error(t('Mật khẩu mới không được trùng với mật khẩu hiện tại'));
+      return;
+    }
+    if (newPass !== confirmPass) {
+      toast.error(t('Mật khẩu mới không trùng khớp'));
       return;
     }
     setChangingPass(true);

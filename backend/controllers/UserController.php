@@ -56,6 +56,9 @@ class UserController {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
         $b=getBody();
         if(empty($b['email'])||empty($b['password'])||empty($b['full_name'])) respond(422,null,'Email, mật khẩu và tên là bắt buộc',false);
+        if (strlen($b['password']) < 6 || !preg_match('/[A-Za-z]/', $b['password']) || !preg_match('/[0-9]/', $b['password'])) {
+            respond(422, null, 'Mật khẩu phải có ít nhất 6 ký tự, bao gồm cả chữ cái và chữ số', false);
+        }
         // Check duplicate
         $chk=$this->db->prepare("SELECT id FROM users WHERE email=? AND tenant_id=?");
         $chk->execute([$b['email'],$auth['tenant_id']]);
@@ -165,7 +168,13 @@ class UserController {
                 $params[]=$val;
             }
         }
-        if(!empty($b['password'])){$sets[]='password_hash=?';$params[]=password_hash($b['password'],PASSWORD_BCRYPT,['cost'=>12]);}
+        if(!empty($b['password'])){
+            if (strlen($b['password']) < 6 || !preg_match('/[A-Za-z]/', $b['password']) || !preg_match('/[0-9]/', $b['password'])) {
+                respond(422, null, 'Mật khẩu phải có ít nhất 6 ký tự, bao gồm cả chữ cái và chữ số', false);
+            }
+            $sets[]='password_hash=?';
+            $params[]=password_hash($b['password'],PASSWORD_BCRYPT,['cost'=>12]);
+        }
         if(!$sets) respond(422,null,'Không có dữ liệu',false);
         $params[]=$id;$params[]=$auth['tenant_id'];
         $this->db->prepare("UPDATE users SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?")->execute($params);

@@ -6,12 +6,22 @@ class AuthController {
 
     public function __construct(PDO $db) { $this->db = $db; }
 
+    private function validatePasswordStrength(string $password): ?string {
+        if (strlen($password) < 6) {
+            return 'Mật khẩu phải có ít nhất 6 ký tự';
+        }
+        if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
+            return 'Mật khẩu phải bao gồm cả chữ cái và chữ số';
+        }
+        return null;
+    }
+
     public function login(): void {
         $body = getBody();
-        $email    = trim($body['email']    ?? '');
+        $account  = trim($body['email'] ?? $body['username'] ?? $body['account'] ?? '');
         $password = trim($body['password'] ?? '');
 
-        if (!$email || !$password) respond(422, null, 'Email và mật khẩu là bắt buộc', false);
+        if (!$account || !$password) respond(422, null, 'Email / Tên đăng nhập và mật khẩu là bắt buộc', false);
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         
@@ -28,26 +38,27 @@ class AuthController {
         $stmt = $this->db->prepare(
             'SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.logo_url as tenant_logo
              FROM users u JOIN tenants t ON u.tenant_id = t.id
-             WHERE u.email = ? AND u.is_active = 1 AND t.is_active = 1 LIMIT 1'
+             WHERE (LOWER(TRIM(u.email)) = LOWER(?) OR LOWER(TRIM(u.username)) = LOWER(?)) 
+               AND u.is_active = 1 AND t.is_active = 1 LIMIT 1'
         );
-        $stmt->execute([$email]);
+        $stmt->execute([$account, $account]);
         $user = $stmt->fetch();
 
         if (!$user || !password_verify($password, $user['password_hash'])) {
             // Record failed attempt
             $this->db->prepare("INSERT INTO login_attempts (ip_address, email, is_successful) VALUES (?, ?, 0)")
-                 ->execute([$ip, $email]);
+                 ->execute([$ip, $account]);
             
             // Log for security audit
             $tenantId = $user ? $user['tenant_id'] : null;
-            logActivity($this->db, $tenantId, null, 'LOGIN_FAIL', 'auth', null, "Thất bại: $email từ IP $ip");
+            logActivity($this->db, $tenantId, null, 'LOGIN_FAIL', 'auth', null, "Thất bại: $account từ IP $ip");
 
-            respond(401, null, 'Email hoặc mật khẩu không đúng', false);
+            respond(401, null, 'Email / Tên đăng nhập hoặc mật khẩu không đúng', false);
         }
 
         // Record successful attempt & Clear old failures for this IP
         $this->db->prepare("INSERT INTO login_attempts (ip_address, email, is_successful) VALUES (?, ?, 1)")
-             ->execute([$ip, $email]);
+             ->execute([$ip, $account]);
         $this->db->prepare("DELETE FROM login_attempts WHERE ip_address = ? AND attempt_time < NOW()")->execute([$ip]);
 
         $rememberMe = !empty($body['remember_me']);
@@ -179,71 +190,118 @@ class AuthController {
 
     public function forgotPasswordRequest(): void {
         $body = getBody();
-        $email = trim($body['email'] ?? '');
-        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            respond(422, null, 'Email không hợp lệ', false);
+        $account = trim($body['email'] ?? $body['username'] ?? $body['account'] ?? '');
+        if (!$account) {
+            respond(422, null, 'Vui lòng nhập Email hoặc Tên đăng nhập', false);
         }
 
-        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE email = ? AND is_active = 1 LIMIT 1");
-        $stmt->execute([$email]);
+        $stmt = $this->db->prepare("
+            SELECT id, full_name, email, username 
+            FROM users 
+            WHERE (LOWER(TRIM(email)) = LOWER(?) OR LOWER(TRIM(username)) = LOWER(?)) 
+              AND is_active = 1 
+            LIMIT 1
+        ");
+        $stmt->execute([$account, $account]);
         $user = $stmt->fetch();
 
-        if ($user) {
+        $maskedEmail = '';
+        if ($user && !empty($user['email'])) {
+            $userEmail = trim($user['email']);
             $otpCode = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-            $this->db->prepare("INSERT INTO email_otps (user_id, email, otp_code, type, expires_at) VALUES (?, ?, ?, 'forgot_password', DATE_ADD(NOW(), INTERVAL 10 MINUTE))")
-                 ->execute([$user['id'], $user['email'], $otpCode]);
+
+            // Invalidate prior unused forgot-password OTPs for this user
+            $this->db->prepare("UPDATE email_otps SET is_used = 1 WHERE user_id = ? AND type = 'forgot_password'")
+                 ->execute([$user['id']]);
+
+            $this->db->prepare("
+                INSERT INTO email_otps (user_id, email, otp_code, type, expires_at) 
+                VALUES (?, ?, ?, 'forgot_password', DATE_ADD(NOW(), INTERVAL 10 MINUTE))
+            ")->execute([$user['id'], $userEmail, $otpCode]);
 
             try {
                 require_once __DIR__ . '/../mailer.php';
                 $bodyHtml = "
                     <p>Kính gửi <b>" . htmlspecialchars($user['full_name']) . "</b>,</p>
-                    <p>Bạn đã gửi yêu cầu đặt lại mật khẩu cho tài khoản hệ thống Rich Land.</p>
+                    <p>Bạn đã gửi yêu cầu đặt lại mật khẩu cho tài khoản hệ thống <b>Rich Land CRM</b>.</p>
                     <p>Mã xác nhận OTP của bạn là:</p>
-                    <div style='text-align: center; margin: 20px 0;'>
-                        <span style='font-size: 28px; font-weight: 800; color: #BD1D2D; letter-spacing: 6px; padding: 10px 24px; background: #fff1f2; border: 1px dashed #f43f5e; border-radius: 10px; display: inline-block;'>" . $otpCode . "</span>
+                    <div style='text-align: center; margin: 25px 0;'>
+                        <span style='font-size: 32px; font-weight: 800; color: #BD1D2D; letter-spacing: 8px; padding: 12px 30px; background: #fff1f2; border: 2px dashed #f43f5e; border-radius: 12px; display: inline-block;'>" . $otpCode . "</span>
                     </div>
-                    <p style='color: #64748b; font-size: 13px;'>Mã này có hiệu lực trong <b>10 phút</b>. Nếu không phải bạn gửi yêu cầu này, vui lòng bỏ qua email này.</p>
+                    <p style='color: #64748b; font-size: 13px;'>Mã xác nhận này có hiệu lực trong <b>10 phút</b>. Tuyệt đối không chia sẻ mã này cho bất kỳ ai khác.</p>
                 ";
-                sendEmailNotification($user['email'], 'Yêu cầu Đặt lại Mật khẩu Rich Land', 'Đặt lại mật khẩu', $bodyHtml, '', true);
+                sendEmailNotification($userEmail, 'Mã OTP Đặt lại Mật khẩu Rich Land', 'Đặt lại mật khẩu', $bodyHtml, '', true);
             } catch (Exception $e) {
                 error_log("Failed to send forgot password email: " . $e->getMessage());
             }
+
+            $parts = explode('@', $userEmail);
+            $namePart = $parts[0];
+            $domainPart = $parts[1] ?? '';
+            $maskedName = strlen($namePart) > 2 
+                ? substr($namePart, 0, 2) . str_repeat('*', min(4, strlen($namePart) - 2)) . substr($namePart, -1)
+                : $namePart . '**';
+            $maskedEmail = $maskedName . '@' . $domainPart;
         }
 
-        respond(200, null, 'Mã xác minh OTP đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.');
+        respond(200, [
+            'masked_email' => $maskedEmail
+        ], 'Mã xác thực OTP đã được gửi đến email đăng ký. Vui lòng kiểm tra hộp thư (kể cả thư rác / Spam).');
     }
 
     public function forgotPasswordReset(): void {
         $body = getBody();
-        $email = trim($body['email'] ?? '');
+        $account = trim($body['email'] ?? $body['account'] ?? $body['username'] ?? '');
         $otpCode = trim($body['otp_code'] ?? '');
         $newPassword = trim($body['new_password'] ?? '');
 
-        if (!$email || !$otpCode || !$newPassword) {
-            respond(422, null, 'Vui lòng điền đầy đủ email, mã OTP và mật khẩu mới', false);
+        if (!$account || !$otpCode || !$newPassword) {
+            respond(422, null, 'Vui lòng điền đầy đủ thông tin tài khoản, mã OTP và mật khẩu mới', false);
         }
 
-        if (strlen($newPassword) < 6) {
-            respond(422, null, 'Mật khẩu mới phải có ít nhất 6 ký tự', false);
+        $pwdErr = $this->validatePasswordStrength($newPassword);
+        if ($pwdErr) {
+            respond(422, null, $pwdErr, false);
+        }
+
+        // Find user by email or username
+        $userStmt = $this->db->prepare("
+            SELECT id, tenant_id, email, full_name FROM users 
+            WHERE (LOWER(TRIM(email)) = LOWER(?) OR LOWER(TRIM(username)) = LOWER(?)) 
+              AND is_active = 1 
+            LIMIT 1
+        ");
+        $userStmt->execute([$account, $account]);
+        $user = $userStmt->fetch();
+
+        if (!$user) {
+            respond(400, null, 'Tài khoản không tồn tại trong hệ thống', false);
         }
 
         $stmtOtp = $this->db->prepare("
             SELECT id, user_id FROM email_otps 
-            WHERE email = ? AND otp_code = ? AND type = 'forgot_password' AND is_used = 0 AND expires_at > NOW() 
+            WHERE user_id = ? AND otp_code = ? AND type = 'forgot_password' AND is_used = 0 AND expires_at > NOW() 
             ORDER BY id DESC LIMIT 1
         ");
-        $stmtOtp->execute([$email, $otpCode]);
+        $stmtOtp->execute([$user['id'], $otpCode]);
         $otpRow = $stmtOtp->fetch();
 
         if (!$otpRow) {
-            respond(400, null, 'Mã OTP không đúng hoặc đã hết hạn', false);
+            respond(400, null, 'Mã OTP không đúng hoặc đã hết hạn (10 phút)', false);
         }
 
         $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
-        $this->db->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([$passwordHash, $otpRow['user_id']]);
+        $this->db->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([$passwordHash, $user['id']]);
         $this->db->prepare("UPDATE email_otps SET is_used = 1 WHERE id = ?")->execute([$otpRow['id']]);
 
-        respond(200, null, 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới.');
+        // Revoke all existing sessions for security
+        $this->db->prepare("DELETE FROM refresh_tokens WHERE user_id = ?")->execute([$user['id']]);
+
+        logActivity($this->db, $user['tenant_id'], $user['id'], 'RESET_PASSWORD', 'auth', $user['id'], "Người dùng {$user['full_name']} đã đặt lại mật khẩu qua OTP");
+
+        respond(200, [
+            'email' => $user['email']
+        ], 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại bằng mật khẩu mới.');
     }
 
     public function changePassword(array $auth): void {
@@ -255,11 +313,12 @@ class AuthController {
             respond(422, null, 'Mật khẩu cũ và mật khẩu mới là bắt buộc', false);
         }
 
-        if (strlen($newPassword) < 6) {
-            respond(422, null, 'Mật khẩu mới phải có ít nhất 6 ký tự', false);
+        $pwdErr = $this->validatePasswordStrength($newPassword);
+        if ($pwdErr) {
+            respond(422, null, $pwdErr, false);
         }
 
-        $stmt = $this->db->prepare("SELECT id, password_hash FROM users WHERE id = ? LIMIT 1");
+        $stmt = $this->db->prepare("SELECT id, tenant_id, full_name, password_hash FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$auth['user_id']]);
         $user = $stmt->fetch();
 
@@ -267,10 +326,19 @@ class AuthController {
             respond(400, null, 'Mật khẩu hiện tại không chính xác', false);
         }
 
+        if ($oldPassword === $newPassword || password_verify($newPassword, $user['password_hash'])) {
+            respond(422, null, 'Mật khẩu mới không được trùng với mật khẩu hiện tại', false);
+        }
+
         $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
         $this->db->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([$newHash, $auth['user_id']]);
 
-        respond(200, null, 'Đổi mật khẩu thành công');
+        // Revoke old refresh tokens for security
+        $this->db->prepare("DELETE FROM refresh_tokens WHERE user_id = ?")->execute([$auth['user_id']]);
+
+        logActivity($this->db, $user['tenant_id'], $auth['user_id'], 'CHANGE_PASSWORD', 'auth', $auth['user_id'], "Người dùng {$user['full_name']} đã đổi mật khẩu");
+
+        respond(200, null, 'Đổi mật khẩu thành công! Vui lòng sử dụng mật khẩu mới cho các lần đăng nhập sau.');
     }
 
     private function issueFullTokens(array $user, bool $rememberMe = false): void {
