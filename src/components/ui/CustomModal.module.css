@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999999999 !important; /* Extremely high z-index to float above all elements */
+  z-index: 99999999; /* Below Toast notifications (2147483647) */
   padding: 1rem;
 }
 
@@ -32,7 +32,7 @@
   box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
-  z-index: 999999999 !important;
+  z-index: 100000000;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.04);
   will-change: transform;

@@ -5325,7 +5325,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       )}
 
       {/* local bottom-left toaster */}
-      <Toaster position="bottom-left" containerStyle={{ bottom: 180, left: 24, zIndex: 999999999 }} toastOptions={{ className: 'custom-toast' }} />
+      <Toaster position="bottom-left" containerClassName="toast-container-root" containerStyle={{ bottom: 180, left: 24, zIndex: 2147483647 }} toastOptions={{ className: 'custom-toast', style: { zIndex: 2147483647 } }} />
 
       {/* CSS Styles */}
       <style>{`

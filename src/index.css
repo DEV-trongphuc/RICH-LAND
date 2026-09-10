@@ -4418,22 +4418,33 @@ html, body {
 }
 
 /* Customizing react-hot-toast style to make it look premium, dark-mode adaptive and native */
+/* TOAST NOTIFICATION SUPREME STACKING CONTEXT (Always on top of all modals, overlays & backdrops) */
+.toast-container-root,
+.toast-container-root > div,
+div[style*="z-index"][style*="position: fixed"]:has(.custom-toast) {
+  z-index: 2147483647 !important;
+  pointer-events: none;
+}
+
 .custom-toast {
   border-radius: 12px !important;
   font-family: inherit !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
   padding: 8px 14px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
   border: 1px solid var(--color-border-light) !important;
   background-color: var(--color-surface) !important;
   color: var(--color-text) !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto;
 }
 
 div[role="status"] {
   font-family: inherit !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
+  z-index: 2147483647 !important;
 }
 
 .form-input.form-input-with-avatar {
