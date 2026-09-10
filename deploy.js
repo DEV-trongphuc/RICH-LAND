@@ -275,14 +275,21 @@ function fetchUrl(url, extraHeaders = {}) {
 }
 
 function ensureProductionEnv() {
-  const envPath = path.join(ROOT_DIR, 'backend', '.env');
-  const envContent = `DB_HOST=${CONFIG.db.host}
+  // 1. Root .env for Vite frontend build
+  const rootEnvPath = path.join(ROOT_DIR, '.env');
+  const rootEnvContent = `VITE_API_URL=${CONFIG.cpanel.baseUrl}/backend\n`;
+  fs.writeFileSync(rootEnvPath, rootEnvContent, 'utf8');
+  console.log("  ✅ Đã đồng bộ root .env (VITE_API_URL): " + `${CONFIG.cpanel.baseUrl}/backend`);
+
+  // 2. Backend .env for PHP
+  const backendEnvPath = path.join(ROOT_DIR, 'backend', '.env');
+  const backendEnvContent = `DB_HOST=${CONFIG.db.host}
 DB_USER=${CONFIG.db.user}
 DB_PASS=${CONFIG.db.pass}
 DB_NAME=${CONFIG.db.name}
 JWT_SECRET=RICHLAND_SECRET_KEY_2026
 `;
-  fs.writeFileSync(envPath, envContent, 'utf8');
+  fs.writeFileSync(backendEnvPath, backendEnvContent, 'utf8');
   console.log("  ✅ Đã đồng bộ backend/.env chuẩn theo CSDL: " + CONFIG.db.name);
 }
 
