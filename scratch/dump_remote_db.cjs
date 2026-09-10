@@ -5,7 +5,7 @@ function queryDb(sql) {
   return new Promise((resolve, reject) => {
     const postData = 'key=richland2026&sql=' + encodeURIComponent(sql);
     const options = {
-      hostname: 'open.domation.net',
+      hostname: 'crm.richland.city',
       path: '/richland/exec_db_query.php',
       method: 'POST',
       headers: {
@@ -38,7 +38,7 @@ function escapeSqlValue(val) {
 }
 
 async function dumpDatabase() {
-  console.log("=== BẮT ĐẦU XUẤT DATABASE TỪ OPEN.DOMATION.NET ===");
+  console.log("=== BẮT ĐẦU XUẤT DATABASE TỪ CRM.RICHLAND.CITY ===");
   
   const tablesRes = await queryDb("SHOW FULL TABLES;");
   if (!tablesRes.data) {

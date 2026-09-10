@@ -4,7 +4,7 @@ function post(path, body) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
     const req = https.request({
-      hostname: 'open.domation.net',
+      hostname: 'crm.richland.city',
       path: '/richland/' + path,
       method: 'POST',
       headers: {

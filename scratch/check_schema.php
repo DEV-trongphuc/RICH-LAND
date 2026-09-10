@@ -23,7 +23,7 @@ if ($res) {
 }
 
 // 2. Fetch staging schema of distribution_rounds
-$stagingUrl = "https://open.domation.net/richland/exec_db_query.php?key=richland2026&sql=DESCRIBE%20distribution_rounds";
+$stagingUrl = "https://crm.richland.city/backend/exec_db_query.php?key=richland2026&sql=DESCRIBE%20distribution_rounds";
 $stagingContent = file_get_contents($stagingUrl);
 if (!$stagingContent) {
     die("Error fetching staging schema from $stagingUrl\n");

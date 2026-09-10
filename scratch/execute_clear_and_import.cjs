@@ -6,7 +6,7 @@ function queryDb(sql) {
   return new Promise((resolve, reject) => {
     const postData = 'key=richland2026&sql=' + encodeURIComponent(sql);
     const options = {
-      hostname: 'open.domation.net',
+      hostname: 'crm.richland.city',
       path: '/richland/exec_db_query.php',
       method: 'POST',
       headers: {

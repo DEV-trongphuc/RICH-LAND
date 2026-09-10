@@ -95,7 +95,7 @@ if ($textLower === 'test_data' || $textLower === 'test_data_admin' || $textLower
             . "  • <b>Loại:</b> Quan tâm dịch vụ\n\n"
             . "❖ <b>GHI CHÚ:</b>\n"
             . "  <i>Khách gọi cần tư vấn gấp vào buổi sáng.</i>\n\n"
-            . "Báo lỗi Data tại đây: <a href=\"https://open.richland.test/.../\"><b>Link báo cáo lỗi</b></a>";
+            . "Báo lỗi Data tại đây: <a href=\"https://crm.richland.city/.../\"><b>Link báo cáo lỗi</b></a>";
         sendTelegramMessage($botToken, $chatId, $telegramMsg);
     } else if ($textLower === 'test_data_admin') {
         $telegramMsg = "📢 <b>[ YÊU CẦU DUYỆT TICKET ]</b> 📢\n"

@@ -12188,7 +12188,7 @@ switch ($action) {
             break;
         }
         try {
-            $dbName = $_ENV['DB_NAME'] ?? ($dbname ?? 'vhvxoigh_sale_data');
+            $dbName = $_ENV['DB_NAME'] ?? ($dbname ?? 'zccqvhhh_crm-rlvn');
             $res = $conn->query("
                 SELECT 
                     TABLE_NAME AS name, 
@@ -12756,7 +12756,7 @@ switch ($action) {
             sendQuickMessageEmailToSale($email, "Sale Test", "Admin ĐÃ TỪ CHỐI Ticket của bạn cho khách hàng Nguyễn Văn A. Lý do: Số điện thoại vẫn đổ chuông bình thường.");
             $success = true;
         } else if ($type === 'admin_confirm') {
-            sendAdminConfirmationEmail($email, "Admin Test", "https://open.richland.test/confirm?token=123456");
+            sendAdminConfirmationEmail($email, "Admin Test", "https://crm.richland.city/confirm?token=123456");
             $success = true;
         } else if ($type === 'daily_report') {
             $statsHtml = "<li>Sale Test 1: <b>15</b> data</li><li>Sale Test 2: <b>12</b> data</li>";

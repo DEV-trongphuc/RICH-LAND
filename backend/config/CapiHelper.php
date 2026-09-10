@@ -4,11 +4,14 @@
 class CapiHelper {
     
     public static function getPdo(): PDO {
-        $host = getenv('DB_HOST') ?: 'localhost';
-        $user = getenv('DB_USER') ?: 'root';
-        $pass = getenv('DB_PASS') ?: '';
-        $name = getenv('DB_NAME') ?: 'vhvxoigh_db_richland';
-        $port = getenv('DB_PORT') ?: '3306';
+        if (file_exists(__DIR__ . '/../env.php')) {
+            require_once __DIR__ . '/../env.php';
+        }
+        $host = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? 'localhost');
+        $user = getenv('DB_USER') ?: ($_ENV['DB_USER'] ?? 'zccqvhhh_crm-rlvn');
+        $pass = getenv('DB_PASS') ?: ($_ENV['DB_PASS'] ?? '$1;RKuCwX)VD;k~#');
+        $name = getenv('DB_NAME') ?: ($_ENV['DB_NAME'] ?? 'zccqvhhh_crm-rlvn');
+        $port = getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? '3306');
         $charset = 'utf8mb4';
         
         $dsn = "mysql:host=$host;dbname=$name;charset=$charset;port=$port";

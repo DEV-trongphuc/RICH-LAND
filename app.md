@@ -7,10 +7,12 @@ __________
 
 IMPROTANT: toàn bộ thiết lập phải cho dạng UI UX setting chứ ko  phải hardcode nhé. Lấy app GITHUB_SPACE\DATA làm chuẩn UI.
 Logic toàn bộ app chia data cho Bất động sản là như này. Đảm bảo cho tôi toàn bộ các tính năng back-end, database UI UX đều hoạt động chuẩn và thật sự.
-- Back-end api để up các file back-end trên host php: http://open.domation.net/richland/__các file_
-- dbname: User: vhvxoigh_mail_auto
-Database: vhvxoigh_db_richland
-- pass: Ideas@812
+- Production URL: https://crm.richland.city
+- Back-end API: https://crm.richland.city/backend/api.php
+- cPanel Host: https://hf60-22099.azdigihost.com:2083/ (User: zccqvhhh)
+- Database: zccqvhhh_crm-rlvn (User: zccqvhhh_crm-rlvn)
+- Remote SQL Gateway: https://crm.richland.city/backend/exec_db_query.php?key=richland2026
+- Deploy Command: npm run deploy hoặc node deploy.js
 
 
 # CRM-RLVN System Blueprint

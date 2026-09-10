@@ -2,7 +2,7 @@ const https = require('https');
 
 function queryDb(sql) {
   return new Promise((resolve, reject) => {
-    const url = 'https://open.domation.net/richland/exec_db_query.php?key=richland2026&sql=' + encodeURIComponent(sql);
+    const url = 'https://crm.richland.city/backend/exec_db_query.php?key=richland2026&sql=' + encodeURIComponent(sql);
     https.get(url, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
