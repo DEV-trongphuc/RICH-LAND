@@ -50,6 +50,8 @@ class AuthController {
              ->execute([$ip, $email]);
         $this->db->prepare("DELETE FROM login_attempts WHERE ip_address = ? AND attempt_time < NOW()")->execute([$ip]);
 
+        $rememberMe = !empty($body['remember_me']);
+
         // 2FA Check
         if (!empty($user['two_factor_enabled']) && (int)$user['two_factor_enabled'] === 1) {
             $twoFactorType = $user['two_factor_type'] ?? 'email';
@@ -57,6 +59,7 @@ class AuthController {
                 'user_id' => $user['id'],
                 'email' => $user['email'],
                 'is_2fa_pending' => true,
+                'remember_me' => $rememberMe,
                 'two_factor_type' => $twoFactorType,
                 'exp' => time() + 300 // 5 mins
             ];
@@ -95,7 +98,7 @@ class AuthController {
             return;
         }
 
-        $this->issueFullTokens($user);
+        $this->issueFullTokens($user, $rememberMe);
     }
 
     public function verify2FA(): void {
@@ -170,7 +173,8 @@ class AuthController {
             respond(401, null, 'Mã xác thực không đúng hoặc đã hết hạn', false);
         }
 
-        $this->issueFullTokens($user);
+        $rememberMe = !empty($decoded['remember_me']);
+        $this->issueFullTokens($user, $rememberMe);
     }
 
     public function forgotPasswordRequest(): void {
@@ -269,7 +273,7 @@ class AuthController {
         respond(200, null, 'Đổi mật khẩu thành công');
     }
 
-    private function issueFullTokens(array $user): void {
+    private function issueFullTokens(array $user, bool $rememberMe = false): void {
         $this->db->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')->execute([$user['id']]);
 
         $consultantId = null;
@@ -282,6 +286,8 @@ class AuthController {
             }
         }
 
+        $durationSeconds = $rememberMe ? (90 * 86400) : (defined('JWT_EXPIRE_ACCESS') ? JWT_EXPIRE_ACCESS : 86400);
+
         $payload = [
             'id'        => $user['id'],
             'user_id'   => $user['id'],
@@ -290,6 +296,8 @@ class AuthController {
             'role'       => $user['role'],
             'full_name'  => $user['full_name'],
             'consultant_id' => $consultantId,
+            'remember_me' => $rememberMe,
+            'exp'       => time() + $durationSeconds,
         ];
 
         $accessToken = JWT::encode($payload);
@@ -297,12 +305,14 @@ class AuthController {
         $refreshToken = bin2hex(random_bytes(40));
         $hash = hash('sha256', $refreshToken);
 
+        $refreshDays = $rememberMe ? 90 : 30;
+
         $this->db->beginTransaction();
         try {
             $this->db->prepare('DELETE FROM refresh_tokens WHERE user_id = ? AND expires_at < NOW()')->execute([$user['id']]);
             $this->db->prepare(
                 'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))'
-            )->execute([$user['id'], $hash, 30]);
+            )->execute([$user['id'], $hash, $refreshDays]);
             $this->db->commit();
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -313,6 +323,8 @@ class AuthController {
         respond(200, [
             'access_token'  => $accessToken,
             'refresh_token' => $refreshToken,
+            'remember_me'   => $rememberMe,
+            'expires_in'    => $durationSeconds,
             'user' => [
                 'id'          => $user['id'],
                 'user_id'     => $user['id'],

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LogIn, Lock, Mail, Share2, Bell, BarChart3, Sparkles, ShieldCheck, Zap, Bot, History, CheckCircle2, User, ArrowRight, Shield, KeyRound, Loader2, X } from 'lucide-react';
+import { LogIn, Lock, Mail, Share2, Bell, BarChart3, Sparkles, ShieldCheck, Zap, Bot, History, CheckCircle2, User, ArrowRight, Shield, KeyRound, Loader2, X, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -12,6 +12,8 @@ export const Login = () => {
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -124,10 +126,22 @@ export const Login = () => {
     try {
       const res = await fetchAPI('auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ 
+          email: email.trim(), 
+          password, 
+          remember_me: rememberMe 
+        })
       });
 
-      if (res.success && res.data) {
+      if (res && res.success && res.data) {
+        if (rememberMe) {
+          localStorage.setItem('richland_remember_me', 'true');
+          localStorage.setItem('richland_session_expires', String(Date.now() + 90 * 86400 * 1000));
+        } else {
+          localStorage.removeItem('richland_remember_me');
+          localStorage.removeItem('richland_session_expires');
+        }
+
         if (res.data.requires_2fa) {
           setPending2FAData({
             tempToken: res.data.temp_token,
@@ -141,12 +155,18 @@ export const Login = () => {
           navigate('/');
         }
       } else {
-        setError(t(res.message) || t('Đăng nhập thất bại'));
+        const errorMsg = t(res?.message) || t('Email hoặc mật khẩu không đúng. Vui lòng thử lại.');
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err: any) {
-      setError(err.message || t('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.'));
+      console.error('Login error:', err);
+      const errorMsg = err.message || t('Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.');
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleVerify2FA = async (e: React.FormEvent) => {
@@ -336,18 +356,19 @@ export const Login = () => {
             </div>
           </div>
 
-          {error && (
-            <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '16px', fontSize: '12px', fontWeight: 700, color: '#f87171', textAlign: 'center' }}>
-              {error}
-            </div>
-          )}
-
           <div className="login-card">
-            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
+            {error && (
+              <div className="login-error-alert animate-shake">
+                <AlertCircle size={18} style={{ flexShrink: 0, color: '#f87171' }} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="form-group-custom">
                 <label className="form-label-custom">{t("Email đăng nhập")}</label>
                 <div className="input-wrapper">
-                  <Mail size={16} className="input-icon" />
+                  <Mail size={18} className="input-icon-left" />
                   <input
                     type="email"
                     className="input-field"
@@ -360,12 +381,12 @@ export const Login = () => {
                 </div>
               </div>
 
-              <div>
+              <div className="form-group-custom">
                 <label className="form-label-custom">{t("Mật khẩu")}</label>
                 <div className="input-wrapper">
-                  <Lock size={16} className="input-icon" />
+                  <Lock size={18} className="input-icon-left" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     className="input-field"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -373,27 +394,41 @@ export const Login = () => {
                     autoComplete="current-password"
                     required
                   />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowForgotPasswordModal(true);
-                      setForgotEmail(email);
-                      setForgotStep(1);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#f43f5e',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                    className="input-btn-right"
+                    title={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
+                    aria-label={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
                   >
-                    {t("Quên mật khẩu?")}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+              </div>
+
+              <div className="remember-forgot-row">
+                <label className="remember-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="remember-checkbox-input"
+                  />
+                  <span className="remember-checkbox-text">{t("Ghi nhớ đăng nhập (90 ngày)")}</span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPasswordModal(true);
+                    setForgotEmail(email);
+                    setForgotStep(1);
+                  }}
+                  className="forgot-pass-btn"
+                >
+                  {t("Quên mật khẩu?")}
+                </button>
               </div>
 
               <button
@@ -401,7 +436,11 @@ export const Login = () => {
                 className="submit-btn-custom"
                 disabled={loading}
               >
-                {loading ? t('Đang xác thực...') : <><LogIn size={16} /> {t("Đăng nhập")}</>}
+                {loading ? (
+                  <><Loader2 size={18} className="spin" /> {t('Đang xác thực...')}</>
+                ) : (
+                  <><LogIn size={18} /> {t("Đăng nhập")}</>
+                )}
               </button>
 
               {isDemoMode && (
@@ -418,7 +457,7 @@ export const Login = () => {
                   className="submit-btn-custom"
                   style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 8px 16px rgba(16, 185, 129, 0.2)' }}
                 >
-                  <LogIn size={16} /> {t("Đăng nhập Demo (Admin)")}
+                  <LogIn size={18} /> {t("Đăng nhập Demo (Admin)")}
                 </button>
               )}
             </form>
@@ -715,6 +754,34 @@ export const Login = () => {
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           backdrop-filter: blur(20px);
         }
+        .login-error-alert {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 14px;
+          background: rgba(239, 68, 68, 0.12);
+          border: 1px solid rgba(239, 68, 68, 0.4);
+          border-radius: 14px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #fca5a5;
+          line-height: 1.4;
+          margin-bottom: 1rem;
+        }
+        .animate-shake {
+          animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); }
+          20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+          40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .form-group-custom {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
         .form-label-custom {
           font-size: 11px;
           font-weight: 700;
@@ -722,26 +789,55 @@ export const Login = () => {
           text-transform: uppercase;
           letter-spacing: 1px;
           display: block;
-          margin-bottom: 6px;
         }
         .input-wrapper {
           position: relative;
-          margin-bottom: 1.25rem;
+          width: 100%;
+          display: flex;
+          align-items: center;
         }
-        .input-icon {
+        .input-icon-left {
           position: absolute;
-          right: 14px;
-          top: 13px;
+          left: 14px;
+          top: 50%;
+          transform: translateY(-50%);
           color: #64748b;
+          pointer-events: none;
+          transition: color 0.2s ease;
+          z-index: 2;
+        }
+        .input-wrapper:focus-within .input-icon-left {
+          color: #ef4444;
+        }
+        .input-btn-right {
+          position: absolute;
+          right: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: transparent;
+          border: none;
+          color: #64748b;
+          cursor: pointer;
+          padding: 6px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          z-index: 2;
+        }
+        .input-btn-right:hover {
+          color: #f1f5f9;
+          background: rgba(255, 255, 255, 0.08);
         }
         .input-field {
           width: 100%;
-          height: 44px;
-          padding-left: 16px;
-          padding-right: 42px;
+          height: 48px;
+          padding-left: 44px;
+          padding-right: 44px;
           border-radius: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(15, 23, 42, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(15, 23, 42, 0.85);
           color: white;
           font-size: 14px;
           transition: all 0.2s ease;
@@ -750,11 +846,53 @@ export const Login = () => {
         .input-field:focus {
           outline: none;
           border-color: #ef4444;
-          box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+          box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+          background: rgba(15, 23, 42, 0.95);
+        }
+        .remember-forgot-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: -2px;
+          margin-bottom: 2px;
+        }
+        .remember-checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          user-select: none;
+        }
+        .remember-checkbox-input {
+          width: 16px;
+          height: 16px;
+          accent-color: #ef4444;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        .remember-checkbox-text {
+          font-size: 12px;
+          color: #94a3b8;
+          font-weight: 500;
+        }
+        .forgot-pass-btn {
+          background: none;
+          border: none;
+          color: #f43f5e;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 4px 0;
+          transition: color 0.2s;
+        }
+        .forgot-pass-btn:hover {
+          color: #fb7185;
+          text-decoration: underline;
         }
         .submit-btn-custom {
           width: 100%;
-          height: 46px;
+          height: 48px;
           background: linear-gradient(135deg, #a31422 0%, #d01d33 100%);
           color: white;
           border-radius: 12px;
@@ -769,9 +907,13 @@ export const Login = () => {
           cursor: pointer;
           box-shadow: 0 8px 16px rgba(163, 20, 34, 0.25);
         }
-        .submit-btn-custom:hover {
+        .submit-btn-custom:hover:not(:disabled) {
           transform: translateY(-1px);
           box-shadow: 0 12px 20px rgba(163, 20, 34, 0.35);
+        }
+        .submit-btn-custom:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
         .submit-btn-custom:active {
           transform: translateY(1px);
@@ -912,6 +1054,29 @@ export const Login = () => {
           .login-card {
             padding: 1.5rem 1.25rem;
             border-radius: 24px;
+          }
+          .input-field {
+            height: 52px;
+            font-size: 16px;
+            padding-left: 48px;
+            padding-right: 48px;
+            border-radius: 14px;
+          }
+          .input-icon-left {
+            left: 16px;
+          }
+          .input-btn-right {
+            right: 12px;
+            padding: 8px;
+          }
+          .submit-btn-custom {
+            height: 52px;
+            font-size: 15px;
+            border-radius: 14px;
+          }
+          .remember-checkbox-text,
+          .forgot-pass-btn {
+            font-size: 13px;
           }
           .right-side > div {
             gap: 1.25rem !important;

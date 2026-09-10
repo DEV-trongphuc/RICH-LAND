@@ -81,15 +81,27 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
     // Don't intercept 401s from login or refresh endpoints themselves
+    const reqUrl = (original.url || '').toLowerCase();
+    const actionParam = (original.params?.action || '').toLowerCase();
+    const isAuthRequest =
+      reqUrl.includes('auth/login') ||
+      reqUrl.includes('auth/refresh') ||
+      reqUrl.includes('login_google') ||
+      actionParam === 'auth/login' ||
+      actionParam === 'auth/refresh' ||
+      actionParam === 'login_google';
+
     if (
       error.response?.status === 401 &&
       !original._retry &&
-      !original.url?.includes('/auth/login') &&
-      !original.url?.includes('auth/refresh')
+      !isAuthRequest
     ) {
       original._retry = true;
       try {
         const refresh = localStorage.getItem('refresh_token');
+        if (!refresh) {
+          throw new Error('No refresh token');
+        }
         const { data } = await axios.post(`${BASE_URL}/api.php?action=auth/refresh`, { refresh_token: refresh });
         const { access_token, refresh_token } = data.data;
         localStorage.setItem('access_token', access_token);
