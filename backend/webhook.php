@@ -131,6 +131,11 @@ if (!is_array($data)) {
     $data = [];
 }
 
+// Support top-level indexed array [ { "phone": "..." } ]
+if (array_keys($data) === range(0, count($data) - 1) && isset($data[0]) && is_array($data[0])) {
+    $data = $data[0];
+}
+
 // Helper to unwrap nested payloads (Meta Webhooks, Ladipage, Zapier, Make, n8n wrappers)
 if (!function_exists('unwrapWebhookPayload')) {
     function unwrapWebhookPayload($payload) {
@@ -142,14 +147,16 @@ if (!function_exists('unwrapWebhookPayload')) {
             $payload = array_merge($payload, $metaVal);
         }
         // Common wrapper keys
-        $wrapperKeys = ['data', 'payload', 'lead', 'form_data', 'contact', 'body', 'fields', 'customer', 'item', 'info'];
+        $wrapperKeys = ['data', 'payload', 'lead', 'form_data', 'contact', 'body', 'fields', 'customer', 'item', 'info', 'record'];
         foreach ($wrapperKeys as $wKey) {
             if (isset($payload[$wKey]) && is_array($payload[$wKey]) && !empty($payload[$wKey])) {
                 $inner = $payload[$wKey];
                 unset($payload[$wKey]);
-                // Flatten associative keys
+                // Flatten associative keys or take first item if indexed array
                 if (array_keys($inner) !== range(0, count($inner) - 1)) {
                     $payload = array_merge($inner, $payload);
+                } else if (isset($inner[0]) && is_array($inner[0])) {
+                    $payload = array_merge($inner[0], $payload);
                 }
                 break;
             }
@@ -159,9 +166,19 @@ if (!function_exists('unwrapWebhookPayload')) {
 }
 $data = unwrapWebhookPayload($data);
 
-// Extract token or spreadsheet_id to verify connection
-$token = $_GET['token'] ?? $data['token'] ?? $data['_meta']['token'] ?? '';
-$spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? ($data['spreadsheet_id'] ?? '');
+// Extract token from Query, Body, Headers (Bearer / X-Webhook-Token / X-Token)
+$token = $_GET['token'] ?? $data['token'] ?? $data['_meta']['token'] ?? ($_POST['token'] ?? '');
+if (empty($token)) {
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+        $token = trim($matches[1]);
+    } else if (!empty($_SERVER['HTTP_X_WEBHOOK_TOKEN'])) {
+        $token = trim($_SERVER['HTTP_X_WEBHOOK_TOKEN']);
+    } else if (!empty($_SERVER['HTTP_X_TOKEN'])) {
+        $token = trim($_SERVER['HTTP_X_TOKEN']);
+    }
+}
+$spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? ($data['spreadsheet_id'] ?? ($_POST['spreadsheet_id'] ?? ''));
 
 $connData = null;
 if (!empty($token)) {
@@ -317,15 +334,15 @@ $findSmartField = function($sysField, $aliases) use ($mappings, &$data, &$matche
     return '';
 };
 
-$phone = normalizePhone($findSmartField('phone', ['phone', 'sdt', 'so_dien_thoai', 'so_dt', 'mobile', 'tel', 'dien_thoai', 'telephone', 'customer_phone', 'phone_number', 'sdt_khach', 'phonenumber', 'dt', 'cellphone']));
-$phone2 = normalizePhone($findSmartField('phone2', ['phone2', 'sdt2', 'sdt_phu', 'so_dien_thoai_2', 'secondary_phone']));
-$name = $findSmartField('name', ['name', 'full_name', 'fullname', 'ho_ten', 'hoten', 'customer_name', 'ten_khach', 'contact_name', 'first_name', 'last_name', 'ten', 'ho_va_ten', 'khach_hang', 'ho_ten_khach']);
-$email = trim($findSmartField('email', ['email', 'mail', 'contact_email', 'customer_email', 'gmail', 'e_mail', 'dia_chi_email']));
-$note = $findSmartField('note', ['note', 'ghi_chu', 'ghichu', 'message', 'noidung', 'noi_dung', 'content', 'message_content', 'comment', 'description', 'thong_tin_them', 'loi_nhan', 'nhu_cau_chi_tiet']);
-$source = $findSmartField('source', ['source', 'nguon', 'utm_source', 'origin', 'channel', 'lead_source', 'nguon_data']);
-$type = $findSmartField('type', ['type', 'loai', 'loai_data', 'lead_type', 'demand', 'loai_hinh', 'loai_khach']);
-$platform = $findSmartField('platform', ['platform', 'nen_tang', 'utm_platform', 'ad_platform', 'kenh']);
-$utm_campaign = $findSmartField('utm_campaign', ['utm_campaign', 'campaign', 'campaign_name', 'ten_chien_dich', 'chien_dich']);
+$phone = normalizePhone($findSmartField('phone', ['phone', 'sdt', 'so_dien_thoai', 'so_dt', 'mobile', 'tel', 'dien_thoai', 'telephone', 'customer_phone', 'phone_number', 'sdt_khach', 'phonenumber', 'dt', 'cellphone', 'contact_number', 'so_dien_thoai_khach', 'dien_thoai_khach', 'sdt_lh', 'phone1', 'caller_id']));
+$phone2 = normalizePhone($findSmartField('phone2', ['phone2', 'sdt2', 'sdt_phu', 'so_dien_thoai_2', 'secondary_phone', 'phone_secondary', 'so_phu']));
+$name = $findSmartField('name', ['name', 'full_name', 'fullname', 'ho_ten', 'hoten', 'customer_name', 'ten_khach', 'contact_name', 'first_name', 'last_name', 'ten', 'ho_va_ten', 'khach_hang', 'ho_ten_khach', 'ten_khach_hang', 'ho_ten_khach_hang', 'client_name', 'sender_name', 'customer']);
+$email = trim($findSmartField('email', ['email', 'mail', 'contact_email', 'customer_email', 'gmail', 'e_mail', 'dia_chi_email', 'client_email', 'email_address']));
+$note = $findSmartField('note', ['note', 'ghi_chu', 'ghichu', 'message', 'noidung', 'noi_dung', 'content', 'message_content', 'comment', 'description', 'thong_tin_them', 'loi_nhan', 'nhu_cau_chi_tiet', 'yeu_cau', 'nhu_cau', 'chi_tiet', 'remark']);
+$source = $findSmartField('source', ['source', 'nguon', 'utm_source', 'origin', 'channel', 'lead_source', 'nguon_data', 'source_name']);
+$type = $findSmartField('type', ['type', 'loai', 'loai_data', 'lead_type', 'demand', 'loai_hinh', 'loai_khach', 'phan_loai']);
+$platform = $findSmartField('platform', ['platform', 'nen_tang', 'utm_platform', 'ad_platform', 'kenh', 'traffic_source']);
+$utm_campaign = $findSmartField('utm_campaign', ['utm_campaign', 'campaign', 'campaign_name', 'ten_chien_dich', 'chien_dich', 'campaign_id']);
 $utm_medium = $findSmartField('utm_medium', ['utm_medium', 'medium', 'hinh_thuc']);
 $utm_content = $findSmartField('utm_content', ['utm_content', 'content_ad', 'adset_name', 'ad_name', 'mau_quang_cao', 'adset']);
 $utm_term = $findSmartField('utm_term', ['utm_term', 'term', 'tu_khoa', 'keyword']);

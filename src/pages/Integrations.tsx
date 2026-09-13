@@ -423,7 +423,7 @@ const IntegrationsInner = () => {
   const [selected, setSelected] = useState<Connection | null>(null);
   const [mobileActiveView, setMobileActiveView] = useState<'list' | 'detail'>('list');
   const [copiedId, setCopiedId] = useState<number | string | null>(null);
-  const [guideTab, setGuideTab] = useState<'quick_post' | 'ladipage' | 'wordpress' | 'zapier' | 'code'>('quick_post');
+  const [codeLang, setCodeLang] = useState<'curl' | 'js' | 'php' | 'python'>('curl');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -450,8 +450,8 @@ const IntegrationsInner = () => {
 
   // Universal Webhook states
   const [showAddWebhook, setShowAddWebhook] = useState(false);
-  const [newWebhookName, setNewWebhookName] = useState(() => t('Webhook Ladipage Dự Án Aqua'));
-  const [newWebhookSource, setNewWebhookSource] = useState('Ladipage');
+  const [newWebhookName, setNewWebhookName] = useState(() => t('Cổng Webhook Tiếp Nhận'));
+  const [newWebhookSource, setNewWebhookSource] = useState('Website');
   const [newWebhookType, setNewWebhookType] = useState('Nóng');
   const [newWebhookRequirePhone, setNewWebhookRequirePhone] = useState(true);
   const [newWebhookNotifyAdmin, setNewWebhookNotifyAdmin] = useState(true);
@@ -2162,7 +2162,6 @@ const IntegrationsInner = () => {
                           <button
                             onClick={() => {
                               setWebhookTab('guides');
-                              setGuideTab('quick_post');
                             }}
                             style={{
                               background: '#6366f1',
@@ -2201,10 +2200,10 @@ const IntegrationsInner = () => {
                   {/* Navigation Tabs (Hướng Dẫn Chi Tiết Bắn POST lên đầu tiên) */}
                   <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
                     {[
-                      { id: 'guides', label: '📖 Hướng Dẫn Bắn POST (Chi Tiết & Code Mẫu)', count: null },
+                      { id: 'guides', label: '⚡ Thông Số & Mẫu Bắn POST', count: null },
                       { id: 'simulator', label: '🚀 Bắn Thử Webhook (Simulator)', count: null },
-                      { id: 'logs', label: '📜 Nhật Ký Payload (Logs)', count: webhookLogs.length },
-                      { id: 'mapping', label: '🗺️ Mapping Cột Tùy Chọn', count: (selected.mappings || []).length },
+                      { id: 'logs', label: '📜 Nhật Ký Nhận Data (Logs)', count: webhookLogs.length },
+                      { id: 'mapping', label: '🗺️ Mapping Cột (Tùy Chọn)', count: (selected.mappings || []).length },
                     ].map(tItem => (
                       <button
                         key={tItem.id}
@@ -2528,437 +2527,192 @@ const IntegrationsInner = () => {
                     </div>
                   )}
 
-                  {/* Tab 4: Guides */}
+                  {/* Tab: Guides (Consolidated & Streamlined) */}
                   {webhookTab === 'guides' && (
-                    <div className="card" style={{ padding: '1.25rem' }}>
-                      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-                        {[
-                          { id: 'quick_post', label: '⚡ Cú Pháp Bắn POST & JSON Chuẩn' },
-                          { id: 'code', label: '💻 Code Mẫu (cURL / JS / PHP / Python)' },
-                          { id: 'ladipage', label: '⚡ Ladipage' },
-                          { id: 'wordpress', label: '🌐 WordPress / Elementor' },
-                          { id: 'zapier', label: '🔄 Zapier / Make / n8n' }
-                        ].map(g => (
-                          <button
-                            key={g.id}
-                            onClick={() => setGuideTab(g.id as any)}
-                            style={{
-                              padding: '6px 14px',
-                              borderRadius: 8,
-                              border: guideTab === g.id ? '1px solid #6366f1' : '1px solid var(--color-border)',
-                              background: guideTab === g.id ? '#6366f1' : 'var(--color-bg)',
-                              color: guideTab === g.id ? '#fff' : 'var(--color-text-muted)',
-                              fontWeight: 700,
-                              fontSize: '0.8125rem',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            {g.label}
-                          </button>
-                        ))}
+                    <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Zap size={18} color="#6366f1" /> {t('Thông Số Kỹ Thuật & Cấu Trúc Bắn POST Lên Webhook')}
+                        </h4>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
+                          {t('Hệ thống tiếp nhận 100% dữ liệu từ mọi nguồn (Ladipage, Website, Elementor, Zapier, Make, App...). Dữ liệu tự động bóc tách vào CRM và gom toàn bộ dữ liệu tùy biến vào Ghi chú Lead không bao giờ thất lạc.')}
+                        </p>
                       </div>
 
-                      {/* Sub-tab 1: Quick POST Guide & JSON Specification */}
-                      {guideTab === 'quick_post' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                          <div>
-                            <h4 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <Zap size={18} color="#6366f1" /> {t('Hướng Dẫn Chi Tiết Bắn POST Lên Webhook')}
-                            </h4>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
-                              {t('Hệ thống hỗ trợ cơ chế "Bắn gì nhận nấy" - 100% dữ liệu gửi qua đều được bóc tách vào trường CRM hoặc gom sạch vào Ghi chú Lead không lo thất lạc.')}
-                            </p>
-                          </div>
+                      {/* Endpoint specs box */}
+                      <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 120 }}>PHƯƠNG THỨC:</span>
+                          <span style={{ background: '#10b981', color: '#fff', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 800 }}>POST</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(Khuyên dùng POST. Ngoài ra hệ thống vẫn nhận diện cả GET query parameters)</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 120 }}>CONTENT-TYPE:</span>
+                          <code style={{ background: 'var(--color-surface)', padding: '3px 8px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: '0.75rem', color: '#6366f1', fontWeight: 700 }}>
+                            application/json
+                          </code>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            (Tự động tương thích cả application/x-www-form-urlencoded và multipart/form-data)
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 120 }}>WEBHOOK URL:</span>
+                          <code style={{ background: '#0f172a', color: '#38bdf8', padding: '6px 10px', borderRadius: 6, fontSize: '0.75rem', flex: 1, wordBreak: 'break-all' }}>
+                            {webhookUrl(selected.webhook_token)}
+                          </code>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
+                              setCopiedId('guide_quick_url');
+                              setTimeout(() => setCopiedId(null), 2000);
+                            }}
+                            className="btn outline"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28, display: 'flex', alignItems: 'center', gap: 4 }}
+                          >
+                            {copiedId === 'guide_quick_url' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                            {copiedId === 'guide_quick_url' ? t('Đã copy') : t('Copy URL')}
+                          </button>
+                        </div>
+                      </div>
 
-                          {/* Endpoint specs box */}
-                          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 110 }}>PHƯƠNG THỨC:</span>
-                              <span style={{ background: '#10b981', color: '#fff', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 800 }}>POST</span>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(Khuyên dùng POST. Ngoài ra vẫn hỗ trợ GET query parameters)</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 110 }}>HEADERS:</span>
-                              <code style={{ background: 'var(--color-surface)', padding: '3px 8px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: '0.75rem', color: '#6366f1', fontWeight: 700 }}>
-                                Content-Type: application/json
-                              </code>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                (Hỗ trợ cả application/x-www-form-urlencoded và multipart/form-data)
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 110 }}>WEBHOOK URL:</span>
-                              <code style={{ background: '#0f172a', color: '#38bdf8', padding: '6px 10px', borderRadius: 6, fontSize: '0.75rem', flex: 1, wordBreak: 'break-all' }}>
-                                {webhookUrl(selected.webhook_token)}
-                              </code>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
-                                  setCopiedId('guide_quick_url');
-                                  setTimeout(() => setCopiedId(null), 2000);
-                                }}
-                                className="btn outline"
-                                style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28, display: 'flex', alignItems: 'center', gap: 4 }}
-                              >
-                                {copiedId === 'guide_quick_url' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
-                                {copiedId === 'guide_quick_url' ? t('Đã copy') : t('Copy URL')}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* JSON Sample Payload */}
-                          <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                              <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>
-                                {t('Mẫu JSON Chuẩn Khuyên Dùng (POST Body)')}
-                              </label>
-                              <button
-                                onClick={() => {
-                                  const jsonStr = JSON.stringify({
-                                    name: "Nguyễn Văn A",
-                                    phone: "0912345678",
-                                    email: "nguyenvana@gmail.com",
-                                    note: "Khách quan tâm căn 2 phòng ngủ hướng Đông Nam",
-                                    source: selected.default_source || "Landing_AquaCity",
-                                    type: selected.default_type || "Căn hộ cao cấp",
-                                    budget: "3 - 5 tỷ",
-                                    utm_campaign: "Camp_He_2026",
-                                    gio_hen: "18h00 tối nay",
-                                    dia_chi: "Quận 2, TP.HCM"
-                                  }, null, 2);
-                                  navigator.clipboard.writeText(jsonStr);
-                                  setCopiedId('guide_json_sample');
-                                  setTimeout(() => setCopiedId(null), 2000);
-                                }}
-                                className="btn outline"
-                                style={{ padding: '3px 8px', fontSize: '0.75rem', height: 26, display: 'flex', alignItems: 'center', gap: 4 }}
-                              >
-                                {copiedId === 'guide_json_sample' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
-                                {copiedId === 'guide_json_sample' ? t('Đã copy JSON') : t('Copy JSON')}
-                              </button>
-                            </div>
-                            <pre style={{
-                              margin: 0,
-                              background: '#0f172a',
-                              color: '#38bdf8',
-                              padding: '1rem',
-                              borderRadius: 8,
-                              border: '1px solid #334155',
-                              fontSize: '0.8125rem',
-                              fontFamily: 'monospace',
-                              lineHeight: 1.5,
-                              overflowX: 'auto'
-                            }}>
+                      {/* JSON Sample Payload */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>
+                            {t('1. Mẫu JSON Chuẩn Khuyên Dùng (POST Body)')}
+                          </label>
+                          <button
+                            onClick={() => {
+                              const jsonStr = JSON.stringify({
+                                name: "Nguyễn Văn A",
+                                phone: "0912345678",
+                                email: "nguyenvana@gmail.com",
+                                note: "Khách quan tâm căn 2 phòng ngủ hướng Đông Nam",
+                                source: selected.default_source || "Website",
+                                type: selected.default_type || "Nóng",
+                                budget: "3 - 5 tỷ",
+                                utm_campaign: "Camp_He_2026",
+                                gio_hen: "18h00 tối nay",
+                                dia_chi: "Quận 2, TP.HCM"
+                              }, null, 2);
+                              navigator.clipboard.writeText(jsonStr);
+                              setCopiedId('guide_json_sample');
+                              setTimeout(() => setCopiedId(null), 2000);
+                            }}
+                            className="btn outline"
+                            style={{ padding: '3px 8px', fontSize: '0.75rem', height: 26, display: 'flex', alignItems: 'center', gap: 4 }}
+                          >
+                            {copiedId === 'guide_json_sample' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                            {copiedId === 'guide_json_sample' ? t('Đã copy JSON') : t('Copy JSON')}
+                          </button>
+                        </div>
+                        <pre style={{
+                          margin: 0,
+                          background: '#0f172a',
+                          color: '#38bdf8',
+                          padding: '1rem',
+                          borderRadius: 8,
+                          border: '1px solid #334155',
+                          fontSize: '0.8125rem',
+                          fontFamily: 'monospace',
+                          lineHeight: 1.5,
+                          overflowX: 'auto'
+                        }}>
 {`{
   "name": "Nguyễn Văn A",
   "phone": "0912345678",
   "email": "nguyenvana@gmail.com",
   "note": "Khách quan tâm căn 2 phòng ngủ hướng Đông Nam",
-  "source": "${selected.default_source || 'Landing_AquaCity'}",
-  "type": "${selected.default_type || 'Căn hộ cao cấp'}",
+  "source": "${selected.default_source || 'Website'}",
+  "type": "${selected.default_type || 'Nóng'}",
   "budget": "3 - 5 tỷ",
   "utm_campaign": "Camp_He_2026",
   "gio_hen": "18h00 tối nay",
   "dia_chi": "Quận 2, TP.HCM"
 }`}
-                            </pre>
-                          </div>
+                        </pre>
+                      </div>
 
-                          {/* Field Mapping Reference Table */}
-                          <div>
-                            <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 8, display: 'block' }}>
-                              {t('Bảng Bóc Tách Trường Thông Tin Tự Động (Smart Alias)')}
-                            </label>
-                            <div className="responsive-table-wrap">
-                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                                <thead>
-                                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                                    <th style={{ padding: '8px 10px', width: '22%' }}>Trường Trong CRM</th>
-                                    <th style={{ padding: '8px 10px', width: '38%' }}>Các Tên Key Hỗ Trợ Tự Động</th>
-                                    <th style={{ padding: '8px 10px' }}>Cơ Chế Xử Lý</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Họ và tên</td>
-                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>name, full_name, ho_ten, ten, fullname, khach_hang</td>
-                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Lưu vào họ tên khách hàng</td>
-                                  </tr>
-                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Số điện thoại</td>
-                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>phone, so_dien_thoai, sdt, tel, mobile, contact_phone</td>
-                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Kiểm tra chống trùng, phân bổ cho Sale</td>
-                                  </tr>
-                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Email</td>
-                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>email, mail, contact_email</td>
-                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Lưu vào email liên hệ</td>
-                                  </tr>
-                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Ghi chú / Nhu cầu</td>
-                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>note, message, ghi_chu, noi_dung, loi_nhan, nhu_cau</td>
-                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Lưu vào nội dung tư vấn chính</td>
-                                  </tr>
-                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Nguồn (Source)</td>
-                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>source, utm_source</td>
-                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Nếu không gửi, tự lấy: <strong>{selected.default_source || 'Webhook'}</strong></td>
-                                  </tr>
-                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Phân loại / Dự án (Type)</td>
-                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>type, du_an, project, san_pham</td>
-                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Nếu không gửi, tự lấy: <strong>{selected.default_type || 'Nóng'}</strong></td>
-                                  </tr>
-                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Địa chỉ & Ngân sách</td>
-                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>address, dia_chi, budget, ngan_sach, gia</td>
-                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Tự động gán vào trường tương ứng hoặc gom ghi chú</td>
-                                  </tr>
-                                  <tr style={{ background: 'rgba(99, 102, 241, 0.05)' }}>
-                                    <td style={{ padding: '8px 10px', fontWeight: 800, color: '#6366f1' }}>✨ TẤT CẢ TRƯỜNG KHÁC</td>
-                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>utm_campaign, gio_hen, tuoi, custom_xyz...</td>
-                                    <td style={{ padding: '8px 10px', color: '#059669', fontWeight: 700 }}>
-                                      ✅ 100% tự động gom vào Ghi chú Lead không bao giờ sót thông tin!
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-
-                          {/* Quick test buttons */}
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
-                            <button
-                              onClick={() => {
-                                setWebhookTab('logs');
-                              }}
-                              className="btn outline"
-                              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}
-                            >
-                              📜 {t('Xem Nhật Ký Nhận Data')}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setWebhookTab('simulator');
-                                setSimPayload(JSON.stringify({
-                                  name: "Nguyễn Văn A",
-                                  phone: "0912345678",
-                                  email: "nguyenvana@gmail.com",
-                                  note: "Khách cần tư vấn căn hộ 2 phòng ngủ",
-                                  source: selected.default_source || "Landing Page",
-                                  type: selected.default_type || "Căn hộ cao cấp",
-                                  budget: "3 - 5 tỷ"
-                                }, null, 2));
-                              }}
-                              className="btn primary"
-                              style={{ background: '#6366f1', border: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}
-                            >
-                              🚀 {t('Bắn Thử Ngay Bằng Simulator')}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Sub-tab 2: Ladipage */}
-                      {guideTab === 'ladipage' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', lineHeight: 1.6 }}>
-                          <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
-                            Hướng Dẫn Kết Nối Ladipage
-                          </h4>
-                          <ol style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.875rem' }}>
-                            <li>Mở trang thiết kế Ladipage của bạn.</li>
-                            <li>Bấm vào Form đăng ký nhận thông tin -&gt; chọn <strong>Lưu data</strong> (biểu tượng liên kết).</li>
-                            <li>Bấm <strong>Thêm mới</strong> -&gt; Chọn loại tài khoản liên kết là <strong>Webhook</strong>.</li>
-                            <li>Dán đường dẫn Webhook sau vào ô <strong>Webhook URL</strong>:</li>
-                          </ol>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0f172a', padding: '10px 14px', borderRadius: 8, border: '1px solid #334155' }}>
-                            <code style={{ color: '#38bdf8', flex: 1, fontSize: '0.8125rem', wordBreak: 'break-all' }}>
-                              {webhookUrl(selected.webhook_token)}
-                            </code>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
-                                setCopiedId('guide_ladipage');
-                                setTimeout(() => setCopiedId(null), 2000);
-                              }}
-                              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                            >
-                              {copiedId === 'guide_ladipage' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
-                              {copiedId === 'guide_ladipage' ? 'Đã copy' : 'Copy URL'}
-                            </button>
-                          </div>
-
-                          <ul style={{ paddingLeft: '1.25rem', margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                            <li>Phương thức gửi: <strong>POST</strong></li>
-                            <li>Kiểu dữ liệu: <strong>application/json</strong> (hoặc application/x-www-form-urlencoded đều nhận được).</li>
-                            <li>Bấm <strong>Lưu</strong> và <strong>Xuất bản lại Landing Page</strong>. Khi có người điền form, data sẽ ngay lập tức đổ vào CRM!</li>
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Sub-tab 3: WordPress */}
-                      {guideTab === 'wordpress' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', lineHeight: 1.6 }}>
-                          <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
-                            Hướng Dẫn Kết Nối WordPress / Elementor / Contact Form 7
-                          </h4>
-                          <div style={{ fontSize: '0.875rem' }}>
-                            <strong>Cách 1: Đối với Elementor Pro Form:</strong>
-                            <ol style={{ paddingLeft: '1.25rem', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              <li>Chỉnh sửa Form bằng Elementor -&gt; Tab <strong>Actions After Submit</strong>.</li>
-                              <li>Thêm action <strong>Webhook</strong> vào danh sách.</li>
-                              <li>Mở mục <strong>Webhook</strong> mới hiện ra bên dưới -&gt; Dán URL webhook của bạn vào ô <strong>Webhook URL</strong>.</li>
-                              <li>Bấm Cập nhật trang.</li>
-                            </ol>
-                          </div>
-
-                          <div style={{ fontSize: '0.875rem' }}>
-                            <strong>Cách 2: Đối với Contact Form 7 / WPForms:</strong>
-                            <ol style={{ paddingLeft: '1.25rem', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              <li>Cài đặt plugin miễn phí <em>CF7 to Webhook</em> hoặc <em>WP Webhooks</em>.</li>
-                              <li>Dán URL webhook của bạn vào mục cài đặt form.</li>
-                            </ol>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0f172a', padding: '10px 14px', borderRadius: 8, border: '1px solid #334155' }}>
-                            <code style={{ color: '#38bdf8', flex: 1, fontSize: '0.8125rem', wordBreak: 'break-all' }}>
-                              {webhookUrl(selected.webhook_token)}
-                            </code>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
-                                setCopiedId('guide_wp');
-                                setTimeout(() => setCopiedId(null), 2000);
-                              }}
-                              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                            >
-                              {copiedId === 'guide_wp' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
-                              {copiedId === 'guide_wp' ? 'Đã copy' : 'Copy URL'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Sub-tab 4: Zapier */}
-                      {guideTab === 'zapier' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', lineHeight: 1.6 }}>
-                          <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
-                            Hướng Dẫn Tích Hợp Zapier / Make.com / n8n
-                          </h4>
-                          <ol style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.875rem' }}>
-                            <li>Tạo một Action trong Scenario/Workflow: chọn <strong>Webhooks by Zapier</strong> hoặc module <strong>HTTP</strong> trong Make / n8n.</li>
-                            <li>Chọn Action Event: <strong>POST</strong>.</li>
-                            <li>Ô URL: dán đường dẫn Webhook này.</li>
-                            <li>Payload Type: chọn <strong>JSON</strong>.</li>
-                            <li>Dữ liệu có thể chứa cấu trúc phẳng hoặc lồng nhau (CRM tự động unwrap thông minh).</li>
-                          </ol>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0f172a', padding: '10px 14px', borderRadius: 8, border: '1px solid #334155' }}>
-                            <code style={{ color: '#38bdf8', flex: 1, fontSize: '0.8125rem', wordBreak: 'break-all' }}>
-                              {webhookUrl(selected.webhook_token)}
-                            </code>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
-                                setCopiedId('guide_zap');
-                                setTimeout(() => setCopiedId(null), 2000);
-                              }}
-                              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                            >
-                              {copiedId === 'guide_zap' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
-                              {copiedId === 'guide_zap' ? 'Đã copy' : 'Copy URL'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Sub-tab 5: Code */}
-                      {guideTab === 'code' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                          <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
-                            Mã Nguồn Mẫu (cURL / JavaScript / PHP / Python)
-                          </h4>
-
-                          {/* cURL */}
-                          <div style={{ position: 'relative', background: '#0f172a', padding: '1rem', borderRadius: 8, border: '1px solid #334155' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8' }}>cURL Command</span>
+                      {/* Code Snippets with Language Switcher */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                          <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>
+                            {t('2. Mã Nguồn Mẫu Bắn POST')}
+                          </label>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {[
+                              { id: 'curl', label: 'cURL' },
+                              { id: 'js', label: 'JavaScript Fetch' },
+                              { id: 'php', label: 'PHP cURL' },
+                              { id: 'python', label: 'Python requests' }
+                            ].map(lang => (
                               <button
-                                onClick={() => {
-                                  const code = `curl -X POST "${webhookUrl(selected.webhook_token)}" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "name": "Nguyễn Văn A",\n    "phone": "0912345678",\n    "email": "a@gmail.com",\n    "source": "${selected.default_source || 'Website'}",\n    "nhu_cau": "Tư vấn dự án"\n  }'`;
-                                  navigator.clipboard.writeText(code);
-                                  setCopiedId('code_curl');
-                                  setTimeout(() => setCopiedId(null), 2000);
+                                key={lang.id}
+                                type="button"
+                                onClick={() => setCodeLang(lang.id as any)}
+                                style={{
+                                  padding: '3px 10px',
+                                  borderRadius: 6,
+                                  border: codeLang === lang.id ? '1px solid #6366f1' : '1px solid var(--color-border)',
+                                  background: codeLang === lang.id ? '#6366f1' : 'var(--color-bg)',
+                                  color: codeLang === lang.id ? '#fff' : 'var(--color-text-muted)',
+                                  fontWeight: 700,
+                                  fontSize: '0.75rem',
+                                  cursor: 'pointer'
                                 }}
-                                style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}
                               >
-                                {copiedId === 'code_curl' ? 'Đã copy' : 'Copy cURL'}
+                                {lang.label}
                               </button>
-                            </div>
-                            <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.75rem', fontFamily: 'monospace', overflowX: 'auto' }}>
-{`curl -X POST "${webhookUrl(selected.webhook_token)}" \\
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{ position: 'relative', background: '#0f172a', padding: '1rem', borderRadius: 8, border: '1px solid #334155' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                            <button
+                              onClick={() => {
+                                let codeToCopy = '';
+                                if (codeLang === 'curl') {
+                                  codeToCopy = `curl -X POST "${webhookUrl(selected.webhook_token)}" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "name": "Nguyễn Văn A",\n    "phone": "0912345678",\n    "email": "a@gmail.com",\n    "source": "${selected.default_source || 'Website'}",\n    "note": "Tư vấn dự án"\n  }'`;
+                                } else if (codeLang === 'js') {
+                                  codeToCopy = `fetch("${webhookUrl(selected.webhook_token)}", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({\n    name: "Nguyễn Văn A",\n    phone: "0912345678",\n    email: "a@gmail.com",\n    source: "${selected.default_source || 'Website'}",\n    note: "Tư vấn dự án"\n  })\n}).then(res => res.json()).then(console.log);`;
+                                } else if (codeLang === 'php') {
+                                  codeToCopy = `<?php\n$ch = curl_init("${webhookUrl(selected.webhook_token)}");\n$payload = json_encode([\n    "name" => "Nguyễn Văn A",\n    "phone" => "0912345678",\n    "email" => "a@gmail.com",\n    "source" => "${selected.default_source || 'Website'}",\n    "note" => "Tư vấn dự án"\n]);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;`;
+                                } else {
+                                  codeToCopy = `import requests\n\nurl = "${webhookUrl(selected.webhook_token)}"\npayload = {\n    "name": "Nguyễn Văn A",\n    "phone": "0912345678",\n    "email": "a@gmail.com",\n    "source": "${selected.default_source || 'Website'}",\n    "note": "Tư vấn dự án"\n}\nres = requests.post(url, json=payload)\nprint(res.json())`;
+                                }
+                                navigator.clipboard.writeText(codeToCopy);
+                                setCopiedId('code_active');
+                                setTimeout(() => setCopiedId(null), 2000);
+                              }}
+                              style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none', padding: '3px 8px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                            >
+                              {copiedId === 'code_active' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                              {copiedId === 'code_active' ? t('Đã copy code') : t('Copy Code')}
+                            </button>
+                          </div>
+                          <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.75rem', fontFamily: 'monospace', overflowX: 'auto', lineHeight: 1.5 }}>
+                            {codeLang === 'curl' && `curl -X POST "${webhookUrl(selected.webhook_token)}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "Nguyễn Văn A",
     "phone": "0912345678",
     "email": "a@gmail.com",
     "source": "${selected.default_source || 'Website'}",
-    "nhu_cau": "Tư vấn dự án"
+    "note": "Tư vấn dự án"
   }'`}
-                            </pre>
-                          </div>
-
-                          {/* JavaScript Fetch */}
-                          <div style={{ position: 'relative', background: '#0f172a', padding: '1rem', borderRadius: 8, border: '1px solid #334155' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8' }}>JavaScript Fetch (Browser / Node.js)</span>
-                              <button
-                                onClick={() => {
-                                  const code = `fetch("${webhookUrl(selected.webhook_token)}", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({\n    name: "Nguyễn Văn A",\n    phone: "0912345678",\n    email: "a@gmail.com",\n    source: "${selected.default_source || 'Landing Page'}",\n    note: "Khách cần gọi lại sau 18h"\n  })\n}).then(res => res.json()).then(console.log);`;
-                                  navigator.clipboard.writeText(code);
-                                  setCopiedId('code_fetch');
-                                  setTimeout(() => setCopiedId(null), 2000);
-                                }}
-                                style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}
-                              >
-                                {copiedId === 'code_fetch' ? 'Đã copy' : 'Copy Fetch'}
-                              </button>
-                            </div>
-                            <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.75rem', fontFamily: 'monospace', overflowX: 'auto' }}>
-{`fetch("${webhookUrl(selected.webhook_token)}", {
+                            {codeLang === 'js' && `fetch("${webhookUrl(selected.webhook_token)}", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     name: "Nguyễn Văn A",
     phone: "0912345678",
     email: "a@gmail.com",
-    source: "${selected.default_source || 'Landing Page'}",
-    note: "Khách cần gọi lại sau 18h"
+    source: "${selected.default_source || 'Website'}",
+    note: "Tư vấn dự án"
   })
 }).then(res => res.json()).then(console.log);`}
-                            </pre>
-                          </div>
-
-                          {/* PHP cURL */}
-                          <div style={{ position: 'relative', background: '#0f172a', padding: '1rem', borderRadius: 8, border: '1px solid #334155' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8' }}>PHP (cURL)</span>
-                              <button
-                                onClick={() => {
-                                  const code = `<?php\n$ch = curl_init("${webhookUrl(selected.webhook_token)}");\n$payload = json_encode([\n    "name" => "Nguyễn Văn A",\n    "phone" => "0912345678",\n    "email" => "a@gmail.com",\n    "source" => "${selected.default_source || 'Website'}",\n    "note" => "Tư vấn dự án"\n]);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;`;
-                                  navigator.clipboard.writeText(code);
-                                  setCopiedId('code_php');
-                                  setTimeout(() => setCopiedId(null), 2000);
-                                }}
-                                style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}
-                              >
-                                {copiedId === 'code_php' ? 'Đã copy' : 'Copy PHP'}
-                              </button>
-                            </div>
-                            <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.75rem', fontFamily: 'monospace', overflowX: 'auto' }}>
-{`<?php
+                            {codeLang === 'php' && `<?php
 $ch = curl_init("${webhookUrl(selected.webhook_token)}");
 $payload = json_encode([
     "name" => "Nguyễn Văn A",
@@ -2974,27 +2728,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $response = curl_exec($ch);
 curl_close($ch);
 echo $response;`}
-                            </pre>
-                          </div>
-
-                          {/* Python requests */}
-                          <div style={{ position: 'relative', background: '#0f172a', padding: '1rem', borderRadius: 8, border: '1px solid #334155' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8' }}>Python (requests)</span>
-                              <button
-                                onClick={() => {
-                                  const code = `import requests\n\nurl = "${webhookUrl(selected.webhook_token)}"\npayload = {\n    "name": "Nguyễn Văn A",\n    "phone": "0912345678",\n    "email": "a@gmail.com",\n    "source": "${selected.default_source || 'Website'}",\n    "note": "Tư vấn dự án"\n}\nres = requests.post(url, json=payload)\nprint(res.json())`;
-                                  navigator.clipboard.writeText(code);
-                                  setCopiedId('code_python');
-                                  setTimeout(() => setCopiedId(null), 2000);
-                                }}
-                                style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}
-                              >
-                                {copiedId === 'code_python' ? 'Đã copy' : 'Copy Python'}
-                              </button>
-                            </div>
-                            <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.75rem', fontFamily: 'monospace', overflowX: 'auto' }}>
-{`import requests
+                            {codeLang === 'python' && `import requests
 
 url = "${webhookUrl(selected.webhook_token)}"
 payload = {
@@ -3006,10 +2740,97 @@ payload = {
 }
 res = requests.post(url, json=payload)
 print(res.json())`}
-                            </pre>
-                          </div>
+                          </pre>
                         </div>
-                      )}
+                      </div>
+
+                      {/* Field Mapping Reference Table */}
+                      <div>
+                        <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 8, display: 'block' }}>
+                          {t('3. Bảng Bóc Tách Trường Thông Tin Tự Động (Smart Alias)')}
+                        </label>
+                        <div className="responsive-table-wrap">
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                            <thead>
+                              <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                                <th style={{ padding: '8px 10px', width: '22%' }}>Trường Trong CRM</th>
+                                <th style={{ padding: '8px 10px', width: '38%' }}>Các Tên Key Hỗ Trợ Tự Động</th>
+                                <th style={{ padding: '8px 10px' }}>Cơ Chế Xử Lý</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Họ và tên</td>
+                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>name, full_name, ho_ten, ten, fullname, khach_hang</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Lưu vào họ tên khách hàng</td>
+                              </tr>
+                              <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Số điện thoại</td>
+                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>phone, so_dien_thoai, sdt, tel, mobile, contact_phone</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Kiểm tra chống trùng, phân bổ cho Sale</td>
+                              </tr>
+                              <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Email</td>
+                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>email, mail, contact_email</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Lưu vào email liên hệ</td>
+                              </tr>
+                              <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Ghi chú / Nhu cầu</td>
+                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>note, message, ghi_chu, noi_dung, loi_nhan, nhu_cau</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Lưu vào nội dung tư vấn chính</td>
+                              </tr>
+                              <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Nguồn (Source)</td>
+                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>source, utm_source</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Nếu không gửi, tự lấy: <strong>{selected.default_source || 'Website'}</strong></td>
+                              </tr>
+                              <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Phân loại / Dự án (Type)</td>
+                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>type, du_an, project, san_pham</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Nếu không gửi, tự lấy: <strong>{selected.default_type || 'Nóng'}</strong></td>
+                              </tr>
+                              <tr style={{ background: 'rgba(99, 102, 241, 0.05)' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 800, color: '#6366f1' }}>✨ TẤT CẢ TRƯỜNG KHÁC</td>
+                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>utm_campaign, gio_hen, tuoi, custom_xyz...</td>
+                                <td style={{ padding: '8px 10px', color: '#059669', fontWeight: 700 }}>
+                                  ✅ 100% tự động gom vào Ghi chú Lead không bao giờ sót thông tin!
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Quick action buttons */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => {
+                            setWebhookTab('logs');
+                          }}
+                          className="btn outline"
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}
+                        >
+                          📜 {t('Xem Nhật Ký Nhận Data')}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setWebhookTab('simulator');
+                            setSimPayload(JSON.stringify({
+                              name: "Nguyễn Văn A",
+                              phone: "0912345678",
+                              email: "nguyenvana@gmail.com",
+                              note: "Khách cần tư vấn căn hộ 2 phòng ngủ",
+                              source: selected.default_source || "Website",
+                              type: selected.default_type || "Nóng",
+                              budget: "3 - 5 tỷ"
+                            }, null, 2));
+                          }}
+                          className="btn primary"
+                          style={{ background: '#6366f1', border: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}
+                        >
+                          🚀 {t('Bắn Thử Ngay Bằng Simulator')}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -3867,44 +3688,6 @@ print(res.json())`}
                   value={newWebhookName}
                   onChange={e => setNewWebhookName(e.target.value)}
                 />
-              </div>
-
-              {/* Mẫu nguồn nhanh */}
-              <div>
-                <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>
-                  {t('Mẫu cấu hình nhanh')}
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8 }}>
-                  {[
-                    { id: 'ladipage', label: '⚡ Ladipage', source: 'Ladipage', type: 'Hot Lead' },
-                    { id: 'wordpress', label: '🌐 Website Form', source: 'Website', type: 'Tư vấn' },
-                    { id: 'facebook', label: '📱 Facebook Ads', source: 'Facebook Ads', type: 'Chiến dịch Ads' },
-                    { id: 'zapier', label: '🔄 Zapier / Make', source: 'Zapier', type: 'Tự động' }
-                  ].map(p => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => {
-                        setNewWebhookPreset(p.id as any);
-                        setNewWebhookSource(p.source);
-                        setNewWebhookType(p.type);
-                      }}
-                      style={{
-                        padding: '8px 10px',
-                        borderRadius: 8,
-                        border: newWebhookPreset === p.id ? '2px solid #6366f1' : '1px solid var(--color-border)',
-                        background: newWebhookPreset === p.id ? 'rgba(99, 102, 241, 0.08)' : 'var(--color-bg)',
-                        color: newWebhookPreset === p.id ? '#6366f1' : 'var(--color-text)',
-                        fontWeight: 700,
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                        textAlign: 'center'
-                      }}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Nguồn mặc định & Loại mặc định */}

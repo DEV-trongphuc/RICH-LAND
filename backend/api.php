@@ -8227,7 +8227,7 @@ switch ($action) {
             $autoAppend = isset($input['auto_append_unmapped_note']) ? (int) $input['auto_append_unmapped_note'] : 1;
 
             $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, default_source, default_type, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, sync_saleperson, email_template, two_way_sync, google_script_url, is_initialized, lead_recall_minutes, notify_admin, auto_append_unmapped_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)");
-            $stmt->bind_param("sssssiiissiisisi ii", $name, $defaultSource, $defaultType, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin, $autoAppend);
+            $stmt->bind_param("sssssiiissiisisiii", $name, $defaultSource, $defaultType, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin, $autoAppend);
             if ($stmt->execute()) {
                 $insertId = $stmt->insert_id;
                 logAdminAction($conn, $decodedUser['id'], 'ADD_CONNECTION', ['id' => $insertId, 'sheet_name' => $name]);
@@ -8264,7 +8264,7 @@ switch ($action) {
             $autoAppend = isset($input['auto_append_unmapped_note']) ? (int) $input['auto_append_unmapped_note'] : 1;
 
             $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, default_source=?, default_type=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, two_way_sync=?, google_script_url=?, lead_recall_minutes=?, notify_admin=?, auto_append_unmapped_note=?, is_initialized=0, last_sync_at=NULL, sync_status='idle', last_error=NULL WHERE id=?");
-            $stmt->bind_param("ssssiiissiisiisiiii", $name, $defaultSource, $defaultType, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin, $autoAppend, $id);
+            $stmt->bind_param("ssssiiissiisisiiii", $name, $defaultSource, $defaultType, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin, $autoAppend, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONNECTION', ['id' => $id, 'sheet_name' => $name]);
             }
