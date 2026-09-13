@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 196;
+$targetVersion = 197;
 $currentVersion = 186;
 
 // Query current DB version
@@ -467,8 +467,39 @@ try {
         $logMsg("Đã tạo bảng task_hidden_users.", "success");
     }
 
-    // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '196') ON DUPLICATE KEY UPDATE setting_value = '196'");
+    // 9. Webhook Universal columns and logs table
+    $chkCol = $conn->query("SHOW COLUMNS FROM `sheet_connections` LIKE 'default_source'");
+    if (!$chkCol || $chkCol->num_rows == 0) {
+        $conn->query("ALTER TABLE `sheet_connections` ADD COLUMN `default_source` VARCHAR(100) NULL DEFAULT NULL AFTER `sheet_name`, ADD COLUMN `default_type` VARCHAR(100) NULL DEFAULT NULL AFTER `default_source`");
+        $logMsg("Đã bổ sung default_source và default_type vào sheet_connections.", "success");
+    }
+
+    $chkWL = $conn->query("SHOW TABLES LIKE 'webhook_logs'");
+    if (!$chkWL || $chkWL->num_rows == 0) {
+        $conn->query("CREATE TABLE `webhook_logs` (
+          `id` bigint(20) NOT NULL AUTO_INCREMENT,
+          `connection_id` int(11) DEFAULT NULL,
+          `token` varchar(64) DEFAULT NULL,
+          `ip_address` varchar(45) DEFAULT NULL,
+          `request_method` varchar(10) DEFAULT NULL,
+          `content_type` varchar(100) DEFAULT NULL,
+          `raw_payload` longtext DEFAULT NULL,
+          `parsed_data` longtext DEFAULT NULL,
+          `lead_id` int(11) DEFAULT NULL,
+          `status` varchar(50) DEFAULT 'success',
+          `message` text DEFAULT NULL,
+          `created_at` datetime DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`),
+          KEY `idx_connection_id` (`connection_id`),
+          KEY `idx_token` (`token`),
+          KEY `idx_created_at` (`created_at`),
+          KEY `idx_lead_id` (`lead_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+        $logMsg("Đã tạo bảng webhook_logs.", "success");
+    }
+
+    // 10. Update DB version in system_settings
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '197') ON DUPLICATE KEY UPDATE setting_value = '197'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

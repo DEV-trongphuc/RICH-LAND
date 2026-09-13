@@ -11,8 +11,23 @@ require_once 'db_connect.php';
 require_once 'webhook_logic.php';
 
 function respondAndNotifyAdmin($conn, $connData, $leadId, $customerData, $distData, $responseJson, $lockKey, &$lockReleased) {
+    global $webhookLogId;
     if (function_exists('releaseAdvisoryLock')) {
         releaseAdvisoryLock($conn, $lockKey, $lockReleased);
+    }
+
+    if (!empty($webhookLogId) && $conn && $conn instanceof mysqli && @$conn->ping()) {
+        try {
+            $logStatus = $responseJson['status'] ?? (!empty($responseJson['success']) ? 'success' : 'error');
+            $logMsg = $responseJson['message'] ?? '';
+            $upStmt = $conn->prepare("UPDATE webhook_logs SET lead_id = ?, status = ?, message = ? WHERE id = ?");
+            if ($upStmt) {
+                $leadIdVal = !empty($leadId) ? (int)$leadId : null;
+                $upStmt->bind_param("issi", $leadIdVal, $logStatus, $logMsg, $webhookLogId);
+                $upStmt->execute();
+                $upStmt->close();
+            }
+        } catch (Throwable $e) {}
     }
 
     if (function_exists('fastcgi_finish_request')) {
@@ -50,30 +65,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Check if request is POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+$webhookLogId = null;
+
+function logWebhookResult($conn, $logId, $leadId = null, $status = 'success', $message = '') {
+    if (!$logId || !$conn || !($conn instanceof mysqli)) return;
+    try {
+        $upStmt = $conn->prepare("UPDATE webhook_logs SET lead_id = ?, status = ?, message = ? WHERE id = ?");
+        if ($upStmt) {
+            $upStmt->bind_param("issi", $leadId, $status, $message, $logId);
+            $upStmt->execute();
+            $upStmt->close();
+        }
+    } catch (Throwable $e) {
+        error_log("logWebhookResult error: " . $e->getMessage());
+    }
+}
+
+// Allow both POST and GET
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
     echo json_encode(["success" => false, "message" => "Method Not Allowed"]);
     exit();
 }
 
-// Get raw POST data
-$input = file_get_contents("php://input");
-$data = json_decode($input, true);
+// Universal Inbound Payload Extractor
+$rawInput = file_get_contents("php://input");
+$contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+$data = null;
 
-if (!$data) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "Invalid JSON payload"]);
-    exit();
+// 1. Try JSON decoding
+if (!empty($rawInput)) {
+    $trimmed = trim($rawInput);
+    if ((str_starts_with($trimmed, '{') && str_ends_with($trimmed, '}')) || 
+        (str_starts_with($trimmed, '[') && str_ends_with($trimmed, ']'))) {
+        $decoded = json_decode($rawInput, true);
+        if (is_array($decoded)) {
+            $data = $decoded;
+        }
+    }
 }
 
-// Extract token or spreadsheet_id to verify sheet_connection
-$token = $_GET['token'] ?? '';
-$spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? '';
+// 2. If not JSON, check $_POST (Form-data / x-www-form-urlencoded)
+if (empty($data) && !empty($_POST)) {
+    $data = $_POST;
+}
+
+// 3. If $_POST empty but rawInput exists, try parse_str (url-encoded raw body)
+if (empty($data) && !empty($rawInput)) {
+    parse_str($rawInput, $parsed);
+    if (!empty($parsed) && is_array($parsed)) {
+        $data = $parsed;
+    }
+}
+
+// 4. Fallback to $_GET
+if (empty($data) && !empty($_GET)) {
+    $getCopy = $_GET;
+    unset($getCopy['token']);
+    if (!empty($getCopy)) {
+        $data = $getCopy;
+    }
+}
+
+if (!is_array($data)) {
+    $data = [];
+}
+
+// Helper to unwrap nested payloads (Meta Webhooks, Ladipage, Zapier, Make, n8n wrappers)
+if (!function_exists('unwrapWebhookPayload')) {
+    function unwrapWebhookPayload($payload) {
+        if (!is_array($payload)) return [];
+        // Meta / Facebook Lead Ads Webhook: entry[0].changes[0].value
+        if (isset($payload['entry'][0]['changes'][0]['value']) && is_array($payload['entry'][0]['changes'][0]['value'])) {
+            $metaVal = $payload['entry'][0]['changes'][0]['value'];
+            unset($payload['entry']);
+            $payload = array_merge($payload, $metaVal);
+        }
+        // Common wrapper keys
+        $wrapperKeys = ['data', 'payload', 'lead', 'form_data', 'contact', 'body', 'fields', 'customer', 'item', 'info'];
+        foreach ($wrapperKeys as $wKey) {
+            if (isset($payload[$wKey]) && is_array($payload[$wKey]) && !empty($payload[$wKey])) {
+                $inner = $payload[$wKey];
+                unset($payload[$wKey]);
+                // Flatten associative keys
+                if (array_keys($inner) !== range(0, count($inner) - 1)) {
+                    $payload = array_merge($inner, $payload);
+                }
+                break;
+            }
+        }
+        return $payload;
+    }
+}
+$data = unwrapWebhookPayload($data);
+
+// Extract token or spreadsheet_id to verify connection
+$token = $_GET['token'] ?? $data['token'] ?? $data['_meta']['token'] ?? '';
+$spreadsheet_id = $data['_meta']['spreadsheet_id'] ?? ($data['spreadsheet_id'] ?? '');
 
 $connData = null;
 if (!empty($token)) {
-    $stmt = $conn->prepare("SELECT id, sheet_name, require_both_contact, connection_type, is_silent, sync_saleperson, spreadsheet_id, notify_admin, webhook_token FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
+    $stmt = $conn->prepare("SELECT id, sheet_name, default_source, default_type, require_both_contact, connection_type, is_silent, sync_saleperson, spreadsheet_id, notify_admin, auto_append_unmapped_note, webhook_token FROM sheet_connections WHERE webhook_token = ? AND is_active = 1");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $connRes = $stmt->get_result();
@@ -91,7 +183,7 @@ if (!empty($token)) {
     }
     $stmt->close();
 } else if (!empty($spreadsheet_id)) {
-    $stmt = $conn->prepare("SELECT id, sheet_name, require_both_contact, connection_type, is_silent, sync_saleperson, webhook_token, notify_admin FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, sheet_name, default_source, default_type, require_both_contact, connection_type, is_silent, sync_saleperson, webhook_token, notify_admin, auto_append_unmapped_note FROM sheet_connections WHERE spreadsheet_id = ? AND is_active = 1 LIMIT 1");
     $stmt->bind_param("s", $spreadsheet_id);
     $stmt->execute();
     $connRes = $stmt->get_result();
@@ -113,40 +205,38 @@ if (!empty($token)) {
     echo json_encode(["success" => false, "message" => "Missing token or spreadsheet_id"]);
     exit();
 }
-$connectionId = $connData['id'];
-$requirePhone = $connData['require_both_contact'];
+
+$connectionId = (int)$connData['id'];
+$requirePhone = (int)$connData['require_both_contact'];
 $connectionType = $connData['connection_type'] ?? 'sheets';
 $isSilent = (int) ($connData['is_silent'] ?? 0);
 $syncSaleperson = (int) ($connData['sync_saleperson'] ?? 0);
+$autoAppendNote = (int) ($connData['auto_append_unmapped_note'] ?? 1);
+
+// Record initial request in webhook_logs
+try {
+    $rawToLog = !empty($rawInput) ? $rawInput : json_encode($data, JSON_UNESCAPED_UNICODE);
+    $ipAddr = $_SERVER['REMOTE_ADDR'] ?? '';
+    $reqMeth = $_SERVER['REQUEST_METHOD'] ?? 'POST';
+    $logStmt = $conn->prepare("INSERT INTO webhook_logs (connection_id, token, ip_address, request_method, content_type, raw_payload, parsed_data, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'processing')");
+    if ($logStmt) {
+        $parsedJson = json_encode($data, JSON_UNESCAPED_UNICODE);
+        $tokVal = !empty($token) ? $token : ($connData['webhook_token'] ?? null);
+        $logStmt->bind_param("issssss", $connectionId, $tokVal, $ipAddr, $reqMeth, $contentType, $rawToLog, $parsedJson);
+        $logStmt->execute();
+        $webhookLogId = $logStmt->insert_id;
+        $logStmt->close();
+    }
+} catch (Throwable $e) {
+    error_log("Webhook logs insert error: " . $e->getMessage());
+}
+
+// Load explicit field mappings (if configured)
 $mappings = [];
-
-if ($connectionType === 'landing_page') {
-    // API Landing Page Logic: map standard fields natively, bundle everything else to note
-    $phone = normalizePhone($data['phone'] ?? '');
-    $email = trim($data['email'] ?? '');
-    $name = trim($data['name'] ?? '');
-    $source = trim($data['source'] ?? '');
-    $type = trim($data['type'] ?? '');
-    $note = trim($data['note'] ?? '');
-
-    $standardKeys = ['phone', 'email', 'name', 'source', 'type', 'note', '_meta'];
-    $extraNotes = [];
-    foreach ($data as $key => $val) {
-        if (!in_array($key, $standardKeys) && !is_array($val) && trim((string)$val) !== '') {
-            $extraNotes[] = "$key: $val";
-        }
-    }
-    if (!empty($extraNotes)) {
-        $note = $note . "\n" . implode("\n", $extraNotes);
-        $note = trim($note);
-    }
-} else {
-    // Legacy Google Sheets Logic with manual mappings
 $mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
 $mapStmt->bind_param("i", $connectionId);
 $mapStmt->execute();
 $mappingsResult = $mapStmt->get_result();
-$mappings = [];
 while($row = $mappingsResult->fetch_assoc()) {
     $sysField = $row['system_field'];
     if (!isset($mappings[$sysField])) {
@@ -159,7 +249,6 @@ while($row = $mappingsResult->fetch_assoc()) {
 }
 $mapStmt->close();
 
-// Extract mapped values from incoming data (handle multiple mapped columns by concatenating them)
 function extractMappedValues($mappingsArray, $systemField, $data) {
     if (!isset($mappingsArray[$systemField])) return '';
     $values = [];
@@ -171,7 +260,6 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
             $values[] = $label . ': ' . $data[$colName];
         }
     }
-    // For unique/specific system fields & custom fields, return the raw value directly of the first matched non-empty column
     $knownSingleFields = [
         'phone', 'phone2', 'name', 'email', 'source', 'type', 'assigned_to', 'saleperson',
         'gender', 'dob', 'citizen_id', 'address', 'city', 'district', 'company', 'job_title', 'tax_code',
@@ -191,48 +279,104 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
     return implode("\n", $values);
 }
 
-// normalizePhone is defined in webhook_logic.php (already required above)
-
-    $phone = normalizePhone(extractMappedValues($mappings, 'phone', $data));
-    $email = extractMappedValues($mappings, 'email', $data);
-    $source = extractMappedValues($mappings, 'source', $data);
-    $note = extractMappedValues($mappings, 'note', $data);
-    $name = extractMappedValues($mappings, 'name', $data);
-    $platform = extractMappedValues($mappings, 'platform', $data);
-    $budget = extractMappedValues($mappings, 'budget', $data);
-    $utm_campaign = extractMappedValues($mappings, 'utm_campaign', $data);
-    $utm_medium = extractMappedValues($mappings, 'utm_medium', $data);
-    $utm_content = extractMappedValues($mappings, 'utm_content', $data);
-    $utm_term = extractMappedValues($mappings, 'utm_term', $data);
-    $form_name = extractMappedValues($mappings, 'form_name', $data);
-
-    if (!empty($connItem['auto_append_unmapped_note'])) {
-        $mappedCols = [];
-        foreach ($mappings as $sysF => $mList) {
-            if (is_array($mList)) {
-                foreach ($mList as $mItem) {
-                    if (!empty($mItem['sheet_column'])) {
-                        $mappedCols[strtolower(trim($mItem['sheet_column']))] = true;
-                    }
-                }
+// Smart Field Alias Matcher for Universal Webhooks
+$matchedKeys = ['_meta', 'token', 'spreadsheet_id'];
+$findSmartField = function($sysField, $aliases) use ($mappings, &$data, &$matchedKeys) {
+    // 1. Check explicit field mappings first
+    $mappedVal = extractMappedValues($mappings, $sysField, $data);
+    if (!empty($mappedVal)) {
+        if (isset($mappings[$sysField])) {
+            foreach ($mappings[$sysField] as $m) {
+                $matchedKeys[] = $m['sheet_column'];
             }
         }
-        $unmappedNotes = [];
-        foreach ($data as $colKey => $colVal) {
-            if (trim((string)$colVal) === '') continue;
-            if (!isset($mappedCols[strtolower(trim($colKey))])) {
-                $unmappedNotes[] = "{$colKey}: {$colVal}";
-            }
+        return $mappedVal;
+    }
+    // 2. Direct exact alias match
+    foreach ($aliases as $alias) {
+        if (isset($data[$alias]) && !is_array($data[$alias]) && trim((string)$data[$alias]) !== '') {
+            $matchedKeys[] = $alias;
+            return trim((string)$data[$alias]);
         }
-        if (!empty($unmappedNotes)) {
-            $extraNoteStr = implode(' | ', $unmappedNotes);
-            $note = !empty($note) ? "{$note}\n[Cột chưa map: {$extraNoteStr}]" : "[Cột chưa map: {$extraNoteStr}]";
+    }
+    // 3. Case-insensitive & normalized key match (handles "Số điện thoại", "so_dien_thoai", "SoDienThoai")
+    $normalizedData = [];
+    foreach ($data as $k => $v) {
+        if (!is_array($v)) {
+            $cleanKey = strtolower(str_replace([' ', '-', '_', '.', ':'], '', $k));
+            $normalizedData[$cleanKey] = ['originalKey' => $k, 'val' => $v];
         }
+    }
+    foreach ($aliases as $alias) {
+        $cleanAlias = strtolower(str_replace([' ', '-', '_', '.', ':'], '', $alias));
+        if (isset($normalizedData[$cleanAlias]) && trim((string)$normalizedData[$cleanAlias]['val']) !== '') {
+            $matchedKeys[] = $normalizedData[$cleanAlias]['originalKey'];
+            return trim((string)$normalizedData[$cleanAlias]['val']);
+        }
+    }
+    return '';
+};
+
+$phone = normalizePhone($findSmartField('phone', ['phone', 'sdt', 'so_dien_thoai', 'so_dt', 'mobile', 'tel', 'dien_thoai', 'telephone', 'customer_phone', 'phone_number', 'sdt_khach', 'phonenumber', 'dt', 'cellphone']));
+$phone2 = normalizePhone($findSmartField('phone2', ['phone2', 'sdt2', 'sdt_phu', 'so_dien_thoai_2', 'secondary_phone']));
+$name = $findSmartField('name', ['name', 'full_name', 'fullname', 'ho_ten', 'hoten', 'customer_name', 'ten_khach', 'contact_name', 'first_name', 'last_name', 'ten', 'ho_va_ten', 'khach_hang', 'ho_ten_khach']);
+$email = trim($findSmartField('email', ['email', 'mail', 'contact_email', 'customer_email', 'gmail', 'e_mail', 'dia_chi_email']));
+$note = $findSmartField('note', ['note', 'ghi_chu', 'ghichu', 'message', 'noidung', 'noi_dung', 'content', 'message_content', 'comment', 'description', 'thong_tin_them', 'loi_nhan', 'nhu_cau_chi_tiet']);
+$source = $findSmartField('source', ['source', 'nguon', 'utm_source', 'origin', 'channel', 'lead_source', 'nguon_data']);
+$type = $findSmartField('type', ['type', 'loai', 'loai_data', 'lead_type', 'demand', 'loai_hinh', 'loai_khach']);
+$platform = $findSmartField('platform', ['platform', 'nen_tang', 'utm_platform', 'ad_platform', 'kenh']);
+$utm_campaign = $findSmartField('utm_campaign', ['utm_campaign', 'campaign', 'campaign_name', 'ten_chien_dich', 'chien_dich']);
+$utm_medium = $findSmartField('utm_medium', ['utm_medium', 'medium', 'hinh_thuc']);
+$utm_content = $findSmartField('utm_content', ['utm_content', 'content_ad', 'adset_name', 'ad_name', 'mau_quang_cao', 'adset']);
+$utm_term = $findSmartField('utm_term', ['utm_term', 'term', 'tu_khoa', 'keyword']);
+$form_name = $findSmartField('form_name', ['form_name', 'form_id', 'ten_form', 'form', 'landing_page_name', 'page_name']);
+$budget = $findSmartField('budget', ['budget', 'ngan_sach', 'tai_chinh', 'price', 'gia', 'gia_tien', 'muc_gia', 'khoang_gia']);
+$demand_type = $findSmartField('demand_type', ['demand_type', 'muc_dich', 'muc_dich_mua', 'nhu_cau_mua', 'purpose']);
+$property_type = $findSmartField('property_type', ['property_type', 'loai_bds', 'loai_bat_dong_san', 'product_type', 'loai_can_ho', 'san_pham']);
+$bedroom_count = $findSmartField('bedroom_count', ['bedroom_count', 'so_phong_ngu', 'phong_ngu', 'bedrooms', 'so_pn']);
+$preferred_location = $findSmartField('preferred_location', ['preferred_location', 'project', 'du_an', 'vi_tri', 'khu_vuc', 'project_name', 'ten_du_an']);
+$address = $findSmartField('address', ['address', 'dia_chi', 'full_address', 'dia_chi_nha']);
+$city = $findSmartField('city', ['city', 'tinh', 'thanh_pho', 'province', 'tinh_thanh']);
+$district = $findSmartField('district', ['district', 'quan', 'huyen', 'quan_huyen']);
+$company = $findSmartField('company', ['company', 'cong_ty', 'don_vi', 'co_quan']);
+$job_title = $findSmartField('job_title', ['job_title', 'chuc_vu', 'nghe_nghiep', 'occupation']);
+$citizen_id = $findSmartField('citizen_id', ['citizen_id', 'cccd', 'cmnd', 'so_cccd', 'so_cmnd', 'id_card']);
+$gender = $findSmartField('gender', ['gender', 'gioi_tinh']);
+$dob = $findSmartField('dob', ['dob', 'ngay_sinh', 'birthday', 'birthdate']);
+$zalo_phone = $findSmartField('zalo_phone', ['zalo_phone', 'zalo', 'so_zalo', 'link_zalo']);
+$facebook_link = $findSmartField('facebook_link', ['facebook_link', 'facebook', 'link_fb', 'fb', 'profile_fb']);
+
+// Fallbacks for Source & Type
+if (empty($source)) {
+    $source = !empty($connData['default_source']) ? $connData['default_source'] : $connData['sheet_name'];
+}
+if (empty($type)) {
+    $type = !empty($connData['default_type']) ? $connData['default_type'] : 'Nóng';
+}
+
+// Universal Catch-All: Collect 100% of residual / extra fields into Note
+if ($autoAppendNote === 1 || $connectionType === 'webhook' || $connectionType === 'landing_page') {
+    $extraNotes = [];
+    foreach ($data as $k => $v) {
+        if (in_array($k, $matchedKeys)) continue;
+        if (is_array($v)) {
+            $valStr = json_encode($v, JSON_UNESCAPED_UNICODE);
+        } else {
+            $valStr = trim((string)$v);
+        }
+        if ($valStr !== '') {
+            $extraNotes[] = "• $k: $valStr";
+        }
+    }
+    if (!empty($extraNotes)) {
+        $extraHeader = "\n\n[Dữ liệu Webhook bổ sung]:\n" . implode("\n", $extraNotes);
+        $note = !empty($note) ? ($note . $extraHeader) : trim($extraHeader);
     }
 }
 
 if (isLeadBlocked($conn, $phone, $email)) {
     http_response_code(400);
+    logWebhookResult($conn, $webhookLogId, null, 'blocked', 'This contact is permanently blocked in the system.');
     echo json_encode(["success" => false, "message" => "This contact is permanently blocked in the system."]);
     exit();
 }
@@ -240,13 +384,15 @@ if (isLeadBlocked($conn, $phone, $email)) {
 if ($requirePhone == 1) {
     if (empty($phone)) {
         http_response_code(400);
+        logWebhookResult($conn, $webhookLogId, null, 'error', 'Phone number is required');
         echo json_encode(["success" => false, "message" => "Phone number is required"]);
         exit();
     }
 } else {
-    if (empty($phone) && empty($email)) {
+    if (empty($phone) && empty($email) && empty($name) && empty($note)) {
         http_response_code(400);
-        echo json_encode(["success" => false, "message" => "Phone or email is required"]);
+        logWebhookResult($conn, $webhookLogId, null, 'error', 'At least one contact or note field is required');
+        echo json_encode(["success" => false, "message" => "At least one contact or note field is required"]);
         exit();
     }
 }

@@ -406,6 +406,8 @@ CREATE TABLE IF NOT EXISTS `routing_rules` (
 CREATE TABLE IF NOT EXISTS `sheet_connections` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `sheet_name` varchar(255) NOT NULL,
+  `default_source` varchar(100) DEFAULT NULL,
+  `default_type` varchar(100) DEFAULT NULL,
   `spreadsheet_id` varchar(255) DEFAULT NULL,
   `connection_type` varchar(20) DEFAULT 'sheets',
   `webhook_token` varchar(64) NOT NULL,
@@ -426,6 +428,7 @@ CREATE TABLE IF NOT EXISTS `sheet_connections` (
   `lead_recall_minutes` int(11) DEFAULT 0,
   `sync_error_count` int(11) DEFAULT 0,
   `notify_admin` tinyint(1) DEFAULT 0,
+  `auto_append_unmapped_note` tinyint(1) DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -1815,5 +1818,26 @@ CREATE TABLE IF NOT EXISTS `returned_databank_leads` (
   PRIMARY KEY (`person_id`, `user_id`),
   FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`) ON DELETE CASCADE,
   FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 82. Table: webhook_logs (Universal Inbound Webhook Payload Logs)
+CREATE TABLE IF NOT EXISTS `webhook_logs` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `connection_id` int(11) DEFAULT NULL,
+  `token` varchar(64) DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `request_method` varchar(10) DEFAULT NULL,
+  `content_type` varchar(100) DEFAULT NULL,
+  `raw_payload` longtext DEFAULT NULL,
+  `parsed_data` longtext DEFAULT NULL,
+  `lead_id` int(11) DEFAULT NULL,
+  `status` varchar(50) DEFAULT 'success',
+  `message` text DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_connection_id` (`connection_id`),
+  KEY `idx_token` (`token`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_lead_id` (`lead_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

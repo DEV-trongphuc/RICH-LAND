@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, ChevronLeft, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle, Settings, Database } from 'lucide-react';
+import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, ChevronLeft, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle, Settings, Database, Radio, Send, Code, Terminal, History, Eye, Play, Sparkles, Check, Globe, HelpCircle, Layers, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -56,6 +56,8 @@ const BASE_WEBHOOK = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_
 type Connection = {
   id: number;
   sheet_name: string;
+  default_source?: string;
+  default_type?: string;
   spreadsheet_id?: string;
   webhook_token: string;
   is_active: boolean;
@@ -82,6 +84,21 @@ type Connection = {
     reminder: number;
     error: number;
   };
+};
+
+type WebhookLog = {
+  id: number;
+  connection_id: number;
+  token: string;
+  ip_address: string;
+  request_method: string;
+  content_type: string;
+  raw_payload: string;
+  parsed_data: string;
+  lead_id?: number | null;
+  status: string;
+  message?: string;
+  created_at: string;
 };
 
 type Mapping = {
@@ -342,12 +359,71 @@ function normalizePhone(phone) {
 }
 }`;
 
+const PRESET_PAYLOADS = {
+  ladipage: JSON.stringify({
+    hoten: "Trần Thị Minh Thư",
+    sdt: "0987654321",
+    email: "minhthu.tran@gmail.com",
+    noidung: "Tôi muốn nhận bảng giá căn 2 phòng ngủ view sông",
+    du_an: "Vinhomes Grand Park",
+    ngan_sach: "3.5 tỷ",
+    utm_campaign: "Camp_Vinhomes_Tet2026",
+    utm_medium: "cpc",
+    utm_source: "facebook",
+    gio_hen: "09:30 Thứ 7 tuần này",
+    so_nguoi_o: "3 người"
+  }, null, 2),
+  website: JSON.stringify({
+    name: "Nguyễn Hoàng Nam",
+    phone: "0912345678",
+    email: "nam.nguyen@richland.vn",
+    note: "Cần tư vấn gói vay ngân hàng và tiến độ bàn giao",
+    budget: "5000000000",
+    address: "123 Nguyễn Huệ, Phường Bến Nghé, Quận 1",
+    city: "Hồ Chí Minh",
+    district: "Quận 1",
+    property_type: "Căn hộ cao cấp",
+    bedroom_count: "3PN",
+    preferred_location: "Aqua City",
+    source: "Website richland.vn",
+    type: "Nóng"
+  }, null, 2),
+  nested: JSON.stringify({
+    event: "lead_created",
+    data: {
+      customer: {
+        full_name: "Lê Văn Dũng",
+        contact_phone: "0909112233",
+        contact_email: "dung.le@enterprise.com"
+      },
+      requirements: {
+        project_name: "Khu đô thị sinh thái",
+        target_budget: "7 - 10 tỷ",
+        urgent_call: true,
+        preferred_time: "Sau 17h chiều"
+      }
+    },
+    utm: {
+      campaign: "Google_Search_Brand",
+      adset: "Tu_Khoa_Chinh_Xac"
+    }
+  }, null, 2),
+  custom: JSON.stringify({
+    so_dien_thoai: "0938000999",
+    ho_ten: "Phạm Quốc Hưng",
+    ghi_chu: "Dữ liệu bắn thử nghiệm từ API đối tác ngoài",
+    truong_tuy_bien_1: "Khách VIP",
+    truong_tuy_bien_2: "Đã cọc thiện chí"
+  }, null, 2)
+};
+
 const IntegrationsInner = () => {
   const { language, t } = useLanguage();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selected, setSelected] = useState<Connection | null>(null);
   const [mobileActiveView, setMobileActiveView] = useState<'list' | 'detail'>('list');
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<number | string | null>(null);
+  const [guideTab, setGuideTab] = useState<'quick_post' | 'ladipage' | 'wordpress' | 'zapier' | 'code'>('quick_post');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -372,6 +448,26 @@ const IntegrationsInner = () => {
   const [fetchedSheets, setFetchedSheets] = useState<string[]>([]);
   const [isFetchingSheets, setIsFetchingSheets] = useState(false);
 
+  // Universal Webhook states
+  const [showAddWebhook, setShowAddWebhook] = useState(false);
+  const [newWebhookName, setNewWebhookName] = useState(() => t('Webhook Ladipage Dự Án Aqua'));
+  const [newWebhookSource, setNewWebhookSource] = useState('Ladipage');
+  const [newWebhookType, setNewWebhookType] = useState('Nóng');
+  const [newWebhookRequirePhone, setNewWebhookRequirePhone] = useState(true);
+  const [newWebhookNotifyAdmin, setNewWebhookNotifyAdmin] = useState(true);
+  const [newWebhookAutoAppend, setNewWebhookAutoAppend] = useState(true);
+  const [newWebhookPreset, setNewWebhookPreset] = useState<'ladipage' | 'wordpress' | 'zapier' | 'custom'>('ladipage');
+
+  // Simulator & Logs states
+  const [webhookTab, setWebhookTab] = useState<'guides' | 'simulator' | 'logs' | 'mapping'>('guides');
+  const [simPreset, setSimPreset] = useState<'ladipage' | 'website' | 'nested' | 'custom'>('ladipage');
+  const [simPayload, setSimPayload] = useState(() => PRESET_PAYLOADS.ladipage);
+  const [isFiringSim, setIsFiringSim] = useState(false);
+  const [simResult, setSimResult] = useState<any>(null);
+  const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [inspectingLog, setInspectingLog] = useState<WebhookLog | null>(null);
+
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isConfirmMappingOpen, setIsConfirmMappingOpen] = useState(false);
@@ -392,6 +488,9 @@ const IntegrationsInner = () => {
 
   // Edit Connection states
   const [showEditConn, setShowEditConn] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDefaultSource, setEditDefaultSource] = useState('');
+  const [editDefaultType, setEditDefaultType] = useState('Nóng');
   const [editSyncPreset, setEditSyncPreset] = useState<'5p' | '15p' | '1h' | '1d' | 'custom'>('15p');
   const [editCustomSyncMins, setEditCustomSyncMins] = useState<number>(15);
   const [editSyncMode, setEditSyncMode] = useState<'all' | 'new_only'>('all');
@@ -580,6 +679,128 @@ const IntegrationsInner = () => {
     setIsSaving(false);
   };
 
+  const handleAddWebhook = async () => {
+    if (!newWebhookName.trim()) {
+      toast.error(t('Vui lòng nhập tên Webhook'));
+      return;
+    }
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const payload = {
+        sheet_name: newWebhookName.trim(),
+        default_source: newWebhookSource.trim() || 'Webhook Ngoài',
+        default_type: newWebhookType.trim() || 'Nóng',
+        spreadsheet_id: '',
+        webhook_token: generateToken(),
+        is_active: 1,
+        sync_interval: 0,
+        connection_type: 'webhook',
+        require_both_contact: newWebhookRequirePhone ? 1 : 0,
+        notify_admin: newWebhookNotifyAdmin ? 1 : 0,
+        auto_append_unmapped_note: newWebhookAutoAppend ? 1 : 0,
+        lead_recall_minutes: 0
+      };
+      const json = await fetchAPI('add_connection', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (json.success) {
+        toast.success(t('Đã tạo Webhook Đa Năng thành công!'));
+        setShowAddWebhook(false);
+        setNewWebhookName(t('Webhook Ladipage Tuyển Dụng'));
+        await fetchData();
+      } else {
+        toast.error(json.message || t('Tạo Webhook thất bại'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const fetchWebhookLogs = async (connId: number) => {
+    setIsLoadingLogs(true);
+    try {
+      const res = await fetchAPI(`get_webhook_logs&connection_id=${connId}`);
+      if (res.success && Array.isArray(res.data)) {
+        setWebhookLogs(res.data);
+      } else {
+        setWebhookLogs([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setWebhookLogs([]);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  const handleClearLogs = async () => {
+    if (!selected) return;
+    try {
+      const res = await fetchAPI(`clear_webhook_logs&connection_id=${selected.id}`);
+      if (res.success) {
+        toast.success(t('Đã xóa sạch nhật ký Webhook!'));
+        setWebhookLogs([]);
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    }
+  };
+
+  const handleFireSimulator = async () => {
+    if (!selected) return;
+    setIsFiringSim(true);
+    setSimResult(null);
+    try {
+      let parsedBody: any;
+      try {
+        parsedBody = JSON.parse(simPayload);
+      } catch (parseErr) {
+        toast.error(t('JSON không hợp lệ. Vui lòng kiểm tra lại cú pháp.'));
+        setIsFiringSim(false);
+        return;
+      }
+
+      const endpoint = webhookUrl(selected.webhook_token);
+      const startMs = Date.now();
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(parsedBody)
+      });
+      const elapsedMs = Date.now() - startMs;
+      const json = await res.json();
+      setSimResult({
+        status: res.status,
+        ok: res.ok,
+        elapsedMs,
+        data: json
+      });
+      if (res.ok && json.success) {
+        toast.success(t('Bắn dữ liệu thử nghiệm thành công!'));
+        fetchWebhookLogs(selected.id);
+        fetchData();
+      } else {
+        toast.error(json.message || t('Bắn thử nghiệm thất bại'));
+      }
+    } catch (err: any) {
+      setSimResult({
+        status: 500,
+        ok: false,
+        elapsedMs: 0,
+        data: { success: false, message: err.message }
+      });
+      toast.error(t('Lỗi: ') + err.message);
+    } finally {
+      setIsFiringSim(false);
+    }
+  };
+
   const handleAddApiConnection = async () => {
     const payload = {
       sheet_name: newApiName,
@@ -623,7 +844,9 @@ const IntegrationsInner = () => {
 
     const payload = {
       id: selected.id,
-      sheet_name: selected.sheet_name,
+      sheet_name: editName || selected.sheet_name,
+      default_source: editDefaultSource,
+      default_type: editDefaultType,
       spreadsheet_id: selected.spreadsheet_id,
       is_active: selected.is_active,
       sync_interval: finalInterval,
@@ -636,7 +859,8 @@ const IntegrationsInner = () => {
       two_way_sync: editTwoWaySync ? 1 : 0,
       google_script_url: editGoogleScriptUrl,
       lead_recall_minutes: editLeadRecallMinutes,
-      notify_admin: selected.notify_admin ? 1 : 0
+      notify_admin: selected.notify_admin ? 1 : 0,
+      auto_append_unmapped_note: selected.auto_append_unmapped_note ? 1 : 0
     };
 
     if (isSaving) return;
@@ -826,27 +1050,34 @@ const IntegrationsInner = () => {
 
   useEffect(() => {
     if (selected) {
-      const fetchSelectedColumns = async () => {
-        setIsFetchingSelectedCols(true);
-        try {
-          const json = await fetchAPI(`fetch_columns&id=${selected.spreadsheet_id}&name=${encodeURIComponent(selected.sheet_name)}`);
-          if (json.success && json.columns) {
-            setSelectedColumns(json.columns);
-            setNewMappingCol(json.columns[0] || '');
-          } else {
+      if (selected.connection_type === 'webhook' || selected.connection_type === 'landing_page') {
+        fetchWebhookLogs(selected.id);
+      }
+      if (selected.spreadsheet_id && selected.connection_type !== 'webhook') {
+        const fetchSelectedColumns = async () => {
+          setIsFetchingSelectedCols(true);
+          try {
+            const json = await fetchAPI(`fetch_columns&id=${selected.spreadsheet_id}&name=${encodeURIComponent(selected.sheet_name)}`);
+            if (json.success && json.columns) {
+              setSelectedColumns(json.columns);
+              setNewMappingCol(json.columns[0] || '');
+            } else {
+              setSelectedColumns([]);
+            }
+          } catch (e) {
             setSelectedColumns([]);
+          } finally {
+            setIsFetchingSelectedCols(false);
           }
-        } catch (e) {
-          setSelectedColumns([]);
-        } finally {
-          setIsFetchingSelectedCols(false);
-        }
-      };
-      fetchSelectedColumns();
+        };
+        fetchSelectedColumns();
+      } else {
+        setSelectedColumns([]);
+      }
     } else {
       setSelectedColumns([]);
     }
-  }, [selected]);
+  }, [selected?.id, selected?.connection_type]);
 
   const handleFetchColumns = async () => {
     if (!newSpreadsheetId) {
@@ -872,6 +1103,187 @@ const IntegrationsInner = () => {
 
   const webhookUrl = (token: string) => `${BASE_WEBHOOK}?token=${token}`;
 
+  const renderMappingTable = () => {
+    if (!selected) return null;
+    const isWebhookType = selected.connection_type === 'webhook' || selected.connection_type === 'landing_page';
+    return (
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Tag size={16} color="var(--color-primary)" /> {isWebhookType ? t('Mapping Cột Tùy Biến') : t('Mapping Cột cho')} <em style={{ fontStyle: 'normal', color: 'var(--color-primary)' }}>{selected.sheet_name}</em>
+            </h3>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+              {isWebhookType
+                ? t('Ánh xạ key từ payload Webhook sang trường hệ thống (Tùy chọn - Hệ thống đã tự nhận diện thông minh)')
+                : t('Ánh xạ tên cột trên Google Sheets này sang trường dữ liệu của hệ thống')}
+            </p>
+          </div>
+        </div>
+
+        {/* Add Mapping Row at the TOP */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
+          <div style={{ flex: '1 1 200px' }}>
+            <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>
+              {isWebhookType ? t('Key trong Payload') : t('Tên cột trên Sheets')}
+            </label>
+            {isFetchingSelectedCols ? (
+              <div style={{ padding: '10px 12px', background: 'var(--color-surface)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-border)' }}>
+                <RefreshCw size={14} className="spin" /> {t('Đang quét cột...')}
+              </div>
+            ) : selectedColumns.length > 0 ? (
+              <CustomSelect
+                options={selectedColumns.map(c => ({ value: c, label: c }))}
+                value={newMappingCol}
+                onChange={v => setNewMappingCol(String(v))}
+              />
+            ) : (
+              <input
+                className="form-input"
+                placeholder={isWebhookType ? t("VD: phone_number, sdt, ho_ten") : t("VD: Số Điện Thoại KH")}
+                value={newMappingCol}
+                onChange={e => setNewMappingCol(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
+              />
+            )}
+          </div>
+          <div style={{ flex: '1 1 180px' }}>
+            <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>{t('Trường hệ thống')}</label>
+            <CustomSelect
+              options={getSelectFields()}
+              value={newMappingField}
+              onChange={(val) => setNewMappingField(String(val))}
+            />
+          </div>
+          <div style={{ flex: '1 1 220px' }}>
+            <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>{t('Tên hiển thị trong Email (Tùy chọn)')}</label>
+            <input
+              className="form-input"
+              placeholder={t("VD: Khung giờ tư vấn")}
+              value={newMappingCustomLabel}
+              onChange={e => setNewMappingCustomLabel(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
+            />
+          </div>
+          <div className="mapping-btn-container" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+            <button className="btn primary" onClick={handleSaveMapping} disabled={isSavingMapping} style={{ flexShrink: 0, height: 42, background: editingMappingId ? 'var(--color-warning)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
+              {isSavingMapping ? t('Đang lưu...') : (editingMappingId ? t('Cập nhật') : <><Plus size={16} /> {t('Thêm')}</>)}
+            </button>
+            {editingMappingId && (
+              <button className="btn outline" onClick={cancelEditMapping} style={{ flexShrink: 0, height: 42, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, padding: '0 0.75rem' }}>
+                {t('Hủy')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div style={{ padding: '12px 16px', background: 'var(--color-info-light)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+          <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
+            <strong>{t('Mẹo cấu hình:')}</strong> {t('Bạn có thể map')} <strong>{t('nhiều cột / key')}</strong> {t('vào')} <strong>{t('cùng 1 trường hệ thống')}</strong> {t('(ví dụ: Nguồn Data = UTM Source + Campaign, hoặc Ghi Chú = Sở thích + Khung giờ). Toàn bộ dữ liệu dư thừa đều được tự động lưu vào Ghi chú!')}
+          </p>
+        </div>
+
+        {/* Mappings Table BELOW */}
+        <div className="responsive-table-wrap" style={{ marginBottom: '1rem' }}>
+          <table style={{ tableLayout: 'fixed', width: '100%', minWidth: 650 }}>
+            <colgroup>
+              <col style={{ width: '45%' }} />
+              <col style={{ width: '25%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>{isWebhookType ? t('Key trong Payload') : t('Tên cột trên Google Sheets')}</th>
+                <th>{t('Trường hiển thị trong Email')}</th>
+                <th>{t('Trường hệ thống')}</th>
+                <th style={{ width: 60 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {(selected.mappings || []).map(m => (
+                <tr key={m.id}>
+                  <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span
+                      title={m.sheet_column}
+                      style={{
+                        fontFamily: 'monospace',
+                        background: 'var(--color-bg)',
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        fontSize: '0.875rem',
+                        border: '1px solid var(--color-border)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: 'inline-block',
+                        maxWidth: '100%',
+                        verticalAlign: 'middle'
+                      }}
+                    >
+                      {m.sheet_column}
+                    </span>
+                  </td>
+                  <td>
+                    {m.custom_label ? (
+                      <span className="badge success" style={{ padding: '4px 10px', fontSize: '0.875rem' }}>
+                        {m.custom_label}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
+                        {t('Để mặc định')}
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 700 }}>
+                      {t(SYSTEM_FIELDS.find(f => f.value === m.system_field)?.label || m.system_field)}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'center', display: 'flex', gap: 4, justifyContent: 'center' }}>
+                    <button
+                      onClick={() => {
+                        setEditingMappingId(m.id);
+                        setNewMappingCol(m.sheet_column);
+                        setNewMappingField(m.system_field);
+                        setNewMappingCustomLabel(m.custom_label || '');
+                      }}
+                      title={t("Chỉnh sửa mapping")}
+                      style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s', background: editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent' }}
+                      onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-warning)'); (e.currentTarget.style.background = 'var(--color-warning-light)'); }}
+                      onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent'); }}
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteMapping(m.id)}
+                      title={t("Xóa mapping")}
+                      style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s' }}
+                      onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-danger)'); (e.currentTarget.style.background = 'var(--color-danger-light)'); }}
+                      onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = 'transparent'); }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {(selected.mappings || []).length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
+                    {isWebhookType
+                      ? t('Chưa có mapping tùy biến nào. Dữ liệu sẽ tự động bóc tách theo AI / Smart parser.')
+                      : t('Chưa có mapping nào. Hãy thêm cột ở trên.')}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="responsive-flex-row responsive-height-auto" style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 66px - 3rem)', minHeight: 0, animation: 'fadeIn 0.3s' }}>
@@ -884,25 +1296,60 @@ const IntegrationsInner = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button 
-              onClick={() => setShowAddConn(true)} 
+              onClick={() => setShowAddWebhook(true)} 
               className="btn primary hover-lift" 
               style={{ 
                 width: '100%', 
                 justifyContent: 'center', 
-                height: 40, 
+                height: 42, 
                 borderRadius: 10,
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
                 border: 'none',
                 color: '#fff',
-                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
-                fontWeight: 700
+                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: '0.875rem'
               }}
             >
-              <FileSpreadsheet size={16} /> {t('Thêm kết nối Sheets')}
+              <Webhook size={18} /> {t('Tạo Webhook Đa Năng')}
             </button>
-            <button onClick={() => setShowAddApi(true)} className="btn primary hover-lift" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10 }}>
-              <Zap size={16} /> {t('Thêm API Landing Page')}
-            </button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button 
+                onClick={() => setShowAddConn(true)} 
+                className="btn primary hover-lift" 
+                style={{ 
+                  justifyContent: 'center', 
+                  height: 38, 
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  border: 'none',
+                  color: '#fff',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+                  fontWeight: 600,
+                  fontSize: '0.8125rem',
+                  padding: '0 8px'
+                }}
+              >
+                <FileSpreadsheet size={15} /> {t('Kết nối Sheets')}
+              </button>
+              <button 
+                onClick={() => setShowAddApi(true)} 
+                className="btn outline hover-lift" 
+                style={{ 
+                  justifyContent: 'center', 
+                  height: 38, 
+                  borderRadius: 10,
+                  fontWeight: 600,
+                  fontSize: '0.8125rem',
+                  padding: '0 8px'
+                }}
+              >
+                <Zap size={15} /> {t('API Landing')}
+              </button>
+            </div>
           </div>
 
           <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingBottom: '1rem' }}>
@@ -976,7 +1423,9 @@ const IntegrationsInner = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
                     border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)'
                   }} title={conn.is_silent ? t("Chỉ đồng bộ check trùng") : undefined}>
-                    {conn.connection_type === 'landing_page' ? (
+                    {conn.connection_type === 'webhook' ? (
+                      <Webhook size={20} color={isSelected ? 'var(--color-primary)' : '#6366f1'} />
+                    ) : conn.connection_type === 'landing_page' ? (
                       <Zap size={20} color={isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
                     ) : conn.is_silent ? (
                       <Copy size={20} color="#eab308" style={{ opacity: isSelected ? 1 : 0.7 }} />
@@ -989,7 +1438,13 @@ const IntegrationsInner = () => {
                       {conn.sheet_name}
                     </p>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                      {conn.connection_type === 'landing_page' ? t('Nhận Data qua API') : t('{count} cột đã map').replace('{count}', String((conn.mappings || []).length))}
+                      {conn.connection_type === 'webhook' ? (
+                        <span style={{ color: '#6366f1', fontWeight: 600 }}>{t('Webhook • Bắt mọi nguồn')}</span>
+                      ) : conn.connection_type === 'landing_page' ? (
+                        t('Nhận Data qua API')
+                      ) : (
+                        t('{count} cột đã map').replace('{count}', String((conn.mappings || []).length))
+                      )}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -1328,6 +1783,9 @@ const IntegrationsInner = () => {
                             t
                           )
                         );
+                        setEditName(selected.sheet_name || '');
+                        setEditDefaultSource(selected.default_source || '');
+                        setEditDefaultType(selected.default_type || '');
                         setShowEditConn(true);
                       }}
                     >
@@ -1571,228 +2029,992 @@ const IntegrationsInner = () => {
                 </div>
               </div>
 
-              {selected.connection_type === 'landing_page' ? (
-                <div className="card" style={{ padding: '1.25rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+              {selected.connection_type === 'webhook' || selected.connection_type === 'landing_page' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Webhook Endpoint Banner */}
+                  <div className="card" style={{ padding: '1.25rem', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.07) 0%, rgba(139, 92, 246, 0.04) 100%)', border: '1px solid rgba(99, 102, 241, 0.25)', borderRadius: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ background: '#6366f1', color: '#fff', padding: '3px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Webhook Đa Năng
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', padding: '3px 8px', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+                            Nhận POST (JSON, Form-Data, x-www-form-urlencoded) & GET
+                          </span>
+                        </div>
+                        <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                          {selected.sheet_name}
+                        </h3>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
+                            setCopiedId(selected.id);
+                            setTimeout(() => setCopiedId(null), 2000);
+                          }}
+                          className="btn primary"
+                          style={{
+                            background: copiedId === selected.id ? '#10b981' : '#6366f1',
+                            border: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.8125rem',
+                            padding: '7px 14px',
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}
+                        >
+                          {copiedId === selected.id ? <CheckCircle2 size={15} /> : <Copy size={15} />}
+                          {copiedId === selected.id ? t('Đã Copy Link!') : t('Copy URL Webhook')}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Webhook URL Input display */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-surface)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', padding: '2px 6px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: 4 }}>
+                        URL
+                      </span>
+                      <input
+                        readOnly
+                        value={webhookUrl(selected.webhook_token)}
+                        style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontFamily: 'monospace', fontSize: '0.8125rem', color: 'var(--color-text)' }}
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                    </div>
+
+                    {/* Guarantees row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                      <div style={{ background: 'var(--color-surface)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CheckCircle2 size={16} color="#10b981" style={{ flexShrink: 0 }} />
+                        <div style={{ fontSize: '0.75rem', lineHeight: 1.3 }}>
+                          <strong>Bắt trọn 100% data:</strong> Tự động bóc tách SĐT, Họ Tên, Email, Nhu cầu, UTM...
+                        </div>
+                      </div>
+                      <div style={{ background: 'var(--color-surface)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CheckCircle2 size={16} color="#10b981" style={{ flexShrink: 0 }} />
+                        <div style={{ fontSize: '0.75rem', lineHeight: 1.3 }}>
+                          <strong>Không sót thông tin:</strong> Mọi trường phụ đều tự động gom vào Ghi chú Lead.
+                        </div>
+                      </div>
+                      <div style={{ background: 'var(--color-surface)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Nguồn:</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                          {selected.default_source || 'Tự động trích xuất'}
+                        </span>
+                        <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: 8 }}>Dự án:</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                          {selected.default_type || 'Tự động trích xuất'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* HƯỚNG DẪN BẮN POST NHANH (HIỂN THỊ TRỰC TIẾP TRÊN MÀN HÌNH) */}
+                    <div style={{
+                      marginTop: '1rem',
+                      background: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: 10,
+                      padding: '12px 16px',
+                      color: '#e2e8f0'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ background: '#10b981', color: '#fff', padding: '3px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 800 }}>
+                            POST
+                          </span>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#f8fafc' }}>
+                            {t('Cú pháp bắn POST trực tiếp vào Webhook này:')}
+                          </span>
+                          <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                            Content-Type: application/json
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={() => {
+                              const curlCmd = `curl -X POST "${webhookUrl(selected.webhook_token)}" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "name": "Nguyễn Văn A",\n    "phone": "0912345678",\n    "email": "a@gmail.com",\n    "source": "${selected.default_source || 'Landing Page'}",\n    "note": "Cần tư vấn căn hộ"\n  }'`;
+                              navigator.clipboard.writeText(curlCmd);
+                              setCopiedId('quick_curl');
+                              setTimeout(() => setCopiedId(null), 2000);
+                            }}
+                            style={{
+                              background: copiedId === 'quick_curl' ? '#10b981' : 'rgba(255,255,255,0.12)',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              fontWeight: 600
+                            }}
+                          >
+                            {copiedId === 'quick_curl' ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                            {copiedId === 'quick_curl' ? t('Đã Copy cURL') : t('Copy Lệnh cURL')}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setWebhookTab('guides');
+                              setGuideTab('quick_post');
+                            }}
+                            style={{
+                              background: '#6366f1',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              fontWeight: 700
+                            }}
+                          >
+                            {t('Xem Chi Tiết POST & Code')}
+                          </button>
+                        </div>
+                      </div>
+                      <pre style={{
+                        margin: 0,
+                        color: '#38bdf8',
+                        fontSize: '0.75rem',
+                        fontFamily: 'monospace',
+                        overflowX: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        lineHeight: 1.5,
+                        background: 'rgba(0,0,0,0.25)',
+                        padding: '8px 12px',
+                        borderRadius: 6
+                      }}>
+{`curl -X POST "${webhookUrl(selected.webhook_token)}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "Nguyễn Văn A", "phone": "0912345678", "email": "a@gmail.com", "source": "${selected.default_source || 'Landing Page'}", "note": "Cần tư vấn dự án"}'`}
+                      </pre>
+                    </div>
+                  </div>
+
+                  {/* Navigation Tabs (Hướng Dẫn Chi Tiết Bắn POST lên đầu tiên) */}
+                  <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
+                    {[
+                      { id: 'guides', label: '📖 Hướng Dẫn Bắn POST (Chi Tiết & Code Mẫu)', count: null },
+                      { id: 'simulator', label: '🚀 Bắn Thử Webhook (Simulator)', count: null },
+                      { id: 'logs', label: '📜 Nhật Ký Payload (Logs)', count: webhookLogs.length },
+                      { id: 'mapping', label: '🗺️ Mapping Cột Tùy Chọn', count: (selected.mappings || []).length },
+                    ].map(tItem => (
+                      <button
+                        key={tItem.id}
+                        onClick={() => setWebhookTab(tItem.id as any)}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: 8,
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '0.875rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          background: webhookTab === tItem.id ? '#6366f1' : 'var(--color-bg)',
+                          color: webhookTab === tItem.id ? '#fff' : 'var(--color-text-muted)',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {tItem.label}
+                        {tItem.count !== null && (
+                          <span style={{
+                            background: webhookTab === tItem.id ? 'rgba(255,255,255,0.2)' : 'var(--color-border)',
+                            padding: '2px 6px',
+                            borderRadius: 10,
+                            fontSize: '0.7rem'
+                          }}>
+                            {tItem.count}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tab 1: Simulator */}
+                  {webhookTab === 'simulator' && (
+                    <div className="card" style={{ padding: '1.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: 8 }}>
+                        <div>
+                          <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
+                            Trình Giả Lập Bắn Dữ Liệu Trực Tiếp
+                          </h4>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                            Chọn mẫu dữ liệu hoặc tùy ý chỉnh sửa JSON và bắn trực tiếp vào CRM để kiểm tra kết quả ngay lập tức.
+                          </p>
+                        </div>
+                        {/* Presets */}
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {[
+                            { id: 'ladipage', label: '⚡ Ladipage Lead' },
+                            { id: 'website', label: '🌐 Website Form' },
+                            { id: 'nested', label: '🔄 Cấu Trúc Lồng Nhau' },
+                            { id: 'custom', label: '🛠️ Tùy Biến' }
+                          ].map(p => (
+                            <button
+                              key={p.id}
+                              onClick={() => {
+                                setSimPreset(p.id as any);
+                                setSimPayload((PRESET_PAYLOADS as any)[p.id] || '');
+                              }}
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: 6,
+                                border: simPreset === p.id ? '1px solid #6366f1' : '1px solid var(--color-border)',
+                                background: simPreset === p.id ? 'rgba(99, 102, 241, 0.1)' : 'var(--color-surface)',
+                                color: simPreset === p.id ? '#6366f1' : 'var(--color-text)',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {p.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Monospace JSON editor */}
+                      <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                        <textarea
+                          rows={11}
+                          value={simPayload}
+                          onChange={e => setSimPayload(e.target.value)}
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            background: '#0f172a',
+                            color: '#38bdf8',
+                            fontFamily: 'monospace',
+                            fontSize: '0.8125rem',
+                            lineHeight: 1.5,
+                            padding: '1rem',
+                            borderRadius: 8,
+                            border: '1px solid #334155',
+                            outline: 'none',
+                            resize: 'vertical'
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                          💡 Dữ liệu bắn thử nghiệm sẽ được chia và lưu trực tiếp vào danh sách khách hàng của CRM.
+                        </div>
+                        <button
+                          onClick={handleFireSimulator}
+                          disabled={isFiringSim}
+                          className="btn primary"
+                          style={{
+                            background: '#6366f1',
+                            border: 'none',
+                            padding: '0.6rem 1.25rem',
+                            borderRadius: 8,
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}
+                        >
+                          {isFiringSim ? <RefreshCw size={16} className="spin" /> : <Zap size={16} />}
+                          {isFiringSim ? t('Đang bắn dữ liệu...') : t('🚀 Bắn Thử Dữ Liệu Ngay')}
+                        </button>
+                      </div>
+
+                      {/* Result Box */}
+                      {simResult && (
+                        <div style={{
+                          marginTop: '1.25rem',
+                          background: simResult.ok && simResult.data?.success ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)',
+                          border: simResult.ok && simResult.data?.success ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                          borderRadius: 10,
+                          padding: '1rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{
+                                background: simResult.ok && simResult.data?.success ? '#10b981' : '#ef4444',
+                                color: '#fff',
+                                padding: '2px 8px',
+                                borderRadius: 6,
+                                fontSize: '0.75rem',
+                                fontWeight: 800
+                              }}>
+                                HTTP {simResult.status} {simResult.ok ? 'OK' : 'Error'}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                                ⚡ Thời gian phản hồi: {simResult.elapsedMs}ms
+                              </span>
+                            </div>
+                            {simResult.data?.lead_id && (
+                              <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>
+                                Lead ID: #{simResult.data.lead_id}
+                              </span>
+                            )}
+                          </div>
+
+                          <p style={{ fontSize: '0.8125rem', color: simResult.ok && simResult.data?.success ? '#059669' : '#dc2626', fontWeight: 600, margin: '0 0 8px 0' }}>
+                            {simResult.data?.message || (simResult.ok ? 'Tiếp nhận thành công!' : 'Có lỗi phát sinh')}
+                          </p>
+
+                          {simResult.data?.assigned_to && (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text)', marginBottom: 8 }}>
+                              <strong>Nhân viên phụ trách:</strong> {simResult.data.assigned_to}
+                            </div>
+                          )}
+
+                          {simResult.data?.data?.note && (
+                            <div style={{ fontSize: '0.75rem', background: 'var(--color-surface)', padding: 8, borderRadius: 6, border: '1px solid var(--color-border)', marginBottom: 8 }}>
+                              <strong>Ghi chú bóc tách được:</strong>
+                              <pre style={{ margin: '4px 0 0 0', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                                {simResult.data.data.note}
+                              </pre>
+                            </div>
+                          )}
+
+                          <details style={{ marginTop: 6 }}>
+                            <summary style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontWeight: 600 }}>
+                              Xem toàn bộ JSON response từ CRM
+                            </summary>
+                            <pre style={{ margin: '8px 0 0 0', padding: 8, background: '#1e293b', color: '#e2e8f0', borderRadius: 6, fontSize: '0.75rem', overflowX: 'auto', fontFamily: 'monospace' }}>
+                              {JSON.stringify(simResult.data, null, 2)}
+                            </pre>
+                          </details>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 2: Logs */}
+                  {webhookTab === 'logs' && (
+                    <div className="card" style={{ padding: '1.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: 8 }}>
+                        <div>
+                          <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
+                            Nhật Ký Tiếp Nhận Payload ({webhookLogs.length})
+                          </h4>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                            Ghi lại toàn bộ request từ bên thứ ba gửi tới Webhook này theo thời gian thực.
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={() => fetchWebhookLogs(selected.id)}
+                            disabled={isLoadingLogs}
+                            className="btn outline"
+                            style={{ padding: '6px 12px', fontSize: '0.8125rem', height: 32, display: 'flex', alignItems: 'center', gap: 6 }}
+                          >
+                            <RefreshCw size={14} className={isLoadingLogs ? 'spin' : ''} /> {t('Làm mới')}
+                          </button>
+                          {webhookLogs.length > 0 && (
+                            <button
+                              onClick={handleClearLogs}
+                              className="btn outline"
+                              style={{ padding: '6px 12px', fontSize: '0.8125rem', height: 32, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-danger)' }}
+                            >
+                              <Trash2 size={14} /> {t('Xóa lịch sử')}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {isLoadingLogs ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                          <RefreshCw size={24} className="spin" style={{ marginBottom: 8 }} />
+                          <div>Đang tải nhật ký...</div>
+                        </div>
+                      ) : webhookLogs.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--color-bg)', borderRadius: 10, border: '1px dashed var(--color-border)' }}>
+                          <Radio size={36} color="#6366f1" style={{ marginBottom: 8 }} />
+                          <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: '0 0 4px 0' }}>Chưa có lượt gửi dữ liệu nào</h4>
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                            Các lượt gửi từ Ladipage, Website hoặc công cụ khác sẽ xuất hiện tại đây. Bạn có thể sang tab <strong>Bắn Thử Webhook</strong> để thử ngay!
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="responsive-table-wrap">
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                            <thead>
+                              <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                                <th style={{ padding: '8px 10px' }}>Thời gian</th>
+                                <th style={{ padding: '8px 10px' }}>Phương thức & IP</th>
+                                <th style={{ padding: '8px 10px' }}>Trạng thái</th>
+                                <th style={{ padding: '8px 10px' }}>Lead ID</th>
+                                <th style={{ padding: '8px 10px' }}>Nội dung xử lý</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>Chi tiết</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {webhookLogs.map(log => (
+                                <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                  <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', color: 'var(--color-text-muted)' }}>
+                                    {log.created_at}
+                                  </td>
+                                  <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                                    <span style={{
+                                      background: log.request_method === 'POST' ? '#6366f1' : '#059669',
+                                      color: '#fff',
+                                      padding: '2px 6px',
+                                      borderRadius: 4,
+                                      fontSize: '0.7rem',
+                                      fontWeight: 800,
+                                      marginRight: 6
+                                    }}>
+                                      {log.request_method}
+                                    </span>
+                                    <span style={{ color: 'var(--color-text-muted)', fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                                      {log.ip_address}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '8px 10px' }}>
+                                    <span style={{
+                                      background: log.status === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                      color: log.status === 'success' ? '#059669' : '#dc2626',
+                                      padding: '3px 8px',
+                                      borderRadius: 6,
+                                      fontSize: '0.75rem',
+                                      fontWeight: 700
+                                    }}>
+                                      {log.status === 'success' ? 'Thành công' : 'Lỗi'}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '8px 10px', fontWeight: 700 }}>
+                                    {log.lead_id ? (
+                                      <span style={{ color: 'var(--color-primary)' }}>#{log.lead_id}</span>
+                                    ) : (
+                                      <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '8px 10px', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {log.message || 'Tiếp nhận thành công'}
+                                  </td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                    <button
+                                      onClick={() => setInspectingLog(log)}
+                                      className="btn outline"
+                                      style={{ padding: '4px 8px', fontSize: '0.75rem', height: 26, borderRadius: 6 }}
+                                    >
+                                      🔍 Xem Payload
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 3: Mapping */}
+                  {webhookTab === 'mapping' && (
                     <div>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Zap size={16} color="var(--color-primary)" /> Tích hợp API Landing Page
-                      </h3>
-                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                        {t('Nhúng đoạn mã sau vào Landing Page của bạn (HTML hoặc Script)')}
-                      </p>
+                      <div style={{ padding: '12px 16px', background: 'var(--color-info-light)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                        <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
+                          <strong>Khả năng tự động nhận diện:</strong> Hệ thống đã cài sẵn bộ bóc tách thông minh nhận diện toàn bộ các trường tiếng Việt & tiếng Anh thông dụng (Họ tên, SĐT, Email, Nhu cầu, UTM...). Toàn bộ thông tin phụ không nhận dạng được sẽ được gom sạch vào Ghi chú Lead. Bạn chỉ cần thêm mapping dưới đây khi muốn đổi tên hiển thị trong Email hoặc ép một trường cố định.
+                        </div>
+                      </div>
+                      {/* Mapping Component */}
+                      {renderMappingTable()}
                     </div>
-                  </div>
+                  )}
 
-                  <div style={{ padding: '12px 16px', background: 'var(--color-info-light)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                    <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
-                    <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
-                      <strong>{t('Cơ chế tự động gom Ghi chú:')}</strong>
-                      <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
-                        <li>{t('Hệ thống tự nhận các key chuẩn:')} <code>phone, email, name, source, type</code></li>
-                        <li><strong>{t('Tất cả các key khác')}</strong> {t('(VD:')} <code>utm_campaign, chieu_cao</code>{t(') sẽ tự động được gộp lại và lưu vào trường')} <strong>{t('Ghi Chú (note)')}</strong>.</li>
-                      </ul>
-                    </div>
-                  </div>
+                  {/* Tab 4: Guides */}
+                  {webhookTab === 'guides' && (
+                    <div className="card" style={{ padding: '1.25rem' }}>
+                      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+                        {[
+                          { id: 'quick_post', label: '⚡ Cú Pháp Bắn POST & JSON Chuẩn' },
+                          { id: 'code', label: '💻 Code Mẫu (cURL / JS / PHP / Python)' },
+                          { id: 'ladipage', label: '⚡ Ladipage' },
+                          { id: 'wordpress', label: '🌐 WordPress / Elementor' },
+                          { id: 'zapier', label: '🔄 Zapier / Make / n8n' }
+                        ].map(g => (
+                          <button
+                            key={g.id}
+                            onClick={() => setGuideTab(g.id as any)}
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: 8,
+                              border: guideTab === g.id ? '1px solid #6366f1' : '1px solid var(--color-border)',
+                              background: guideTab === g.id ? '#6366f1' : 'var(--color-bg)',
+                              color: guideTab === g.id ? '#fff' : 'var(--color-text-muted)',
+                              fontWeight: 700,
+                              fontSize: '0.8125rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {g.label}
+                          </button>
+                        ))}
+                      </div>
 
-                  <div style={{ position: 'relative', background: '#1e293b', padding: '1rem', borderRadius: 8, overflowX: 'auto', border: '1px solid #334155' }}>
-                    <button
-                      onClick={() => {
-                        const code = `// Gửi dữ liệu bằng JS fetch API (JSON)\nfetch("${webhookUrl(selected.webhook_token)}", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({\n    name: "Nguyễn Văn A",\n    phone: "0912345678",\n    email: "a@gmail.com",\n    source: "Landing_X",\n    tuoi: 25,\n    nhu_cau: "Tư vấn gấp"\n  })\n});`;
-                        navigator.clipboard.writeText(code);
-                        setCopiedId(selected.id);
-                        setTimeout(() => setCopiedId(null), 2000);
-                      }}
-                      style={{ position: 'absolute', top: 8, right: 8, padding: '4px 8px', background: 'rgba(255,255,255,0.1)', color: 'white', borderRadius: 6, fontSize: '0.75rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      {copiedId === selected.id ? <CheckCircle2 size={14} /> : <Copy size={14} />} {copiedId === selected.id ? t('Đã copy') : t('Copy Code')}
-                    </button>
-                    <pre style={{ margin: 0, color: '#dadada', fontSize: '0.8125rem', fontFamily: 'monospace', marginTop: 12 }}>
-                      {`// Gửi dữ liệu bằng JS fetch API (JSON)
-fetch("${webhookUrl(selected.webhook_token)}", {
+                      {/* Sub-tab 1: Quick POST Guide & JSON Specification */}
+                      {guideTab === 'quick_post' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                          <div>
+                            <h4 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <Zap size={18} color="#6366f1" /> {t('Hướng Dẫn Chi Tiết Bắn POST Lên Webhook')}
+                            </h4>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
+                              {t('Hệ thống hỗ trợ cơ chế "Bắn gì nhận nấy" - 100% dữ liệu gửi qua đều được bóc tách vào trường CRM hoặc gom sạch vào Ghi chú Lead không lo thất lạc.')}
+                            </p>
+                          </div>
+
+                          {/* Endpoint specs box */}
+                          <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 110 }}>PHƯƠNG THỨC:</span>
+                              <span style={{ background: '#10b981', color: '#fff', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 800 }}>POST</span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(Khuyên dùng POST. Ngoài ra vẫn hỗ trợ GET query parameters)</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 110 }}>HEADERS:</span>
+                              <code style={{ background: 'var(--color-surface)', padding: '3px 8px', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: '0.75rem', color: '#6366f1', fontWeight: 700 }}>
+                                Content-Type: application/json
+                              </code>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                (Hỗ trợ cả application/x-www-form-urlencoded và multipart/form-data)
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 110 }}>WEBHOOK URL:</span>
+                              <code style={{ background: '#0f172a', color: '#38bdf8', padding: '6px 10px', borderRadius: 6, fontSize: '0.75rem', flex: 1, wordBreak: 'break-all' }}>
+                                {webhookUrl(selected.webhook_token)}
+                              </code>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
+                                  setCopiedId('guide_quick_url');
+                                  setTimeout(() => setCopiedId(null), 2000);
+                                }}
+                                className="btn outline"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28, display: 'flex', alignItems: 'center', gap: 4 }}
+                              >
+                                {copiedId === 'guide_quick_url' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                                {copiedId === 'guide_quick_url' ? t('Đã copy') : t('Copy URL')}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* JSON Sample Payload */}
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                              <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>
+                                {t('Mẫu JSON Chuẩn Khuyên Dùng (POST Body)')}
+                              </label>
+                              <button
+                                onClick={() => {
+                                  const jsonStr = JSON.stringify({
+                                    name: "Nguyễn Văn A",
+                                    phone: "0912345678",
+                                    email: "nguyenvana@gmail.com",
+                                    note: "Khách quan tâm căn 2 phòng ngủ hướng Đông Nam",
+                                    source: selected.default_source || "Landing_AquaCity",
+                                    type: selected.default_type || "Căn hộ cao cấp",
+                                    budget: "3 - 5 tỷ",
+                                    utm_campaign: "Camp_He_2026",
+                                    gio_hen: "18h00 tối nay",
+                                    dia_chi: "Quận 2, TP.HCM"
+                                  }, null, 2);
+                                  navigator.clipboard.writeText(jsonStr);
+                                  setCopiedId('guide_json_sample');
+                                  setTimeout(() => setCopiedId(null), 2000);
+                                }}
+                                className="btn outline"
+                                style={{ padding: '3px 8px', fontSize: '0.75rem', height: 26, display: 'flex', alignItems: 'center', gap: 4 }}
+                              >
+                                {copiedId === 'guide_json_sample' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                                {copiedId === 'guide_json_sample' ? t('Đã copy JSON') : t('Copy JSON')}
+                              </button>
+                            </div>
+                            <pre style={{
+                              margin: 0,
+                              background: '#0f172a',
+                              color: '#38bdf8',
+                              padding: '1rem',
+                              borderRadius: 8,
+                              border: '1px solid #334155',
+                              fontSize: '0.8125rem',
+                              fontFamily: 'monospace',
+                              lineHeight: 1.5,
+                              overflowX: 'auto'
+                            }}>
+{`{
+  "name": "Nguyễn Văn A",
+  "phone": "0912345678",
+  "email": "nguyenvana@gmail.com",
+  "note": "Khách quan tâm căn 2 phòng ngủ hướng Đông Nam",
+  "source": "${selected.default_source || 'Landing_AquaCity'}",
+  "type": "${selected.default_type || 'Căn hộ cao cấp'}",
+  "budget": "3 - 5 tỷ",
+  "utm_campaign": "Camp_He_2026",
+  "gio_hen": "18h00 tối nay",
+  "dia_chi": "Quận 2, TP.HCM"
+}`}
+                            </pre>
+                          </div>
+
+                          {/* Field Mapping Reference Table */}
+                          <div>
+                            <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 8, display: 'block' }}>
+                              {t('Bảng Bóc Tách Trường Thông Tin Tự Động (Smart Alias)')}
+                            </label>
+                            <div className="responsive-table-wrap">
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                <thead>
+                                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                                    <th style={{ padding: '8px 10px', width: '22%' }}>Trường Trong CRM</th>
+                                    <th style={{ padding: '8px 10px', width: '38%' }}>Các Tên Key Hỗ Trợ Tự Động</th>
+                                    <th style={{ padding: '8px 10px' }}>Cơ Chế Xử Lý</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Họ và tên</td>
+                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>name, full_name, ho_ten, ten, fullname, khach_hang</td>
+                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Lưu vào họ tên khách hàng</td>
+                                  </tr>
+                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Số điện thoại</td>
+                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>phone, so_dien_thoai, sdt, tel, mobile, contact_phone</td>
+                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Kiểm tra chống trùng, phân bổ cho Sale</td>
+                                  </tr>
+                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Email</td>
+                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>email, mail, contact_email</td>
+                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Lưu vào email liên hệ</td>
+                                  </tr>
+                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Ghi chú / Nhu cầu</td>
+                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>note, message, ghi_chu, noi_dung, loi_nhan, nhu_cau</td>
+                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Lưu vào nội dung tư vấn chính</td>
+                                  </tr>
+                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Nguồn (Source)</td>
+                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>source, utm_source</td>
+                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Nếu không gửi, tự lấy: <strong>{selected.default_source || 'Webhook'}</strong></td>
+                                  </tr>
+                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Phân loại / Dự án (Type)</td>
+                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>type, du_an, project, san_pham</td>
+                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Nếu không gửi, tự lấy: <strong>{selected.default_type || 'Nóng'}</strong></td>
+                                  </tr>
+                                  <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Địa chỉ & Ngân sách</td>
+                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>address, dia_chi, budget, ngan_sach, gia</td>
+                                    <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Tự động gán vào trường tương ứng hoặc gom ghi chú</td>
+                                  </tr>
+                                  <tr style={{ background: 'rgba(99, 102, 241, 0.05)' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: 800, color: '#6366f1' }}>✨ TẤT CẢ TRƯỜNG KHÁC</td>
+                                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>utm_campaign, gio_hen, tuoi, custom_xyz...</td>
+                                    <td style={{ padding: '8px 10px', color: '#059669', fontWeight: 700 }}>
+                                      ✅ 100% tự động gom vào Ghi chú Lead không bao giờ sót thông tin!
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Quick test buttons */}
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => {
+                                setWebhookTab('logs');
+                              }}
+                              className="btn outline"
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}
+                            >
+                              📜 {t('Xem Nhật Ký Nhận Data')}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setWebhookTab('simulator');
+                                setSimPayload(JSON.stringify({
+                                  name: "Nguyễn Văn A",
+                                  phone: "0912345678",
+                                  email: "nguyenvana@gmail.com",
+                                  note: "Khách cần tư vấn căn hộ 2 phòng ngủ",
+                                  source: selected.default_source || "Landing Page",
+                                  type: selected.default_type || "Căn hộ cao cấp",
+                                  budget: "3 - 5 tỷ"
+                                }, null, 2));
+                              }}
+                              className="btn primary"
+                              style={{ background: '#6366f1', border: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}
+                            >
+                              🚀 {t('Bắn Thử Ngay Bằng Simulator')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Sub-tab 2: Ladipage */}
+                      {guideTab === 'ladipage' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', lineHeight: 1.6 }}>
+                          <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
+                            Hướng Dẫn Kết Nối Ladipage
+                          </h4>
+                          <ol style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.875rem' }}>
+                            <li>Mở trang thiết kế Ladipage của bạn.</li>
+                            <li>Bấm vào Form đăng ký nhận thông tin -&gt; chọn <strong>Lưu data</strong> (biểu tượng liên kết).</li>
+                            <li>Bấm <strong>Thêm mới</strong> -&gt; Chọn loại tài khoản liên kết là <strong>Webhook</strong>.</li>
+                            <li>Dán đường dẫn Webhook sau vào ô <strong>Webhook URL</strong>:</li>
+                          </ol>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0f172a', padding: '10px 14px', borderRadius: 8, border: '1px solid #334155' }}>
+                            <code style={{ color: '#38bdf8', flex: 1, fontSize: '0.8125rem', wordBreak: 'break-all' }}>
+                              {webhookUrl(selected.webhook_token)}
+                            </code>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
+                                setCopiedId('guide_ladipage');
+                                setTimeout(() => setCopiedId(null), 2000);
+                              }}
+                              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                            >
+                              {copiedId === 'guide_ladipage' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                              {copiedId === 'guide_ladipage' ? 'Đã copy' : 'Copy URL'}
+                            </button>
+                          </div>
+
+                          <ul style={{ paddingLeft: '1.25rem', margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                            <li>Phương thức gửi: <strong>POST</strong></li>
+                            <li>Kiểu dữ liệu: <strong>application/json</strong> (hoặc application/x-www-form-urlencoded đều nhận được).</li>
+                            <li>Bấm <strong>Lưu</strong> và <strong>Xuất bản lại Landing Page</strong>. Khi có người điền form, data sẽ ngay lập tức đổ vào CRM!</li>
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Sub-tab 3: WordPress */}
+                      {guideTab === 'wordpress' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', lineHeight: 1.6 }}>
+                          <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
+                            Hướng Dẫn Kết Nối WordPress / Elementor / Contact Form 7
+                          </h4>
+                          <div style={{ fontSize: '0.875rem' }}>
+                            <strong>Cách 1: Đối với Elementor Pro Form:</strong>
+                            <ol style={{ paddingLeft: '1.25rem', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <li>Chỉnh sửa Form bằng Elementor -&gt; Tab <strong>Actions After Submit</strong>.</li>
+                              <li>Thêm action <strong>Webhook</strong> vào danh sách.</li>
+                              <li>Mở mục <strong>Webhook</strong> mới hiện ra bên dưới -&gt; Dán URL webhook của bạn vào ô <strong>Webhook URL</strong>.</li>
+                              <li>Bấm Cập nhật trang.</li>
+                            </ol>
+                          </div>
+
+                          <div style={{ fontSize: '0.875rem' }}>
+                            <strong>Cách 2: Đối với Contact Form 7 / WPForms:</strong>
+                            <ol style={{ paddingLeft: '1.25rem', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <li>Cài đặt plugin miễn phí <em>CF7 to Webhook</em> hoặc <em>WP Webhooks</em>.</li>
+                              <li>Dán URL webhook của bạn vào mục cài đặt form.</li>
+                            </ol>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0f172a', padding: '10px 14px', borderRadius: 8, border: '1px solid #334155' }}>
+                            <code style={{ color: '#38bdf8', flex: 1, fontSize: '0.8125rem', wordBreak: 'break-all' }}>
+                              {webhookUrl(selected.webhook_token)}
+                            </code>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
+                                setCopiedId('guide_wp');
+                                setTimeout(() => setCopiedId(null), 2000);
+                              }}
+                              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                            >
+                              {copiedId === 'guide_wp' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                              {copiedId === 'guide_wp' ? 'Đã copy' : 'Copy URL'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Sub-tab 4: Zapier */}
+                      {guideTab === 'zapier' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', lineHeight: 1.6 }}>
+                          <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
+                            Hướng Dẫn Tích Hợp Zapier / Make.com / n8n
+                          </h4>
+                          <ol style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.875rem' }}>
+                            <li>Tạo một Action trong Scenario/Workflow: chọn <strong>Webhooks by Zapier</strong> hoặc module <strong>HTTP</strong> trong Make / n8n.</li>
+                            <li>Chọn Action Event: <strong>POST</strong>.</li>
+                            <li>Ô URL: dán đường dẫn Webhook này.</li>
+                            <li>Payload Type: chọn <strong>JSON</strong>.</li>
+                            <li>Dữ liệu có thể chứa cấu trúc phẳng hoặc lồng nhau (CRM tự động unwrap thông minh).</li>
+                          </ol>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0f172a', padding: '10px 14px', borderRadius: 8, border: '1px solid #334155' }}>
+                            <code style={{ color: '#38bdf8', flex: 1, fontSize: '0.8125rem', wordBreak: 'break-all' }}>
+                              {webhookUrl(selected.webhook_token)}
+                            </code>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
+                                setCopiedId('guide_zap');
+                                setTimeout(() => setCopiedId(null), 2000);
+                              }}
+                              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                            >
+                              {copiedId === 'guide_zap' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                              {copiedId === 'guide_zap' ? 'Đã copy' : 'Copy URL'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Sub-tab 5: Code */}
+                      {guideTab === 'code' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
+                            Mã Nguồn Mẫu (cURL / JavaScript / PHP / Python)
+                          </h4>
+
+                          {/* cURL */}
+                          <div style={{ position: 'relative', background: '#0f172a', padding: '1rem', borderRadius: 8, border: '1px solid #334155' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8' }}>cURL Command</span>
+                              <button
+                                onClick={() => {
+                                  const code = `curl -X POST "${webhookUrl(selected.webhook_token)}" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "name": "Nguyễn Văn A",\n    "phone": "0912345678",\n    "email": "a@gmail.com",\n    "source": "${selected.default_source || 'Website'}",\n    "nhu_cau": "Tư vấn dự án"\n  }'`;
+                                  navigator.clipboard.writeText(code);
+                                  setCopiedId('code_curl');
+                                  setTimeout(() => setCopiedId(null), 2000);
+                                }}
+                                style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}
+                              >
+                                {copiedId === 'code_curl' ? 'Đã copy' : 'Copy cURL'}
+                              </button>
+                            </div>
+                            <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.75rem', fontFamily: 'monospace', overflowX: 'auto' }}>
+{`curl -X POST "${webhookUrl(selected.webhook_token)}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "Nguyễn Văn A",
+    "phone": "0912345678",
+    "email": "a@gmail.com",
+    "source": "${selected.default_source || 'Website'}",
+    "nhu_cau": "Tư vấn dự án"
+  }'`}
+                            </pre>
+                          </div>
+
+                          {/* JavaScript Fetch */}
+                          <div style={{ position: 'relative', background: '#0f172a', padding: '1rem', borderRadius: 8, border: '1px solid #334155' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8' }}>JavaScript Fetch (Browser / Node.js)</span>
+                              <button
+                                onClick={() => {
+                                  const code = `fetch("${webhookUrl(selected.webhook_token)}", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({\n    name: "Nguyễn Văn A",\n    phone: "0912345678",\n    email: "a@gmail.com",\n    source: "${selected.default_source || 'Landing Page'}",\n    note: "Khách cần gọi lại sau 18h"\n  })\n}).then(res => res.json()).then(console.log);`;
+                                  navigator.clipboard.writeText(code);
+                                  setCopiedId('code_fetch');
+                                  setTimeout(() => setCopiedId(null), 2000);
+                                }}
+                                style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}
+                              >
+                                {copiedId === 'code_fetch' ? 'Đã copy' : 'Copy Fetch'}
+                              </button>
+                            </div>
+                            <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.75rem', fontFamily: 'monospace', overflowX: 'auto' }}>
+{`fetch("${webhookUrl(selected.webhook_token)}", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     name: "Nguyễn Văn A",
     phone: "0912345678",
     email: "a@gmail.com",
-    source: "Landing_X",
-    tuoi: 25,
-    nhu_cau: "Tư vấn gấp"
+    source: "${selected.default_source || 'Landing Page'}",
+    note: "Khách cần gọi lại sau 18h"
   })
-});`}
-                    </pre>
-                  </div>
-                </div>
-              ) : (
-                <div className="card" style={{ padding: '1.25rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                    <div>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Tag size={16} color="var(--color-primary)" /> {t('Mapping Cột cho')} <em style={{ fontStyle: 'normal', color: 'var(--color-primary)' }}>{selected.sheet_name}</em>
-                      </h3>
-                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                        {t('Ánh xạ tên cột trên Google Sheets này sang trường dữ liệu của hệ thống')}
-                      </p>
-                    </div>
-                  </div>
+}).then(res => res.json()).then(console.log);`}
+                            </pre>
+                          </div>
 
-                  {/* Add Mapping Row at the TOP */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
-                    <div style={{ flex: '1 1 200px' }}>
-                      <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>{t('Tên cột trên Sheets')}</label>
-                      {isFetchingSelectedCols ? (
-                        <div style={{ padding: '10px 12px', background: 'var(--color-surface)', borderRadius: 8, fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--color-border)' }}>
-                          <RefreshCw size={14} className="spin" /> {t('Đang quét cột...')}
-                        </div>
-                      ) : selectedColumns.length > 0 ? (
-                        <CustomSelect
-                          options={selectedColumns.map(c => ({ value: c, label: c }))}
-                          value={newMappingCol}
-                          onChange={v => setNewMappingCol(String(v))}
-                        />
-                      ) : (
-                        <input
-                          className="form-input"
-                          placeholder={t("VD: Số Điện Thoại KH")}
-                          value={newMappingCol}
-                          onChange={e => setNewMappingCol(e.target.value)}
-                          onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
-                        />
-                      )}
-                    </div>
-                    <div style={{ flex: '1 1 180px' }}>
-                      <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>{t('Trường hệ thống')}</label>
-                      <CustomSelect
-                        options={getSelectFields()}
-                        value={newMappingField}
-                        onChange={(val) => setNewMappingField(String(val))}
-                      />
-                    </div>
-                    <div style={{ flex: '1 1 220px' }}>
-                      <label className="form-label" style={{ marginBottom: 6, display: 'block', fontWeight: 600 }}>{t('Tên hiển thị trong Email (Tùy chọn)')}</label>
-                      <input
-                        className="form-input"
-                        placeholder={t("VD: Khung giờ tư vấn")}
-                        value={newMappingCustomLabel}
-                        onChange={e => setNewMappingCustomLabel(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
-                      />
-                    </div>
-                    <div className="mapping-btn-container" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                      <button className="btn primary" onClick={handleSaveMapping} disabled={isSavingMapping} style={{ flexShrink: 0, height: 42, background: editingMappingId ? 'var(--color-warning)' : 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
-                        {isSavingMapping ? t('Đang lưu...') : (editingMappingId ? t('Cập nhật') : <><Plus size={16} /> {t('Thêm')}</>)}
-                      </button>
-                      {editingMappingId && (
-                        <button className="btn outline" onClick={cancelEditMapping} style={{ flexShrink: 0, height: 42, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, padding: '0 0.75rem' }}>
-                          {t('Hủy')}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ padding: '12px 16px', background: 'var(--color-info-light)', border: '1px solid var(--color-border)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                    <Info size={18} color="var(--color-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.5 }}>
-                      <strong>{t('Mẹo cấu hình:')}</strong> {t('Bạn có thể map')} <strong>{t('nhiều cột trên Sheets')}</strong> {t('vào')} <strong>{t('cùng 1 trường hệ thống')}</strong> {t('(ví dụ: Nguồn Data = Cột UTM Source + Cột Campaign, hoặc Ghi Chú = Sở thích + Khung giờ). Hệ thống sẽ tự động gộp dữ liệu lại cho bạn!')}
-                    </p>
-                  </div>
-
-                  {/* Mappings Table BELOW */}
-                  <div className="responsive-table-wrap" style={{ marginBottom: '1rem' }}>
-                    <table style={{ tableLayout: 'fixed', width: '100%', minWidth: 650 }}>
-                      <colgroup>
-                        <col style={{ width: '45%' }} />
-                        <col style={{ width: '25%' }} />
-                        <col style={{ width: '22%' }} />
-                        <col style={{ width: '8%' }} />
-                      </colgroup>
-                      <thead>
-                        <tr>
-                          <th>{t('Tên cột trên Google Sheets')}</th>
-                          <th>{t('Trường hiển thị trong Email')}</th>
-                          <th>{t('Trường hệ thống')}</th>
-                          <th style={{ width: 60 }}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(selected.mappings || []).map(m => (
-                          <tr key={m.id}>
-                            <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <span
-                                title={m.sheet_column}
-                                style={{
-                                  fontFamily: 'monospace',
-                                  background: 'var(--color-bg)',
-                                  padding: '4px 10px',
-                                  borderRadius: 6,
-                                  fontSize: '0.875rem',
-                                  border: '1px solid var(--color-border)',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  display: 'inline-block',
-                                  maxWidth: '100%',
-                                  verticalAlign: 'middle'
-                                }}
-                              >
-                                {m.sheet_column}
-                              </span>
-                            </td>
-                            <td>
-                              {m.custom_label ? (
-                                <span className="badge success" style={{ padding: '4px 10px', fontSize: '0.875rem' }}>
-                                  {m.custom_label}
-                                </span>
-                              ) : (
-                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
-                                  {t('Để mặc định (Tên cột)')}
-                                </span>
-                              )}
-                            </td>
-                            <td>
-                              <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.875rem', fontWeight: 700 }}>
-                                {t(SYSTEM_FIELDS.find(f => f.value === m.system_field)?.label || m.system_field)}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: 'center', display: 'flex', gap: 4, justifyContent: 'center' }}>
+                          {/* PHP cURL */}
+                          <div style={{ position: 'relative', background: '#0f172a', padding: '1rem', borderRadius: 8, border: '1px solid #334155' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8' }}>PHP (cURL)</span>
                               <button
                                 onClick={() => {
-                                  setEditingMappingId(m.id);
-                                  setNewMappingCol(m.sheet_column);
-                                  setNewMappingField(m.system_field);
-                                  setNewMappingCustomLabel(m.custom_label || '');
+                                  const code = `<?php\n$ch = curl_init("${webhookUrl(selected.webhook_token)}");\n$payload = json_encode([\n    "name" => "Nguyễn Văn A",\n    "phone" => "0912345678",\n    "email" => "a@gmail.com",\n    "source" => "${selected.default_source || 'Website'}",\n    "note" => "Tư vấn dự án"\n]);\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $payload);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;`;
+                                  navigator.clipboard.writeText(code);
+                                  setCopiedId('code_php');
+                                  setTimeout(() => setCopiedId(null), 2000);
                                 }}
-                                title={t("Chỉnh sửa mapping")}
-                                style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s', background: editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent' }}
-                                onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-warning)'); (e.currentTarget.style.background = 'var(--color-warning-light)'); }}
-                                onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = editingMappingId === m.id ? 'var(--color-warning-light)' : 'transparent'); }}
+                                style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}
                               >
-                                <Edit2 size={14} />
+                                {copiedId === 'code_php' ? 'Đã copy' : 'Copy PHP'}
                               </button>
+                            </div>
+                            <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.75rem', fontFamily: 'monospace', overflowX: 'auto' }}>
+{`<?php
+$ch = curl_init("${webhookUrl(selected.webhook_token)}");
+$payload = json_encode([
+    "name" => "Nguyễn Văn A",
+    "phone" => "0912345678",
+    "email" => "a@gmail.com",
+    "source" => "${selected.default_source || 'Website'}",
+    "note" => "Tư vấn dự án"
+]);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+echo $response;`}
+                            </pre>
+                          </div>
+
+                          {/* Python requests */}
+                          <div style={{ position: 'relative', background: '#0f172a', padding: '1rem', borderRadius: 8, border: '1px solid #334155' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8' }}>Python (requests)</span>
                               <button
-                                onClick={() => handleDeleteMapping(m.id)}
-                                title={t("Xóa mapping")}
-                                style={{ padding: 6, borderRadius: 8, color: 'var(--color-text-muted)', transition: 'all 0.2s' }}
-                                onMouseEnter={e => { (e.currentTarget.style.color = 'var(--color-danger)'); (e.currentTarget.style.background = 'var(--color-danger-light)'); }}
-                                onMouseLeave={e => { (e.currentTarget.style.color = 'var(--color-text-muted)'); (e.currentTarget.style.background = 'transparent'); }}
+                                onClick={() => {
+                                  const code = `import requests\n\nurl = "${webhookUrl(selected.webhook_token)}"\npayload = {\n    "name": "Nguyễn Văn A",\n    "phone": "0912345678",\n    "email": "a@gmail.com",\n    "source": "${selected.default_source || 'Website'}",\n    "note": "Tư vấn dự án"\n}\nres = requests.post(url, json=payload)\nprint(res.json())`;
+                                  navigator.clipboard.writeText(code);
+                                  setCopiedId('code_python');
+                                  setTimeout(() => setCopiedId(null), 2000);
+                                }}
+                                style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}
                               >
-                                <Trash2 size={14} />
+                                {copiedId === 'code_python' ? 'Đã copy' : 'Copy Python'}
                               </button>
-                            </td>
-                          </tr>
-                        ))}
-                        {(selected.mappings || []).length === 0 && (
-                          <tr>
-                            <td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
-                              {t('Chưa có mapping nào. Hãy thêm cột ở trên.')}
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                            </div>
+                            <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '0.75rem', fontFamily: 'monospace', overflowX: 'auto' }}>
+{`import requests
+
+url = "${webhookUrl(selected.webhook_token)}"
+payload = {
+    "name": "Nguyễn Văn A",
+    "phone": "0912345678",
+    "email": "a@gmail.com",
+    "source": "${selected.default_source || 'Website'}",
+    "note": "Tư vấn dự án"
+}
+res = requests.post(url, json=payload)
+print(res.json())`}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                renderMappingTable()
               )}
 
             </>
@@ -2264,6 +3486,47 @@ fetch("${webhookUrl(selected.webhook_token)}", {
               </p>
             </div>
 
+            <div>
+              <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>{t('Tên kết nối')}</label>
+              <input
+                className="form-input"
+                style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontWeight: 600, color: 'var(--color-text)' }}
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+              />
+            </div>
+
+            {(selected?.connection_type === 'webhook' || selected?.connection_type === 'landing_page') && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>{t('Nguồn mặc định (Source)')}</label>
+                  <input
+                    className="form-input"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                    placeholder="VD: Ladipage, Website..."
+                    value={editDefaultSource}
+                    onChange={e => setEditDefaultSource(e.target.value)}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                    Áp dụng khi payload không chứa trường source
+                  </span>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>{t('Loại / Dự án mặc định (Type)')}</label>
+                  <input
+                    className="form-input"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                    placeholder="VD: Căn hộ cao cấp..."
+                    value={editDefaultType}
+                    onChange={e => setEditDefaultType(e.target.value)}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                    Áp dụng khi payload không chứa trường type
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Chỉ đồng bộ check trùng */}
             <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <div>
@@ -2560,6 +3823,312 @@ fetch("${webhookUrl(selected.webhook_token)}", {
             </button>
           </div>
         </>
+        )}
+      </CustomModal>
+
+      {/* MODAL TẠO WEBHOOK ĐA NĂNG */}
+      <CustomModal
+        isOpen={showAddWebhook}
+        onClose={() => setShowAddWebhook(false)}
+        title={t("Tạo Webhook Đa Năng (Nhận Mọi Nguồn)")}
+        width="620px"
+      >
+        {showAddWebhook && (
+          <div>
+            <div style={{ padding: '1.5rem', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                  color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)', flexShrink: 0
+                }}>
+                  <Webhook size={22} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                    {t('Tạo Cổng Webhook Đa Năng')}
+                  </h2>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                    {t('Bắn cái gì qua nhận được hết: Ladipage, Website, Elementor, Zapier, Make...')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tên Webhook */}
+              <div>
+                <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>
+                  {t('Tên Webhook / Kênh tiếp nhận')} <span style={{ color: 'var(--color-danger)' }}>*</span>
+                </label>
+                <input
+                  className="form-input"
+                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontWeight: 600, color: 'var(--color-text)' }}
+                  placeholder={t("VD: Ladipage Tuyển Dụng, Form Báo Giá Aqua City...")}
+                  value={newWebhookName}
+                  onChange={e => setNewWebhookName(e.target.value)}
+                />
+              </div>
+
+              {/* Mẫu nguồn nhanh */}
+              <div>
+                <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>
+                  {t('Mẫu cấu hình nhanh')}
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8 }}>
+                  {[
+                    { id: 'ladipage', label: '⚡ Ladipage', source: 'Ladipage', type: 'Hot Lead' },
+                    { id: 'wordpress', label: '🌐 Website Form', source: 'Website', type: 'Tư vấn' },
+                    { id: 'facebook', label: '📱 Facebook Ads', source: 'Facebook Ads', type: 'Chiến dịch Ads' },
+                    { id: 'zapier', label: '🔄 Zapier / Make', source: 'Zapier', type: 'Tự động' }
+                  ].map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setNewWebhookPreset(p.id as any);
+                        setNewWebhookSource(p.source);
+                        setNewWebhookType(p.type);
+                      }}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        border: newWebhookPreset === p.id ? '2px solid #6366f1' : '1px solid var(--color-border)',
+                        background: newWebhookPreset === p.id ? 'rgba(99, 102, 241, 0.08)' : 'var(--color-bg)',
+                        color: newWebhookPreset === p.id ? '#6366f1' : 'var(--color-text)',
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Nguồn mặc định & Loại mặc định */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>
+                    {t('Nguồn mặc định (Source)')}
+                  </label>
+                  <input
+                    className="form-input"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                    placeholder="VD: Ladipage, Website..."
+                    value={newWebhookSource}
+                    onChange={e => setNewWebhookSource(e.target.value)}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                    Gán nếu payload không chứa nguồn
+                  </span>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>
+                    {t('Loại / Dự án mặc định (Type)')}
+                  </label>
+                  <input
+                    className="form-input"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                    placeholder="VD: Căn hộ cao cấp..."
+                    value={newWebhookType}
+                    onChange={e => setNewWebhookType(e.target.value)}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                    Gán nếu payload không chứa loại
+                  </span>
+                </div>
+              </div>
+
+              {/* Tùy chọn thông minh */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--color-bg)', padding: '1rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                {/* Auto append */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {t('Tự động gom thông tin phụ vào Ghi chú')}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      {t('Không lo sót dữ liệu: Mọi trường không khớp sẽ gom sạch vào Ghi chú Lead.')}
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    checked={newWebhookAutoAppend}
+                    onChange={setNewWebhookAutoAppend}
+                  />
+                </div>
+
+                {/* Require phone */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--color-border-light)', paddingTop: 10 }}>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {t('Bắt buộc phải có Số Điện Thoại')}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      {t('Nếu tắt, CRM chấp nhận tạo lead ngay cả khi chỉ có Email hoặc Tên/Ghi chú.')}
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    checked={newWebhookRequirePhone}
+                    onChange={setNewWebhookRequirePhone}
+                  />
+                </div>
+
+                {/* Notify admin */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--color-border-light)', paddingTop: 10 }}>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {t('Thông báo cho Quản trị viên')}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      {t('Bắn thông báo chuông & email cho admin khi có lead mới từ webhook này.')}
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    checked={newWebhookNotifyAdmin}
+                    onChange={setNewWebhookNotifyAdmin}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '1rem 1.5rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button className="btn outline" onClick={() => setShowAddWebhook(false)}>
+                {t('Hủy')}
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleAddWebhook}
+                disabled={isSaving || !newWebhookName.trim()}
+                style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', border: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {isSaving ? <RefreshCw size={16} className="spin" /> : <CheckCircle2 size={16} />}
+                {isSaving ? t('Đang tạo...') : t('Tạo Webhook Ngay')}
+              </button>
+            </div>
+          </div>
+        )}
+      </CustomModal>
+
+      {/* MODAL XEM CHI TIẾT LOG PAYLOAD */}
+      <CustomModal
+        isOpen={Boolean(inspectingLog)}
+        onClose={() => setInspectingLog(null)}
+        title={t("Chi Tiết Request Webhook")}
+        width="750px"
+      >
+        {inspectingLog && (
+          <div style={{ padding: '1.5rem', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Meta badges */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', background: 'var(--color-bg)', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+              <span style={{
+                background: inspectingLog.status === 'success' ? '#10b981' : '#ef4444',
+                color: '#fff', padding: '3px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 800
+              }}>
+                {inspectingLog.status === 'success' ? 'Thành công' : 'Lỗi'}
+              </span>
+              <span style={{ background: '#6366f1', color: '#fff', padding: '3px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 800 }}>
+                {inspectingLog.request_method}
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                IP: {inspectingLog.ip_address}
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
+                {inspectingLog.created_at}
+              </span>
+              {inspectingLog.lead_id && (
+                <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '3px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>
+                  Lead #{inspectingLog.lead_id}
+                </span>
+              )}
+            </div>
+
+            {/* Thông báo kết quả xử lý */}
+            {inspectingLog.message && (
+              <div style={{ fontSize: '0.8125rem', color: inspectingLog.status === 'success' ? '#059669' : '#dc2626', background: inspectingLog.status === 'success' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)', padding: '8px 12px', borderRadius: 8, border: inspectingLog.status === 'success' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)', fontWeight: 600 }}>
+                {inspectingLog.message}
+              </div>
+            )}
+
+            {/* Raw Payload Block */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>
+                  {t('Payload Gốc (Raw Request Body / Parameters)')}
+                </label>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(inspectingLog.raw_payload || '');
+                    toast.success(t('Đã copy Payload gốc!'));
+                  }}
+                  className="btn outline"
+                  style={{ padding: '3px 8px', fontSize: '0.75rem', height: 26, display: 'flex', alignItems: 'center', gap: 4 }}
+                >
+                  <Copy size={13} /> {t('Copy Raw')}
+                </button>
+              </div>
+              <pre style={{
+                margin: 0,
+                maxHeight: 240,
+                overflowY: 'auto',
+                background: '#0f172a',
+                color: '#38bdf8',
+                padding: '1rem',
+                borderRadius: 8,
+                border: '1px solid #334155',
+                fontSize: '0.8125rem',
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all'
+              }}>
+                {(() => {
+                  try {
+                    return JSON.stringify(JSON.parse(inspectingLog.raw_payload), null, 2);
+                  } catch {
+                    return inspectingLog.raw_payload || '(Trống)';
+                  }
+                })()}
+              </pre>
+            </div>
+
+            {/* Parsed Data Block */}
+            {inspectingLog.parsed_data && (
+              <div>
+                <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
+                  {t('Dữ Liệu Bóc Tách Được (Parsed Fields)')}
+                </label>
+                <pre style={{
+                  margin: 0,
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  background: '#1e293b',
+                  color: '#e2e8f0',
+                  padding: '1rem',
+                  borderRadius: 8,
+                  border: '1px solid #334155',
+                  fontSize: '0.8125rem',
+                  fontFamily: 'monospace',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all'
+                }}>
+                  {(() => {
+                    try {
+                      return JSON.stringify(JSON.parse(inspectingLog.parsed_data), null, 2);
+                    } catch {
+                      return inspectingLog.parsed_data;
+                    }
+                  })()}
+                </pre>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)' }}>
+              <button className="btn primary" onClick={() => setInspectingLog(null)} style={{ padding: '6px 16px' }}>
+                {t('Đóng')}
+              </button>
+            </div>
+          </div>
         )}
       </CustomModal>
     </>

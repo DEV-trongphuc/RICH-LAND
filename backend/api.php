@@ -8217,14 +8217,17 @@ switch ($action) {
             $syncMode = $input['sync_mode'] ?? 'all';
             $isSilent = (int) ($input['is_silent'] ?? 0);
             $syncSaleperson = (int) ($input['sync_saleperson'] ?? 0);
+            $defaultSource = !empty($input['default_source']) ? trim($input['default_source']) : null;
+            $defaultType = !empty($input['default_type']) ? trim($input['default_type']) : null;
             $emailTemplate = $input['email_template'] ?? null;
             $twoWaySync = (int) ($input['two_way_sync'] ?? 0);
             $googleScriptUrl = $input['google_script_url'] ?? null;
             $leadRecallMinutes = (int) ($input['lead_recall_minutes'] ?? 0);
-            $notifyAdmin = isset($input['notify_admin']) ? (int) $input['notify_admin'] : ($connectionType === 'landing_page' ? 1 : 0);
+            $notifyAdmin = isset($input['notify_admin']) ? (int) $input['notify_admin'] : (($connectionType === 'landing_page' || $connectionType === 'webhook') ? 1 : 0);
+            $autoAppend = isset($input['auto_append_unmapped_note']) ? (int) $input['auto_append_unmapped_note'] : 1;
 
-            $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, sync_saleperson, email_template, two_way_sync, google_script_url, is_initialized, lead_recall_minutes, notify_admin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)");
-            $stmt->bind_param("sssiiissiisiiii", $name, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin);
+            $stmt = $conn->prepare("INSERT INTO sheet_connections (sheet_name, default_source, default_type, spreadsheet_id, webhook_token, is_active, sync_interval, require_both_contact, connection_type, sync_mode, is_silent, sync_saleperson, email_template, two_way_sync, google_script_url, is_initialized, lead_recall_minutes, notify_admin, auto_append_unmapped_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)");
+            $stmt->bind_param("sssssiiissiisisi ii", $name, $defaultSource, $defaultType, $spreadsheetId, $webhookToken, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin, $autoAppend);
             if ($stmt->execute()) {
                 $insertId = $stmt->insert_id;
                 logAdminAction($conn, $decodedUser['id'], 'ADD_CONNECTION', ['id' => $insertId, 'sheet_name' => $name]);
@@ -8243,6 +8246,8 @@ switch ($action) {
             $input = json_decode(file_get_contents('php://input'), true);
             $id = (int) ($input['id'] ?? 0);
             $name = $input['sheet_name'] ?? '';
+            $defaultSource = !empty($input['default_source']) ? trim($input['default_source']) : null;
+            $defaultType = !empty($input['default_type']) ? trim($input['default_type']) : null;
             $spreadsheetId = $input['spreadsheet_id'] ?? '';
             $isActive = (int) ($input['is_active'] ?? 1);
             $syncInterval = (int) ($input['sync_interval'] ?? 15);
@@ -8255,15 +8260,59 @@ switch ($action) {
             $twoWaySync = (int) ($input['two_way_sync'] ?? 0);
             $googleScriptUrl = $input['google_script_url'] ?? null;
             $leadRecallMinutes = (int) ($input['lead_recall_minutes'] ?? 0);
-            $notifyAdmin = isset($input['notify_admin']) ? (int) $input['notify_admin'] : ($connectionType === 'landing_page' ? 1 : 0);
+            $notifyAdmin = isset($input['notify_admin']) ? (int) $input['notify_admin'] : (($connectionType === 'landing_page' || $connectionType === 'webhook') ? 1 : 0);
+            $autoAppend = isset($input['auto_append_unmapped_note']) ? (int) $input['auto_append_unmapped_note'] : 1;
 
-            $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, two_way_sync=?, google_script_url=?, lead_recall_minutes=?, notify_admin=?, is_initialized=0, last_sync_at=NULL, sync_status='idle', last_error=NULL WHERE id=?");
-            $stmt->bind_param("ssiiissiisiisii", $name, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin, $id);
+            $stmt = $conn->prepare("UPDATE sheet_connections SET sheet_name=?, default_source=?, default_type=?, spreadsheet_id=?, is_active=?, sync_interval=?, require_both_contact=?, connection_type=?, sync_mode=?, is_silent=?, sync_saleperson=?, email_template=?, two_way_sync=?, google_script_url=?, lead_recall_minutes=?, notify_admin=?, auto_append_unmapped_note=?, is_initialized=0, last_sync_at=NULL, sync_status='idle', last_error=NULL WHERE id=?");
+            $stmt->bind_param("ssssiiissiisiisiiii", $name, $defaultSource, $defaultType, $spreadsheetId, $isActive, $syncInterval, $requireBoth, $connectionType, $syncMode, $isSilent, $syncSaleperson, $emailTemplate, $twoWaySync, $googleScriptUrl, $leadRecallMinutes, $notifyAdmin, $autoAppend, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONNECTION', ['id' => $id, 'sheet_name' => $name]);
             }
             $stmt->close();
             echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'get_webhook_logs':
+        try {
+            $connId = (int)($_GET['connection_id'] ?? 0);
+            $token = $_GET['token'] ?? '';
+            $limit = min(100, max(1, (int)($_GET['limit'] ?? 50)));
+            if ($connId > 0) {
+                $stmt = $conn->prepare("SELECT id, connection_id, token, ip_address, request_method, content_type, raw_payload, parsed_data, lead_id, status, message, created_at FROM webhook_logs WHERE connection_id = ? ORDER BY id DESC LIMIT ?");
+                $stmt->bind_param("ii", $connId, $limit);
+            } else if (!empty($token)) {
+                $stmt = $conn->prepare("SELECT id, connection_id, token, ip_address, request_method, content_type, raw_payload, parsed_data, lead_id, status, message, created_at FROM webhook_logs WHERE token = ? ORDER BY id DESC LIMIT ?");
+                $stmt->bind_param("si", $token, $limit);
+            } else {
+                $stmt = $conn->prepare("SELECT id, connection_id, token, ip_address, request_method, content_type, raw_payload, parsed_data, lead_id, status, message, created_at FROM webhook_logs ORDER BY id DESC LIMIT ?");
+                $stmt->bind_param("i", $limit);
+            }
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $logs = [];
+            while ($row = $res->fetch_assoc()) {
+                $logs[] = $row;
+            }
+            $stmt->close();
+            echo json_encode(['success' => true, 'data' => $logs]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'clear_webhook_logs':
+        try {
+            $connId = (int)($_GET['connection_id'] ?? 0);
+            if ($connId > 0) {
+                $stmt = $conn->prepare("DELETE FROM webhook_logs WHERE connection_id = ?");
+                $stmt->bind_param("i", $connId);
+                $stmt->execute();
+                $stmt->close();
+            }
+            echo json_encode(['success' => true, 'message' => 'Cleared webhook logs']);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
