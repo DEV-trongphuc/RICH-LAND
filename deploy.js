@@ -347,6 +347,15 @@ async function main() {
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
 </IfModule>
+
+# Chống cache triệt để cho index.html để đảm bảo trình duyệt luôn nhận bản cập nhật mới
+<FilesMatch "\\.(html|htm)$">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "Wed, 11 Jan 1984 05:00:00 GMT"
+  </IfModule>
+</FilesMatch>
 `;
     fs.writeFileSync(path.join(TEMP_DEPLOY_DIR, '.htaccess'), htaccessSpa, 'utf8');
   }
