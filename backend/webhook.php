@@ -6,6 +6,23 @@ header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Max-Age: 3600");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
+// Polyfills for PHP 7.4 compatibility
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle) {
+        return (string)$needle !== '' && strncmp($haystack, $needle, strlen($needle)) === 0;
+    }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle) {
+        return $needle === '' || $needle === substr($haystack, -strlen($needle));
+    }
+}
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return $needle !== '' && mb_strpos($haystack, $needle) !== false;
+    }
+}
+
 require_once 'db_connect.php';
 
 require_once 'webhook_logic.php';
@@ -96,8 +113,9 @@ $data = null;
 // 1. Try JSON decoding
 if (!empty($rawInput)) {
     $trimmed = trim($rawInput);
-    if ((str_starts_with($trimmed, '{') && str_ends_with($trimmed, '}')) || 
-        (str_starts_with($trimmed, '[') && str_ends_with($trimmed, ']'))) {
+    $firstChar = substr($trimmed, 0, 1);
+    $lastChar = substr($trimmed, -1);
+    if (($firstChar === '{' && $lastChar === '}') || ($firstChar === '[' && $lastChar === ']')) {
         $decoded = json_decode($rawInput, true);
         if (is_array($decoded)) {
             $data = $decoded;
@@ -132,7 +150,7 @@ if (!is_array($data)) {
 }
 
 // Support top-level indexed array [ { "phone": "..." } ]
-if (array_keys($data) === range(0, count($data) - 1) && isset($data[0]) && is_array($data[0])) {
+if (!empty($data) && array_keys($data) === range(0, count($data) - 1) && isset($data[0]) && is_array($data[0])) {
     $data = $data[0];
 }
 

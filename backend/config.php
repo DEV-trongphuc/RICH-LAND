@@ -3,6 +3,23 @@
 
 require_once __DIR__ . '/env.php';
 
+// Polyfills for PHP 7.4 compatibility (str_starts_with, str_ends_with, str_contains)
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle) {
+        return (string)$needle !== '' && strncmp($haystack, $needle, strlen($needle)) === 0;
+    }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle) {
+        return $needle === '' || $needle === substr($haystack, -strlen($needle));
+    }
+}
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return $needle !== '' && mb_strpos($haystack, $needle) !== false;
+    }
+}
+
 if (!defined('DB_HOST')) define('DB_HOST', $_ENV['DB_HOST'] ?? 'localhost');
 if (!defined('DB_USER')) define('DB_USER', $_ENV['DB_USER'] ?? 'zccqvhhh_crm-rlvn');
 if (!defined('DB_PASS')) define('DB_PASS', $_ENV['DB_PASS'] ?? '$1;RKuCwX)VD;k~#');
