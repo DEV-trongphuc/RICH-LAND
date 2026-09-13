@@ -2200,10 +2200,10 @@ const IntegrationsInner = () => {
                   {/* Navigation Tabs (Hướng Dẫn Chi Tiết Bắn POST lên đầu tiên) */}
                   <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
                     {[
-                      { id: 'guides', label: '⚡ Thông Số & Mẫu Bắn POST', count: null },
-                      { id: 'simulator', label: '🚀 Bắn Thử Webhook (Simulator)', count: null },
-                      { id: 'logs', label: '📜 Nhật Ký Nhận Data (Logs)', count: webhookLogs.length },
-                      { id: 'mapping', label: '🗺️ Mapping Cột (Tùy Chọn)', count: (selected.mappings || []).length },
+                      { id: 'guides', label: 'Thông Số & Mẫu Bắn POST', count: null },
+                      { id: 'simulator', label: 'Bắn Thử Webhook (Simulator)', count: null },
+                      { id: 'logs', label: 'Nhật Ký Nhận Data (Logs)', count: webhookLogs.length },
+                      { id: 'mapping', label: 'Mapping Cột (Tùy Chọn)', count: (selected.mappings || []).length },
                     ].map(tItem => (
                       <button
                         key={tItem.id}
@@ -2253,10 +2253,10 @@ const IntegrationsInner = () => {
                         {/* Presets */}
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {[
-                            { id: 'ladipage', label: '⚡ Ladipage Lead' },
-                            { id: 'website', label: '🌐 Website Form' },
-                            { id: 'nested', label: '🔄 Cấu Trúc Lồng Nhau' },
-                            { id: 'custom', label: '🛠️ Tùy Biến' }
+                            { id: 'ladipage', label: 'Ladipage Lead' },
+                            { id: 'website', label: 'Website Form' },
+                            { id: 'nested', label: 'Cấu Trúc Lồng Nhau' },
+                            { id: 'custom', label: 'Tùy Biến' }
                           ].map(p => (
                             <button
                               key={p.id}
@@ -2306,7 +2306,7 @@ const IntegrationsInner = () => {
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                          💡 Dữ liệu bắn thử nghiệm sẽ được chia và lưu trực tiếp vào danh sách khách hàng của CRM.
+                          Dữ liệu bắn thử nghiệm sẽ được chia và lưu trực tiếp vào danh sách khách hàng của CRM.
                         </div>
                         <button
                           onClick={handleFireSimulator}
@@ -2324,7 +2324,7 @@ const IntegrationsInner = () => {
                           }}
                         >
                           {isFiringSim ? <RefreshCw size={16} className="spin" /> : <Zap size={16} />}
-                          {isFiringSim ? t('Đang bắn dữ liệu...') : t('🚀 Bắn Thử Dữ Liệu Ngay')}
+                          {isFiringSim ? t('Đang bắn dữ liệu...') : t('Bắn Thử Dữ Liệu Ngay')}
                         </button>
                       </div>
 
@@ -2350,7 +2350,7 @@ const IntegrationsInner = () => {
                                 HTTP {simResult.status} {simResult.ok ? 'OK' : 'Error'}
                               </span>
                               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                                ⚡ Thời gian phản hồi: {simResult.elapsedMs}ms
+                                Thời gian phản hồi: {simResult.elapsedMs}ms
                               </span>
                             </div>
                             {simResult.data?.lead_id && (
@@ -2501,7 +2501,7 @@ const IntegrationsInner = () => {
                                       className="btn outline"
                                       style={{ padding: '4px 8px', fontSize: '0.75rem', height: 26, borderRadius: 6 }}
                                     >
-                                      🔍 Xem Payload
+                                      Xem Payload
                                     </button>
                                   </td>
                                 </tr>
@@ -2790,10 +2790,10 @@ print(res.json())`}
                                 <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Nếu không gửi, tự lấy: <strong>{selected.default_type || 'Nóng'}</strong></td>
                               </tr>
                               <tr style={{ background: 'rgba(99, 102, 241, 0.05)' }}>
-                                <td style={{ padding: '8px 10px', fontWeight: 800, color: '#6366f1' }}>✨ TẤT CẢ TRƯỜNG KHÁC</td>
+                                <td style={{ padding: '8px 10px', fontWeight: 800, color: '#6366f1' }}>TẤT CẢ TRƯỜNG KHÁC</td>
                                 <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>utm_campaign, gio_hen, tuoi, custom_xyz...</td>
                                 <td style={{ padding: '8px 10px', color: '#059669', fontWeight: 700 }}>
-                                  ✅ 100% tự động gom vào Ghi chú Lead không bao giờ sót thông tin!
+                                  100% tự động gom vào Ghi chú Lead không bao giờ sót thông tin!
                                 </td>
                               </tr>
                             </tbody>
@@ -2810,7 +2810,7 @@ print(res.json())`}
                           className="btn outline"
                           style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}
                         >
-                          📜 {t('Xem Nhật Ký Nhận Data')}
+                          {t('Xem Nhật Ký Nhận Data')}
                         </button>
                         <button
                           onClick={() => {
@@ -2828,7 +2828,7 @@ print(res.json())`}
                           className="btn primary"
                           style={{ background: '#6366f1', border: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}
                         >
-                          🚀 {t('Bắn Thử Ngay Bằng Simulator')}
+                          {t('Bắn Thử Ngay Bằng Simulator')}
                         </button>
                       </div>
                     </div>
