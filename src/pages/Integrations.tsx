@@ -532,7 +532,7 @@ const IntegrationsInner = () => {
         if (cFields.length > 0) {
           const formattedCF = cFields.map((cf: any) => ({
             value: `cf_${cf.id}`,
-            label: `✨ ${cf.field_name || cf.name || 'Trường tùy chỉnh'} (${cf.field_type || 'Custom'})`
+            label: `${cf.field_name || cf.name || 'Trường tùy chỉnh'} (${cf.field_type || 'Custom'})`
           }));
           setCustomSystemFields(formattedCF);
         }
@@ -2923,7 +2923,7 @@ print(res.json())`}
                     />
                     {newSpreadsheetId.length >= 40 && (
                       <p style={{ fontSize: '0.75rem', color: '#eab308', marginTop: 4 }}>
-                        💡 {t('Không quét được tự động. Vui lòng chia sẻ quyền')} "{t('Người xem')}" {t('cho Sheet để quét được danh sách trang tính.')}
+                        {t('Không quét được tự động. Vui lòng chia sẻ quyền')} "{t('Người xem')}" {t('cho Sheet để quét được danh sách trang tính.')}
                       </p>
                     )}
                   </div>
