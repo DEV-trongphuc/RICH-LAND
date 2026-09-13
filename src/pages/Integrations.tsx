@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, ChevronLeft, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle, Settings, Database, Radio, Send, Code, Terminal, History, Eye, Play, Sparkles, Check, Globe, HelpCircle, Layers, ArrowRight } from 'lucide-react';
+import { Webhook, Plus, Trash2, Copy, CheckCircle2, ChevronRight, ChevronLeft, Link2, Tag, Info, FileSpreadsheet, Zap, Clock, Target, RefreshCw, Edit2, ExternalLink, AlertCircle, Settings, Database, Radio, Send, Code, Terminal, History, Eye, Play, Sparkles, Check, Globe, HelpCircle, Layers, ArrowRight, KeyRound, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -111,7 +111,14 @@ type Mapping = {
 
 import { fetchAPI } from '../utils/api';
 
-const generateToken = () => 'tok_' + Math.random().toString(36).slice(2, 10);
+const generateToken = () => {
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+    const arr = new Uint8Array(16);
+    window.crypto.getRandomValues(arr);
+    return 'sec_' + Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  return 'sec_' + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+};
 
 const generateDefaultTemplate = (
   mappings: { sheet_col: string; sys_field: string; custom_label?: string }[],
@@ -451,6 +458,8 @@ const IntegrationsInner = () => {
   // Universal Webhook states
   const [showAddWebhook, setShowAddWebhook] = useState(false);
   const [newWebhookName, setNewWebhookName] = useState(() => t('Cổng Webhook Tiếp Nhận'));
+  const [newWebhookToken, setNewWebhookToken] = useState(() => generateToken());
+  const [isRegeneratingToken, setIsRegeneratingToken] = useState(false);
   const [newWebhookSource, setNewWebhookSource] = useState('Website');
   const [newWebhookType, setNewWebhookType] = useState('Nóng');
   const [newWebhookRequirePhone, setNewWebhookRequirePhone] = useState(true);
@@ -687,12 +696,13 @@ const IntegrationsInner = () => {
     if (isSaving) return;
     setIsSaving(true);
     try {
+      const finalToken = newWebhookToken || generateToken();
       const payload = {
         sheet_name: newWebhookName.trim(),
-        default_source: newWebhookSource.trim() || 'Webhook Ngoài',
+        default_source: newWebhookSource.trim() || 'Website',
         default_type: newWebhookType.trim() || 'Nóng',
         spreadsheet_id: '',
-        webhook_token: generateToken(),
+        webhook_token: finalToken,
         is_active: 1,
         sync_interval: 0,
         connection_type: 'webhook',
@@ -708,7 +718,8 @@ const IntegrationsInner = () => {
       if (json.success) {
         toast.success(t('Đã tạo Webhook Đa Năng thành công!'));
         setShowAddWebhook(false);
-        setNewWebhookName(t('Webhook Ladipage Tuyển Dụng'));
+        setNewWebhookName(t('Cổng Webhook Tiếp Nhận'));
+        setNewWebhookToken(generateToken());
         await fetchData();
       } else {
         toast.error(json.message || t('Tạo Webhook thất bại'));
@@ -717,6 +728,28 @@ const IntegrationsInner = () => {
       toast.error(t('Lỗi: ') + e.message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleRegenerateToken = async (connId: number) => {
+    if (!window.confirm(t('Bạn có chắc chắn muốn tạo lại Secret Key ngẫu nhiên mới? Mã cũ và URL cũ sẽ lập tức bị vô hiệu hóa để chặn dữ liệu spam/tràn lan.'))) return;
+    setIsRegeneratingToken(true);
+    try {
+      const res = await fetchAPI('regenerate_webhook_token', {
+        method: 'POST',
+        body: JSON.stringify({ id: connId })
+      });
+      if (res.success && res.webhook_token) {
+        toast.success(t('Đã tạo Secret Key ngẫu nhiên mới và cập nhật bảo mật thành công!'));
+        setConnections(prev => prev.map(c => c.id === connId ? { ...c, webhook_token: res.webhook_token } : c));
+        setSelected(prev => (prev && prev.id === connId) ? { ...prev, webhook_token: res.webhook_token } : prev);
+      } else {
+        toast.error(res.message || t('Lỗi tạo Secret Key mới'));
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('Có lỗi xảy ra'));
+    } finally {
+      setIsRegeneratingToken(false);
     }
   };
 
@@ -2048,7 +2081,24 @@ const IntegrationsInner = () => {
                         </h3>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => handleRegenerateToken(selected.id)}
+                          disabled={isRegeneratingToken}
+                          className="btn outline"
+                          style={{
+                            padding: '7px 12px',
+                            fontSize: '0.8125rem',
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}
+                          title={t('Tạo lại Secret Key mới nếu nghi ngờ bị lộ link hoặc bị bắn dữ liệu rác')}
+                        >
+                          <RefreshCw size={14} className={isRegeneratingToken ? 'spin' : ''} />
+                          {isRegeneratingToken ? t('Đang đổi...') : t('Đổi Secret Key')}
+                        </button>
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(webhookUrl(selected.webhook_token));
@@ -2075,8 +2125,8 @@ const IntegrationsInner = () => {
                     </div>
 
                     {/* Webhook URL Input display */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-surface)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', marginBottom: '1rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', padding: '2px 6px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-surface)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', padding: '2px 6px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: 4, flexShrink: 0 }}>
                         URL
                       </span>
                       <input
@@ -2085,6 +2135,30 @@ const IntegrationsInner = () => {
                         style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontFamily: 'monospace', fontSize: '0.8125rem', color: 'var(--color-text)' }}
                         onClick={(e) => (e.target as HTMLInputElement).select()}
                       />
+                    </div>
+
+                    {/* Secret Key display */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-surface)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)', marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: 4, flexShrink: 0 }}>
+                        SECRET KEY
+                      </span>
+                      <input
+                        readOnly
+                        value={selected.webhook_token}
+                        style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontFamily: 'monospace', fontSize: '0.8125rem', color: 'var(--color-text)' }}
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selected.webhook_token);
+                          setCopiedId('detail_secret_key');
+                          setTimeout(() => setCopiedId(null), 2000);
+                        }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '2px 6px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        {copiedId === 'detail_secret_key' ? <CheckCircle2 size={13} color="#10b981" /> : <Copy size={13} />}
+                        {copiedId === 'detail_secret_key' ? t('Đã chép') : t('Chép Key')}
+                      </button>
                     </div>
 
                     {/* Guarantees row */}
@@ -3688,6 +3762,56 @@ print(res.json())`}
                   value={newWebhookName}
                   onChange={e => setNewWebhookName(e.target.value)}
                 />
+              </div>
+
+              {/* Mã bảo mật ngẫu nhiên (Secret Key) */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <KeyRound size={13} color="#6366f1" /> {t('Mã Bảo Mật Ngẫu Nhiên (Secret Key / Token)')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setNewWebhookToken(generateToken())}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--color-primary)',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <RefreshCw size={12} /> {t('Tạo mã khác')}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    readOnly
+                    className="form-input"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontFamily: 'monospace', fontSize: '0.8125rem', color: '#6366f1', fontWeight: 700 }}
+                    value={newWebhookToken}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(newWebhookToken);
+                      setCopiedId('modal_token');
+                      setTimeout(() => setCopiedId(null), 2000);
+                    }}
+                    className="btn outline"
+                    style={{ height: 38, padding: '0 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+                  >
+                    {copiedId === 'modal_token' ? <CheckCircle2 size={14} color="#10b981" /> : <Copy size={14} />}
+                    {copiedId === 'modal_token' ? t('Đã chép') : t('Chép')}
+                  </button>
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                  {t('Hệ thống tự động sinh ngẫu nhiên mã khóa bảo mật 32 ký tự, ngăn chặn kẻ lạ gửi dữ liệu rác hoặc bắn tràn lan.')}
+                </span>
               </div>
 
               {/* Nguồn mặc định & Loại mặc định */}

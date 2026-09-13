@@ -8209,7 +8209,7 @@ switch ($action) {
             $input = json_decode(file_get_contents('php://input'), true);
             $name = $input['sheet_name'] ?? '';
             $spreadsheetId = $input['spreadsheet_id'] ?? '';
-            $webhookToken = $input['webhook_token'] ?? '';
+            $webhookToken = !empty($input['webhook_token']) ? trim($input['webhook_token']) : ('sec_' . bin2hex(random_bytes(16)));
             $isActive = (int) ($input['is_active'] ?? 1);
             $syncInterval = (int) ($input['sync_interval'] ?? 15);
             $requireBoth = (int) ($input['require_both_contact'] ?? 0);
@@ -8235,7 +8235,30 @@ switch ($action) {
                 $insertId = 0;
             }
             $stmt->close();
-            echo json_encode(['success' => true, 'id' => $insertId]);
+            echo json_encode(['success' => true, 'id' => $insertId, 'webhook_token' => $webhookToken]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'regenerate_webhook_token':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = (int)($input['id'] ?? 0);
+            if ($id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+                break;
+            }
+            $newToken = 'sec_' . bin2hex(random_bytes(16));
+            $stmt = $conn->prepare("UPDATE sheet_connections SET webhook_token = ? WHERE id = ?");
+            $stmt->bind_param("si", $newToken, $id);
+            if ($stmt->execute()) {
+                logAdminAction($conn, $decodedUser['id'], 'REGENERATE_WEBHOOK_TOKEN', ['id' => $id, 'token' => $newToken]);
+                echo json_encode(['success' => true, 'webhook_token' => $newToken]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to update token']);
+            }
+            $stmt->close();
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
