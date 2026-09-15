@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video, UserX } from 'lucide-react';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -2023,7 +2023,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       `- ${ttl1Data.thong_tin_bo_sung || 'Chưa cập nhật'}`,
       '',
       '4. Kế hoạch chốt deal & Ngân sách:',
-      `- Giải pháp tiếp theo: ${ttl1Data.giai_phap || formData.notes || 'Chưa cập nhật'}`,
+      `- Giải pháp tiếp theo: ${ttl1Data.giai_phap || 'Chưa cập nhật'}`,
       `- Ngân sách: ${budgetVal || 'Chưa cập nhật'}`
     ];
 
@@ -6924,7 +6924,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           <Trash2 size={16} />
                                           <span>Xóa khách hàng</span>
                                         </button>
-                                      ) : (
+                                      ) : isDatabankLead ? (
                                         <button
                                           className={styles.sidebarTabBtn}
                                           onClick={isReleaseBlocked ? undefined : handleReturnToDatabank}
@@ -6957,6 +6957,40 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         >
                                           <RotateCcw size={16} />
                                           <span>Trả về Databank</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className={styles.sidebarTabBtn}
+                                          onClick={isReleaseBlocked ? undefined : () => setShowNotLeadModal(true)}
+                                          disabled={isReleaseBlocked}
+                                          style={{
+                                            padding: '11px 0.875rem',
+                                            fontSize: '0.85rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            width: '100%',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            borderRadius: '6px',
+                                            textAlign: 'left',
+                                            cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
+                                            color: isReleaseBlocked ? 'var(--color-text-muted)' : '#e11d48',
+                                            fontWeight: 600,
+                                            opacity: isReleaseBlocked ? 0.5 : 1,
+                                            transition: 'all 0.15s ease',
+                                            marginTop: '0.15rem'
+                                          }}
+                                          onMouseEnter={e => {
+                                            if (!isReleaseBlocked) e.currentTarget.style.background = 'rgba(225, 29, 72, 0.06)';
+                                          }}
+                                          onMouseLeave={e => {
+                                            if (!isReleaseBlocked) e.currentTarget.style.background = 'transparent';
+                                          }}
+                                          title={isReleaseBlocked ? t('Không thể báo Not Lead do trạng thái khách hàng đặc biệt') : undefined}
+                                        >
+                                          <UserX size={16} style={{ color: '#e11d48' }} />
+                                          <span>Báo Not Lead</span>
                                         </button>
                                       )
                                     )}
@@ -7291,37 +7325,38 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
                           </div>
 
-                          {/* 1. HÀNG: PHÂN LOẠI LEAD (RANK) & LOẠI LEAD (LOAI_LEAD) */}
+                          {/* 1. HÀNG: PHÂN LOẠI LEAD (RANK) & LOẠI LEAD (LOAI_LEAD) - KHÔNG CHO PHÉP CHỈNH SỬA */}
                           <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', fontWeight: 700 }}>
-                                Phân loại Lead (Rank)
-                              </label>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                <label className="form-label" style={{ fontSize: '0.72rem', margin: 0, fontWeight: 700 }}>
+                                  Phân loại Lead (Rank)
+                                </label>
+                                <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                  <Lock size={10} /> Cố định MKT
+                                </span>
+                              </div>
                               {(() => {
-                                const currentRank = formData.lead_phan_loai || formData.source || webhookData.parsed['lead_phan_loai'] || '';
-                                const baseRankOptions = [
-                                  { value: 'R3', label: 'R3' },
-                                  { value: 'R3_Fb', label: 'R3_Fb' },
-                                  { value: 'R2', label: 'R2' },
-                                  { value: 'R3_Zalo', label: 'R3_Zalo' },
-                                  { value: 'broadcast', label: 'Broadcast' },
-                                  { value: 'ca_nhan', label: 'Cá nhân' },
-                                  { value: 'gioi_thieu', label: 'Giới thiệu' },
-                                  { value: 'databank', label: 'Kho Data' }
-                                ];
-                                const hasRank = baseRankOptions.some(o => o.value.toLowerCase() === currentRank.toLowerCase());
-                                const rankOptions = (!currentRank || hasRank) 
-                                  ? baseRankOptions 
-                                  : [{ value: currentRank, label: currentRank }, ...baseRankOptions];
-
+                                const currentRank = contact?.lead_phan_loai || webhookData.parsed['lead_phan_loai'] || formData.lead_phan_loai || (formData.source !== 'Website' && formData.source !== 'other' ? formData.source : '') || '—';
                                 return (
-                                  <CustomSelect
-                                    searchable
-                                    options={rankOptions}
-                                    value={currentRank}
-                                    onChange={(val) => setFormData((prev: any) => ({ ...prev, lead_phan_loai: val, source: val, customer_type: val }))}
-                                    placeholder="Chọn hoặc nhập Rank..."
-                                  />
+                                  <div style={{
+                                    background: 'var(--color-bg-subtle, #f8fafc)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '6px',
+                                    padding: '3px 8px',
+                                    height: '28px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    color: 'var(--color-text)',
+                                    cursor: 'not-allowed',
+                                    userSelect: 'none'
+                                  }}>
+                                    <span>{currentRank}</span>
+                                    <Lock size={11} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                                  </div>
                                 );
                               })()}
                               <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', marginTop: '1px', display: 'block' }}>
@@ -7330,34 +7365,45 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', fontWeight: 700 }}>
-                                Loại Lead : (loai_lead)
-                              </label>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                <label className="form-label" style={{ fontSize: '0.72rem', margin: 0, fontWeight: 700 }}>
+                                  Loại Lead : (loai_lead)
+                                </label>
+                                <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                  <Lock size={10} /> Cố định MKT
+                                </span>
+                              </div>
                               {(() => {
-                                const currentLoai = formData.loai_lead || webhookData.parsed['loai_lead'] || '';
-                                const baseLoaiOptions = [
-                                  { value: '', label: '— Chọn loại lead —' },
-                                  { value: 'lead_form', label: 'Lead Form' },
-                                  { value: 'message', label: 'Tin nhắn (Inbox)' },
-                                  { value: 'hotline', label: 'Hotline' },
-                                  { value: 'zalo', label: 'Zalo OA' },
-                                  { value: 'comment', label: 'Bình luận' },
-                                  { value: 'website', label: 'Website' },
-                                  { value: 'other', label: 'Khác' }
-                                ];
-                                const hasLoai = baseLoaiOptions.some(o => o.value.toLowerCase() === currentLoai.toLowerCase());
-                                const loaiOptions = (!currentLoai || hasLoai)
-                                  ? baseLoaiOptions
-                                  : [{ value: currentLoai, label: currentLoai }, ...baseLoaiOptions];
-
+                                const rawLoai = contact?.loai_lead || webhookData.parsed['loai_lead'] || formData.loai_lead || '';
+                                const loaiMap: Record<string, string> = {
+                                  lead_form: 'Lead Form',
+                                  message: 'Tin nhắn (Inbox)',
+                                  hotline: 'Hotline',
+                                  zalo: 'Zalo OA',
+                                  comment: 'Bình luận',
+                                  website: 'Website',
+                                  other: 'Khác'
+                                };
+                                const displayLoai = loaiMap[rawLoai] || (rawLoai ? rawLoai.replace(/_/g, ' ') : '—');
                                 return (
-                                  <CustomSelect
-                                    searchable
-                                    options={loaiOptions}
-                                    value={currentLoai}
-                                    onChange={(val) => setFormData((prev: any) => ({ ...prev, loai_lead: val }))}
-                                    placeholder="Chọn loại lead..."
-                                  />
+                                  <div style={{
+                                    background: 'var(--color-bg-subtle, #f8fafc)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '6px',
+                                    padding: '3px 8px',
+                                    height: '28px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    color: 'var(--color-text)',
+                                    cursor: 'not-allowed',
+                                    userSelect: 'none'
+                                  }}>
+                                    <span>{displayLoai}</span>
+                                    <Lock size={11} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                                  </div>
                                 );
                               })()}
                             </div>
@@ -7444,8 +7490,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                             {(() => {
                               const FORM_SPEC = [
-                                { key: 'ad_name', label: 'Mẫu quảng cáo', fullWidth: true },
-                                { key: 'form_name', label: 'Tên Form', fullWidth: true },
+                                { key: 'ad_name', label: 'Mẫu quảng cáo', fullWidth: true, alwaysShow: true },
+                                { key: 'form_name', label: 'Tên Form', fullWidth: true, alwaysShow: true },
                                 { key: 'birthday', label: 'Sinh nhật' },
                                 { key: 'country', label: 'Quốc gia' },
                                 { key: 'city', label: 'Thành Phố' },
@@ -7460,10 +7506,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               ];
 
                               const getFormVal = (k: string) => {
+                                if (k === 'ad_name') {
+                                  return webhookData.parsed['ad_name'] || formData.ad_name || contact?.ad_name || formData.utm_content || '—';
+                                }
+                                if (k === 'form_name') {
+                                  return webhookData.parsed['form_name'] || formData.form_name || contact?.form_name || (webhookData.parsed['form_id'] ? `Form #${webhookData.parsed['form_id']}` : '—');
+                                }
                                 const fromWb = webhookData.parsed[k] || webhookData.parsed[k.toLowerCase()];
                                 if (fromWb) return fromWb;
-                                if (k === 'ad_name') return formData.ad_name || contact?.ad_name || formData.utm_content || '';
-                                if (k === 'form_name') return formData.form_name || contact?.form_name || '';
                                 if (k === 'city') return formData.city || contact?.city || '';
                                 if (k === 'country') return formData.country || contact?.country || '';
                                 if (k === 'birthday') return formData.birthday || contact?.birthday || formData.dob || '';
@@ -7480,7 +7530,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                               const activeFields = FORM_SPEC
                                 .map(item => ({ ...item, value: getFormVal(item.key) }))
-                                .filter(item => Boolean(item.value && item.value.trim()));
+                                .filter(item => item.alwaysShow || Boolean(item.value && item.value.trim() && item.value !== '—'));
 
                               return activeFields.length > 0 ? (
                                 <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px', fontSize: '0.72rem' }}>
@@ -7799,12 +7849,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     minRows={1}
                                     maxRows={5}
                                     placeholder="Kế hoạch xử lý tiếp theo của Sale (gọi lại, gửi layout, chốt lịch hẹn...)"
-                                    value={ttl1Data.giai_phap || formData.notes || ''}
+                                    value={ttl1Data.giai_phap || ''}
                                     onChange={e => {
                                       const val = e.target.value;
                                       const next = { ...ttl1Data, giai_phap: val };
                                       setTtl1Data(next);
-                                      setFormData((prev: any) => ({ ...prev, notes: val, ttl1_data: next }));
+                                      setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
                                     style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
                                   />
@@ -15220,11 +15270,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 setIsSubmittingNotLead(true);
                 try {
                   const finalReason = notLeadReasonType === 'Khác...' ? (notLeadReasonCustom.trim() || 'Lý do khác') : notLeadReasonType;
-                  await api.put(`/contacts/${contact.id}`, {
-                    pipeline_status: 'not_lead',
-                    not_lead_reason: finalReason
+                  await api.post(`/contacts/${contact.id}/not-lead`, {
+                    reason: finalReason
                   });
-                  addToast('Đã gửi báo cáo Not Lead đến Quản lý phê duyệt. Khách hàng đã được ẩn khỏi danh sách của bạn.', 'success');
+                  addToast('Đã báo Not Lead thành công. Khách hàng đã được thu hồi về Marketing để xử lý tiếp.', 'success');
                   setShowNotLeadModal(false);
                   handleClose();
                   onUpdate?.({ ...formData, pipeline_status: 'not_lead', not_lead_proposed: 1 });

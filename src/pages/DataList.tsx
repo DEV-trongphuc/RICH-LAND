@@ -110,6 +110,19 @@ const maskEmail = (email: string) => {
   return `${name.slice(0, 3)}***${name.slice(-1)}@${domain}`;
 };
 
+const parseWebhookFromNote = (note: string): Record<string, string> => {
+  const result: Record<string, string> = {};
+  if (!note) return result;
+  const lines = note.split(/\r?\n/);
+  for (const line of lines) {
+    const m = line.trim().match(/^•\s*([^:]+):\s*(.+)$/);
+    if (m) {
+      result[m[1].trim()] = m[2].trim();
+    }
+  }
+  return result;
+};
+
 const parseNote = (noteText: string) => {
   if (!noteText) return { cleanNote: '', errorNotes: [], blacklistNotes: [], warningNotes: [], aiDecisionNotes: [] };
   const normalized = noteText.replace(/\\n/g, '\n');
@@ -635,6 +648,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
   useEffect(() => {
     fetchConsultants();
+    fetchProjects();
     fetchAccounts();
     fetchRounds();
   }, []);
@@ -982,6 +996,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
   const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string; vacation_mode?: number }[]>([]);
   const [allAccounts, setAllAccounts] = useState<any[]>([]);
+  const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [reassignProjectId, setReassignProjectId] = useState<string>('');
   const [reassignConsId, setReassignConsId] = useState<string>('');
   const [isReassigning, setIsReassigning] = useState<boolean>(false);
   const [confirmReassignOpen, setConfirmReassignOpen] = useState<boolean>(false);
@@ -1125,6 +1141,19 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       handleDateClick(selectedDate);
     }
   }, [consultantFilter, isActive]);
+
+  const fetchProjects = async () => {
+    try {
+      const res = await api.get('/projects');
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        setProjectsList(res.data.data);
+      } else if (Array.isArray(res.data)) {
+        setProjectsList(res.data);
+      }
+    } catch (e: any) {
+      console.error('Error fetching projects:', e.message);
+    }
+  };
 
   const fetchConsultants = async () => {
     try {

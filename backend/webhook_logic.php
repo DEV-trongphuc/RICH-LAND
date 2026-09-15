@@ -3942,13 +3942,35 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
     if ($assigned_to > 0 && $is_accepted === 1) {
         $projectId = null;
         if (!empty($lead['target_round_id'])) {
-            $chkProj = $conn->query("SELECT id FROM projects WHERE id = 1 LIMIT 1");
-            if ($chkProj && $chkProj->num_rows > 0) {
-                $projectId = 1;
-            } else {
-                $chkProjAny = $conn->query("SELECT id FROM projects LIMIT 1");
-                if ($chkProjAny && $rowProj = $chkProjAny->fetch_assoc()) {
-                    $projectId = (int)$rowProj['id'];
+            $stmtRProj = $conn->prepare("SELECT project_id FROM distribution_rounds WHERE id = ? AND project_id IS NOT NULL LIMIT 1");
+            if ($stmtRProj) {
+                $stmtRProj->bind_param("i", $lead['target_round_id']);
+                $stmtRProj->execute();
+                $rProjRes = $stmtRProj->get_result()->fetch_assoc();
+                $stmtRProj->close();
+                if (!empty($rProjRes['project_id'])) {
+                    $projectId = (int)$rProjRes['project_id'];
+                }
+            }
+        }
+        if (!$projectId) {
+            $searchBlob = mb_strtolower(($lead['preferred_location'] ?? '') . ' ' . ($lead['note'] ?? '') . ' ' . ($lead['source'] ?? ''));
+            $pQuery = $conn->query("SELECT id, name, code FROM projects WHERE status = 'active' OR status IS NULL");
+            if ($pQuery) {
+                while ($pRow = $pQuery->fetch_assoc()) {
+                    $pName = mb_strtolower($pRow['name']);
+                    $pCode = !empty($pRow['code']) ? mb_strtolower($pRow['code']) : '';
+                    if ((!empty($pCode) && strpos($searchBlob, $pCode) !== false) || (!empty($pName) && strpos($searchBlob, $pName) !== false)) {
+                        $projectId = (int)$pRow['id'];
+                        break;
+                    }
+                    $words = preg_split('/\s+/', $pName);
+                    foreach ($words as $w) {
+                        if (mb_strlen($w) >= 4 && strpos($searchBlob, $w) !== false) {
+                            $projectId = (int)$pRow['id'];
+                            break 2;
+                        }
+                    }
                 }
             }
         }

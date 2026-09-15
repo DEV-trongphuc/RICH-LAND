@@ -1,27 +1,41 @@
 <?php
 require_once 'db_connect.php';
 
-$token = $_GET['token'] ?? '';
-
-if (empty($token)) {
-    die("Token không hợp lệ.");
-}
-
-// 1. Kiểm tra token có hợp lệ không trong bảng accounts
-$stmt = $conn->prepare("SELECT id, name, email FROM accounts WHERE confirm_token = ? LIMIT 1");
-$stmt->bind_param("s", $token);
-$stmt->execute();
-$res = $stmt->get_result();
-$stmt->close();
-
-if ($res->num_rows === 0) {
-    die("Token không tồn tại hoặc đã hết hạn xác thực.");
-}
-
-$admin = $res->fetch_assoc();
+$alreadyConfirmed = false;
+$invalidToken = false;
+$admin = ['name' => ''];
 $error = '';
 $success = false;
-$frontendUrl = './';
+
+// Lấy thông tin frontend_url từ system_settings
+$frontendUrl = 'https://crm.richland.city';
+$settingsRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key = 'frontend_url' LIMIT 1");
+if ($settingsRes && $row = $settingsRes->fetch_assoc()) {
+    if (!empty($row['setting_value'])) {
+        $frontendUrl = rtrim($row['setting_value'], '/');
+    }
+}
+
+if (empty($token)) {
+    $alreadyConfirmed = true;
+} else {
+    // 1. Kiểm tra token có hợp lệ không trong bảng accounts / users
+    $stmt = $conn->prepare("SELECT id, name, email FROM accounts WHERE confirm_token = ? LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("s", $token);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $stmt->close();
+
+        if ($res && $res->num_rows > 0) {
+            $admin = $res->fetch_assoc();
+        } else {
+            $alreadyConfirmed = true;
+        }
+    } else {
+        $alreadyConfirmed = true;
+    }
+}
 
 // 2. Xử lý POST khi người dùng lưu mật khẩu mới
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -249,6 +263,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h1 class="title">Xác nhận thành công!</h1>
                 <p class="subtitle">Chào mừng <strong><?php echo htmlspecialchars($admin['name']); ?></strong>! Tài khoản của bạn đã được xác nhận và cập nhật mật khẩu mới thành công.</p>
                 <a href="<?php echo htmlspecialchars($frontendUrl); ?>" class="btn-submit">Đăng nhập vào CRM</a>
+            <?php elseif ($alreadyConfirmed): ?>
+                <div class="success-icon" style="background: #dbeafe; color: #2563eb;">ℹ</div>
+                <h1 class="title">Tài khoản đã được kích hoạt</h1>
+                <p class="subtitle">Tài khoản của bạn đã được xác nhận thành công trước đó (hoặc liên kết này đã hoàn tất xác thực).<br><br>Vui lòng đăng nhập vào hệ thống để tiếp tục làm việc.</p>
+                <a href="<?php echo htmlspecialchars($frontendUrl); ?>" class="btn-submit" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);">Đăng nhập vào CRM</a>
             <?php else: ?>
                 <h1 class="title">Kích hoạt tài khoản</h1>
                 <p class="subtitle">Xin chào <strong><?php echo htmlspecialchars($admin['name']); ?></strong>, vui lòng thiết lập mật khẩu mới bên dưới để hoàn tất việc xác nhận kích hoạt tài khoản.</p>

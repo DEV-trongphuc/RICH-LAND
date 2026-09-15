@@ -14116,7 +14116,7 @@ switch ($action) {
             exit;
         }
 
-        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.job_title, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.signature_url, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.telegram_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours, u.bio FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
+        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.job_title, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.signature_url, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, COALESCE(NULLIF(TRIM(u.telegram_chat_id), ''), NULLIF(TRIM(c.telegram_chat_id), '')) AS telegram_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours, u.bio FROM users u LEFT JOIN accounts a ON u.id = a.id LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id) WHERE u.id = ?");
         $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
@@ -16632,6 +16632,7 @@ switch ($action) {
         $input = json_decode(file_get_contents('php://input'), true);
         $log_id = (int) ($input['log_id'] ?? 0);
         $new_consultant_id = (int) ($input['new_consultant_id'] ?? 0);
+        $reassignProjectId = !empty($input['project_id']) ? (int)$input['project_id'] : null;
         $compensate_old_sale = isset($input['compensate_old_sale']) ? (bool) $input['compensate_old_sale'] : false;
 
         if (!$log_id || !$new_consultant_id) {
@@ -16791,6 +16792,15 @@ switch ($action) {
 
             // Ensure Person and Contact (and transfer existing contact/deals if reassigning from old consultant)
             ensurePersonAndContact($conn, $lead_id, $old_consultant_id);
+
+            if ($reassignProjectId && $reassignProjectId > 0) {
+                $stmtUpP = $conn->prepare("UPDATE contacts SET project_id = ? WHERE person_id = (SELECT person_id FROM leads WHERE id = ?) AND deleted_at IS NULL");
+                if ($stmtUpP) {
+                    $stmtUpP->bind_param("ii", $reassignProjectId, $lead_id);
+                    $stmtUpP->execute();
+                    $stmtUpP->close();
+                }
+            }
 
             if ($compensate_old_sale && $old_consultant_id) {
                 // Check if the consultant is enrolled in the round
@@ -17008,6 +17018,28 @@ switch ($action) {
                         );
                     } catch (Exception $zEx) {
                         error_log("Error sending assignment Zalo to new sale: " . $zEx->getMessage());
+                    }
+
+                    try {
+                        if (file_exists(__DIR__ . '/telegram_bot.php')) {
+                            require_once __DIR__ . '/telegram_bot.php';
+                            sendLeadAssignedTelegramMessageToSale(
+                                $new_consultant_id,
+                                $new_cons_name,
+                                $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
+                                $log_data['phone'] ?: '',
+                                $log_data['note'] ?: '',
+                                $log_data['source'] ?: '',
+                                $roundNameStr,
+                                $lead_id,
+                                $roundId,
+                                $log_data['lead_email'] ?: '',
+                                $log_data['type'] ?: '',
+                                true
+                            );
+                        }
+                    } catch (Exception $tgEx) {
+                        error_log("Error sending assignment Telegram to new sale in reassign_lead: " . $tgEx->getMessage());
                     }
                 } catch (Exception $assignEx) {
                     error_log("Error processing assignment notifications in reassign_lead: " . $assignEx->getMessage());

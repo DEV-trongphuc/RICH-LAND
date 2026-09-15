@@ -565,6 +565,7 @@ switch ($resource) {
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $subResource === 'stage' && $method === 'PATCH') $ctrl->moveStage($auth, (int)$resourceId);
         elseif ($resourceId  && $subResource === 'release-databank' && $method === 'POST') $ctrl->releaseDatabank($auth, (int)$resourceId);
+        elseif ($resourceId  && $subResource === 'not-lead' && $method === 'POST') $ctrl->reportNotLead($auth, (int)$resourceId);
         elseif ($resourceId  && $subResource === 'collaborators' && $method === 'GET') $ctrl->getCollaborators($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);

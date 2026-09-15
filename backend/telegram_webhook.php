@@ -393,6 +393,24 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
                 $sale = $stmtFind->get_result()->fetch_assoc();
             }
             if ($stmtFind) $stmtFind->close();
+
+            if (!$sale) {
+                $stmtUFind = null;
+                if ($userId > 0 && !empty($email)) {
+                    $stmtUFind = $conn->prepare("SELECT id, full_name AS name, email, telegram_chat_id FROM users WHERE id = ? AND email = ? AND role IN ('sale', 'sales') LIMIT 1");
+                    if ($stmtUFind) $stmtUFind->bind_param("is", $userId, $email);
+                } else if ($userId > 0) {
+                    $stmtUFind = $conn->prepare("SELECT id, full_name AS name, email, telegram_chat_id FROM users WHERE id = ? AND role IN ('sale', 'sales') LIMIT 1");
+                    if ($stmtUFind) $stmtUFind->bind_param("i", $userId);
+                } else if (!empty($email)) {
+                    $stmtUFind = $conn->prepare("SELECT id, full_name AS name, email, telegram_chat_id FROM users WHERE email = ? AND role IN ('sale', 'sales') LIMIT 1");
+                    if ($stmtUFind) $stmtUFind->bind_param("s", $email);
+                }
+                if ($stmtUFind && $stmtUFind->execute()) {
+                    $sale = $stmtUFind->get_result()->fetch_assoc();
+                }
+                if ($stmtUFind) $stmtUFind->close();
+            }
         }
 
         // Tìm Admin
@@ -456,15 +474,20 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
                     sendTelegramMessage($botToken, $chatId, "❌ <b>[ THÔNG BÁO LỖI ]</b>\nTài khoản Telegram này đã liên kết với TVV khác (" . $existingSaleOwner['name'] . ").");
                     exit;
                 } else {
-                    $stmtUpdate = $conn->prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?");
-                    if ($stmtUpdate) {
-                        $stmtUpdate->bind_param("si", $chatId, $sale['id']);
-                        if ($stmtUpdate->execute()) {
-                            $successMessages[] = "Tư vấn viên: <b>" . $sale['name'] . "</b> - Email: {$sale['email']}";
-                            $linkedAny = true;
-                        }
-                        $stmtUpdate->close();
+                    $stmtUpdateU = $conn->prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ? OR email = ?");
+                    if ($stmtUpdateU) {
+                        $stmtUpdateU->bind_param("sis", $chatId, $sale['id'], $sale['email']);
+                        $stmtUpdateU->execute();
+                        $stmtUpdateU->close();
                     }
+                    $stmtUpdateC = $conn->prepare("UPDATE consultants SET telegram_chat_id = ? WHERE id = ? OR email = ?");
+                    if ($stmtUpdateC) {
+                        $stmtUpdateC->bind_param("sis", $chatId, $sale['id'], $sale['email']);
+                        $stmtUpdateC->execute();
+                        $stmtUpdateC->close();
+                    }
+                    $successMessages[] = "Tư vấn viên: <b>" . $sale['name'] . "</b> - Email: {$sale['email']}";
+                    $linkedAny = true;
                 }
             }
         }
@@ -483,15 +506,20 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
                     sendTelegramMessage($botToken, $chatId, "❌ <b>[ THÔNG BÁO LỖI ]</b>\nTài khoản Telegram này đã liên kết với Admin khác (" . $existingAdminOwner['name'] . ").");
                     exit;
                 } else {
-                    $stmtUpdate = $conn->prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?");
-                    if ($stmtUpdate) {
-                        $stmtUpdate->bind_param("si", $chatId, $admin['id']);
-                        if ($stmtUpdate->execute()) {
-                            $successMessages[] = "Quản trị viên: <b>" . $admin['name'] . "</b> - Email: {$admin['email']}";
-                            $linkedAny = true;
-                        }
-                        $stmtUpdate->close();
+                    $stmtUpdateU = $conn->prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ? OR email = ?");
+                    if ($stmtUpdateU) {
+                        $stmtUpdateU->bind_param("sis", $chatId, $admin['id'], $admin['email']);
+                        $stmtUpdateU->execute();
+                        $stmtUpdateU->close();
                     }
+                    $stmtUpdateC = $conn->prepare("UPDATE consultants SET telegram_chat_id = ? WHERE id = ? OR email = ?");
+                    if ($stmtUpdateC) {
+                        $stmtUpdateC->bind_param("sis", $chatId, $admin['id'], $admin['email']);
+                        $stmtUpdateC->execute();
+                        $stmtUpdateC->close();
+                    }
+                    $successMessages[] = "Quản trị viên: <b>" . $admin['name'] . "</b> - Email: {$admin['email']}";
+                    $linkedAny = true;
                 }
             }
         }

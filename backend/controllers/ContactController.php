@@ -1472,6 +1472,70 @@ class ContactController {
         }
     }
 
+    public function reportNotLead(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
+        $tid = $auth['tenant_id'];
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $reason = trim($input['reason'] ?? 'Không phải khách hàng tiềm năng');
+
+        // 1. Fetch contact
+        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name, source, pipeline_status FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $stmt->execute([$id, $tid]);
+        $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$contact) respond(404, null, 'Không tìm thấy liên hệ', false);
+
+        // Check if contact is from databank
+        $srcLower = strtolower($contact['source'] ?? '');
+        if (strpos($srcLower, 'databank') !== false || strpos($srcLower, 'kho data') !== false || strpos($srcLower, 'kho_data') !== false) {
+            respond(400, null, 'Khách hàng từ Databank vui lòng sử dụng tính năng "Trả về Databank"!', false);
+        }
+
+        $personId = $contact['person_id'];
+
+        // Prevent reporting not lead if deposit or coop active
+        $currStatus = $contact['pipeline_status'];
+        if (in_array($currStatus, ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'], true)) {
+            respond(400, null, 'Không thể báo Not Lead đối với khách hàng đã phát sinh đặt cọc hoặc đóng deal!', false);
+        }
+
+        // Update contact: mark pipeline_status = 'not_lead', not_lead_proposed = 1, record reason, and RECALL ownership from this sale
+        $stmtUpContact = $this->db->prepare("
+            UPDATE contacts 
+            SET pipeline_status = 'not_lead', 
+                status = 'lead',
+                not_lead_proposed = 1,
+                not_lead_proposed_by = ?,
+                not_lead_proposed_at = NOW(),
+                not_lead_reason = ?,
+                owner_id = NULL,
+                security_expires_at = NULL,
+                parallel_assigned = 0
+            WHERE id = ? AND tenant_id = ?
+        ");
+        $stmtUpContact->execute([$auth['user_id'], $reason, $id, $tid]);
+
+        // Keep persons table not public (is_public = 0) so it does NOT go to public databank
+        if ($personId) {
+            $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?")->execute([$personId]);
+            
+            // Also unassign from leads table and mark note
+            $stmtLead = $this->db->prepare("
+                UPDATE leads 
+                SET assigned_to = NULL, 
+                    status = 'not_lead', 
+                    note = IF(note IS NULL OR note = '', ?, CONCAT(note, '\n[Báo Not Lead]: ', ?)) 
+                WHERE person_id = ?
+            ");
+            $leadNoteMsg = "Sale báo Not Lead (Lý do: $reason) - Thu hồi về MKT xử lý tiếp lúc " . date('d/m/Y H:i');
+            $stmtLead->execute([$leadNoteMsg, $leadNoteMsg, $personId]);
+        }
+
+        logActivity($this->db, $tid, $auth['user_id'], 'REPORT_NOT_LEAD', 'contact', $id, "Báo Not Lead và thu hồi về Marketing. Lý do: $reason");
+
+        respond(200, ['success' => true], 'Đã báo Not Lead thành công. Khách hàng đã được thu hồi và chuyển về Marketing để xử lý tiếp.');
+    }
+
     private function getScope(array $auth, string $module, string $action): string {
         $permissionsJson = null;
         $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");

@@ -161,14 +161,20 @@ function sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $
         return false;
     }
 
-    $stmtConsultant = $conn->prepare("SELECT telegram_chat_id FROM consultants WHERE id = ? LIMIT 1");
+    $stmtConsultant = $conn->prepare("
+        SELECT COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id 
+        FROM consultants c 
+        LEFT JOIN users u ON (c.email = u.email OR c.id = u.id) 
+        WHERE c.id = ? OR u.id = ? 
+        LIMIT 1
+    ");
     if (!$stmtConsultant) return false;
-    $stmtConsultant->bind_param("i", $consultantId);
+    $stmtConsultant->bind_param("ii", $consultantId, $consultantId);
     $stmtConsultant->execute();
     $res = $stmtConsultant->get_result();
     $chatId = '';
     if ($res->num_rows > 0) {
-        $chatId = $res->fetch_assoc()['telegram_chat_id'];
+        $chatId = $res->fetch_assoc()['telegram_chat_id'] ?? '';
     }
     $stmtConsultant->close();
 
@@ -217,14 +223,20 @@ function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $
         return false;
     }
 
-    $stmtConsultant = $conn->prepare("SELECT telegram_chat_id FROM consultants WHERE id = ? LIMIT 1");
+    $stmtConsultant = $conn->prepare("
+        SELECT COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id 
+        FROM consultants c 
+        LEFT JOIN users u ON (c.email = u.email OR c.id = u.id) 
+        WHERE c.id = ? OR u.id = ? 
+        LIMIT 1
+    ");
     if (!$stmtConsultant) return false;
-    $stmtConsultant->bind_param("i", $consultantId);
+    $stmtConsultant->bind_param("ii", $consultantId, $consultantId);
     $stmtConsultant->execute();
     $res = $stmtConsultant->get_result();
     $chatId = '';
     if ($res->num_rows > 0) {
-        $chatId = $res->fetch_assoc()['telegram_chat_id'];
+        $chatId = $res->fetch_assoc()['telegram_chat_id'] ?? '';
     }
     $stmtConsultant->close();
 
@@ -291,14 +303,20 @@ function sendCompensationAddedTelegramMessageToSale($consultantId, $consultantNa
         return false;
     }
 
-    $stmtConsultant = $conn->prepare("SELECT telegram_chat_id FROM consultants WHERE id = ? LIMIT 1");
+    $stmtConsultant = $conn->prepare("
+        SELECT COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id 
+        FROM consultants c 
+        LEFT JOIN users u ON (c.email = u.email OR c.id = u.id) 
+        WHERE c.id = ? OR u.id = ? 
+        LIMIT 1
+    ");
     if (!$stmtConsultant) return false;
-    $stmtConsultant->bind_param("i", $consultantId);
+    $stmtConsultant->bind_param("ii", $consultantId, $consultantId);
     $stmtConsultant->execute();
     $res = $stmtConsultant->get_result();
     $chatId = '';
     if ($res->num_rows > 0) {
-        $chatId = $res->fetch_assoc()['telegram_chat_id'];
+        $chatId = $res->fetch_assoc()['telegram_chat_id'] ?? '';
     }
     $stmtConsultant->close();
 
@@ -368,14 +386,20 @@ function sendTelegramReleaseSummaryMessageToSale($consultantId, $consultantName,
         return false;
     }
 
-    $stmtConsultant = $conn->prepare("SELECT telegram_chat_id FROM consultants WHERE id = ? LIMIT 1");
+    $stmtConsultant = $conn->prepare("
+        SELECT COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id 
+        FROM consultants c 
+        LEFT JOIN users u ON (c.email = u.email OR c.id = u.id) 
+        WHERE c.id = ? OR u.id = ? 
+        LIMIT 1
+    ");
     if (!$stmtConsultant) return false;
-    $stmtConsultant->bind_param("i", $consultantId);
+    $stmtConsultant->bind_param("ii", $consultantId, $consultantId);
     $stmtConsultant->execute();
     $res = $stmtConsultant->get_result();
     $chatId = '';
     if ($res->num_rows > 0) {
-        $chatId = $res->fetch_assoc()['telegram_chat_id'];
+        $chatId = $res->fetch_assoc()['telegram_chat_id'] ?? '';
     }
     $stmtConsultant->close();
 
