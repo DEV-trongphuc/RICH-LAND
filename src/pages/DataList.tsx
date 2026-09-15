@@ -50,6 +50,7 @@ type Lead = {
   takers?: any[];
   is_public?: number | boolean;
   is_accepted?: number | boolean;
+  accepted_at?: string;
   person_id?: number;
   assigned_to?: number;
 
@@ -576,6 +577,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           ai_screener_status: item.ai_screener_status,
           ai_evaluation: item.ai_evaluation,
           is_public: item.is_public,
+          is_accepted: item.is_accepted,
+          accepted_at: item.accepted_at,
           takers: item.takers || [],
           gender: item.gender || '',
           dob: item.dob || '',

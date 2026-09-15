@@ -3881,9 +3881,9 @@ function sendNewLeadApiNotificationToAdmins($conn, $connData, $leadId, $customer
     return true;
 }
 
-function ensurePersonAndContact($conn, $leadId) {
+function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
     // 1. Get lead info
-    $stmt = $conn->prepare("SELECT phone, email, name, source, type, note, assigned_to, is_accepted, target_round_id FROM leads WHERE id = ?");
+    $stmt = $conn->prepare("SELECT * FROM leads WHERE id = ?");
     if (!$stmt) return;
     $stmt->bind_param("i", $leadId);
     $stmt->execute();
@@ -3975,7 +3975,7 @@ function ensurePersonAndContact($conn, $leadId) {
             $stmtCUser = $conn->prepare("
                 SELECT u.id 
                 FROM consultants cons 
-                JOIN users u ON cons.email = u.email 
+                JOIN users u ON (cons.email = u.email OR cons.id = u.id) 
                 WHERE cons.id = ? 
                 LIMIT 1
             ");
@@ -3990,7 +3990,30 @@ function ensurePersonAndContact($conn, $leadId) {
             }
         }
         if (empty($ownerUserId)) {
-            $ownerUserId = $assigned_to; // fallback
+            $ownerUserId = (int)$assigned_to;
+        }
+
+        $oldUserId = null;
+        if ($oldConsultantId && $oldConsultantId > 0) {
+            $stmtOldU = $conn->prepare("
+                SELECT u.id 
+                FROM consultants cons 
+                JOIN users u ON (cons.email = u.email OR cons.id = u.id) 
+                WHERE cons.id = ? 
+                LIMIT 1
+            ");
+            if ($stmtOldU) {
+                $stmtOldU->bind_param("i", $oldConsultantId);
+                $stmtOldU->execute();
+                $oldURes = $stmtOldU->get_result()->fetch_assoc();
+                $stmtOldU->close();
+                if ($oldURes) {
+                    $oldUserId = (int)$oldURes['id'];
+                }
+            }
+            if (empty($oldUserId)) {
+                $oldUserId = (int)$oldConsultantId;
+            }
         }
 
         // Get all active contacts for this person
@@ -4004,31 +4027,75 @@ function ensurePersonAndContact($conn, $leadId) {
         }
         $stmtExist->close();
 
+        // Check if primary owner contact exists, or if we can transfer from old consultant
+        $hasOwnerContact = false;
+        $transferCandidateId = null;
+
+        foreach ($existingContacts as $c) {
+            if ((int)$c['owner_id'] === (int)$ownerUserId) {
+                $hasOwnerContact = true;
+                break;
+            }
+            if ($oldUserId && (int)$c['owner_id'] === (int)$oldUserId) {
+                $transferCandidateId = (int)$c['id'];
+            } else if (empty($c['owner_id']) && !$transferCandidateId) {
+                $transferCandidateId = (int)$c['id'];
+            }
+        }
+
+        // If new owner does not have contact yet, but old consultant owned one: Transfer it!
+        if (!$hasOwnerContact && $transferCandidateId) {
+            $stmtTr = $conn->prepare("UPDATE contacts SET owner_id = ?, updated_at = NOW() WHERE id = ?");
+            if ($stmtTr) {
+                $stmtTr->bind_param("ii", $ownerUserId, $transferCandidateId);
+                $stmtTr->execute();
+                $stmtTr->close();
+            }
+
+            // Also transfer any deals associated with this contact to new owner
+            if ($oldUserId) {
+                $stmtTrDeals = $conn->prepare("UPDATE deals SET owner_id = ?, updated_at = NOW() WHERE contact_id = ? AND (owner_id = ? OR owner_id IS NULL) AND deleted_at IS NULL");
+                if ($stmtTrDeals) {
+                    $stmtTrDeals->bind_param("iii", $ownerUserId, $transferCandidateId, $oldUserId);
+                    $stmtTrDeals->execute();
+                    $stmtTrDeals->close();
+                }
+            } else {
+                $stmtTrDeals = $conn->prepare("UPDATE deals SET owner_id = ?, updated_at = NOW() WHERE contact_id = ? AND deleted_at IS NULL");
+                if ($stmtTrDeals) {
+                    $stmtTrDeals->bind_param("ii", $ownerUserId, $transferCandidateId);
+                    $stmtTrDeals->execute();
+                    $stmtTrDeals->close();
+                }
+            }
+
+            $hasOwnerContact = true;
+        }
+
         if (!empty($existingContacts)) {
-            // Update all existing active contacts (useful for parallel owners)
+            // Update existing active contacts with latest info
             $stmtUpContact = $conn->prepare("
                 UPDATE contacts 
                 SET first_name = IF(? != '' AND (first_name = '' OR first_name IS NULL), ?, first_name),
                     last_name = IF(? != '' AND (last_name = '' OR last_name IS NULL), ?, last_name),
                     email = IF(? != '' AND (email = '' OR email IS NULL), ?, email),
                     phone = IF(? != '' AND (phone = '' OR phone IS NULL), ?, phone),
-                    notes = ?,
-                    customer_type = ?
-                WHERE id = ?
+                    notes = IF(? != '' AND IFNULL(notes, '') NOT LIKE CONCAT('%', ?, '%'), CONCAT(IFNULL(notes, ''), IF(notes IS NULL OR notes = '', '', '\n'), ?), notes),
+                    customer_type = IF(? != '' AND (customer_type = '' OR customer_type IS NULL), ?, customer_type)
+                WHERE person_id = ? AND deleted_at IS NULL
             ");
-            foreach ($existingContacts as $c) {
-                $stmtUpContact->bind_param("ssssssssssi", $firstName, $firstName, $lastName, $lastName, $email, $email, $phone, $phone, $note, $type, $c['id']);
+            if ($stmtUpContact) {
+                $stmtUpContact->bind_param("sssssssssssssi", 
+                    $firstName, $firstName, 
+                    $lastName, $lastName, 
+                    $email, $email, 
+                    $phone, $phone, 
+                    $note, $note, $note,
+                    $type, $type, 
+                    $person_id
+                );
                 $stmtUpContact->execute();
-            }
-            $stmtUpContact->close();
-        }
-
-        // Also check if the primary owner contact exists, if not, create it
-        $hasOwnerContact = false;
-        foreach ($existingContacts as $c) {
-            if ((int)$c['owner_id'] === (int)$ownerUserId) {
-                $hasOwnerContact = true;
-                break;
+                $stmtUpContact->close();
             }
         }
 
@@ -4038,19 +4105,74 @@ function ensurePersonAndContact($conn, $leadId) {
                 $initTemp = 'neutral'; // Ấm sẵn cho khách cá nhân hoặc giới thiệu
             }
 
+            $stageId = 1; // Default: 'chua_xac_dinh'
+            $chkStage = $conn->query("SELECT id FROM pipeline_stages WHERE system_slug = '$triggerStatus' LIMIT 1");
+            if ($chkStage && $chkStage->num_rows > 0) {
+                $stageId = (int)$chkStage->fetch_assoc()['id'];
+            }
+
+            if ($projectId !== null) {
+                $chkExists = $conn->query("SELECT id FROM projects WHERE id = " . (int)$projectId);
+                if (!$chkExists || $chkExists->num_rows === 0) {
+                    $projectId = null;
+                }
+            }
+
+            $phone2 = $lead['phone2'] ?? null;
+            $gender = $lead['gender'] ?? null;
+            $dob = !empty($lead['dob']) ? $lead['dob'] : null;
+            $citizenId = $lead['citizen_id'] ?? null;
+            $district = $lead['district'] ?? null;
+            $company = $lead['company'] ?? null;
+            $taxCode = $lead['tax_code'] ?? null;
+            $budget = isset($lead['budget']) ? (float)$lead['budget'] : 0.00;
+            $demandType = $lead['demand_type'] ?? null;
+            $propertyType = $lead['property_type'] ?? null;
+            $bedroomCount = $lead['bedroom_count'] ?? null;
+            $preferredLocation = $lead['preferred_location'] ?? null;
+            $utmCampaign = $lead['utm_campaign'] ?? null;
+            $utmMedium = $lead['utm_medium'] ?? null;
+            $utmContent = $lead['utm_content'] ?? null;
+            $utmTerm = $lead['utm_term'] ?? null;
+            $platform = $lead['platform'] ?? null;
+            $formName = $lead['form_name'] ?? null;
+            $zaloPhone = $lead['zalo_phone'] ?? null;
+            $facebookLink = $lead['facebook_link'] ?? null;
+
             $stmtContact = $conn->prepare("
-                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type, temperature, suggested_temperature)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?, ?, ?)
+                INSERT INTO contacts (
+                    tenant_id, person_id, project_id, owner_id, created_by, 
+                    first_name, last_name, email, phone, source, 
+                    status, pipeline_status, stage_id, security_expires_at, notes, 
+                    customer_type, temperature, suggested_temperature, phone2, gender, 
+                    dob, citizen_id, district, company, tax_code, 
+                    budget, demand_type, property_type, bedroom_count, preferred_location, 
+                    utm_campaign, utm_medium, utm_content, utm_term, platform, 
+                    form_name, zalo_phone, facebook_link
+                ) VALUES (
+                    1, ?, ?, ?, ?, 
+                    ?, ?, ?, ?, ?, 
+                    'lead', ?, ?, ?, ?, 
+                    ?, ?, ?, ?, ?, 
+                    ?, ?, ?, ?, ?, 
+                    ?, ?, ?, ?, ?, 
+                    ?, ?, ?, ?, ?, 
+                    ?, ?, ?
+                )
             ");
             if ($stmtContact) {
                 $createdBy = 1;
-                if ($projectId !== null) {
-                    $chkExists = $conn->query("SELECT id FROM projects WHERE id = " . (int)$projectId);
-                    if (!$chkExists || $chkExists->num_rows === 0) {
-                        $projectId = null;
-                    }
-                }
-                $stmtContact->bind_param("iiiisssssssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $triggerStatus, $secExpiresTime, $note, $type, $initTemp, $initTemp);
+                $stmtContact->bind_param(
+                    "iiiissssssissssssssssssdssssssssssss",
+                    $person_id, $projectId, $ownerUserId, $createdBy,
+                    $firstName, $lastName, $email, $phone, $source,
+                    $triggerStatus, $stageId, $secExpiresTime, $note,
+                    $type, $initTemp, $initTemp, $phone2, $gender,
+                    $dob, $citizenId, $district, $company, $taxCode,
+                    $budget, $demandType, $propertyType, $bedroomCount, $preferredLocation,
+                    $utmCampaign, $utmMedium, $utmContent, $utmTerm, $platform,
+                    $formName, $zaloPhone, $facebookLink
+                );
                 $stmtContact->execute();
                 $stmtContact->close();
             }

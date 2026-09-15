@@ -3498,6 +3498,8 @@ switch ($action) {
                 l.facebook_link,
                 l.ai_screener_status,
                 l.ai_evaluation,
+                l.is_accepted,
+                l.accepted_at,
                 dl.status, 
                 c.name as assigned_to_name, 
                 c.avatar as assigned_to_avatar, 
@@ -16779,11 +16781,16 @@ switch ($action) {
             $stmtU1 = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, status = ? WHERE id = ?");
             $stmtU1->bind_param("isi", $new_consultant_id, $newLogStatus, $log_id);
             $stmtU1->execute();
+            $stmtU1->close();
 
-            // Update leads
-            $stmtU2 = $conn->prepare("UPDATE leads SET assigned_to = ? WHERE id = ?");
+            // Update leads (Direct assignment automatically accepts lead and activates it)
+            $stmtU2 = $conn->prepare("UPDATE leads SET assigned_to = ?, is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW() WHERE id = ?");
             $stmtU2->bind_param("ii", $new_consultant_id, $lead_id);
             $stmtU2->execute();
+            $stmtU2->close();
+
+            // Ensure Person and Contact (and transfer existing contact/deals if reassigning from old consultant)
+            ensurePersonAndContact($conn, $lead_id, $old_consultant_id);
 
             if ($compensate_old_sale && $old_consultant_id) {
                 // Check if the consultant is enrolled in the round

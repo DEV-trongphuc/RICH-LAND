@@ -29,3 +29,4 @@ dist-ssr
 *.zip
 temp_deploy/
 scratch/*.sql
+*.code-workspace
