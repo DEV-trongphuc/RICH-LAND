@@ -779,7 +779,8 @@ class ContactController {
             'phone2', 'dob', 'citizen_id', 'district', 'company', 'tax_code', 'budget',
             'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
             'utm_campaign', 'utm_medium', 'utm_content', 'utm_term', 'platform',
-            'form_name', 'zalo_phone', 'facebook_link', 'nguoi_gioi_thieu_id'
+            'form_name', 'zalo_phone', 'facebook_link', 'nguoi_gioi_thieu_id',
+            'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai'
         ];
         $sets = []; $params = [];
         

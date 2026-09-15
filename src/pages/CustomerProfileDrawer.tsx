@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video } from 'lucide-react';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -18,6 +18,67 @@ import { QuoteEditorModal } from '../components/ui/QuoteEditorModal';
 import { Avatar } from '../components/ui/Avatar';
 import { CustomModal } from '../components/ui/CustomModal';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
+
+export interface ParsedWebhookInfo {
+  parsed: Record<string, string>;
+  cleanNote: string;
+  measurementData: Record<string, string>;
+}
+
+export function parseWebhookData(note: string | null | undefined): ParsedWebhookInfo {
+  if (!note) return { parsed: {}, cleanNote: '', measurementData: {} };
+  const parsed: Record<string, string> = {};
+  const measurementData: Record<string, string> = {};
+  const cleanLines: string[] = [];
+
+  const MEASUREMENT_KEYS = new Set([
+    'id', 'lead_id', 'create_time', 'created_time', 'ad_id', 'adset_id', 
+    'campaign_id', 'form_id', 'is_organic', 'inbox_url', 'fanpage_id', 
+    'fanpage_name', 'adaccount_id', 'adaccount_name', 'campaign_business', 
+    'donvi_chay', 'connection_id'
+  ]);
+
+  const MAPPED_FORM_KEYS = new Set([
+    'lead_phan_loai', 'loai_lead', 'du_an', 'duan', 'project_name', 'ad_name', 'form_name', 
+    'birthday', 'country', 'city', 'loai_hinh', 'hinh_thuc_tt', 
+    'time_lienhe', 'app_lienhe', 'nhu_cau', 'tieu_chi', 'san_pham', 
+    'tinh_trang', 'link_fb', 'link_video_ads'
+  ]);
+
+  const lines = note.split('\n');
+  let inWebhookSection = false;
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (trimmed.startsWith('[Dữ liệu Webhook bổ sung]') || trimmed.startsWith('[Dữ liệu Webhook]')) {
+      inWebhookSection = true;
+      continue;
+    }
+    
+    // Match bullet items: • key: value or - key: value
+    const bulletMatch = trimmed.match(/^[•\-\*]?\s*([a-zA-Z0-9_\-]+)\s*:\s*(.*)$/);
+    if (bulletMatch) {
+      const key = bulletMatch[1].trim().toLowerCase();
+      const val = bulletMatch[2].trim();
+      parsed[key] = val;
+
+      if (MEASUREMENT_KEYS.has(key)) {
+        measurementData[key] = val;
+        continue;
+      }
+      if (MAPPED_FORM_KEYS.has(key)) {
+        continue;
+      }
+    }
+
+    if (!inWebhookSection || (trimmed && !trimmed.startsWith('•') && !trimmed.startsWith('-'))) {
+      cleanLines.push(rawLine);
+    }
+  }
+
+  const cleanNote = cleanLines.join('\n').trim();
+  return { parsed, cleanNote, measurementData };
+}
 import { compressToWebP } from '../utils/imageCompress';
 import { TicketDrawer } from './TicketDrawer';
 const WorkspaceTaskDrawer = lazy(() => import('./WorkspaceTaskDrawer').then(module => ({ default: module.WorkspaceTaskDrawer })));
@@ -1632,7 +1693,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
       'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact', 'created_at',
       'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range', 'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data',
-      'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'collaborator_ids', 'nguoi_gioi_thieu_id'
+      'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'collaborator_ids', 'nguoi_gioi_thieu_id',
+      'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai', 'facebook_link', 'link_fb'
     ];
     const payload: Record<string, any> = {};
     allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });
@@ -1976,6 +2038,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   }, [filledTTL1Count]);
 
+  const webhookNoteRaw = useMemo(() => {
+    return (contact?.lead_note || contact?.marketing_note || contact?.notes || contact?.lead_notes || formData?.lead_note || formData?.notes || '').trim();
+  }, [contact, formData?.lead_note, formData?.notes]);
+
+  const webhookData = useMemo(() => {
+    return parseWebhookData(webhookNoteRaw);
+  }, [webhookNoteRaw]);
+
   const parsedAdFormData = useMemo(() => {
     const sources = [
       formData?.raw_form_data,
@@ -1986,7 +2056,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       contact?.meta_data
     ];
     
-    let combined: Record<string, any> = {};
+    let combined: Record<string, any> = { ...webhookData.parsed };
     for (const src of sources) {
       if (!src) continue;
       if (typeof src === 'object' && !Array.isArray(src)) {
@@ -2001,6 +2071,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     }
 
+    if (webhookData.parsed.ad_name && !combined.ad_name) combined.ad_name = webhookData.parsed.ad_name;
+    if (webhookData.parsed.form_name && !combined.form_name) combined.form_name = webhookData.parsed.form_name;
     if (formData?.ad_name && !combined.ad_name) combined.ad_name = formData.ad_name;
     if (formData?.form_name && !combined.form_name) combined.form_name = formData.form_name;
     if (formData?.adset_name && !combined.adset_name) combined.adset_name = formData.adset_name;
@@ -3111,13 +3183,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const renderMarketingNoteSection = (margin = '1rem 0 0 0') => {
-    const marketingNote = (contact?.lead_note || contact?.marketing_note || contact?.lead_notes || contact?.notes || formData.lead_note || '').trim();
+    const rawNote = (contact?.lead_note || contact?.marketing_note || contact?.lead_notes || contact?.notes || formData.lead_note || formData.notes || '').trim();
+    const { cleanNote, measurementData } = parseWebhookData(rawNote);
     const locationPref = contact?.lead_preferred_location || contact?.preferred_location;
     const bedroomPref = contact?.lead_bedroom_count || contact?.bedroom_count;
     const demandPref = contact?.lead_demand_type || contact?.demand_type;
     const budgetPref = contact?.lead_budget || contact?.budget;
     const dataType = contact?.lead_type || contact?.customer_type || contact?.type;
-    const hasMarketingInfo = !!(marketingNote || locationPref || bedroomPref || demandPref || budgetPref || dataType);
+    const hasMarketingInfo = !!(cleanNote || locationPref || bedroomPref || demandPref || budgetPref || dataType);
 
     if (!hasMarketingInfo) return null;
 
@@ -3145,13 +3218,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           )}
         </div>
 
-        {marketingNote && (
+        {cleanNote && (
           <div style={{ marginBottom: (locationPref || bedroomPref || demandPref || budgetPref) ? '1rem' : '0' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', marginBottom: '4px' }}>
               {t('Nội dung ghi chú:')}
             </div>
             <div style={{ fontSize: '0.875rem', color: '#78350f', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500, background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #fef08a' }}>
-              {formatNote(marketingNote)}
+              {formatNote(cleanNote)}
             </div>
           </div>
         )}
@@ -3596,9 +3669,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         setZaloSource('none');
       }
 
-      setFormData(contact);
+      const wb = parseWebhookData((contact.notes || contact.lead_note || '').trim());
+      const mergedContact = {
+        ...contact,
+        lead_phan_loai: contact.lead_phan_loai || wb.parsed['lead_phan_loai'] || contact.source || '',
+        loai_lead: contact.loai_lead || wb.parsed['loai_lead'] || '',
+        ad_name: contact.ad_name || wb.parsed['ad_name'] || '',
+        form_name: contact.form_name || wb.parsed['form_name'] || '',
+        link_video_ads: contact.link_video_ads || wb.parsed['link_video_ads'] || '',
+        fb_link: contact.fb_link || contact.facebook_link || wb.parsed['link_fb'] || '',
+        facebook_link: contact.facebook_link || contact.fb_link || wb.parsed['link_fb'] || ''
+      };
+      setFormData(mergedContact);
       setTags(contact.tags || []);
-      setBaseData(contact);
+      setBaseData(mergedContact);
       setBaseTags(contact.tags || []);
       
       let initialTtl1 = { group1: false, group2: false, group3: false, group4: false, group5: false };
@@ -3646,6 +3730,34 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     }
   }, [allowedCampaigns, formData.campaign_id, formData.project_id]);
+
+  useEffect(() => {
+    if (!formData.project_id && projectsList.length > 0) {
+      const webhookDuAn = (webhookData.parsed['du_an'] || webhookData.parsed['duan'] || webhookData.parsed['project_name'] || '').trim().toLowerCase();
+      const adName = (webhookData.parsed['ad_name'] || formData.ad_name || '').toLowerCase();
+      
+      let matchedProject: any = null;
+      if (webhookDuAn) {
+        matchedProject = projectsList.find(p => 
+          p.name.toLowerCase().includes(webhookDuAn) || 
+          webhookDuAn.includes(p.name.toLowerCase()) ||
+          (p.code && p.code.toLowerCase().includes(webhookDuAn))
+        );
+      }
+      
+      if (!matchedProject && adName) {
+        matchedProject = projectsList.find(p => {
+          const pName = p.name.toLowerCase();
+          const words = pName.split(/\s+/).filter((w: string) => w.length > 3);
+          return words.some((w: string) => adName.includes(w));
+        });
+      }
+
+      if (matchedProject) {
+        setFormData((prev: any) => ({ ...prev, project_id: Number(matchedProject.id) }));
+      }
+    }
+  }, [formData.project_id, projectsList, webhookData.parsed]);
 
   useEffect(() => {
     if (isOpen) {
@@ -7179,30 +7291,76 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
                           </div>
 
-                          {/* 1. Trường Phân Loại Lead là 1 trường bình thường để phân Rank (không phải trường chấm điểm) */}
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', fontWeight: 700 }}>
-                              Phân loại Lead (Rank)
-                            </label>
-                            <CustomSelect
-                              searchable
-                              options={[
-                                { value: 'R3', label: 'R3' },
-                                { value: 'R3_Fb', label: 'R3_Fb' },
-                                { value: 'R2', label: 'R2' },
-                                { value: 'R3_Zalo', label: 'R3_Zalo' },
-                                { value: 'broadcast', label: 'Broadcast' },
-                                { value: 'ca_nhan', label: 'Cá nhân' },
-                                { value: 'gioi_thieu', label: 'Giới thiệu' },
-                                { value: 'databank', label: 'Kho Data' }
-                              ]}
-                              value={formData.source || ''}
-                              onChange={(val) => setFormData((prev: any) => ({ ...prev, source: val, customer_type: val }))}
-                              placeholder="Chọn hoặc nhập Rank..."
-                            />
-                            <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', marginTop: '1px', display: 'block' }}>
-                              Phân loại Rank nguồn lead được map lúc Tích hợp Data
-                            </span>
+                          {/* 1. HÀNG: PHÂN LOẠI LEAD (RANK) & LOẠI LEAD (LOAI_LEAD) */}
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', fontWeight: 700 }}>
+                                Phân loại Lead (Rank)
+                              </label>
+                              {(() => {
+                                const currentRank = formData.lead_phan_loai || formData.source || webhookData.parsed['lead_phan_loai'] || '';
+                                const baseRankOptions = [
+                                  { value: 'R3', label: 'R3' },
+                                  { value: 'R3_Fb', label: 'R3_Fb' },
+                                  { value: 'R2', label: 'R2' },
+                                  { value: 'R3_Zalo', label: 'R3_Zalo' },
+                                  { value: 'broadcast', label: 'Broadcast' },
+                                  { value: 'ca_nhan', label: 'Cá nhân' },
+                                  { value: 'gioi_thieu', label: 'Giới thiệu' },
+                                  { value: 'databank', label: 'Kho Data' }
+                                ];
+                                const hasRank = baseRankOptions.some(o => o.value.toLowerCase() === currentRank.toLowerCase());
+                                const rankOptions = (!currentRank || hasRank) 
+                                  ? baseRankOptions 
+                                  : [{ value: currentRank, label: currentRank }, ...baseRankOptions];
+
+                                return (
+                                  <CustomSelect
+                                    searchable
+                                    options={rankOptions}
+                                    value={currentRank}
+                                    onChange={(val) => setFormData((prev: any) => ({ ...prev, lead_phan_loai: val, source: val, customer_type: val }))}
+                                    placeholder="Chọn hoặc nhập Rank..."
+                                  />
+                                );
+                              })()}
+                              <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', marginTop: '1px', display: 'block' }}>
+                                Phân loại Rank nguồn lead được map lúc Tích hợp Data
+                              </span>
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', fontWeight: 700 }}>
+                                Loại Lead : (loai_lead)
+                              </label>
+                              {(() => {
+                                const currentLoai = formData.loai_lead || webhookData.parsed['loai_lead'] || '';
+                                const baseLoaiOptions = [
+                                  { value: '', label: '— Chọn loại lead —' },
+                                  { value: 'lead_form', label: 'Lead Form' },
+                                  { value: 'message', label: 'Tin nhắn (Inbox)' },
+                                  { value: 'hotline', label: 'Hotline' },
+                                  { value: 'zalo', label: 'Zalo OA' },
+                                  { value: 'comment', label: 'Bình luận' },
+                                  { value: 'website', label: 'Website' },
+                                  { value: 'other', label: 'Khác' }
+                                ];
+                                const hasLoai = baseLoaiOptions.some(o => o.value.toLowerCase() === currentLoai.toLowerCase());
+                                const loaiOptions = (!currentLoai || hasLoai)
+                                  ? baseLoaiOptions
+                                  : [{ value: currentLoai, label: currentLoai }, ...baseLoaiOptions];
+
+                                return (
+                                  <CustomSelect
+                                    searchable
+                                    options={loaiOptions}
+                                    value={currentLoai}
+                                    onChange={(val) => setFormData((prev: any) => ({ ...prev, loai_lead: val }))}
+                                    placeholder="Chọn loại lead..."
+                                  />
+                                );
+                              })()}
+                            </div>
                           </div>
 
                           {/* Dự án & Chiến dịch (Quan hệ Cha - Con) */}
@@ -7275,7 +7433,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* CỤC GOM THÔNG TIN FORM ĐĂNG KÝ (FACEBOOK LEAD ADS / SCORE) */}
-                          <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 800, color: 'var(--color-text)' }}>
                                 <FileText size={12} style={{ color: 'var(--color-primary)' }} />
@@ -7284,57 +7442,135 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <span className="badge warning" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Form Leads</span>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px', fontSize: '0.72rem' }}>
-                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
-                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Tỉnh/TP</div>
-                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.city || parsedAdFormData.find(x => x.key?.includes('city') || x.key?.includes('tinh'))?.value || 'TP. Hồ Chí Minh'}</div>
-                              </div>
-                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
-                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Kênh liên hệ</div>
-                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.platform || parsedAdFormData.find(x => x.key?.includes('platform') || x.key?.includes('kenh'))?.value || 'Facebook Lead Ads'}</div>
-                              </div>
-                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
-                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Loại hình</div>
-                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px' }}>{formData.property_type || parsedAdFormData.find(x => x.key?.includes('loai_hinh') || x.key?.includes('can_ho') || x.key?.includes('type'))?.value || '1PN / Studio'}</div>
-                              </div>
-                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
-                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Tên Form</div>
-                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{formData.form_name || parsedAdFormData.find(x => x.key?.includes('form'))?.value || 'Mẫu Lead Ads'}</div>
-                              </div>
-                              <div style={{ background: 'var(--color-surface)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--color-border)', gridColumn: 'span 2' }}>
-                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Mẫu Quảng Cáo</div>
-                                <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', wordBreak: 'break-word' }}>{formData.utm_content || parsedAdFormData.find(x => x.key?.includes('ad') || x.key?.includes('campaign'))?.value || formData.campaign_name || 'Chiến dịch Quảng cáo Meta'}</div>
-                              </div>
-                            </div>
+                            {(() => {
+                              const FORM_SPEC = [
+                                { key: 'ad_name', label: 'Mẫu quảng cáo', fullWidth: true },
+                                { key: 'form_name', label: 'Tên Form', fullWidth: true },
+                                { key: 'birthday', label: 'Sinh nhật' },
+                                { key: 'country', label: 'Quốc gia' },
+                                { key: 'city', label: 'Thành Phố' },
+                                { key: 'loai_hinh', label: 'Loại hình' },
+                                { key: 'hinh_thuc_tt', label: 'Hình thức thanh toán' },
+                                { key: 'time_lienhe', label: 'Thời gian liên hệ' },
+                                { key: 'app_lienhe', label: 'Ứng dụng liên hệ' },
+                                { key: 'nhu_cau', label: 'Nhu cầu' },
+                                { key: 'tieu_chi', label: 'Tiêu chí' },
+                                { key: 'san_pham', label: 'Sản phẩm' },
+                                { key: 'tinh_trang', label: 'Tình trạng' }
+                              ];
 
-                            {/* Link Facebook */}
-                            <div className="form-group" style={{ marginTop: '2px', marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px' }}>
-                                <Globe size={10} style={{ color: '#1877F2' }} /> Link Facebook
-                              </label>
-                              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                <input
-                                  className="form-input sm"
-                                  placeholder="https://facebook.com/profile..."
-                                  value={formData.fb_link || formData.facebook_link || ''}
-                                  onChange={e => {
-                                    const val = e.target.value;
-                                    setFormData((prev: any) => ({ ...prev, fb_link: val, facebook_link: val }));
-                                  }}
-                                  style={{ paddingRight: (formData.fb_link || formData.facebook_link) ? '26px' : '6px', height: '28px', fontSize: '0.78rem' }}
-                                />
-                                {(formData.fb_link || formData.facebook_link) && (
-                                  <a
-                                    href={formData.fb_link || formData.facebook_link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="btn-icon xs"
-                                    style={{ position: 'absolute', right: '3px', height: '22px', width: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1877F2' }}
-                                    title="Mở link Facebook"
-                                  >
-                                    <ExternalLink size={11} />
-                                  </a>
-                                )}
+                              const getFormVal = (k: string) => {
+                                const fromWb = webhookData.parsed[k] || webhookData.parsed[k.toLowerCase()];
+                                if (fromWb) return fromWb;
+                                if (k === 'ad_name') return formData.ad_name || contact?.ad_name || formData.utm_content || '';
+                                if (k === 'form_name') return formData.form_name || contact?.form_name || '';
+                                if (k === 'city') return formData.city || contact?.city || '';
+                                if (k === 'country') return formData.country || contact?.country || '';
+                                if (k === 'birthday') return formData.birthday || contact?.birthday || formData.dob || '';
+                                if (k === 'loai_hinh') return formData.property_type || contact?.property_type || '';
+                                if (k === 'nhu_cau') return formData.demand_type || contact?.demand_type || '';
+                                if (k === 'san_pham') return formData.san_pham || contact?.san_pham || '';
+                                if (k === 'tieu_chi') return formData.tieu_chi || contact?.tieu_chi || '';
+                                if (k === 'tinh_trang') return formData.tinh_trang || contact?.tinh_trang || '';
+                                if (k === 'hinh_thuc_tt') return formData.hinh_thuc_tt || contact?.hinh_thuc_tt || '';
+                                if (k === 'time_lienhe') return formData.time_lienhe || contact?.time_lienhe || '';
+                                if (k === 'app_lienhe') return formData.app_lienhe || contact?.app_lienhe || '';
+                                return '';
+                              };
+
+                              const activeFields = FORM_SPEC
+                                .map(item => ({ ...item, value: getFormVal(item.key) }))
+                                .filter(item => Boolean(item.value && item.value.trim()));
+
+                              return activeFields.length > 0 ? (
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px', fontSize: '0.72rem' }}>
+                                  {activeFields.map(item => (
+                                    <div 
+                                      key={item.key} 
+                                      style={{ 
+                                        background: 'var(--color-surface)', 
+                                        padding: '3px 6px', 
+                                        borderRadius: '4px', 
+                                        border: '1px solid var(--color-border)',
+                                        gridColumn: item.fullWidth ? 'span 2' : undefined
+                                      }}
+                                    >
+                                      <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{item.label}</div>
+                                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', wordBreak: 'break-word' }}>
+                                        {item.value.replace(/_/g, ' ')}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div style={{ padding: '8px', color: 'var(--color-text-muted)', fontSize: '0.72rem', textAlign: 'center', fontStyle: 'italic', background: 'var(--color-surface)', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                                  Chưa có thông tin từ form đăng ký
+                                </div>
+                              );
+                            })()}
+
+                            {/* CÁC TRƯỜNG DƯỚI FORM ĐĂNG KÝ: link_fb & link_video_ads */}
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px', marginTop: '2px' }}>
+                              {/* Link Facebook */}
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px', fontWeight: 600 }}>
+                                  <Globe size={10} style={{ color: '#1877F2' }} /> Link Facebook
+                                </label>
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                  <input
+                                    className="form-input sm"
+                                    placeholder="https://facebook.com/profile..."
+                                    value={formData.fb_link || formData.facebook_link || formData.link_fb || ''}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      setFormData((prev: any) => ({ ...prev, fb_link: val, facebook_link: val, link_fb: val }));
+                                    }}
+                                    style={{ paddingRight: (formData.fb_link || formData.facebook_link || formData.link_fb) ? '26px' : '6px', height: '28px', fontSize: '0.78rem' }}
+                                  />
+                                  {(formData.fb_link || formData.facebook_link || formData.link_fb) && (
+                                    <a
+                                      href={formData.fb_link || formData.facebook_link || formData.link_fb}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="btn-icon xs"
+                                      style={{ position: 'absolute', right: '3px', height: '22px', width: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1877F2' }}
+                                      title="Mở link Facebook"
+                                    >
+                                      <ExternalLink size={11} />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Link Video Ads */}
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px', fontWeight: 600 }}>
+                                  <Video size={10} style={{ color: '#ef4444' }} /> Link Video Ads
+                                </label>
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                  <input
+                                    className="form-input sm"
+                                    placeholder="https://facebook.com/watch/... hoặc link video"
+                                    value={formData.link_video_ads || ''}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      setFormData((prev: any) => ({ ...prev, link_video_ads: val }));
+                                    }}
+                                    style={{ paddingRight: formData.link_video_ads ? '26px' : '6px', height: '28px', fontSize: '0.78rem' }}
+                                  />
+                                  {formData.link_video_ads && (
+                                    <a
+                                      href={formData.link_video_ads}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="btn-icon xs"
+                                      style={{ position: 'absolute', right: '3px', height: '22px', width: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}
+                                      title="Mở video quảng cáo"
+                                    >
+                                      <ExternalLink size={11} />
+                                    </a>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
