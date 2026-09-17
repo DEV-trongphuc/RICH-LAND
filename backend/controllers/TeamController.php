@@ -434,7 +434,9 @@ class TeamController
             VALUES (?, 'team', ?, ?, ?, ?)
         ");
         $stmt->execute([$auth['tenant_id'], $teamId, $auth['user_id'], $body, $parentId]);
-        $newId = $this->db->lastInsertId();
+        $newId = (int)$this->db->lastInsertId();
+
+        require_once __DIR__ . '/../NotificationService.php';
 
         if ($parentId > 0) {
             $stmtParent = $this->db->prepare("SELECT user_id FROM comments WHERE id = ?");
@@ -442,44 +444,60 @@ class TeamController
             $parentOwnerId = (int)$stmtParent->fetchColumn();
 
             if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
-                $title = "Bạn có phản hồi mới trong thảo luận nhóm";
-                $bodyText = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong thảo luận nhóm";
-                $type = "info";
-                $link = "/consultants?tab=teams&highlight_comment_id=" . $newId;
-
-                $insertNotif = $this->db->prepare("
-                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ");
-                $insertNotif->execute([$parentOwnerId, $auth['tenant_id'], $title, $bodyText, $type, $link]);
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => $parentOwnerId,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => "Đã trả lời bình luận của bạn trong thảo luận nhóm",
+                    'link' => "/consultants?tab=teams&highlight_comment_id=" . $newId
+                ]);
             }
         }
 
         // Parse mentions
+        $mentions = [];
+
+        // 1. data-user-id
+        if (preg_match_all('/data-user-id="(\d+)"/i', (string)$body, $idMatches)) {
+            $uids = array_filter(array_map('intval', $idMatches[1]));
+            foreach ($uids as $uid) {
+                if ($uid !== (int)$auth['user_id']) {
+                    $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND id=?");
+                    $stmtUser->execute([$auth['tenant_id'], $uid]);
+                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                    if ($userRow) {
+                        $mentions[$uid] = $userRow;
+                    }
+                }
+            }
+        }
+
+        // 2. @mentions
         $matches = [];
         preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)$body, $matches);
         $names = is_array($matches[1] ?? null) ? $matches[1] : [];
         if (!empty($names)) {
             foreach ($names as $nameWithUnderscores) {
                 $fullName = str_replace('_', ' ', $nameWithUnderscores);
-                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
-                $stmtUser->execute([$auth['tenant_id'], $fullName]);
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND (full_name=? OR REPLACE(full_name, ' ', '_')=?)");
+                $stmtUser->execute([$auth['tenant_id'], $fullName, $nameWithUnderscores]);
                 $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
                 if ($userRow) {
-                    $mentionedUserId = (int)$userRow['id'];
-                    if ($mentionedUserId !== (int)$auth['user_id']) {
-                        $title = "Bạn được nhắc tên trong thảo luận nhóm";
-                        $bodyText = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã nhắc đến bạn trong thảo luận nhóm";
-                        $type = "mention";
-                        $link = "/consultants?tab=teams&highlight_comment_id=" . $newId;
-
-                        $insertNotif = $this->db->prepare("
-                            INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        ");
-                        $insertNotif->execute([$mentionedUserId, $auth['tenant_id'], $title, $bodyText, $type, $link]);
+                    $uid = (int)$userRow['id'];
+                    if ($uid !== (int)$auth['user_id']) {
+                        $mentions[$uid] = $userRow;
                     }
                 }
+            }
+        }
+
+        if (!empty($mentions)) {
+            foreach ($mentions as $mentionedUserId => $uRow) {
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => $mentionedUserId,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => $body,
+                    'link' => "/consultants?tab=teams&highlight_comment_id=" . $newId
+                ]);
             }
         }
 

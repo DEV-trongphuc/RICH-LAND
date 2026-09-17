@@ -1183,6 +1183,16 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     } catch (Exception $sumEx) {
                         logSync("Error sending Zalo summary: " . $sumEx->getMessage());
                     }
+
+                    // Send Telegram greeting summary
+                    try {
+                        if (file_exists(__DIR__ . '/telegram_bot.php')) {
+                            require_once __DIR__ . '/telegram_bot.php';
+                            sendTelegramReleaseSummaryMessageToSale($consultantId, $consultantName, $minTimeStr, $maxTimeStr, $count);
+                        }
+                    } catch (Exception $tgSumEx) {
+                        logSync("Error sending Telegram summary: " . $tgSumEx->getMessage());
+                    }
                 }
             }
             
@@ -1242,6 +1252,28 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             );
                         } catch (Exception $zaloEx) {
                             logSync("Error sending release Zalo to consultant: " . $zaloEx->getMessage());
+                        }
+
+                        // Send Telegram Message
+                        try {
+                            if (file_exists(__DIR__ . '/telegram_bot.php')) {
+                                require_once __DIR__ . '/telegram_bot.php';
+                                sendLeadAssignedTelegramMessageToSale(
+                                    $row['assigned_to'],
+                                    $row['consultant_name'],
+                                    $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                                    $row['lead_phone'] ?: '',
+                                    $row['lead_note'] ?: '',
+                                    $row['lead_source'] ?: '',
+                                    $row['round_name'] ?? '',
+                                    $row['lead_id'],
+                                    $row['round_id'] ?? 0,
+                                    $row['lead_email'] ?: '',
+                                    $row['lead_type'] ?: ''
+                                );
+                            }
+                        } catch (Exception $tgEx) {
+                            logSync("Error sending release Telegram to consultant: " . $tgEx->getMessage());
                         }
                         
                         $releasedCount++;

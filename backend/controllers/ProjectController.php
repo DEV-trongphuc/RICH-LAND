@@ -745,29 +745,42 @@ class ProjectController {
             $parentOwnerId = (int)$stmtParent->fetchColumn();
 
             if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
-                $title = "Bạn có phản hồi mới trong thảo luận dự án";
-                $bodyText = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong dự án";
-                $type = "info";
-                $link = "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId;
-
-                $insertNotif = $this->db->prepare("
-                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ");
-                $insertNotif->execute([$parentOwnerId, $auth['tenant_id'], $title, $bodyText, $type, $link]);
+                require_once __DIR__ . '/../NotificationService.php';
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => $parentOwnerId,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => "Đã trả lời bình luận của bạn trong dự án",
+                    'link' => "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId
+                ]);
             }
         }
 
         // Parse mentions in comment body
         $mentions = [];
+        // 1. Parse by data-user-id
+        if (preg_match_all('/data-user-id="(\d+)"/i', (string)$body, $idMatches)) {
+            $uids = array_filter(array_map('intval', $idMatches[1]));
+            foreach ($uids as $uid) {
+                if ($uid !== (int)$auth['user_id']) {
+                    $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND id=?");
+                    $stmtUser->execute([$auth['tenant_id'], $uid]);
+                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                    if ($userRow) {
+                        $mentions[$uid] = $userRow;
+                    }
+                }
+            }
+        }
+
+        // 2. Parse by @Name
         $matches = [];
         preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)$body, $matches);
         $names = is_array($matches[1] ?? null) ? $matches[1] : [];
         if (!empty($names)) {
             foreach ($names as $nameWithUnderscores) {
                 $fullName = str_replace('_', ' ', $nameWithUnderscores);
-                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
-                $stmtUser->execute([$auth['tenant_id'], $fullName]);
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND (full_name=? OR REPLACE(full_name, ' ', '_')=?)");
+                $stmtUser->execute([$auth['tenant_id'], $fullName, $nameWithUnderscores]);
                 $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
                 if ($userRow) {
                     $uid = (int)$userRow['id'];
@@ -814,8 +827,9 @@ class ProjectController {
         
         // Remove mentioned users from generic notifications
         $notifyUids = array_diff($notifyUids, array_keys($mentions));
-
-        $preview = mb_strimwidth($body, 0, 50, "...");
+        if ($parentId > 0 && isset($parentOwnerId)) {
+            $notifyUids = array_diff($notifyUids, [$parentOwnerId]);
+        }
 
         require_once __DIR__ . '/../NotificationService.php';
 
@@ -837,7 +851,7 @@ class ProjectController {
                 NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
                     'user_id' => (int)$nUid,
                     'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
-                    'comment' => $body,
+                    'comment' => "Bình luận mới trong dự án {$projectName}: " . mb_substr($body, 0, 100),
                     'link' => "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId
                 ]);
             }

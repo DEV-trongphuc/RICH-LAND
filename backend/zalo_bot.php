@@ -214,16 +214,6 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
 {
     global $conn;
 
-    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        try {
-            require_once __DIR__ . '/telegram_bot.php';
-            sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote, $leadSource, $roundName, $leadId, $roundId, $leadEmail, $leadType);
-        } catch (Throwable $e) {
-            error_log("Error sending Telegram message in sendLeadAssignedZaloMessageToSale: " . $e->getMessage());
-        }
-    }
-
     // Lấy config zalo_bot_token từ system_settings
     $botToken = get_system_setting($conn, 'zalo_bot_token');
     if (empty($botToken)) {
@@ -271,16 +261,6 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
 function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $timeline = [], $leadId = 0, $leadEmail = '', $leadType = '', $sync = false)
 {
     global $conn;
-
-    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        try {
-            require_once __DIR__ . '/telegram_bot.php';
-            sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote, $leadSource, $roundName, $timeline, $leadId, $leadEmail, $leadType);
-        } catch (Throwable $e) {
-            error_log("Error sending Telegram message in sendLeadReminderZaloMessageToSale: " . $e->getMessage());
-        }
-    }
 
     $botToken = get_system_setting($conn, 'zalo_bot_token');
     if (empty($botToken)) {
@@ -412,19 +392,6 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
 {
     global $conn;
 
-    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        try {
-            require_once __DIR__ . '/telegram_bot.php';
-            $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
-            if (!empty($teleAdminGroupChatId)) {
-                sendLeadAssignedTelegramMessageToAdmin($teleAdminGroupChatId, $adminName, $leadName, $leadPhone, $leadNote, $leadSource, $leadId, $leadEmail, $leadType, $sync);
-            }
-        } catch (Throwable $e) {
-            error_log("Error sending Telegram message in sendLeadAssignedZaloMessageToAdmin: " . $e->getMessage());
-        }
-    }
-
     $botToken = get_system_setting($conn, 'zalo_bot_token');
     if (empty($botToken) || empty($adminChatId) || strtolower($adminChatId) === 'chưa liên kết') {
         return false;
@@ -483,28 +450,6 @@ function sendLeadDuplicateFlagZaloMessageToAdmin($adminChatId, $adminName, $sale
 {
     global $conn;
 
-    // Gửi Telegram trước
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        try {
-            require_once __DIR__ . '/telegram_bot.php';
-            $teleBotToken = get_system_setting($conn, 'telegram_bot_token');
-            $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
-            if (!empty($teleBotToken) && !empty($teleAdminGroupChatId)) {
-                $textTele = "⚠️ [ CẢNH BÁO TRÙNG LẶP MARKETING ] ⚠️\n"
-                    . "Chào Quản trị viên $adminName,\n"
-                    . "Phát hiện trùng lặp data Marketing:\n"
-                    . "• Sale xử lý: $saleName\n"
-                    . "• Khách hàng: $leadName\n"
-                    . "• Số điện thoại: $leadPhone\n"
-                    . "• Nguồn cũ: $oldMktSource\n"
-                    . "• ID Lead: $leadId";
-                sendTelegramMessage($teleBotToken, $teleAdminGroupChatId, $textTele, $sync);
-            }
-        } catch (Throwable $e) {
-            error_log("Error sending Telegram message in sendLeadDuplicateFlagZaloMessageToAdmin: " . $e->getMessage());
-        }
-    }
-
     $botToken = get_system_setting($conn, 'zalo_bot_token');
     if (empty($botToken) || empty($adminChatId) || strtolower($adminChatId) === 'chưa liên kết') {
         return false;
@@ -530,16 +475,6 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
     global $conn;
     if (empty($time))
         $time = date('H:i:s d/m/Y');
-
-    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        try {
-            require_once __DIR__ . '/telegram_bot.php';
-            sendCompensationAddedTelegramMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName, $reason, $time, $sync);
-        } catch (Throwable $e) {
-            error_log("Error sending Telegram message in sendCompensationAddedZaloMessageToSale: " . $e->getMessage());
-        }
-    }
 
     $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
     $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
@@ -578,19 +513,6 @@ function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $cons
     global $conn;
     if (empty($time))
         $time = date('H:i:s d/m/Y');
-
-    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        try {
-            require_once __DIR__ . '/telegram_bot.php';
-            $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
-            if (!empty($teleAdminGroupChatId)) {
-                sendCompensationAddedTelegramMessageToAdmin($teleAdminGroupChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason, $time, $sync);
-            }
-        } catch (Throwable $e) {
-            error_log("Error sending Telegram message in sendCompensationAddedZaloMessageToAdmin: " . $e->getMessage());
-        }
-    }
 
     $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
     $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
@@ -920,16 +842,6 @@ function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $mi
         . "Chào $consultantName, chúc bạn một ngày mới đầy năng lượng!\n\n"
         . "Tối qua từ $minTimeStr đến $maxTimeStr bạn có $count data chờ xử lý.\n"
         . "Hệ thống sẽ bàn giao chi tiết các data ngay sau đây...";
-
-    // Gửi song song qua Telegram Bot
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        try {
-            require_once __DIR__ . '/telegram_bot.php';
-            sendTelegramReleaseSummaryMessageToSale($consultantId, $consultantName, $minTimeStr, $maxTimeStr, $count, $sync);
-        } catch (Throwable $e) {
-            error_log("Error sending Telegram message in sendZaloReleaseSummaryMessageToSale: " . $e->getMessage());
-        }
-    }
 
     return sendZaloMessage($botToken, $chatId, $text, $sync);
 }

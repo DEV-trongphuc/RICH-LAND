@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Check, CheckCheck, X, Info, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skeleton } from './Skeleton';
@@ -31,6 +32,7 @@ const fmtTime = (d: string) => {
 };
 
 export const NotificationsDropdown: React.FC = () => {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -167,7 +169,17 @@ export const NotificationsDropdown: React.FC = () => {
               {notifications.map(n => (
                 <div
                   key={n.id}
-                  onClick={() => { if (!n.is_read) markRead(n.id); }}
+                  onClick={() => {
+                    if (!n.is_read) markRead(n.id);
+                    setOpen(false);
+                    if (n.link) {
+                      let targetLink = n.link;
+                      if (targetLink.startsWith('/tickets')) {
+                        targetLink = targetLink.replace(/^\/tickets/, '/support-tickets');
+                      }
+                      navigate(targetLink);
+                    }
+                  }}
                   style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--color-border-light)', background: !n.is_read ? 'var(--color-primary-light)' : 'transparent', cursor: 'pointer', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', transition: 'background 0.2s' }}
                 >
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>

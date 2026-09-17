@@ -230,22 +230,59 @@ class NoteController {
             }
         }
 
-        // 1. Extract mentions from body text (@Full_Name_With_Underscores)
-        $mentions = $b['mentions'] ?? [];
-        if (empty($mentions)) {
-            $matches = [];
-            preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)($b['body'] ?? ''), $matches);
-            $names = is_array($matches[1] ?? null) ? $matches[1] : [];
-            if (!empty($names)) {
-                foreach ($names as $nameWithUnderscores) {
-                    $fullName = str_replace('_', ' ', $nameWithUnderscores);
-                    $stmt = $this->db->prepare("SELECT id FROM users WHERE tenant_id=? AND full_name=?");
-                    $stmt->execute([$auth['tenant_id'], $fullName]);
-                    $uid = $stmt->fetchColumn();
-                    if ($uid) $mentions[] = (int)$uid;
-                }
+        $targetLink = "/contacts?open_contact_id={$entityId}&highlight_note_id={$id}";
+        if ($type === 'deal') {
+            $targetLink = "/deals?id={$entityId}&highlight_note_id={$id}";
+        } else if ($type === 'company') {
+            $targetLink = "/companies?id={$entityId}&highlight_note_id={$id}";
+        } else if ($type === 'project') {
+            $targetLink = "/projects?id={$entityId}&highlight_note_id={$id}";
+        }
+
+        // Notify parent note author on reply
+        if (!empty($b['parent_id'])) {
+            $stmtParent = $this->db->prepare("SELECT user_id FROM notes WHERE id = ?");
+            $stmtParent->execute([(int)$b['parent_id']]);
+            $parentOwnerId = (int)$stmtParent->fetchColumn();
+
+            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
+                require_once __DIR__ . '/../NotificationService.php';
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => $parentOwnerId,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => "Đã trả lời ghi chú của bạn: " . ($b['body'] ?? ''),
+                    'link' => $targetLink
+                ]);
             }
         }
+
+        // 1. Extract mentions from data-user-id and @Full_Name
+        $mentions = [];
+        if (!empty($b['mentions']) && is_array($b['mentions'])) {
+            foreach ($b['mentions'] as $mId) {
+                if ((int)$mId > 0) $mentions[] = (int)$mId;
+            }
+        }
+        
+        if (preg_match_all('/data-user-id="(\d+)"/i', (string)($b['body'] ?? ''), $idMatches)) {
+            foreach ($idMatches[1] as $mId) {
+                if ((int)$mId > 0) $mentions[] = (int)$mId;
+            }
+        }
+
+        $matches = [];
+        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)($b['body'] ?? ''), $matches);
+        $names = is_array($matches[1] ?? null) ? $matches[1] : [];
+        if (!empty($names)) {
+            foreach ($names as $nameWithUnderscores) {
+                $fullName = str_replace('_', ' ', $nameWithUnderscores);
+                $stmt = $this->db->prepare("SELECT id FROM users WHERE tenant_id=? AND (full_name=? OR REPLACE(full_name, ' ', '_')=?)");
+                $stmt->execute([$auth['tenant_id'], $fullName, $nameWithUnderscores]);
+                $uid = $stmt->fetchColumn();
+                if ($uid) $mentions[] = (int)$uid;
+            }
+        }
+
         $mentions = array_unique($mentions);
         // Exclude self-mention
         $mentions = array_filter($mentions, function($uid) use ($auth) {
@@ -266,7 +303,7 @@ class NoteController {
                     'user_id' => $uid,
                     'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
                     'comment' => $b['body'] ?? '',
-                    'link' => "/contacts/{$entityId}"
+                    'link' => $targetLink
                 ]);
             }
         }

@@ -429,7 +429,7 @@ export const Header = ({
         notif.body.toLowerCase().includes('đi trễ')
       ));
 
-    if (isAttendance) {
+    if (isAttendance && !notif.link) {
       navigate('/attendance');
       return;
     }

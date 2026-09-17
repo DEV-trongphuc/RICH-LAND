@@ -93,7 +93,10 @@ class TicketController {
         $total = (int)$cnt->fetchColumn();
 
         $stmt = $this->db->prepare("
-            SELECT t.*, u.full_name as assignee_name, u.avatar_url as assignee_avatar
+            SELECT t.*, u.full_name as assignee_name, u.avatar_url as assignee_avatar,
+                   (SELECT COUNT(*) FROM ticket_comments tc WHERE tc.ticket_id = t.id) as comment_count,
+                   (SELECT tc.created_at FROM ticket_comments tc WHERE tc.ticket_id = t.id ORDER BY tc.created_at DESC LIMIT 1) as last_comment_at,
+                   (SELECT u2.full_name FROM ticket_comments tc JOIN users u2 ON tc.user_id = u2.id WHERE tc.ticket_id = t.id ORDER BY tc.created_at DESC LIMIT 1) as last_comment_user_name
             FROM tickets t
             LEFT JOIN users u ON t.assignee_id = u.id
             WHERE $w 
@@ -560,7 +563,7 @@ class TicketController {
             FROM ticket_comments tc
             LEFT JOIN users u ON tc.user_id = u.id
             WHERE tc.ticket_id = ?
-            ORDER BY tc.created_at DESC
+            ORDER BY tc.created_at ASC
         ");
         $stmt->execute([$ticketId]);
         respond(200, $stmt->fetchAll());
@@ -597,16 +600,33 @@ class TicketController {
         }
 
         // Parse mentions in comment body
-        $bodyText = $data['body'];
+        $bodyText = (string)$data['body'];
         $mentions = [];
+
+        // 1. First, parse by data-user-id (HTML editor mentions)
+        if (preg_match_all('/data-user-id="(\d+)"/i', $bodyText, $idMatches)) {
+            $uids = array_filter(array_map('intval', $idMatches[1]));
+            foreach ($uids as $uid) {
+                if ($uid !== (int)$auth['user_id']) {
+                    $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND id=?");
+                    $stmtUser->execute([$auth['tenant_id'], $uid]);
+                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                    if ($userRow) {
+                        $mentions[$uid] = $userRow;
+                    }
+                }
+            }
+        }
+
+        // 2. Plaintext @mention matching
         $matches = [];
-        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)$bodyText, $matches);
+        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $bodyText, $matches);
         $names = is_array($matches[1] ?? null) ? $matches[1] : [];
         if (!empty($names)) {
             foreach ($names as $nameWithUnderscores) {
                 $fullName = str_replace('_', ' ', $nameWithUnderscores);
-                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
-                $stmtUser->execute([$auth['tenant_id'], $fullName]);
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND (full_name=? OR REPLACE(full_name, ' ', '_')=?)");
+                $stmtUser->execute([$auth['tenant_id'], $fullName, $nameWithUnderscores]);
                 $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
                 if ($userRow) {
                     $uid = (int)$userRow['id'];
@@ -627,6 +647,31 @@ class TicketController {
                     'comment' => $bodyText,
                     'link' => "/tickets?id=" . $ticketId . "&highlight_comment_id=" . $newId
                 ]);
+            }
+        }
+
+        // Send conversation notification to creator/assignee if not already notified
+        $stmtTicket = $this->db->prepare("SELECT created_by, assignee_id, subject FROM tickets WHERE id = ?");
+        $stmtTicket->execute([$ticketId]);
+        $ticketRow = $stmtTicket->fetch(PDO::FETCH_ASSOC);
+        if ($ticketRow) {
+            $recipients = [];
+            if (!empty($ticketRow['created_by']) && (int)$ticketRow['created_by'] !== (int)$auth['user_id'] && !isset($mentions[(int)$ticketRow['created_by']])) {
+                $recipients[] = (int)$ticketRow['created_by'];
+            }
+            if (!empty($ticketRow['assignee_id']) && (int)$ticketRow['assignee_id'] !== (int)$auth['user_id'] && !isset($mentions[(int)$ticketRow['assignee_id']])) {
+                $recipients[] = (int)$ticketRow['assignee_id'];
+            }
+            if (!empty($recipients)) {
+                require_once __DIR__ . '/../NotificationService.php';
+                foreach ($recipients as $rUid) {
+                    NotificationService::send($this->db, $auth['tenant_id'], 'TICKET_COMMENT', [
+                        'user_id' => $rUid,
+                        'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                        'comment' => "Tin nhắn mới trong ticket #" . $ticketId . ": " . mb_substr($bodyText, 0, 100),
+                        'link' => "/tickets?id=" . $ticketId . "&highlight_comment_id=" . $newId
+                    ]);
+                }
             }
         }
         

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save } from 'lucide-react';
+import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save, MessageSquare } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import { TicketDrawer } from './TicketDrawer';
 const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
@@ -311,8 +311,22 @@ export const TicketsPage: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                       <AlertCircle size={16} color={PRIORITIES.find(p => p.id === t.priority)?.color} style={{ marginTop: '2px' }} />
                       <div>
-                        <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem', marginBottom: '2px' }}>{t.subject}</p>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>#{t.id} • Tạo: {new Date(t.created_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}</p>
+                        <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{t.subject}</span>
+                          {Number(t.comment_count) > 0 && (
+                            <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <MessageSquare size={11} /> {t.comment_count}
+                            </span>
+                          )}
+                        </p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                          #{t.id} • Tạo: {new Date(t.created_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}
+                          {t.last_comment_at && (
+                            <span style={{ marginLeft: '6px', color: 'var(--color-primary)' }}>
+                              • {t.last_comment_user_name ? `${t.last_comment_user_name}: ` : ''}mới nhắn {new Date(t.last_comment_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </div>
                   </td>
@@ -372,7 +386,14 @@ export const TicketsPage: React.FC = () => {
                       style={{ background: 'var(--color-surface)', padding: '1rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border-light)', cursor: 'pointer', borderLeft: `3px solid ${PRIORITIES.find(p => p.id === t.priority)?.color}` }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>#{t.id}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>#{t.id}</span>
+                          {Number(t.comment_count) > 0 && (
+                            <span style={{ fontSize: '0.65rem', padding: '0 5px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                              <MessageSquare size={10} /> {t.comment_count}
+                            </span>
+                          )}
+                        </div>
                         <Avatar name={t.assignee_name} src={t.assignee_avatar} size={20} title={t.assignee_name || 'Chưa phân công'} />
                       </div>
                       <p style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem', lineHeight: 1.4 }}>{t.subject}</p>

@@ -432,6 +432,29 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
                         } catch (Exception $zaloEx) {
                             error_log("Error sending post-AI reminder Zalo: " . $zaloEx->getMessage());
                         }
+
+                        try {
+                            if (file_exists(__DIR__ . '/telegram_bot.php')) {
+                                require_once __DIR__ . '/telegram_bot.php';
+                                $timeline = getLeadHistoryTimeline($conn, $leadId, true);
+                                sendLeadReminderTelegramMessageToSale(
+                                    $assignedConsultantId,
+                                    $c['name'],
+                                    $leadData['name'],
+                                    $leadData['phone'],
+                                    $leadData['note'],
+                                    $leadData['source'],
+                                    $roundName,
+                                    $timeline,
+                                    $leadId,
+                                    $leadData['email'],
+                                    $leadData['type'],
+                                    false
+                                );
+                            }
+                        } catch (Exception $tgEx) {
+                            error_log("Error sending post-AI reminder Telegram: " . $tgEx->getMessage());
+                        }
                     } else {
                         // Gửi email & zalo (mặc định sync = false để chèn vào hàng đợi)
                         try {
@@ -469,6 +492,28 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
                             );
                         } catch (Exception $zaloEx) {
                             error_log("Error sending post-AI Zalo: " . $zaloEx->getMessage());
+                        }
+
+                        try {
+                            if (file_exists(__DIR__ . '/telegram_bot.php')) {
+                                require_once __DIR__ . '/telegram_bot.php';
+                                sendLeadAssignedTelegramMessageToSale(
+                                    $assignedConsultantId,
+                                    $c['name'],
+                                    $leadData['name'],
+                                    $leadData['phone'],
+                                    $leadData['note'],
+                                    $leadData['source'],
+                                    $roundName,
+                                    $leadId,
+                                    $targetRoundId,
+                                    $leadData['email'],
+                                    $leadData['type'],
+                                    false
+                                );
+                            }
+                        } catch (Exception $tgEx) {
+                            error_log("Error sending post-AI Telegram: " . $tgEx->getMessage());
                         }
                     }
                 }

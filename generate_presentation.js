@@ -92,7 +92,7 @@ function createBaseSlide(title, breadcrumbText) {
 
     // Logo Rich Land Việt Nam trắng ở góc phải header
     slide.addImage({
-        path: "https://rich-land.vercel.app/imgs/logo-rich-land-viet-nam-trang.webp",
+        path: "https://crm.richland.city/imgs/logo-rich-land-viet-nam-trang.webp",
         x: 8.0,
         y: 0.1,
         w: 1.8,
@@ -394,7 +394,7 @@ function createCrimsonHeroSlide(title, subtitle, partNum) {
 
     // Logo Rich Land lớn trắng trên trang chuyển tiếp
     slide.addImage({
-        path: "https://rich-land.vercel.app/imgs/logo-rich-land-viet-nam-trang.webp",
+        path: "https://crm.richland.city/imgs/logo-rich-land-viet-nam-trang.webp",
         x: 1.0,
         y: 0.4,
         w: 2.2,
@@ -2370,7 +2370,7 @@ s1.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 0.2, h: 5.625, fill: { color
 
 // Logo Rich Land lớn trắng ở trang bìa
 s1.addImage({
-    path: "https://rich-land.vercel.app/imgs/logo-rich-land-viet-nam-trang.webp",
+    path: "https://crm.richland.city/imgs/logo-rich-land-viet-nam-trang.webp",
     x: 0.8,
     y: 0.6,
     w: 2.7,

@@ -63,6 +63,32 @@ function sendTelegramMessage($botToken, $chatId, $text, $syncOrLeadId = true, $l
 
     if (!$sync) {
         $lId = ($leadId > 0) ? $leadId : null;
+
+        // Chống lặp tin nhắn trong hàng đợi telegram_queue (trong vòng 60 giây)
+        if ($leadId > 0) {
+            try {
+                if ($conn instanceof PDO) {
+                    $chk = $conn->prepare("SELECT id FROM telegram_queue WHERE lead_id = ? AND chat_id = ? AND status IN ('pending', 'processing', 'sent') AND created_at >= DATE_SUB(NOW(), INTERVAL 60 SECOND) LIMIT 1");
+                    $chk->execute([$leadId, $chatId]);
+                    if ($chk->fetch()) {
+                        return true; // Đã có trong hàng đợi gần đây, bỏ qua trùng lặp
+                    }
+                } elseif ($conn instanceof mysqli) {
+                    $chk = $conn->prepare("SELECT id FROM telegram_queue WHERE lead_id = ? AND chat_id = ? AND status IN ('pending', 'processing', 'sent') AND created_at >= DATE_SUB(NOW(), INTERVAL 60 SECOND) LIMIT 1");
+                    if ($chk) {
+                        $chk->bind_param("is", $leadId, $chatId);
+                        $chk->execute();
+                        $chkRes = $chk->get_result();
+                        if ($chkRes && $chkRes->num_rows > 0) {
+                            $chk->close();
+                            return true; // Đã có trong hàng đợi gần đây, bỏ qua trùng lặp
+                        }
+                        $chk->close();
+                    }
+                }
+            } catch (\Throwable $e) {}
+        }
+
         if ($conn instanceof PDO) {
             $stmt = $conn->prepare("INSERT INTO telegram_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
             $result = $stmt->execute([$botToken, $chatId, $text, $lId]);
@@ -90,6 +116,31 @@ function sendTelegramMessage($botToken, $chatId, $text, $syncOrLeadId = true, $l
             }
         }
         return false;
+    }
+
+    // Chống gửi trùng lặp trực tiếp cURL nếu cùng lead_id và chat_id đã gửi trong 15 giây gần nhất
+    if ($leadId > 0) {
+        try {
+            if ($conn instanceof PDO) {
+                $chkSent = $conn->prepare("SELECT id FROM communication_logs WHERE lead_id = ? AND recipient = ? AND type = 'telegram' AND sent_at >= DATE_SUB(NOW(), INTERVAL 15 SECOND) LIMIT 1");
+                $chkSent->execute([$leadId, $chatId]);
+                if ($chkSent->fetch()) {
+                    return true; // Đã gửi trong 15s gần nhất, bỏ qua gửi lặp
+                }
+            } elseif ($conn instanceof mysqli) {
+                $chkSent = $conn->prepare("SELECT id FROM communication_logs WHERE lead_id = ? AND recipient = ? AND type = 'telegram' AND sent_at >= DATE_SUB(NOW(), INTERVAL 15 SECOND) LIMIT 1");
+                if ($chkSent) {
+                    $chkSent->bind_param("is", $leadId, $chatId);
+                    $chkSent->execute();
+                    $sentRes = $chkSent->get_result();
+                    if ($sentRes && $sentRes->num_rows > 0) {
+                        $chkSent->close();
+                        return true; // Đã gửi trong 15s gần nhất, bỏ qua gửi lặp
+                    }
+                    $chkSent->close();
+                }
+            }
+        } catch (\Throwable $e) {}
     }
 
     $url = "https://api.telegram.org/bot" . $botToken . "/sendMessage";
@@ -183,7 +234,7 @@ function sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $
     }
 
     $roundTitle = !empty($roundName) ? " - " . mb_strtoupper($roundName, 'UTF-8') : "";
-    $frontendUrl = get_system_setting($conn, 'frontend_url') ?: 'http://localhost:5173';
+    $frontendUrl = get_system_setting($conn, 'frontend_url') ?: 'https://crm.richland.city';
     $detailLink = rtrim($frontendUrl, '/') . "/leads?id=" . $leadId;
 
     $maskedName = maskName($leadName);
@@ -244,7 +295,7 @@ function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $
         return false;
     }
 
-    $frontendUrl = get_system_setting($conn, 'frontend_url') ?: 'http://localhost:5173';
+    $frontendUrl = get_system_setting($conn, 'frontend_url') ?: 'https://crm.richland.city';
     $detailLink = rtrim($frontendUrl, '/') . "/leads?id=" . $leadId;
 
     $text = "⏰ <b>[ NHẮC NHỞ CHĂM SÓC KHÁCH HÀNG ]</b> ⏰\n"

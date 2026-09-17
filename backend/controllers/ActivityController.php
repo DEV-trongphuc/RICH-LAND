@@ -1155,6 +1155,17 @@ class ActivityController {
 
         $commentId = $this->db->lastInsertId();
 
+        $targetLink = "/activities/{$id}?comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
+        if (!empty($activity['related_type']) && !empty($activity['related_id'])) {
+            if ($activity['related_type'] === 'contact') {
+                $targetLink = "/contacts?open_contact_id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
+            } else if ($activity['related_type'] === 'deal') {
+                $targetLink = "/deals?id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
+            }
+        }
+
+        $notifiedUids = [];
+
         if ($parentId > 0) {
             $stmtParent = $this->db->prepare("SELECT user_id FROM activity_comments WHERE id = ?");
             $stmtParent->execute([$parentId]);
@@ -1170,8 +1181,9 @@ class ActivityController {
                         'user_id' => $parentOwnerId,
                         'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
                         'comment' => "Đã trả lời bình luận của bạn trong hoạt động: " . ($activity['subject'] ?? 'Công việc'),
-                        'link' => "/contacts?id=" . ($activity['contact_id'] ?? $activity['related_id'] ?? '') . "&highlight_comment_id=" . $commentId . ($subtaskId ? "&subtask_id={$subtaskId}" : "")
+                        'link' => $targetLink
                     ]);
+                    $notifiedUids[] = $parentOwnerId;
                 }
             }
         }
@@ -1216,14 +1228,6 @@ class ActivityController {
 
         if (!empty($mentions)) {
             require_once __DIR__ . '/../NotificationService.php';
-            $targetLink = "/activities/{$id}?comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
-            if (!empty($activity['related_type']) && !empty($activity['related_id'])) {
-                if ($activity['related_type'] === 'contact') {
-                    $targetLink = "/contacts?open_contact_id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
-                } else if ($activity['related_type'] === 'deal') {
-                    $targetLink = "/deals?id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
-                }
-            }
             foreach ($mentions as $uid => $userRow) {
                 // Auto unhide task for this mentioned user
                 $this->db->prepare("DELETE FROM task_hidden_users WHERE task_id = ? AND user_id = ?")->execute([$id, $uid]);
@@ -1235,6 +1239,7 @@ class ActivityController {
                     'comment' => $content,
                     'link' => $targetLink
                 ]);
+                $notifiedUids[] = (int)$uid;
             }
         }
 
@@ -1249,15 +1254,36 @@ class ActivityController {
             $ownerRow = $stmtOwner->fetch(PDO::FETCH_ASSOC);
             if ($ownerRow) {
                 $ownerUid = (int)$ownerRow['owner_id'];
-                if ($ownerUid !== (int)$auth['user_id'] && !isset($mentions[$ownerUid]) && !$this->isTaskMuted($id, $ownerUid)) {
+                if ($ownerUid !== (int)$auth['user_id'] && !in_array($ownerUid, $notifiedUids, true) && !$this->isTaskMuted($id, $ownerUid)) {
                     require_once __DIR__ . '/../NotificationService.php';
                     NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
                         'user_id' => $ownerUid,
                         'customer_name' => $ownerRow['full_name'] ?? 'Khách hàng',
                         'content' => ($auth['full_name'] ?? 'Đồng nghiệp') . ' đã bình luận trong một hoạt động thuộc khách hàng của bạn.'
                     ]);
+                    $notifiedUids[] = $ownerUid;
                 }
             }
+        }
+
+        // Send task comment notification to assignee & creator if not already notified
+        $assigneeUid = (int)($activity['user_id'] ?? 0);
+        $creatorUid = (int)($activity['created_by'] ?? 0);
+        require_once __DIR__ . '/../NotificationService.php';
+        if ($assigneeUid > 0 && $assigneeUid !== (int)$auth['user_id'] && !in_array($assigneeUid, $notifiedUids, true) && !$this->isTaskMuted($id, $assigneeUid)) {
+            NotificationService::send($this->db, $auth['tenant_id'], 'WORKFLOW_TASK_ASSIGNED', [
+                'user_id' => $assigneeUid,
+                'task_title' => "Bình luận mới: " . ($activity['subject'] ?? 'Công việc'),
+                'due_date' => $activity['due_date'] ?? ''
+            ]);
+            $notifiedUids[] = $assigneeUid;
+        }
+        if ($creatorUid > 0 && $creatorUid !== (int)$auth['user_id'] && !in_array($creatorUid, $notifiedUids, true) && !$this->isTaskMuted($id, $creatorUid)) {
+            NotificationService::send($this->db, $auth['tenant_id'], 'WORKFLOW_TASK_ASSIGNED', [
+                'user_id' => $creatorUid,
+                'task_title' => "Bình luận mới: " . ($activity['subject'] ?? 'Công việc'),
+                'due_date' => $activity['due_date'] ?? ''
+            ]);
         }
 
         // Update contact's last_contact whenever an activity comment is added

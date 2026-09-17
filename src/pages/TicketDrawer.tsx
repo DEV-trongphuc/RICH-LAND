@@ -63,6 +63,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const chatBottomRef = React.useRef<HTMLDivElement>(null);
 
   if (isOpen && ticket?.id && ticket.id !== prevTicketId && !loading) {
     setLoading(true);
@@ -136,9 +137,13 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
             setSearchParams(newParams, { replace: true });
           }
         }, 300);
+      } else {
+        setTimeout(() => {
+          chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 150);
       }
     }
-  }, [isOpen, comments, searchParams, setSearchParams]);
+  }, [isOpen, comments.length, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (isOpen) {
@@ -180,6 +185,9 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
       setNewComment('');
       setReplyTo(null);
       addToast('Đã thêm ghi chú', 'success');
+      setTimeout(() => {
+        chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     } catch (err: any) {
       addToast('Lỗi khi lưu ghi chú', 'error');
     } finally {
@@ -286,7 +294,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
         className="drawer-backdrop"
         onClick={onClose}
         style={{
-          zIndex: 1000,
+          zIndex: 2000000,
           opacity: animateIn ? 1 : 0,
           transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
           pointerEvents: animateIn ? 'auto' : 'none'
@@ -295,6 +303,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
       <div
         className={styles.drawer}
         style={{
+          zIndex: 2000005,
           transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
           willChange: 'transform'
@@ -461,9 +470,10 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                 </div>
               ) : (
                 (() => {
-                  const rootComments = comments.filter((c: any) => !c.parent_id);
+                  const sortedComments = [...comments].sort((a: any, b: any) => new Date(a.created_at || a.time).getTime() - new Date(b.created_at || b.time).getTime());
+                  const rootComments = sortedComments.filter((c: any) => !c.parent_id);
                   const getReplies = (parentId: number) => {
-                    return comments
+                    return sortedComments
                       .filter((c: any) => Number(c.parent_id) === Number(parentId))
                       .sort((a: any, b: any) => new Date(a.created_at || a.time).getTime() - new Date(b.created_at || b.time).getTime());
                   };
@@ -517,31 +527,36 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                     );
                   };
 
-                  return rootComments.map((rootComment: any) => {
-                    const replies = getReplies(rootComment.id);
-                    const isSelfRoot = currentUser && String(rootComment.user_id) === String(currentUser.id);
-                    return (
-                      <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {renderSingleComment(rootComment, false)}
-                        {replies.length > 0 && (
-                          <div style={{ 
-                            marginLeft: isSelfRoot ? '0' : '2.5rem', 
-                            marginRight: isSelfRoot ? '2.5rem' : '0', 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            gap: '8px', 
-                            borderLeft: isSelfRoot ? 'none' : '2px solid var(--color-border-light)', 
-                            borderRight: isSelfRoot ? '2px solid var(--color-border-light)' : 'none', 
-                            paddingLeft: isSelfRoot ? '0' : '12px', 
-                            paddingRight: isSelfRoot ? '12px' : '0', 
-                            marginTop: '4px' 
-                          }}>
-                            {replies.map((reply: any) => renderSingleComment(reply, true))}
+                  return (
+                    <>
+                      {rootComments.map((rootComment: any) => {
+                        const replies = getReplies(rootComment.id);
+                        const isSelfRoot = currentUser && String(rootComment.user_id) === String(currentUser.id);
+                        return (
+                          <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {renderSingleComment(rootComment, false)}
+                            {replies.length > 0 && (
+                              <div style={{ 
+                                marginLeft: isSelfRoot ? '0' : '2.5rem', 
+                                marginRight: isSelfRoot ? '2.5rem' : '0', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                gap: '8px', 
+                                borderLeft: isSelfRoot ? 'none' : '2px solid var(--color-border-light)', 
+                                borderRight: isSelfRoot ? '2px solid var(--color-border-light)' : 'none', 
+                                paddingLeft: isSelfRoot ? '0' : '12px', 
+                                paddingRight: isSelfRoot ? '12px' : '0', 
+                                marginTop: '4px' 
+                              }}>
+                                {replies.map((reply: any) => renderSingleComment(reply, true))}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  });
+                        );
+                      })}
+                      <div ref={chatBottomRef} style={{ height: 1 }} />
+                    </>
+                  );
                 })()
               )}
             </div>
@@ -745,7 +760,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
 
       {/* Reject Reason Modal */}
       {showRejectModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div style={{ background: 'var(--color-surface)', width: '100%', maxWidth: '440px', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Từ chối & Đóng Ticket</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
@@ -778,7 +793,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
       {previewImage && (
         <div 
           onClick={() => setPreviewImage(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', cursor: 'pointer' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 2000200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', cursor: 'pointer' }}
         >
           <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
             <img src={previewImage} alt="Preview" style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: '8px' }} />

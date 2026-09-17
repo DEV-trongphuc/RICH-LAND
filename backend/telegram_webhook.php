@@ -49,9 +49,15 @@ if (!$data || !isset($data['message'])) {
 
 $message = $data['message'];
 $chatId = $message['chat']['id'] ?? '';
-$text = isset($message['text']) ? trim($message['text']) : '';
-if (strpos($text, '/start ') === 0) {
-    $text = trim(substr($text, 7));
+$rawText = isset($message['text']) ? trim($message['text']) : '';
+$text = $rawText;
+
+if (preg_match('/^\/start(?:\s+(.+))?$/i', $rawText, $startMatches)) {
+    if (!empty($startMatches[1])) {
+        $text = trim($startMatches[1]);
+    } else {
+        $text = '/start';
+    }
 }
 $fromName = $message['from']['first_name'] ?? 'bạn';
 
@@ -72,18 +78,50 @@ if (empty($botToken)) {
 try {
     $textLower = strtolower(trim($text));
 
-    // --- COMMAND LẤY CHAT ID (Public Command) ---
+    // --- COMMAND LẤY CHAT ID / THÔNG TIN (Public Command) ---
     if ($textLower === '/chatid' || $textLower === '/id' || $textLower === '/info' || $textLower === '/start') {
-        $telegramMsg = "💬 <b>[ HỆ THỐNG RICH LAND ]</b>\n\n"
-            . "• Chat ID của phòng này: <code>$chatId</code>\n\n"
-            . "💡 Bạn hãy copy Chat ID này điền vào cấu hình <b>Telegram Chat ID</b> trong trang Hồ sơ cá nhân hoặc mục Cấu hình hệ thống để nhận các thông báo chia số, duyệt ticket và báo cáo.";
+        $linkedAccounts = [];
+        $stmtCheckC = $conn->prepare("SELECT name, email FROM consultants WHERE telegram_chat_id = ? LIMIT 1");
+        if ($stmtCheckC) {
+            $stmtCheckC->bind_param("s", $chatId);
+            $stmtCheckC->execute();
+            $resC = $stmtCheckC->get_result();
+            if ($resC && $rowC = $resC->fetch_assoc()) {
+                $linkedAccounts[] = "• Tư vấn viên: <b>" . $rowC['name'] . "</b> (" . $rowC['email'] . ")";
+            }
+            $stmtCheckC->close();
+        }
+        $stmtCheckA = $conn->prepare("SELECT name, email FROM accounts WHERE telegram_chat_id = ? LIMIT 1");
+        if ($stmtCheckA) {
+            $stmtCheckA->bind_param("s", $chatId);
+            $stmtCheckA->execute();
+            $resA = $stmtCheckA->get_result();
+            if ($resA && $rowA = $resA->fetch_assoc()) {
+                $linkedAccounts[] = "• Quản trị viên: <b>" . $rowA['name'] . "</b> (" . $rowA['email'] . ")";
+            }
+            $stmtCheckA->close();
+        }
+
+        if (!empty($linkedAccounts)) {
+            $telegramMsg = "💬 <b>[ HỆ THỐNG RICH LAND ]</b>\n━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Tài khoản Telegram của bạn hiện <b>ĐÃ ĐƯỢC LIÊN KẾT</b> với:\n\n"
+                . implode("\n", array_unique($linkedAccounts)) . "\n\n"
+                . "• Chat ID: <code>$chatId</code>\n"
+                . "💡 Bạn sẽ nhận đầy đủ thông báo chia số, nhắc lịch và báo cáo từ hệ thống.";
+        } else {
+            $telegramMsg = "💬 <b>[ HỆ THỐNG RICH LAND ]</b>\n━━━━━━━━━━━━━━━━━━━━━\n"
+                . "• Chat ID của bạn: <code>$chatId</code>\n\n"
+                . "💡 <b>Cách liên kết tài khoản:</b>\n"
+                . "1. Nhấp nút <b>\"Liên kết Telegram\"</b> trực tiếp trên phần mềm CRM.\n"
+                . "2. Hoặc gửi tin nhắn <b>Mã ID nhân viên</b> (VD: <code>100086</code>) hoặc <b>Email</b> vào đây để liên kết tự động.";
+        }
         sendTelegramMessage($botToken, $chatId, $telegramMsg);
         echo json_encode(["status" => "ok"]);
         exit;
     }
 
 // --- XỬ LÝ TEST COMMAND ---
-if ($textLower === 'test_data' || $textLower === 'test_data_admin' || $textLower === 'test_report') {
+if ($textLower === 'test_data' || $textLower === 'test_data_admin' || $textReport = ($textLower === 'test_report')) {
     if ($textLower === 'test_data') {
         $telegramMsg = "📥 <b>[ THÔNG BÁO DATA MỚI ]</b> 📥\n"
             . "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -327,19 +365,39 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
         exit;
     }
 }
+
     // --- XỬ LÝ LIÊN KẾT TÀI KHOẢN TỰ ĐỘNG ---
     $cleanText = trim($text);
+    // Chuẩn hóa, gỡ bỏ tiền tố deep link / web (connect_, link_, start_, user_, ref_)
+    $cleanText = preg_replace('/^(connect_|link_|start_|user_|ref_)/i', '', $cleanText);
+
     $userId = 0;
     $email = '';
     $targetType = ''; // 'admin', 'sale', or ''
 
-    if (preg_match('/^(a|admin|ad)[\-\s]*(\d+)$/i', $cleanText, $matches)) {
+    if (preg_match('/^(a|admin|ad)[\-_\s]*(\d+)$/i', $cleanText, $matches)) {
         $targetType = 'admin';
         $userId = (int) $matches[2];
-    } else if (preg_match('/^(s|sale|tvv)[\-\s]*(\d+)$/i', $cleanText, $matches)) {
+    } else if (preg_match('/^(s|sale|tvv)[\-_\s]*(\d+)$/i', $cleanText, $matches)) {
         $targetType = 'sale';
         $userId = (int) $matches[2];
-    } else if (preg_match('/^(\d+)[\-\s]+([^\s]+)$/', $cleanText, $matches)) {
+    } else if (preg_match('/^(a|admin|ad)[\-_\s]+([^\s]+)$/i', $cleanText, $matches)) {
+        $targetType = 'admin';
+        $val = trim($matches[2]);
+        if (filter_var($val, FILTER_VALIDATE_EMAIL)) {
+            $email = strtolower($val);
+        } else if (is_numeric($val)) {
+            $userId = (int)$val;
+        }
+    } else if (preg_match('/^(s|sale|tvv)[\-_\s]+([^\s]+)$/i', $cleanText, $matches)) {
+        $targetType = 'sale';
+        $val = trim($matches[2]);
+        if (filter_var($val, FILTER_VALIDATE_EMAIL)) {
+            $email = strtolower($val);
+        } else if (is_numeric($val)) {
+            $userId = (int)$val;
+        }
+    } else if (preg_match('/^(\d+)[\-_\s]+([^\s]+)$/', $cleanText, $matches)) {
         $userId = (int) $matches[1];
         $email = strtolower(trim($matches[2]));
     } else if (preg_match('/^\d+$/', $cleanText)) {
@@ -347,6 +405,7 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
         $targetType = '';
     } else if (filter_var($cleanText, FILTER_VALIDATE_EMAIL)) {
         $email = strtolower($cleanText);
+        $targetType = '';
     }
 
     if ($userId > 0 || !empty($email)) {
@@ -375,7 +434,7 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
             $stmt->close();
         }
 
-        // Tìm Sale
+        // Tìm Sale / Tư vấn viên
         $sale = null;
         if ($targetType === '' || $targetType === 'sale') {
             $stmtFind = null;
@@ -397,13 +456,13 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
             if (!$sale) {
                 $stmtUFind = null;
                 if ($userId > 0 && !empty($email)) {
-                    $stmtUFind = $conn->prepare("SELECT id, full_name AS name, email, telegram_chat_id FROM users WHERE id = ? AND email = ? AND role IN ('sale', 'sales') LIMIT 1");
+                    $stmtUFind = $conn->prepare("SELECT id, full_name AS name, email, telegram_chat_id FROM users WHERE id = ? AND email = ? LIMIT 1");
                     if ($stmtUFind) $stmtUFind->bind_param("is", $userId, $email);
                 } else if ($userId > 0) {
-                    $stmtUFind = $conn->prepare("SELECT id, full_name AS name, email, telegram_chat_id FROM users WHERE id = ? AND role IN ('sale', 'sales') LIMIT 1");
+                    $stmtUFind = $conn->prepare("SELECT id, full_name AS name, email, telegram_chat_id FROM users WHERE id = ? LIMIT 1");
                     if ($stmtUFind) $stmtUFind->bind_param("i", $userId);
                 } else if (!empty($email)) {
-                    $stmtUFind = $conn->prepare("SELECT id, full_name AS name, email, telegram_chat_id FROM users WHERE email = ? AND role IN ('sale', 'sales') LIMIT 1");
+                    $stmtUFind = $conn->prepare("SELECT id, full_name AS name, email, telegram_chat_id FROM users WHERE email = ? LIMIT 1");
                     if ($stmtUFind) $stmtUFind->bind_param("s", $email);
                 }
                 if ($stmtUFind && $stmtUFind->execute()) {
@@ -432,20 +491,30 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
             }
             if ($stmtAdmin) $stmtAdmin->close();
 
-            // Chỉ coi là admin thực sự nếu role không phải sales/nhân viên thường
             if ($admin) {
                 $role = $admin['role'] ?? '';
                 $isAdminRole = ($role === 'admin' || $role === 'superadmin' || $role === 'assistant' || $role === 'director' || $role === 'manager' || $role === 'leader');
                 if (!$isAdminRole) {
                     $admin = null;
                 }
+            } else {
+                // Kiểm tra bảng users
+                $stmtUAdmin = null;
+                if ($userId > 0 && !empty($email)) {
+                    $stmtUAdmin = $conn->prepare("SELECT id, full_name AS name, email, role, telegram_chat_id FROM users WHERE id = ? AND email = ? AND role IN ('admin', 'superadmin', 'assistant', 'director', 'manager', 'leader') LIMIT 1");
+                    if ($stmtUAdmin) $stmtUAdmin->bind_param("is", $userId, $email);
+                } else if ($userId > 0) {
+                    $stmtUAdmin = $conn->prepare("SELECT id, full_name AS name, email, role, telegram_chat_id FROM users WHERE id = ? AND role IN ('admin', 'superadmin', 'assistant', 'director', 'manager', 'leader') LIMIT 1");
+                    if ($stmtUAdmin) $stmtUAdmin->bind_param("i", $userId);
+                } else if (!empty($email)) {
+                    $stmtUAdmin = $conn->prepare("SELECT id, full_name AS name, email, role, telegram_chat_id FROM users WHERE email = ? AND role IN ('admin', 'superadmin', 'assistant', 'director', 'manager', 'leader') LIMIT 1");
+                    if ($stmtUAdmin) $stmtUAdmin->bind_param("s", $email);
+                }
+                if ($stmtUAdmin && $stmtUAdmin->execute()) {
+                    $admin = $stmtUAdmin->get_result()->fetch_assoc();
+                }
+                if ($stmtUAdmin) $stmtUAdmin->close();
             }
-        }
-
-        if ($sale && $admin && $targetType === '') {
-            $errorMsg = "⚠️ <b>[ HỆ THỐNG RICH LAND DATA ]</b>\n\nEmail này đang được dùng cho cả tài khoản Quản trị viên và Tư vấn viên.\nĐể đảm bảo chính xác, vui lòng sử dụng Mã ID để liên kết:\n\n- Liên kết Admin: Gửi <code>A + Mã ID</code> (Ví dụ: <code>A" . $admin['id'] . "</code>)\n- Liên kết TVV: Gửi <code>Mã ID</code> (Ví dụ: <code>" . $sale['id'] . "</code>)";
-            sendTelegramMessage($botToken, $chatId, $errorMsg);
-            exit;
         }
 
         if (!$sale && !$admin) {
@@ -460,75 +529,79 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
         $successMessages = [];
         $linkedAny = false;
 
+        // 1. Liên kết Tư vấn viên / Sale
         if ($sale) {
-            if (!empty($sale['telegram_chat_id'])) {
-                if ($sale['telegram_chat_id'] === (string)$chatId) {
-                    $successMessages[] = "Tư vấn viên: <b>" . $sale['name'] . "</b> ({$sale['email']}) - Đã liên kết từ trước.";
-                    $linkedAny = true;
-                } else {
-                    sendTelegramMessage($botToken, $chatId, "❌ <b>[ THÔNG BÁO LỖI ]</b>\nTài khoản TVV này (" . $sale['name'] . ") đã được liên kết với một tài khoản Telegram khác. Vui lòng báo Admin hỗ trợ hủy liên kết cũ.");
-                    exit;
-                }
+            if (!empty($sale['telegram_chat_id']) && (string)$sale['telegram_chat_id'] === (string)$chatId) {
+                $successMessages[] = "• Tư vấn viên: <b>" . $sale['name'] . "</b> (" . ($sale['email'] ?: 'ID: ' . $sale['id']) . ") - <i>Đã liên kết</i>";
+                $linkedAny = true;
+            } else if ($existingSaleOwner && (int)$existingSaleOwner['id'] !== (int)$sale['id']) {
+                sendTelegramMessage($botToken, $chatId, "❌ <b>[ THÔNG BÁO LỖI ]</b>\nTài khoản Telegram này đã liên kết với TVV khác (<b>" . $existingSaleOwner['name'] . "</b>). Vui lòng liên hệ Quản trị viên để được hỗ trợ.");
+                exit;
             } else {
-                if ($existingSaleOwner) {
-                    sendTelegramMessage($botToken, $chatId, "❌ <b>[ THÔNG BÁO LỖI ]</b>\nTài khoản Telegram này đã liên kết với TVV khác (" . $existingSaleOwner['name'] . ").");
-                    exit;
-                } else {
-                    $stmtUpdateU = $conn->prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ? OR email = ?");
-                    if ($stmtUpdateU) {
-                        $stmtUpdateU->bind_param("sis", $chatId, $sale['id'], $sale['email']);
-                        $stmtUpdateU->execute();
-                        $stmtUpdateU->close();
-                    }
-                    $stmtUpdateC = $conn->prepare("UPDATE consultants SET telegram_chat_id = ? WHERE id = ? OR email = ?");
-                    if ($stmtUpdateC) {
-                        $stmtUpdateC->bind_param("sis", $chatId, $sale['id'], $sale['email']);
-                        $stmtUpdateC->execute();
-                        $stmtUpdateC->close();
-                    }
-                    $successMessages[] = "Tư vấn viên: <b>" . $sale['name'] . "</b> - Email: {$sale['email']}";
-                    $linkedAny = true;
+                $stmtUpdateU = $conn->prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ? OR email = ?");
+                if ($stmtUpdateU) {
+                    $stmtUpdateU->bind_param("sis", $chatId, $sale['id'], $sale['email']);
+                    $stmtUpdateU->execute();
+                    $stmtUpdateU->close();
                 }
+                $stmtUpdateC = $conn->prepare("UPDATE consultants SET telegram_chat_id = ? WHERE id = ? OR email = ?");
+                if ($stmtUpdateC) {
+                    $stmtUpdateC->bind_param("sis", $chatId, $sale['id'], $sale['email']);
+                    $stmtUpdateC->execute();
+                    $stmtUpdateC->close();
+                }
+                if (!empty($sale['email'])) {
+                    $stmtUpdateA = $conn->prepare("UPDATE accounts SET telegram_chat_id = ? WHERE email = ?");
+                    if ($stmtUpdateA) {
+                        $stmtUpdateA->bind_param("ss", $chatId, $sale['email']);
+                        $stmtUpdateA->execute();
+                        $stmtUpdateA->close();
+                    }
+                }
+                $successMessages[] = "• Tư vấn viên: <b>" . $sale['name'] . "</b> (" . ($sale['email'] ?: 'ID: ' . $sale['id']) . ")";
+                $linkedAny = true;
             }
         }
 
+        // 2. Liên kết Quản trị viên
         if ($admin) {
-            if (!empty($admin['telegram_chat_id'])) {
-                if ($admin['telegram_chat_id'] === (string)$chatId) {
-                    $successMessages[] = "Quản trị viên: <b>" . $admin['name'] . "</b> ({$admin['email']}) - Đã liên kết từ trước.";
-                    $linkedAny = true;
-                } else {
-                    sendTelegramMessage($botToken, $chatId, "❌ <b>[ THÔNG BÁO LỖI ]</b>\nTài khoản Admin này (" . $admin['name'] . ") đã được liên kết với một tài khoản Telegram khác. Vui lòng báo Admin hỗ trợ.");
-                    exit;
-                }
+            if (!empty($admin['telegram_chat_id']) && (string)$admin['telegram_chat_id'] === (string)$chatId) {
+                $successMessages[] = "• Quản trị viên: <b>" . $admin['name'] . "</b> (" . ($admin['email'] ?: 'ID: ' . $admin['id']) . ") - <i>Đã liên kết</i>";
+                $linkedAny = true;
+            } else if ($existingAdminOwner && (int)$existingAdminOwner['id'] !== (int)$admin['id']) {
+                sendTelegramMessage($botToken, $chatId, "❌ <b>[ THÔNG BÁO LỖI ]</b>\nTài khoản Telegram này đã liên kết với Admin khác (<b>" . $existingAdminOwner['name'] . "</b>). Vui lòng liên hệ Quản trị viên để được hỗ trợ.");
+                exit;
             } else {
-                if ($existingAdminOwner) {
-                    sendTelegramMessage($botToken, $chatId, "❌ <b>[ THÔNG BÁO LỖI ]</b>\nTài khoản Telegram này đã liên kết với Admin khác (" . $existingAdminOwner['name'] . ").");
-                    exit;
-                } else {
-                    $stmtUpdateU = $conn->prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ? OR email = ?");
-                    if ($stmtUpdateU) {
-                        $stmtUpdateU->bind_param("sis", $chatId, $admin['id'], $admin['email']);
-                        $stmtUpdateU->execute();
-                        $stmtUpdateU->close();
-                    }
-                    $stmtUpdateC = $conn->prepare("UPDATE consultants SET telegram_chat_id = ? WHERE id = ? OR email = ?");
+                $stmtUpdateAcc = $conn->prepare("UPDATE accounts SET telegram_chat_id = ? WHERE id = ? OR email = ?");
+                if ($stmtUpdateAcc) {
+                    $stmtUpdateAcc->bind_param("sis", $chatId, $admin['id'], $admin['email']);
+                    $stmtUpdateAcc->execute();
+                    $stmtUpdateAcc->close();
+                }
+                $stmtUpdateU = $conn->prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ? OR email = ?");
+                if ($stmtUpdateU) {
+                    $stmtUpdateU->bind_param("sis", $chatId, $admin['id'], $admin['email']);
+                    $stmtUpdateU->execute();
+                    $stmtUpdateU->close();
+                }
+                if (!empty($admin['email'])) {
+                    $stmtUpdateC = $conn->prepare("UPDATE consultants SET telegram_chat_id = ? WHERE email = ?");
                     if ($stmtUpdateC) {
-                        $stmtUpdateC->bind_param("sis", $chatId, $admin['id'], $admin['email']);
+                        $stmtUpdateC->bind_param("ss", $chatId, $admin['email']);
                         $stmtUpdateC->execute();
                         $stmtUpdateC->close();
                     }
-                    $successMessages[] = "Quản trị viên: <b>" . $admin['name'] . "</b> - Email: {$admin['email']}";
-                    $linkedAny = true;
                 }
+                $successMessages[] = "• Quản trị viên: <b>" . $admin['name'] . "</b> (" . ($admin['email'] ?: 'ID: ' . $admin['id']) . ")";
+                $linkedAny = true;
             }
         }
 
         if ($linkedAny && !empty($successMessages)) {
             $successMsg = "🎉 <b>[ LIÊN KẾT THÀNH CÔNG ]</b> 🎉\n━━━━━━━━━━━━━━━━━━━━━\n"
                 . "Hệ thống RICH LAND đã liên kết thành công tài khoản Telegram của bạn với:\n\n"
-                . implode("\n", $successMessages)
-                . "\n\n💡 <i>Từ bây giờ, bạn sẽ nhận được thông báo chia số, nhắc lịch và báo cáo lỗi trực tiếp qua Telegram này. Chúc bạn chốt được nhiều deal!</i>\n"
+                . implode("\n", array_unique($successMessages))
+                . "\n\n💡 <i>Từ bây giờ, bạn sẽ nhận được thông báo chia số, nhắc lịch và báo cáo trực tiếp qua Telegram này. Chúc bạn một ngày làm việc hiệu quả!</i>\n"
                 . "━━━━━━━━━━━━━━━━━━━━━";
             sendTelegramMessage($botToken, $chatId, $successMsg);
         }
@@ -537,7 +610,7 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
     }
 
     // Không khớp lệnh hệ thống
-    sendTelegramMessage($botToken, $chatId, "⚠️ <b>Xin chào!</b> Tôi là Bot thông báo RICH LAND.\n\n• Gõ <code>/id</code> để xem Chat ID của bạn.\n• Gõ <code>/tools</code> để xem danh sách câu lệnh dành cho quản trị.\n• Để liên kết tài khoản: Nhập <b>Mã ID nhân viên</b> hoặc <b>Email</b> của bạn.");
+    sendTelegramMessage($botToken, $chatId, "⚠️ <b>Xin chào!</b> Tôi là Bot thông báo RICH LAND.\n\n• Gõ <code>/id</code> để xem Chat ID của bạn.\n• Gõ <code>/tools</code> để xem danh sách câu lệnh dành cho quản trị.\n• Để liên kết tài khoản: Nhấp <b>Liên kết Telegram</b> trên CRM hoặc gửi <b>Mã ID nhân viên</b> / <b>Email</b> vào đây.");
     echo json_encode(["status" => "ok"]);
 } catch (Throwable $e) {
     $dbNameInfo = 'unknown';

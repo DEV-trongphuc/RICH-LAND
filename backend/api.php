@@ -6502,7 +6502,8 @@ switch ($action) {
             if ($stmtU) {
                 $stmtU->bind_param("ii", $userId, $userId);
                 $stmtU->execute();
-                $uRes = $stmtU->get_result()->fetch_column();
+                $uRow = $stmtU->get_result()->fetch_row();
+                $uRes = $uRow ? $uRow[0] : null;
                 if ($uRes) $targetUserId = (int)$uRes;
                 $stmtU->close();
             }
@@ -6644,7 +6645,8 @@ switch ($action) {
                 if ($stmtU) {
                     $stmtU->bind_param("ii", $rawAssigned, $rawAssigned);
                     $stmtU->execute();
-                    $uRes = $stmtU->get_result()->fetch_column();
+                    $uRow = $stmtU->get_result()->fetch_row();
+                    $uRes = $uRow ? $uRow[0] : null;
                     if ($uRes) $targetUserId = (int)$uRes;
                     $stmtU->close();
                 }
@@ -16686,7 +16688,8 @@ switch ($action) {
             $stmtP = $conn->prepare("SELECT project_id FROM marketing_campaigns WHERE id = (SELECT campaign_id FROM leads WHERE id = ?)");
             $stmtP->bind_param("i", $lead_id);
             $stmtP->execute();
-            $leadProjectId = $stmtP->get_result()->fetch_column();
+            $pRow = $stmtP->get_result()->fetch_row();
+            $leadProjectId = $pRow ? $pRow[0] : null;
             $stmtP->close();
             
             if (!$leadProjectId || !in_array((int)$leadProjectId, $projIds, true)) {
@@ -16978,6 +16981,28 @@ switch ($action) {
                         );
                     } catch (Exception $zEx) {
                         error_log("Error sending duplicate reminder Zalo to new sale: " . $zEx->getMessage());
+                    }
+
+                    try {
+                        if (file_exists(__DIR__ . '/telegram_bot.php')) {
+                            require_once __DIR__ . '/telegram_bot.php';
+                            sendLeadReminderTelegramMessageToSale(
+                                $new_consultant_id,
+                                $new_cons_name,
+                                $log_data['lead_name'] ?: 'Khách hàng ẩn danh',
+                                $log_data['phone'] ?: '',
+                                $log_data['note'] ?: '',
+                                $log_data['source'] ?: '',
+                                $roundNameStr,
+                                $timeline,
+                                $lead_id,
+                                $log_data['lead_email'] ?: '',
+                                $log_data['type'] ?: '',
+                                true
+                            );
+                        }
+                    } catch (Exception $tgEx) {
+                        error_log("Error sending duplicate reminder Telegram to new sale: " . $tgEx->getMessage());
                     }
                 } catch (Exception $dupEx) {
                     error_log("Error processing duplicate reminders in reassign_lead: " . $dupEx->getMessage());
@@ -18924,8 +18949,8 @@ switch ($action) {
             if (empty($leadId)) {
                 // If there's no lead record for this person (e.g. deleted or direct person record), create one to ensure data integrity
                 $stmtLeadCreate = $conn->prepare("
-                    INSERT INTO leads (person_id, name, phone, email, source, type, assigned_to, last_assigned_at, is_accepted, accepted_at, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 1, NOW(), 'active')
+                    INSERT INTO leads (person_id, name, phone, email, source, type, assigned_to, last_assigned_at, is_accepted, accepted_at, status, last_interaction_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 1, NOW(), 'active', NOW())
                 ");
                 $leadSource = !empty($sourceVal) ? $sourceVal : 'databank';
                 $leadType = !empty($typeVal) ? $typeVal : 'neutral';
@@ -18934,7 +18959,7 @@ switch ($action) {
                 $leadId = (int)$conn->insert_id;
                 $stmtLeadCreate->close();
             } else {
-                $stmtLeadClaim = $conn->prepare("UPDATE leads SET assigned_to = ?, last_assigned_at = NOW() WHERE id = ?");
+                $stmtLeadClaim = $conn->prepare("UPDATE leads SET assigned_to = ?, last_assigned_at = NOW(), is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW() WHERE id = ?");
                 $stmtLeadClaim->bind_param("ii", $saleConsultantId, $leadId);
                 $stmtLeadClaim->execute();
                 $stmtLeadClaim->close();

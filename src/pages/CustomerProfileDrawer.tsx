@@ -3189,7 +3189,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const bedroomPref = contact?.lead_bedroom_count || contact?.bedroom_count;
     const demandPref = contact?.lead_demand_type || contact?.demand_type;
     const budgetPref = contact?.lead_budget || contact?.budget;
-    const dataType = contact?.lead_type || contact?.customer_type || contact?.type;
+    const rawDataType = contact?.lead_type || contact?.customer_type;
+    // Don't render dataType badge if it's the property type / loai_hinh already shown in Form Leads
+    const dataType = (rawDataType && rawDataType !== contact?.type) ? rawDataType : null;
     const hasMarketingInfo = !!(cleanNote || locationPref || bedroomPref || demandPref || budgetPref || dataType);
 
     if (!hasMarketingInfo) return null;
@@ -6649,8 +6651,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   .map(id => TABS.find(tab => tab.id === id))
                                   .filter((tab): tab is any => {
                                     if (!tab) return false;
-                                    const isSaleRole = currentUser?.role === 'sale';
-                                    if (isSaleRole && (tab.id === 'tasks' || tab.id === 'scoring')) return false;
+                                    const isSaleRole = ((currentUser?.role as any) === 'sale' || (currentUser?.role as any) === 'sales');
+                                    if (isSaleRole && tab.id === 'scoring') return false;
                                     return isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses');
                                   });
                                 if (allowedTabs.length === 0) return null;
@@ -6740,8 +6742,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   .map(id => TABS.find(tab => tab.id === id))
                                   .filter((tab): tab is any => {
                                     if (!tab) return false;
-                                    const isSaleRole = currentUser?.role === 'sale';
-                                    if (isSaleRole && (tab.id === 'tasks' || tab.id === 'scoring')) return false;
+                                    const isSaleRole = ((currentUser?.role as any) === 'sale' || (currentUser?.role as any) === 'sales');
+                                    if (isSaleRole && tab.id === 'scoring') return false;
                                     return isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses');
                                   });
                                 if (allowedTabs.length === 0) return null;
@@ -7490,8 +7492,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                             {(() => {
                               const FORM_SPEC = [
-                                { key: 'ad_name', label: 'Mẫu quảng cáo', fullWidth: true, alwaysShow: true },
-                                { key: 'form_name', label: 'Tên Form', fullWidth: true, alwaysShow: true },
+                                { key: 'ad_name', label: 'Mẫu quảng cáo', fullWidth: true },
+                                { key: 'form_name', label: 'Tên Form', fullWidth: true },
                                 { key: 'birthday', label: 'Sinh nhật' },
                                 { key: 'country', label: 'Quốc gia' },
                                 { key: 'city', label: 'Thành Phố' },
@@ -7507,30 +7509,30 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                               const getFormVal = (k: string) => {
                                 if (k === 'ad_name') {
-                                  return webhookData.parsed['ad_name'] || formData.ad_name || contact?.ad_name || formData.utm_content || '—';
+                                  return webhookData.parsed['ad_name'] || formData.ad_name || contact?.ad_name || formData.utm_content || '';
                                 }
                                 if (k === 'form_name') {
-                                  return webhookData.parsed['form_name'] || formData.form_name || contact?.form_name || (webhookData.parsed['form_id'] ? `Form #${webhookData.parsed['form_id']}` : '—');
+                                  return webhookData.parsed['form_name'] || formData.form_name || contact?.form_name || '';
                                 }
                                 const fromWb = webhookData.parsed[k] || webhookData.parsed[k.toLowerCase()];
                                 if (fromWb) return fromWb;
                                 if (k === 'city') return formData.city || contact?.city || '';
                                 if (k === 'country') return formData.country || contact?.country || '';
-                                if (k === 'birthday') return formData.birthday || contact?.birthday || formData.dob || '';
-                                if (k === 'loai_hinh') return formData.property_type || contact?.property_type || '';
-                                if (k === 'nhu_cau') return formData.demand_type || contact?.demand_type || '';
-                                if (k === 'san_pham') return formData.san_pham || contact?.san_pham || '';
-                                if (k === 'tieu_chi') return formData.tieu_chi || contact?.tieu_chi || '';
-                                if (k === 'tinh_trang') return formData.tinh_trang || contact?.tinh_trang || '';
-                                if (k === 'hinh_thuc_tt') return formData.hinh_thuc_tt || contact?.hinh_thuc_tt || '';
-                                if (k === 'time_lienhe') return formData.time_lienhe || contact?.time_lienhe || '';
-                                if (k === 'app_lienhe') return formData.app_lienhe || contact?.app_lienhe || '';
+                                if (k === 'birthday') return formData.birthday || contact?.birthday || formData.dob || contact?.dob || '';
+                                if (k === 'loai_hinh') return webhookData.parsed['loai_hinh'] || formData.loai_hinh || contact?.loai_hinh || formData.property_type || contact?.property_type || formData.type || contact?.type || '';
+                                if (k === 'nhu_cau') return webhookData.parsed['nhu_cau'] || formData.demand_type || contact?.demand_type || formData.nhu_cau || contact?.nhu_cau || '';
+                                if (k === 'san_pham') return webhookData.parsed['san_pham'] || formData.san_pham || contact?.san_pham || '';
+                                if (k === 'tieu_chi') return webhookData.parsed['tieu_chi'] || formData.tieu_chi || contact?.tieu_chi || '';
+                                if (k === 'tinh_trang') return webhookData.parsed['tinh_trang'] || formData.tinh_trang || contact?.tinh_trang || '';
+                                if (k === 'hinh_thuc_tt') return webhookData.parsed['hinh_thuc_tt'] || formData.hinh_thuc_tt || contact?.hinh_thuc_tt || '';
+                                if (k === 'time_lienhe') return webhookData.parsed['time_lienhe'] || formData.time_lienhe || contact?.time_lienhe || '';
+                                if (k === 'app_lienhe') return webhookData.parsed['app_lienhe'] || formData.app_lienhe || contact?.app_lienhe || '';
                                 return '';
                               };
 
                               const activeFields = FORM_SPEC
-                                .map(item => ({ ...item, value: getFormVal(item.key) }))
-                                .filter(item => item.alwaysShow || Boolean(item.value && item.value.trim() && item.value !== '—'));
+                                .map(item => ({ ...item, value: (getFormVal(item.key) || '').trim() }))
+                                .filter(item => Boolean(item.value && item.value !== '—' && item.value !== '-'));
 
                               return activeFields.length > 0 ? (
                                 <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px', fontSize: '0.72rem' }}>
@@ -11614,8 +11616,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                                       <AlertCircle size={14} color={t.priority === 'high' || t.priority === 'urgent' ? '#ef4444' : t.priority === 'medium' ? '#f59e0b' : '#10b981'} style={{ marginTop: '2px' }} />
                                       <div>
-                                        <p style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '2px' }}>{t.subject}</p>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>#{t.id} • Mở: {new Date(t.created_at).toLocaleDateString('vi-VN')}</p>
+                                        <p style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <span>{t.subject}</span>
+                                          {Number(t.comment_count) > 0 && (
+                                            <span style={{ fontSize: '0.7rem', padding: '1px 5px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                              <MessageSquare size={10} /> {t.comment_count}
+                                            </span>
+                                          )}
+                                        </p>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                                          #{t.id} • Mở: {new Date(t.created_at).toLocaleDateString('vi-VN')}
+                                          {t.last_comment_at && (
+                                            <span style={{ marginLeft: '6px', color: 'var(--color-primary)', fontWeight: 600 }}>
+                                              • {t.last_comment_user_name ? `${t.last_comment_user_name}: ` : ''}mới nhắn {new Date(t.last_comment_at).toLocaleDateString('vi-VN')}
+                                            </span>
+                                          )}
+                                        </p>
                                       </div>
                                     </div>
                                   </td>

@@ -827,6 +827,37 @@ class NotificationService {
                                     "Vui lòng truy cập CRM để thực hiện."
                 ];
 
+            case 'TICKET_COMMENT':
+                $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
+                $authorName = $payload['author_name'] ?? 'Đồng nghiệp';
+                $commentText = $payload['comment'] ?? 'đã gửi phản hồi mới';
+                $cleanComment = trim(strip_tags(str_replace(['<br>', '<br/>', '<br />', '</div>', '</p>'], "\n", (string)$commentText)));
+                if (empty($cleanComment)) {
+                    $cleanComment = 'đã gửi phản hồi mới';
+                }
+                $targetLink = $payload['link'] ?? '/support-tickets';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "$authorName phản hồi ticket",
+                    'body' => "$authorName: \"$cleanComment\"",
+                    'type' => "ticket",
+                    'link' => $targetLink,
+                    'zalo_msg' => "🎫 [ PHẢN HỒI TICKET MỚI ]\n\n"
+                        . "$authorName vừa gửi phản hồi trong ticket:\n"
+                        . "  • Nội dung: \"$cleanComment\"\n\n"
+                        . "Vui lòng xem chi tiết trên CRM.",
+                    'tg_msg' => "🎫 <b>[ PHẢN HỒI TICKET MỚI ]</b>\n\n"
+                        . "<b>" . htmlspecialchars($authorName) . "</b> vừa gửi phản hồi trong ticket:\n"
+                        . "  • Nội dung: <i>\"" . htmlspecialchars($cleanComment) . "\"</i>\n\n"
+                        . "Vui lòng xem chi tiết trên CRM.",
+                    'email_subject' => "[RICH LAND] $authorName đã gửi phản hồi trong Ticket",
+                    'email_title' => "PHẢN HỒI TICKET MỚI",
+                    'email_content' => "Chào bạn,<br/><br/>" .
+                                    "<strong>" . htmlspecialchars($authorName) . "</strong> vừa gửi phản hồi trong Ticket:<br/>" .
+                                    "<em>\"" . htmlspecialchars($cleanComment) . "\"</em>.<br/>" .
+                                    "Vui lòng kiểm tra trên CRM."
+                ];
+
             case 'PROFILE_ACCOUNT_UPDATE':
                 $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
                 return [
@@ -868,53 +899,6 @@ class NotificationService {
                     'email_content' => "Chào quản trị viên,<br/><br/>" .
                                     "Danh sách phân công Roster dự án <strong>" . htmlspecialchars($projectName) . "</strong> vừa có thay đổi.<br/>" .
                                     "Vui lòng truy cập CRM để xem chi tiết."
-                ];
-
-            case 'MONTHLY_ATTENDANCE_REPORT':
-                $recipients = !empty($payload['user_id']) ? self::getRecipientById($db, (int)$payload['user_id']) : self::getAllUsers($db, $tenantId);
-                $periodText = $payload['period'] ?? 'Tháng vừa qua';
-                $workDays = $payload['work_days'] ?? 0;
-                $lateDays = $payload['late_days'] ?? 0;
-                $lateMins = $payload['late_minutes'] ?? 0;
-                $missingDays = $payload['missing_days'] ?? 0;
-                $nightShifts = $payload['night_shifts'] ?? 0;
-                $weekendShifts = $payload['weekend_shifts'] ?? 0;
-                $holidayShifts = $payload['holiday_shifts'] ?? 0;
-
-                $reportSummary = "• Ngày chấm công: $workDays ngày\n"
-                    . "• Đi trễ: $lateDays lần ($lateMins phút)\n"
-                    . "• Quên chấm (giờ hành chính): $missingDays ngày\n"
-                    . "• Trực đêm: $nightShifts ca\n"
-                    . "• Trực cuối tuần: $weekendShifts ca\n"
-                    . ($holidayShifts > 0 ? "• Trực lễ: $holidayShifts ca\n" : "");
-
-                return [
-                    'recipients' => $recipients,
-                    'title' => "Báo cáo Chấm công & Ca trực ($periodText)",
-                    'body' => "Tổng kết $periodText: $workDays ngày công, $lateDays lần trễ ($lateMins phút), $missingDays ngày chưa chấm.",
-                    'type' => "attendance_report",
-                    'link' => "/sale-portal",
-                    'zalo_msg' => "📊 [ BÁO CÁO CHẤM CÔNG & CA TRỰC - $periodText ]\n\n"
-                        . "Chi tiết tổng kết cá nhân:\n"
-                        . $reportSummary
-                        . "\nVui lòng xem thêm chi tiết tại Sale Portal.",
-                    'tg_msg' => "📊 <b>[ BÁO CÁO CHẤM CÔNG & CA TRỰC - $periodText ]</b>\n\n"
-                        . "Chi tiết tổng kết cá nhân:\n"
-                        . nl2br(htmlspecialchars($reportSummary))
-                        . "\nVui lòng xem thêm chi tiết tại Sale Portal.",
-                    'email_subject' => "[RICH LAND] Báo cáo Chấm công & Ca trực - $periodText",
-                    'email_title' => "BÁO CÁO CHẤM CÔNG & CA TRỰC",
-                    'email_content' => "Chào <strong>$userName</strong>,<br/><br/>" .
-                                    "Dưới đây là chi tiết báo cáo chấm công & ca trực kỳ <strong>$periodText</strong> của bạn:<br/>" .
-                                    "<ul>" .
-                                    "<li>Ngày đã chấm công hợp lệ: <strong>$workDays ngày</strong></li>" .
-                                    "<li>Số lần đi trễ: <strong>$lateDays lần ($lateMins phút)</strong></li>" .
-                                    "<li>Số ngày vắng/chưa chấm (giờ hành chính): <strong style='color:red;'>$missingDays ngày</strong></li>" .
-                                    "<li>Ca trực đêm: <strong>$nightShifts ca</strong></li>" .
-                                    "<li>Ca trực cuối tuần: <strong>$weekendShifts ca</strong></li>" .
-                                    ($holidayShifts > 0 ? "<li>Ca trực lễ/tết: <strong>$holidayShifts ca</strong></li>" : "") .
-                                    "</ul><br/>" .
-                                    "Vui lòng truy cập hệ thống để đối soát thông tin."
                 ];
 
             case 'HOLIDAY_ROSTER_OPEN':
