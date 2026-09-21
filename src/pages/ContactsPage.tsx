@@ -2963,6 +2963,18 @@ export const ContactsPage: React.FC = () => {
                               >
                                 Ticket lỗi
                               </span>
+                            ) : (c.pipeline_status === 'dat_coc' || c.pipeline_status === 'da_coc') ? (
+                              <span 
+                                className="badge" 
+                                style={{ 
+                                  backgroundColor: 'rgba(16, 185, 129, 0.12)', 
+                                  color: '#10b981', 
+                                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                                  fontWeight: 700
+                                }}
+                              >
+                                Đặt cọc
+                              </span>
                             ) : c.stage_name ? (
                               <span 
                                 className="badge" 

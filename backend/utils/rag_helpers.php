@@ -186,10 +186,18 @@ if (!function_exists('generate_embedding')) {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if (!$response) return null;
         $resJson = json_decode($response, true);
+        if (isset($resJson['error'])) {
+            $GLOBALS['last_gemini_api_error'] = [
+                'code' => $resJson['error']['code'] ?? $httpCode,
+                'message' => $resJson['error']['message'] ?? 'Unknown Gemini API Error',
+                'status' => $resJson['error']['status'] ?? ''
+            ];
+        }
         
         // 2. Fallback to v1beta models/embedding-001 if gemini-embedding-001 is unavailable
         if (empty($resJson['embedding']['values'])) {
@@ -205,10 +213,18 @@ if (!function_exists('generate_embedding')) {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             $response = curl_exec($ch);
+            $httpCode2 = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
             
             if ($response) {
                 $resJson = json_decode($response, true);
+                if (isset($resJson['error']) && empty($GLOBALS['last_gemini_api_error'])) {
+                    $GLOBALS['last_gemini_api_error'] = [
+                        'code' => $resJson['error']['code'] ?? $httpCode2,
+                        'message' => $resJson['error']['message'] ?? 'Unknown Gemini API Error',
+                        'status' => $resJson['error']['status'] ?? ''
+                    ];
+                }
             }
         }
         
@@ -254,6 +270,7 @@ if (!function_exists('generate_batch_embeddings')) {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         $embeddings = [];
@@ -264,6 +281,14 @@ if (!function_exists('generate_batch_embeddings')) {
                     $embeddings[] = $emb['values'] ?? null;
                 }
                 return $embeddings;
+            } elseif (isset($resJson['error'])) {
+                $errCode = $resJson['error']['code'] ?? $httpCode;
+                $errMsg = $resJson['error']['message'] ?? 'Unknown Gemini API Error';
+                $GLOBALS['last_gemini_api_error'] = [
+                    'code' => $errCode,
+                    'message' => $errMsg,
+                    'status' => $resJson['error']['status'] ?? ''
+                ];
             }
         }
 
@@ -290,6 +315,7 @@ if (!function_exists('generate_batch_embeddings')) {
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         $response = curl_exec($ch);
+        $httpCode2 = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if ($response) {
@@ -298,6 +324,14 @@ if (!function_exists('generate_batch_embeddings')) {
                 foreach ($resJson['embeddings'] as $emb) {
                     $embeddings[] = $emb['values'] ?? null;
                 }
+            } elseif (isset($resJson['error']) && empty($GLOBALS['last_gemini_api_error'])) {
+                $errCode = $resJson['error']['code'] ?? $httpCode2;
+                $errMsg = $resJson['error']['message'] ?? 'Unknown Gemini API Error';
+                $GLOBALS['last_gemini_api_error'] = [
+                    'code' => $errCode,
+                    'message' => $errMsg,
+                    'status' => $resJson['error']['status'] ?? ''
+                ];
             }
         }
 

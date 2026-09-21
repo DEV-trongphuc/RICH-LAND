@@ -1346,6 +1346,13 @@ class CooperationController {
         $stmtUpd = $this->db->prepare("UPDATE contacts SET collaborator_ids = ? WHERE id = ?");
         $stmtUpd->execute([$collaboratorsStr, $contactId]);
 
+        // Ensure quyen_truy_cap permissions exist for all collaborators
+        foreach ($mergedIds as $cUserId) {
+            if ($cUserId > 0) {
+                $stQ = $this->db->prepare("INSERT IGNORE INTO quyen_truy_cap (contact_id, user_id, created_at) VALUES (?, ?, NOW())");
+                $stQ->execute([$contactId, $cUserId]);
+            }
+        }
     }
 
     public function createAdjustmentSlip(array $auth, int $id): void {

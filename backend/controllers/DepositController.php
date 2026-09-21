@@ -210,13 +210,17 @@ class DepositController {
             }
 
             // Update contact pipeline stage to deal won status and set temperature to 'hot' (Sôi = xuống tiền)
-            // Also sync the contact's expected_revenue with the actual deposit price
+            // Also sync the contact's expected_revenue with the actual deposit price and stage_id
             $stmtWon = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
             $dealWonStatus = $stmtWon ? $stmtWon->fetchColumn() : 'dat_coc';
             if (empty($dealWonStatus)) $dealWonStatus = 'dat_coc';
 
-            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = ?, status = 'customer', temperature = 'hot', suggested_temperature = 'hot', expected_revenue = ? WHERE id = ? AND tenant_id = ?");
-            $stmtUpC->execute([$dealWonStatus, $price, $contactId, $auth['tenant_id']]);
+            $stmtStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE (system_slug = ? OR system_slug = 'dat_coc' OR name = 'Đặt cọc') AND tenant_id = ? ORDER BY id ASC LIMIT 1");
+            $stmtStage->execute([$dealWonStatus, $auth['tenant_id']]);
+            $wonStageId = $stmtStage->fetchColumn() ?: 6;
+
+            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = ?, stage_id = ?, status = 'customer', temperature = 'hot', suggested_temperature = 'hot', expected_revenue = ? WHERE id = ? AND tenant_id = ?");
+            $stmtUpC->execute([$dealWonStatus, $wonStageId, $price, $contactId, $auth['tenant_id']]);
 
             // Withdraw from databank and terminate other parallel contacts
             require_once __DIR__ . '/../config/ParallelHelper.php';
@@ -862,6 +866,10 @@ class DepositController {
                             $stmtUpdCs = $this->db->prepare("UPDATE cooperation_slips SET shares_json = ?, deposit_slip_id = ? WHERE id = ?");
                             $stmtUpdCs->execute([$newSharesJson, $id, $coopId]);
                             
+                            require_once __DIR__ . '/CooperationController.php';
+                            $coopCtrl = new CooperationController($this->db);
+                            $coopCtrl->syncCollaboratorsToContact((int)$dep['contact_id'], $newSharesJson);
+
                             logActivity($this->db, $tid, $auth['user_id'], 'ADMIN_UPDATE_COOP_SHARES', 'cooperation_slip', $coopId, "Admin đã cập nhật lại tỷ lệ hoa hồng cho phiếu cọc #$id");
 
                             $stmtCust = $this->db->prepare("SELECT CONCAT(first_name, ' ', COALESCE(last_name,'')) FROM contacts WHERE id = ?");

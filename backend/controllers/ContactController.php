@@ -315,8 +315,43 @@ class ContactController {
         ");
         $stmt->execute($params);
         $data = $stmt->fetchAll();
-        // Parse JSON tags
-        foreach ($data as &$row) $row['tags'] = json_decode($row['tags'] ?? '[]');
+        // Parse JSON tags & enrich collaborator_ids from active cooperation slips if not already synced
+        $contactIds = array_column($data, 'id');
+        if (!empty($contactIds)) {
+            $inContacts = implode(',', array_fill(0, count($contactIds), '?'));
+            $stmtCslips = $this->db->prepare("SELECT contact_id, shares_json FROM cooperation_slips WHERE contact_id IN ($inContacts) AND status IN ('approved', 'pending_signatures', 'pending_manager_approval', 'approved_pending_signatures')");
+            $stmtCslips->execute($contactIds);
+            $cSlips = $stmtCslips->fetchAll(PDO::FETCH_ASSOC);
+
+            $slipCollabsMap = [];
+            foreach ($cSlips as $cs) {
+                $shares = json_decode($cs['shares_json'] ?? '[]', true) ?: [];
+                $cid = (int)$cs['contact_id'];
+                foreach (array_keys($shares) as $uid) {
+                    $uInt = (int)$uid;
+                    if ($uInt > 0) {
+                        $slipCollabsMap[$cid][$uInt] = true;
+                    }
+                }
+            }
+
+            foreach ($data as &$row) {
+                $row['tags'] = json_decode($row['tags'] ?? '[]');
+                $cid = (int)$row['id'];
+                $ownerId = (int)($row['owner_id'] ?? 0);
+                $existingCollabs = array_filter(array_map('intval', explode(',', $row['collaborator_ids'] ?? '')));
+                if (isset($slipCollabsMap[$cid])) {
+                    $coopUids = array_keys($slipCollabsMap[$cid]);
+                    $nonOwnerCoop = array_filter($coopUids, function($uid) use ($ownerId) { return $uid !== $ownerId; });
+                    $merged = array_values(array_unique(array_merge($existingCollabs, $nonOwnerCoop)));
+                    if (!empty($merged)) {
+                        $row['collaborator_ids'] = implode(',', $merged);
+                    }
+                }
+            }
+        } else {
+            foreach ($data as &$row) $row['tags'] = json_decode($row['tags'] ?? '[]');
+        }
 
         respond(200, [
             'items' => $data, 'total' => $total,
@@ -805,6 +840,11 @@ class ContactController {
         } elseif (array_key_exists('company_id', $b)) {
             $sets[] = "company_id=?";
             $params[] = $b['company_id'] ? (int)$b['company_id'] : null;
+        }
+
+        $isSaleRole = in_array($auth['role'] ?? '', ['sale', 'sales', 'consultant'], true);
+        if ($isSaleRole) {
+            unset($b['project_id'], $b['campaign_id']);
         }
 
         foreach ($fields as $f) {
@@ -1480,7 +1520,7 @@ class ContactController {
         $reason = trim($input['reason'] ?? 'Không phải khách hàng tiềm năng');
 
         // 1. Fetch contact
-        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name, source, pipeline_status FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name, phone, email, source, pipeline_status FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
         $stmt->execute([$id, $tid]);
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$contact) respond(404, null, 'Không tìm thấy liên hệ', false);
@@ -1499,41 +1539,55 @@ class ContactController {
             respond(400, null, 'Không thể báo Not Lead đối với khách hàng đã phát sinh đặt cọc hoặc đóng deal!', false);
         }
 
-        // Update contact: mark pipeline_status = 'not_lead', not_lead_proposed = 1, record reason, and RECALL ownership from this sale
+        // Find associated lead_id and round_id
+        $leadId = null;
+        $roundId = null;
+        if ($personId) {
+            $stL = $this->db->prepare("SELECT id, target_round_id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $stL->execute([$personId]);
+            $lRow = $stL->fetch(PDO::FETCH_ASSOC);
+            if ($lRow) {
+                $leadId = (int)$lRow['id'];
+                $roundId = $lRow['target_round_id'] ? (int)$lRow['target_round_id'] : null;
+            }
+        }
+        if (!$roundId && $leadId) {
+            $stDl = $this->db->prepare("SELECT round_id FROM distribution_logs WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+            $stDl->execute([$leadId]);
+            $dlRow = $stDl->fetch(PDO::FETCH_ASSOC);
+            if ($dlRow && !empty($dlRow['round_id'])) {
+                $roundId = (int)$dlRow['round_id'];
+            }
+        }
+        if (!$leadId) {
+            $leadName = trim(($contact['last_name'] ?? '') . ' ' . ($contact['first_name'] ?? ''));
+            if (empty($leadName)) $leadName = 'Khách hàng #' . $id;
+            $stInsLead = $this->db->prepare("INSERT INTO leads (person_id, name, phone, email, source, status, assigned_to, created_at) VALUES (?, ?, ?, ?, ?, 'lead', ?, NOW())");
+            $stInsLead->execute([$personId, $leadName, $contact['phone'] ?? null, $contact['email'] ?? null, $contact['source'] ?? 'crm', $auth['user_id']]);
+            $leadId = (int)$this->db->lastInsertId();
+        }
+
+        // 2. Insert into data_reports as pending ticket for Admin / Manager review
+        $stmtInsReport = $this->db->prepare("
+            INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, created_at)
+            VALUES (?, ?, ?, ?, 'pending', NOW())
+        ");
+        $stmtInsReport->execute([$leadId, $auth['user_id'], $roundId, $reason]);
+
+        // 3. Update contact: mark not_lead_proposed = 1 for admin review (hidden from sales, kept in ownership until approved)
         $stmtUpContact = $this->db->prepare("
             UPDATE contacts 
-            SET pipeline_status = 'not_lead', 
-                status = 'lead',
-                not_lead_proposed = 1,
+            SET not_lead_proposed = 1,
                 not_lead_proposed_by = ?,
                 not_lead_proposed_at = NOW(),
-                not_lead_reason = ?,
-                owner_id = NULL,
-                security_expires_at = NULL,
-                parallel_assigned = 0
+                not_lead_reason = ?
             WHERE id = ? AND tenant_id = ?
         ");
         $stmtUpContact->execute([$auth['user_id'], $reason, $id, $tid]);
 
-        // Keep persons table not public (is_public = 0) so it does NOT go to public databank
-        if ($personId) {
-            $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?")->execute([$personId]);
-            
-            // Also unassign from leads table and mark note
-            $stmtLead = $this->db->prepare("
-                UPDATE leads 
-                SET assigned_to = NULL, 
-                    status = 'not_lead', 
-                    note = IF(note IS NULL OR note = '', ?, CONCAT(note, '\n[Báo Not Lead]: ', ?)) 
-                WHERE person_id = ?
-            ");
-            $leadNoteMsg = "Sale báo Not Lead (Lý do: $reason) - Thu hồi về MKT xử lý tiếp lúc " . date('d/m/Y H:i');
-            $stmtLead->execute([$leadNoteMsg, $leadNoteMsg, $personId]);
-        }
+        logActivity($this->db, $tid, $auth['user_id'], 'REPORT_NOT_LEAD', 'contact', $id, "Đã gửi đề xuất báo Not Lead lên ban quản trị. Lý do: $reason");
 
-        logActivity($this->db, $tid, $auth['user_id'], 'REPORT_NOT_LEAD', 'contact', $id, "Báo Not Lead và thu hồi về Marketing. Lý do: $reason");
-
-        respond(200, ['success' => true], 'Đã báo Not Lead thành công. Khách hàng đã được thu hồi và chuyển về Marketing để xử lý tiếp.');
+        respond(200, ['success' => true], 'Đã gửi đề xuất Not Lead thành công. Yêu cầu đang chờ Ban quản trị duyệt.');
     }
 
     private function getScope(array $auth, string $module, string $action): string {

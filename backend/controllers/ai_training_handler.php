@@ -432,7 +432,22 @@ try {
                 $conn->query("UPDATE ai_training_docs SET status = 'trained' WHERE id = $id");
                 $successCount++;
             } else {
-                $errorMsg = "Lỗi khi gọi API tạo Vector Embedding của Google Gemini.";
+                if (!empty($GLOBALS['last_gemini_api_error'])) {
+                    $gErr = $GLOBALS['last_gemini_api_error'];
+                    $gCode = (int)($gErr['code'] ?? 0);
+                    $gMsg = $gErr['message'] ?? '';
+                    if ($gCode === 402 || strpos(strtolower($gMsg), 'prepayment') !== false || strpos(strtolower($gMsg), 'credit') !== false) {
+                        $errorMsg = "Tài khoản Google Gemini API đã hết hạn mức / credit trả trước (Prepayment credits depleted). Vui lòng nạp thêm credit hoặc cập nhật API Key mới trong Cài đặt hệ thống.";
+                    } elseif ($gCode === 429 || strpos(strtolower($gMsg), 'resource_exhausted') !== false || strpos(strtolower($gMsg), 'quota') !== false) {
+                        $errorMsg = "API Google Gemini đã vượt quá giới hạn lượt gọi (Rate Limit / Quota Exceeded). Vui lòng thử lại sau giây lát.";
+                    } elseif ($gCode === 400 || $gCode === 403 || strpos(strtolower($gMsg), 'api_key_invalid') !== false) {
+                        $errorMsg = "Khóa Google Gemini API Key không hợp lệ hoặc không có quyền truy cập. Vui lòng kiểm tra lại cấu hình.";
+                    } else {
+                        $errorMsg = "Lỗi Google Gemini API ($gCode): " . $gMsg;
+                    }
+                } else {
+                    $errorMsg = "Lỗi khi gọi API tạo Vector Embedding của Google Gemini.";
+                }
                 $conn->query("UPDATE ai_training_docs SET status = 'error' WHERE id = $id");
             }
         }

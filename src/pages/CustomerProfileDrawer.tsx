@@ -955,7 +955,18 @@ const DrawerSkeleton = () => {
 
 const formatNumberWithCommas = (val: any) => {
   if (val === undefined || val === null || val === '') return '';
-  const cleanVal = String(val).replace(/[^0-9]/g, '');
+  if (typeof val === 'number') {
+    if (isNaN(val)) return '';
+    return Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+  const str = String(val).trim();
+  if (str.includes('.') && !str.includes(',')) {
+    const num = Number(str);
+    if (!isNaN(num)) {
+      return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+  }
+  const cleanVal = str.replace(/[^0-9]/g, '');
   if (!cleanVal) return '';
   return cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
@@ -1452,7 +1463,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   
   useEffect(() => {
     const isSaleRole = currentUser?.role === 'sale';
-    if (isSaleRole && (activeTab === 'tasks' || activeTab === 'scoring')) {
+    if (isSaleRole && activeTab === 'scoring') {
       setActiveTab(isMobileOrTablet ? '' : 'timeline');
     }
   }, [activeTab, currentUser, isMobileOrTablet]);
@@ -5131,7 +5142,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
   const handleOpenManageMilestones = (dep: any) => {
     setSelectedDepForManage(dep);
-    setTempMilestones((dep.milestones || []).map((m: any) => ({ ...m })));
+    setTempMilestones((dep.milestones || []).map((m: any) => ({
+      ...m,
+      expected_amount: Math.round(Number(m.expected_amount) || 0)
+    })));
     setShowManageModal(true);
   };
 
@@ -7414,69 +7428,134 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {/* Dự án & Chiến dịch (Quan hệ Cha - Con) */}
                           <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: '2px', fontWeight: 700 }}>Dự án nguồn</label>
-                              <CustomSelect
-                                searchable
-                                options={[
-                                  { value: '', label: '— Chọn dự án —' },
-                                  ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
-                                ]}
-                                value={String(formData.project_id || '')}
-                                onChange={val => {
-                                  const selectedId = val ? Number(val) : null;
-                                  let nextCampaignId = formData.campaign_id;
-                                  if (!selectedId) {
-                                    nextCampaignId = null;
-                                  } else if (nextCampaignId) {
-                                    const campObj = allowedCampaigns.find(c => Number(c.id) === Number(nextCampaignId));
-                                    if (campObj && Number(campObj.project_id) !== selectedId) {
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                <label className="form-label" style={{ fontSize: '0.72rem', margin: 0, fontWeight: 700 }}>Dự án nguồn</label>
+                                {currentUser?.role === 'sale' && (
+                                  <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                    <Lock size={10} /> Cố định MKT
+                                  </span>
+                                )}
+                              </div>
+                              {currentUser?.role === 'sale' ? (
+                                (() => {
+                                  const projName = projectsList.find(p => Number(p.id) === Number(formData.project_id))?.name || (formData.project_id ? `Dự án #${formData.project_id}` : '—');
+                                  return (
+                                    <div style={{
+                                      background: 'var(--color-bg-subtle, #f8fafc)',
+                                      border: '1px solid var(--color-border)',
+                                      borderRadius: '6px',
+                                      padding: '3px 8px',
+                                      height: '28px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 700,
+                                      color: 'var(--color-text)',
+                                      cursor: 'not-allowed',
+                                      userSelect: 'none'
+                                    }}>
+                                      <span>{projName}</span>
+                                      <Lock size={11} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                                    </div>
+                                  );
+                                })()
+                              ) : (
+                                <CustomSelect
+                                  searchable
+                                  options={[
+                                    { value: '', label: '— Chọn dự án —' },
+                                    ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
+                                  ]}
+                                  value={String(formData.project_id || '')}
+                                  onChange={val => {
+                                    const selectedId = val ? Number(val) : null;
+                                    let nextCampaignId = formData.campaign_id;
+                                    if (!selectedId) {
                                       nextCampaignId = null;
+                                    } else if (nextCampaignId) {
+                                      const campObj = allowedCampaigns.find(c => Number(c.id) === Number(nextCampaignId));
+                                      if (campObj && Number(campObj.project_id) !== selectedId) {
+                                        nextCampaignId = null;
+                                      }
                                     }
-                                  }
-                                  setFormData((prev: any) => ({
-                                    ...prev,
-                                    project_id: selectedId,
-                                    campaign_id: nextCampaignId
-                                  }));
-                                }}
-                              />
+                                    setFormData((prev: any) => ({
+                                      ...prev,
+                                      project_id: selectedId,
+                                      campaign_id: nextCampaignId
+                                    }));
+                                  }}
+                                />
+                              )}
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
                                 <label className="form-label" style={{ fontSize: '0.72rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
-                                <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Con dự án</span>
+                                {currentUser?.role === 'sale' ? (
+                                  <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                    <Lock size={10} /> Cố định MKT
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Con dự án</span>
+                                )}
                               </div>
-                              {(() => {
-                                const filteredCamps = formData.project_id
-                                  ? allowedCampaigns.filter(c => Number(c.project_id) === Number(formData.project_id))
-                                  : allowedCampaigns;
-                                return (
-                                  <CustomSelect
-                                    searchable
-                                    options={[
-                                      { value: '', label: '— Chọn chiến dịch —' },
-                                      ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
-                                    ]}
-                                    value={formData.campaign_id ? String(formData.campaign_id) : ''}
-                                    onChange={val => {
-                                      const nextCampaign = val ? Number(val) : null;
-                                      let nextProjectId = formData.project_id;
-                                      if (nextCampaign) {
-                                        const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
-                                        if (campObj && campObj.project_id) {
-                                          nextProjectId = Number(campObj.project_id);
+                              {currentUser?.role === 'sale' ? (
+                                (() => {
+                                  const campName = allowedCampaigns.find(c => Number(c.id) === Number(formData.campaign_id))?.name || (formData.campaign_id ? `Chiến dịch #${formData.campaign_id}` : '—');
+                                  return (
+                                    <div style={{
+                                      background: 'var(--color-bg-subtle, #f8fafc)',
+                                      border: '1px solid var(--color-border)',
+                                      borderRadius: '6px',
+                                      padding: '3px 8px',
+                                      height: '28px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 700,
+                                      color: 'var(--color-text)',
+                                      cursor: 'not-allowed',
+                                      userSelect: 'none'
+                                    }}>
+                                      <span>{campName}</span>
+                                      <Lock size={11} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                                    </div>
+                                  );
+                                })()
+                              ) : (
+                                (() => {
+                                  const filteredCamps = formData.project_id
+                                    ? allowedCampaigns.filter(c => Number(c.project_id) === Number(formData.project_id))
+                                    : allowedCampaigns;
+                                  return (
+                                    <CustomSelect
+                                      searchable
+                                      options={[
+                                        { value: '', label: '— Chọn chiến dịch —' },
+                                        ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
+                                      ]}
+                                      value={formData.campaign_id ? String(formData.campaign_id) : ''}
+                                      onChange={val => {
+                                        const nextCampaign = val ? Number(val) : null;
+                                        let nextProjectId = formData.project_id;
+                                        if (nextCampaign) {
+                                          const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
+                                          if (campObj && campObj.project_id) {
+                                            nextProjectId = Number(campObj.project_id);
+                                          }
                                         }
-                                      }
-                                      setFormData((prev: any) => ({
-                                        ...prev,
-                                        campaign_id: nextCampaign,
-                                        project_id: nextProjectId
-                                      }));
-                                    }}
-                                  />
-                                );
-                              })()}
+                                        setFormData((prev: any) => ({
+                                          ...prev,
+                                          campaign_id: nextCampaign,
+                                          project_id: nextProjectId
+                                        }));
+                                      }}
+                                    />
+                                  );
+                                })()
+                              )}
                             </div>
                           </div>
 

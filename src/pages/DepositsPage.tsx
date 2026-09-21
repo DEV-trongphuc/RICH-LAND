@@ -15,7 +15,18 @@ import { CurrencyInput } from '../components/ui/CurrencyInput';
 
 const formatNumberWithCommas = (val: any) => {
   if (val === undefined || val === null || val === '') return '';
-  const cleanVal = String(val).replace(/[^0-9]/g, '');
+  if (typeof val === 'number') {
+    if (isNaN(val)) return '';
+    return Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+  const str = String(val).trim();
+  if (str.includes('.') && !str.includes(',')) {
+    const num = Number(str);
+    if (!isNaN(num)) {
+      return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+  }
+  const cleanVal = str.replace(/[^0-9]/g, '');
   if (!cleanVal) return '';
   return cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
@@ -528,7 +539,10 @@ export default function DepositsPage() {
 
   const handleOpenManageMilestones = (dep: Deposit) => {
     setSelectedDepForManage(dep);
-    setTempMilestones((dep.milestones || []).map(m => ({ ...m })));
+    setTempMilestones((dep.milestones || []).map(m => ({
+      ...m,
+      expected_amount: Math.round(Number(m.expected_amount) || 0)
+    })));
     setShowManageModal(true);
   };
 

@@ -10202,6 +10202,15 @@ switch ($action) {
                 'approval_reason' => $approval_reason,
                 'new_consultant_id' => $new_consultant_id
             ]);
+
+            // Sync contacts table - set pipeline_status to not_lead, unassign owner, clear proposal flag
+            $updContact = $conn->prepare("UPDATE contacts SET pipeline_status = 'not_lead', owner_id = NULL, not_lead_proposed = 0 WHERE lead_id = ? OR (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0)");
+            if ($updContact) {
+                $updContact->bind_param("ii", $report['lead_id'], $report['lead_id']);
+                $updContact->execute();
+                $updContact->close();
+            }
+
             $conn->commit();
             // Trigger Live Two-Way Sync to Google Sheets
             triggerTwoWaySync($conn, $report['lead_id']);
@@ -10609,6 +10618,15 @@ switch ($action) {
                 'round_id' => $report['round_id'],
                 'reject_reason' => $reject_reason
             ]);
+
+            // Reset not_lead_proposed on contacts table so contact returns to sales rep's active list
+            $updContact = $conn->prepare("UPDATE contacts SET not_lead_proposed = 0 WHERE lead_id = ? OR (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0)");
+            if ($updContact) {
+                $updContact->bind_param("ii", $report['lead_id'], $report['lead_id']);
+                $updContact->execute();
+                $updContact->close();
+            }
+
             $conn->commit();
         } catch (Exception $e) {
             $conn->rollback();
