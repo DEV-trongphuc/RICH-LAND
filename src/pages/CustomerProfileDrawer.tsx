@@ -7352,12 +7352,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <User size={13} />
                               </div>
                               <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                                1. Thông tin ban đầu (Inbound Lead)
+                                1. Thông tin ban đầu
                               </span>
                             </div>
-                            <span className="badge info" style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: '4px', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                              Nguồn: {formData.source || 'Quảng cáo'}
-                            </span>
                           </div>
 
                           {/* Họ & Tên */}
@@ -7464,7 +7461,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
                                 <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>
-                                  Phân loại Lead (Rank)
+                                  Phân loại Lead
                                 </label>
                                 <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                   <Lock size={10} /> Cố định MKT
@@ -7501,7 +7498,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
                                 <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>
-                                  Loại Lead : (loai_lead)
+                                  Loại Lead
                                 </label>
                                 <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                   <Lock size={10} /> Cố định MKT
@@ -7610,12 +7607,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
                                 <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
-                                {currentUser?.role === 'sale' ? (
+                                {currentUser?.role === 'sale' && (
                                   <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                     <Lock size={10} /> Cố định MKT
                                   </span>
-                                ) : (
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Con dự án</span>
                                 )}
                               </div>
                               {currentUser?.role === 'sale' ? (
@@ -7682,9 +7677,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>
                                 <FileText size={14} style={{ color: 'var(--color-primary)' }} />
-                                <span>Thông Tin Form Đăng Ký (Facebook Lead Ads)</span>
+                                <span>Thông Tin Form Đăng Ký</span>
                               </div>
-                              <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>Form Leads</span>
                             </div>
 
                             {(() => {
@@ -7849,7 +7843,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <Target size={14} />
                                 </div>
                                 <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                                  Thông tin sale khai thác (TTL1)
+                                  Thông tin sale khai thác
                                 </span>
                               </div>
                               <span 
@@ -7926,7 +7920,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                                 <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(3, 1fr)', gap: '8px' }}>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Ở đâu (1)</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Ở đâu</label>
                                     <input
                                       className="form-input sm"
                                       placeholder="Nơi ở / địa chỉ..."
@@ -7941,7 +7935,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     />
                                   </div>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Làm gì (2)</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Làm gì</label>
                                     <input
                                       className="form-input sm"
                                       placeholder="Nghề nghiệp..."
@@ -7956,7 +7950,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     />
                                   </div>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Gia đình (3)</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Gia đình</label>
                                     <input
                                       className="form-input sm"
                                       placeholder="Gia đình..."
@@ -7978,7 +7972,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>2. Khai thác 3 tiêu chí cốt lõi</span>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Hiện trạng (4):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Hiện trạng:</label>
                                   <AutoResizeTextarea
                                     className="form-input sm"
                                     minRows={2}
@@ -7996,7 +7990,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Nhu cầu (5):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Nhu cầu:</label>
                                   <AutoResizeTextarea
                                     className="form-input sm"
                                     minRows={2}
@@ -8014,7 +8008,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Rào cản (6):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Rào cản:</label>
                                   <AutoResizeTextarea
                                     className="form-input sm"
                                     minRows={2}
@@ -8032,9 +8026,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               </div>
 
-                              {/* KHỐI 3: THÔNG TIN BỔ SUNG (NẾU CÓ) */}
+                              {/* KHỐI 3: THÔNG TIN BỔ SUNG */}
                               <div style={{ background: 'var(--color-bg)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Thông tin bổ sung (nếu có)</span>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Thông tin bổ sung</span>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                   <AutoResizeTextarea
                                     className="form-input sm"
@@ -8053,12 +8047,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               </div>
 
-                              {/* KHỐI 4: KẾ HOẠCH CHỐT DEAL & NGÂN SÁCH (4) */}
+                              {/* KHỐI 4: KẾ HOẠCH CHỐT DEAL & NGÂN SÁCH */}
                               <div style={{ background: 'var(--color-bg)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>4. Kế hoạch chốt deal &amp; Ngân sách</span>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Giải pháp tiếp theo (7):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Giải pháp tiếp theo:</label>
                                   <AutoResizeTextarea
                                     className="form-input sm"
                                     minRows={2}
@@ -8076,7 +8070,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Ngân sách (8):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Ngân sách:</label>
                                   <CurrencyInput
                                     value={formData.budget || formData.budget_range || 0}
                                     onChange={val => setFormData((prev: any) => ({ ...prev, budget: val, budget_range: String(val) }))}
@@ -8113,7 +8107,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                         <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, 1fr)', gap: '0.875rem' }}>
                           <div className="form-group">
-                            <label className="form-label">Người đang phụ trách (Owner Sale)</label>
+                            <label className="form-label">Người đang phụ trách</label>
                             {currentUser?.role === 'sale' ? (
                               <div 
                                 style={{ padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
@@ -8147,7 +8141,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           <div className="form-group">
-                            <label className="form-label">Người cùng chăm sóc (Co-care / Hợp tác)</label>
+                            <label className="form-label">Người cùng chăm sóc</label>
                             <div
                               onClickCapture={(e) => {
                                 if (isViewer || !isMainOwnerOrManagerAdmin) {
@@ -8245,7 +8239,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           <div className="form-group">
-                            <label className="form-label">Khách hàng giới thiệu (Referrer)</label>
+                            <label className="form-label">Khách hàng giới thiệu</label>
                             <CustomSelect
                               options={referrerOptions}
                               value={formData.nguoi_gioi_thieu_id ? String(formData.nguoi_gioi_thieu_id) : ''}
@@ -8314,7 +8308,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           <div className="form-group">
-                            <label className="form-label">Mạng xã hội (Zalo / Facebook)</label>
+                            <label className="form-label">Mạng xã hội</label>
                             <div style={{ display: 'flex', gap: '0.5rem', flexDirection: isMobileOrTablet ? 'column' : 'row' }}>
                               <input className="form-input" placeholder="Zalo Link (https://zalo.me/...)" value={formData.zalo_link || ''} onChange={e => {
                                 const val = e.target.value;
@@ -8340,7 +8334,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
 
                               <div className="form-group">
-                                <label className="form-label">Công ty đối tác (Liên kết)</label>
+                                <label className="form-label">Công ty đối tác</label>
                                 <CustomSelect
                                   searchable
                                   options={[
@@ -12983,7 +12977,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 700 }}>Doanh thu dự kiến (Giá bán) *</label>
+                      <label className="form-label" style={{ fontWeight: 700 }}>Doanh thu dự kiến *</label>
                       <CurrencyInput
                         value={depositPrice}
                         onChange={val => setDepositPrice(String(val))}
@@ -15137,7 +15131,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           </div>
 
           <div className="form-group">
-            <label className="form-label">Ghi chú tóm tắt buổi gặp (Tùy chọn)</label>
+            <label className="form-label">Ghi chú tóm tắt buổi gặp</label>
             <textarea
               className="form-input"
               rows={3}
@@ -15272,7 +15266,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           </div>
 
           <div className="form-group">
-            <label className="form-label">Ghi chú Booking (Tùy chọn)</label>
+            <label className="form-label">Ghi chú Booking</label>
             <textarea
               className="form-input"
               rows={3}
