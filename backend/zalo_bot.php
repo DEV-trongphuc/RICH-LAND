@@ -936,7 +936,7 @@ function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestam
         $frontendUrl = rtrim($urlRes->fetch_assoc()['setting_value'], '/');
     }
     if (empty($frontendUrl)) {
-        $frontendUrl = 'http://localhost:5173'; // Fallback
+        $frontendUrl = 'https://crm.richland.city'; // Fallback
     }
     $portalUrl = $frontendUrl . '/sale-portal';
 
@@ -1081,7 +1081,7 @@ function generateMonthlyReportMessage($conn, $sale, $startTimestamp, $endTimesta
         $frontendUrl = rtrim($urlRes->fetch_assoc()['setting_value'], '/');
     }
     if (empty($frontendUrl)) {
-        $frontendUrl = 'http://localhost:5173'; // Fallback
+        $frontendUrl = 'https://crm.richland.city'; // Fallback
     }
     $portalUrl = $frontendUrl . '/sale-portal';
 

@@ -74,7 +74,7 @@ function runWeeklyReportCron($conn) {
             $frontendUrl = rtrim($urlRes->fetch_assoc()['setting_value'], '/');
         }
         if (empty($frontendUrl)) {
-            $frontendUrl = 'http://localhost:5173'; // Fallback
+            $frontendUrl = 'https://crm.richland.city'; // Fallback
         }
         $portalUrl = $frontendUrl . '/sale-portal';
 

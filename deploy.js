@@ -460,6 +460,11 @@ echo json_encode(["status" => "cleaned"]);
   // 10. Chạy Health Check toàn diện
   await runHealthCheck();
 
+function runCommand(cmd, timeoutMs = 30000) {
+  console.log(`> ${cmd}`);
+  execSync(cmd, { stdio: 'inherit', cwd: ROOT_DIR, timeout: timeoutMs });
+}
+
   // 11. Đồng bộ Git Commit & Push (Tuân thủ Quy tắc 5)
   console.log("\n🔄 8. Tự động đồng bộ mã nguồn lên Git Repository...");
   try {
@@ -469,8 +474,12 @@ echo json_encode(["status" => "cleaned"]);
       runCommand('git add .');
       const commitMsg = `Deploy production crm.richland.city - ${new Date().toLocaleString('vi-VN')}`;
       runCommand(`git commit -m "${commitMsg}"`);
-      runCommand('git push origin main');
-      console.log("  ✅ Đã đồng bộ Git thành công!");
+      try {
+        runCommand('git push origin main', 15000);
+        console.log("  ✅ Đã đồng bộ Git thành công!");
+      } catch (pushErr) {
+        console.warn("  ⚠️ Git Push cần xác thực hoặc mất kết nối:", pushErr.message);
+      }
     } else {
       console.log("  ℹ️ Mã nguồn Git đã ở trạng thái mới nhất, không có thay đổi cần commit.");
     }
