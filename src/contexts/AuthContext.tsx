@@ -52,6 +52,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
+  // Check if remember_me session has expired
+  const sessionExpires = localStorage.getItem('richland_session_expires');
+  if (sessionExpires && Date.now() > Number(sessionExpires)) {
+    localStorage.removeItem('richland_token');
+    localStorage.removeItem('richland_user');
+    localStorage.removeItem('richland_session_expires');
+  }
+
   const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem('richland_user');
     return storedUser ? normalizeUser(JSON.parse(storedUser)) : null;
@@ -73,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     localStorage.removeItem('richland_token');
     localStorage.removeItem('richland_user');
+    localStorage.removeItem('richland_session_expires');
     localStorage.removeItem('RICH LAND_DEMO_MODE');
   }, []);
 

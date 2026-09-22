@@ -246,9 +246,16 @@ class CpanelClient {
 }
 
 // ── 3. CÁC HÀM TIỆN ÍCH THI CÔNG ─────────────────────────────────────────────
-function runCommand(cmd, cwd = ROOT_DIR) {
+function runCommand(cmd, cwdOrTimeout = ROOT_DIR, timeoutMs = 180000) {
+  let cwd = ROOT_DIR;
+  let timeout = timeoutMs;
+  if (typeof cwdOrTimeout === 'number') {
+    timeout = cwdOrTimeout;
+  } else if (typeof cwdOrTimeout === 'string') {
+    cwd = cwdOrTimeout;
+  }
   console.log(`> ${cmd}`);
-  execSync(cmd, { stdio: 'inherit', cwd });
+  execSync(cmd, { stdio: 'inherit', cwd, timeout });
 }
 
 function fetchUrl(url, extraHeaders = {}) {
@@ -459,11 +466,6 @@ echo json_encode(["status" => "cleaned"]);
 
   // 10. Chạy Health Check toàn diện
   await runHealthCheck();
-
-function runCommand(cmd, timeoutMs = 180000) {
-  console.log(`> ${cmd}`);
-  execSync(cmd, { stdio: 'inherit', cwd: ROOT_DIR, timeout: timeoutMs });
-}
 
   // 11. Đồng bộ Git Commit & Push (Tuân thủ Quy tắc 5)
   console.log("\n🔄 8. Tự động đồng bộ mã nguồn lên Git Repository...");

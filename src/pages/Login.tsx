@@ -10,10 +10,14 @@ import { DigitPinInput } from '../components/ui/DigitPinInput';
 
 export const Login = () => {
   const { t } = useLanguage();
-  const [email, setEmail] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('richland_remember_me') !== 'false';
+  });
+  const [email, setEmail] = useState(() => {
+    return localStorage.getItem('richland_remembered_account') || '';
+  });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -149,9 +153,11 @@ export const Login = () => {
       if (res && res.success && res.data) {
         if (rememberMe) {
           localStorage.setItem('richland_remember_me', 'true');
+          localStorage.setItem('richland_remembered_account', email.trim());
           localStorage.setItem('richland_session_expires', String(Date.now() + 90 * 86400 * 1000));
         } else {
-          localStorage.removeItem('richland_remember_me');
+          localStorage.setItem('richland_remember_me', 'false');
+          localStorage.removeItem('richland_remembered_account');
           localStorage.removeItem('richland_session_expires');
         }
 
@@ -404,7 +410,6 @@ export const Login = () => {
               <div className="form-group-custom">
                 <label className="form-label-custom">{t("Email hoặc Tên đăng nhập")}</label>
                 <div className="input-wrapper">
-                  <Mail size={18} className="input-icon-left" />
                   <input
                     type="text"
                     className="input-field"
@@ -417,32 +422,37 @@ export const Login = () => {
                     autoComplete="username"
                     required
                   />
+                  <div className="input-actions-right">
+                    <Mail size={19} className="input-icon-right" />
+                  </div>
                 </div>
               </div>
 
               <div className="form-group-custom">
                 <label className="form-label-custom">{t("Mật khẩu")}</label>
                 <div className="input-wrapper">
-                  <Lock size={18} className="input-icon-left" />
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="input-field"
+                    className="input-field input-field-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t("Nhập mật khẩu")}
                     autoComplete="current-password"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
-                    className="input-btn-right"
-                    title={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
-                    aria-label={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                  <div className="input-actions-right">
+                    <Lock size={19} className="input-icon-right-lock" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex={-1}
+                      className="input-btn-right"
+                      title={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
+                      aria-label={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
+                    >
+                      {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -879,24 +889,30 @@ export const Login = () => {
           display: flex;
           align-items: center;
         }
-        .input-icon-left {
+        .input-actions-right {
           position: absolute;
-          left: 14px;
+          right: 14px;
           top: 50%;
           transform: translateY(-50%);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          z-index: 2;
+        }
+        .input-icon-right,
+        .input-icon-right-lock {
           color: #64748b;
           pointer-events: none;
           transition: color 0.2s ease;
-          z-index: 2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
-        .input-wrapper:focus-within .input-icon-left {
+        .input-wrapper:focus-within .input-icon-right,
+        .input-wrapper:focus-within .input-icon-right-lock {
           color: #ef4444;
         }
         .input-btn-right {
-          position: absolute;
-          right: 10px;
-          top: 50%;
-          transform: translateY(-50%);
           background: transparent;
           border: none;
           color: #64748b;
@@ -907,7 +923,6 @@ export const Login = () => {
           align-items: center;
           justify-content: center;
           transition: all 0.2s ease;
-          z-index: 2;
         }
         .input-btn-right:hover {
           color: #f1f5f9;
@@ -915,22 +930,35 @@ export const Login = () => {
         }
         .input-field {
           width: 100%;
-          height: 48px;
-          padding-left: 44px;
-          padding-right: 44px;
-          border-radius: 12px;
+          height: 50px;
+          padding-left: 16px !important;
+          padding-right: 48px !important;
+          border-radius: 14px;
           border: 1px solid rgba(255, 255, 255, 0.1);
           background: rgba(15, 23, 42, 0.85);
           color: white;
-          font-size: 14px;
+          font-size: 15px;
           transition: all 0.2s ease;
           box-sizing: border-box;
+        }
+        .input-field.input-field-password {
+          padding-right: 80px !important;
         }
         .input-field:focus {
           outline: none;
           border-color: #ef4444;
           box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
           background: rgba(15, 23, 42, 0.95);
+        }
+        /* Chrome/Safari/Edge Autofill Dark Fix */
+        .input-field:-webkit-autofill,
+        .input-field:-webkit-autofill:hover, 
+        .input-field:-webkit-autofill:focus {
+          -webkit-text-fill-color: #ffffff !important;
+          -webkit-box-shadow: 0 0 0px 1000px #0f172a inset !important;
+          box-shadow: 0 0 0px 1000px #0f172a inset !important;
+          caret-color: #ffffff !important;
+          transition: background-color 5000s ease-in-out 0s;
         }
         .remember-forgot-row {
           display: flex;
@@ -1147,17 +1175,20 @@ export const Login = () => {
             border-radius: 24px;
           }
           .input-field {
-            height: 52px;
-            font-size: 16px;
-            padding-left: 48px;
-            padding-right: 48px;
-            border-radius: 14px;
+            height: 56px !important;
+            font-size: 16px !important;
+            padding-left: 18px !important;
+            padding-right: 52px !important;
+            border-radius: 16px !important;
           }
-          .input-icon-left {
-            left: 16px;
+          .input-field.input-field-password {
+            padding-right: 84px !important;
+          }
+          .input-actions-right {
+            right: 16px;
+            gap: 10px;
           }
           .input-btn-right {
-            right: 12px;
             padding: 8px;
           }
           .submit-btn-custom {
