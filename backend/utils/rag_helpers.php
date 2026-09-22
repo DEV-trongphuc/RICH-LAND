@@ -41,7 +41,15 @@ if (!function_exists('extract_pdf_text_via_gemini')) {
             ]
         ];
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . $apiKey;
+        global $conn;
+        $pdfModel = "gemini-2.5-flash-lite";
+        if (isset($conn) && function_exists('get_system_setting')) {
+            $customModel = get_system_setting($conn, 'gemini_model');
+            if (!empty($customModel)) {
+                $pdfModel = $customModel;
+            }
+        }
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $pdfModel . ":generateContent?key=" . $apiKey;
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

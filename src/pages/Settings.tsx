@@ -309,7 +309,7 @@ const SettingsInner = () => {
 
   // States for Gemini API Connection
   const [geminiApiKey, setGeminiApiKey] = useState('');
-  const [geminiModel, setGeminiModel] = useState('gemini-2.5-flash');
+  const [geminiModel, setGeminiModel] = useState('gemini-2.5-flash-lite');
 
   // AI Screener Config
   const [aiScreenerEnabled, setAiScreenerEnabled] = useState(false);
@@ -2613,7 +2613,7 @@ const SettingsInner = () => {
                     type="text"
                     value={geminiModel}
                     onChange={e => setGeminiModel(e.target.value)}
-                    placeholder="gemini-2.5-flash"
+                    placeholder="gemini-2.5-flash-lite"
                     style={{
                       padding: '10px 12px',
                       border: '1px solid var(--color-border)',
@@ -2626,7 +2626,7 @@ const SettingsInner = () => {
                     }}
                   />
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    {t('Mặc định sử dụng')} <strong>gemini-2.5-flash</strong> {t('(hoặc bạn có thể chỉ định mô hình tương thích khác như')} <code>gemini-2.5-flash-lite</code> {t('nếu cần).')}
+                    {t('Mặc định sử dụng')} <strong>gemini-2.5-flash-lite</strong> {t('(hoặc bạn có thể chỉ định mô hình tương thích khác như')} <code>gemini-2.5-flash</code> {t('nếu cần).')}
                   </span>
                 </div>
               </div>

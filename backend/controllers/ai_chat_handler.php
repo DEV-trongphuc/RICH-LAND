@@ -24,7 +24,7 @@ try {
     }
 
     // Default parameters for Gemini
-    $model = "gemini-2.5-flash";
+    $model = get_system_setting($conn, 'gemini_model') ?: 'gemini-2.5-flash-lite';
 
     // SQL execution helper closure inside this handler scope
     $executeSafeSql = function($conn, $sql) {
