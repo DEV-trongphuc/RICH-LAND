@@ -460,7 +460,7 @@ echo json_encode(["status" => "cleaned"]);
   // 10. Chạy Health Check toàn diện
   await runHealthCheck();
 
-function runCommand(cmd, timeoutMs = 30000) {
+function runCommand(cmd, timeoutMs = 180000) {
   console.log(`> ${cmd}`);
   execSync(cmd, { stdio: 'inherit', cwd: ROOT_DIR, timeout: timeoutMs });
 }
@@ -474,14 +474,20 @@ function runCommand(cmd, timeoutMs = 30000) {
       runCommand('git add .');
       const commitMsg = `Deploy production crm.richland.city - ${new Date().toLocaleString('vi-VN')}`;
       runCommand(`git commit -m "${commitMsg}"`);
+    }
+
+    // Luôn kiểm tra xem branch có commits cần push lên origin không
+    const branchStatus = execSync('git status -sb', { cwd: ROOT_DIR, encoding: 'utf8' });
+    if (branchStatus.includes('ahead') || gitStatus.trim().length > 0) {
+      console.log("  🚀 Đang đẩy mã nguồn mới lên Git remote (origin main)...");
       try {
-        runCommand('git push origin main', 15000);
+        runCommand('git push origin main', 30000);
         console.log("  ✅ Đã đồng bộ Git thành công!");
       } catch (pushErr) {
         console.warn("  ⚠️ Git Push cần xác thực hoặc mất kết nối:", pushErr.message);
       }
     } else {
-      console.log("  ℹ️ Mã nguồn Git đã ở trạng thái mới nhất, không có thay đổi cần commit.");
+      console.log("  ℹ️ Mã nguồn Git đã đồng bộ hoàn toàn với remote.");
     }
   } catch (gitErr) {
     console.warn("  ⚠️ Ghi chú Git:", gitErr.message);
