@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video, UserX } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video, UserX, ArrowLeft } from 'lucide-react';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -1664,8 +1664,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const editableFields = [
       'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
-      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
-      'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data', 'collaborator_ids', 'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'nguoi_gioi_thieu_id'
+      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget', 'budget_range',
+      'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data', 'collaborator_ids', 'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'nguoi_gioi_thieu_id',
+      'phone2', 'dob', 'citizen_id', 'district', 'company', 'tax_code', 'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
+      'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai', 'facebook_link', 'link_fb'
     ];
 
     const cleanObject = (obj: any) => {
@@ -1703,14 +1705,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
       'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact', 'created_at',
-      'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range', 'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data',
+      'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget', 'budget_range', 'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data',
       'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'collaborator_ids', 'nguoi_gioi_thieu_id',
+      'phone2', 'dob', 'citizen_id', 'district', 'company', 'tax_code', 'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
       'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai', 'facebook_link', 'link_fb'
     ];
     const payload: Record<string, any> = {};
     allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });
+    if (formData.budget !== undefined) {
+      payload.budget = (formData.budget === '' || formData.budget === null) ? 0 : Number(formData.budget);
+    }
     payload.tags = tags;
     payload.lead_score = score;
+    if (ttl1Data.o_dau && !payload.address) payload.address = ttl1Data.o_dau;
+    if (ttl1Data.lam_gi && !payload.job_title) payload.job_title = ttl1Data.lam_gi;
+    const fullTtl1 = {
+      ...ttl1Data,
+      o_dau: formData.address || ttl1Data.o_dau || '',
+      lam_gi: formData.job_title || ttl1Data.lam_gi || '',
+      ngan_sach: formData.budget || ttl1Data.ngan_sach || ''
+    };
+    payload.ttl1_data = JSON.stringify(fullTtl1);
+
     if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
       for (const f of formData.custom_fields) {
         const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
@@ -1961,12 +1977,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     group3: boolean;
     group4: boolean;
     group5: boolean;
+    o_dau?: string;
+    lam_gi?: string;
     gia_dinh?: string;
     hien_trang?: string;
     nhu_cau?: string;
     rao_can?: string;
     thong_tin_bo_sung?: string;
     giai_phap?: string;
+    ngan_sach?: string | number;
   }>(() => {
     try {
       if (contact.ttl1_data) {
@@ -1977,16 +1996,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           group3: Boolean(parsed.group3),
           group4: Boolean(parsed.group4),
           group5: Boolean(parsed.group5),
+          o_dau: parsed.o_dau || contact.address || '',
+          lam_gi: parsed.lam_gi || contact.job_title || '',
           gia_dinh: parsed.gia_dinh || '',
           hien_trang: parsed.hien_trang || '',
           nhu_cau: parsed.nhu_cau || '',
           rao_can: parsed.rao_can || '',
           thong_tin_bo_sung: parsed.thong_tin_bo_sung || '',
-          giai_phap: parsed.giai_phap || ''
+          giai_phap: parsed.giai_phap || '',
+          ngan_sach: parsed.ngan_sach || contact.budget || ''
         };
       }
     } catch {}
-    return { group1: false, group2: false, group3: false, group4: false, group5: false, gia_dinh: '', hien_trang: '', nhu_cau: '', rao_can: '', thong_tin_bo_sung: '', giai_phap: '' };
+    return { group1: false, group2: false, group3: false, group4: false, group5: false, o_dau: contact?.address || '', lam_gi: contact?.job_title || '', gia_dinh: '', hien_trang: '', nhu_cau: '', rao_can: '', thong_tin_bo_sung: '', giai_phap: '', ngan_sach: contact?.budget || '' };
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
   const [ttl1ViewMode, setTtl1ViewMode] = useState<'fields' | 'text'>('fields');
@@ -1994,8 +2016,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   // Đếm số trường TTL1 đã điền (Tổng 8 trường)
   const filledTTL1Count = useMemo(() => {
     let count = 0;
-    if ((formData.address || '').trim()) count++;
-    if ((formData.job_title || '').trim()) count++;
+    if ((formData.address || ttl1Data.o_dau || '').trim()) count++;
+    if ((formData.job_title || ttl1Data.lam_gi || '').trim()) count++;
     if ((ttl1Data.gia_dinh || '').trim()) count++;
     if ((ttl1Data.hien_trang || '').trim()) count++;
     if ((ttl1Data.nhu_cau || '').trim()) count++;
@@ -2021,8 +2043,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       `📋 THÔNG TIN TƯƠNG TÁC LẦN 1 (TTL1) - ${contactName} (${formData.phone || ''})`,
       '',
       '1. Chân dung khách hàng:',
-      `- Ở đâu: ${formData.address || 'Chưa cập nhật'}`,
-      `- Làm gì: ${formData.job_title || 'Chưa cập nhật'}`,
+      `- Ở đâu: ${formData.address || ttl1Data.o_dau || 'Chưa cập nhật'}`,
+      `- Làm gì: ${formData.job_title || ttl1Data.lam_gi || 'Chưa cập nhật'}`,
       `- Gia đình: ${ttl1Data.gia_dinh || 'Chưa cập nhật'}`,
       '',
       '2. Tiếp cận & Khai thác nhu cầu:',
@@ -2306,26 +2328,42 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [scoringRules, setScoringRules] = useState<any>(null);
   const handleSaveTTL1 = async (rawUpdatedData: typeof ttl1Data) => {
     setIsSavingTTL1(true);
-    const sanitizedData = {
+    const fullTtl1Data = {
+      ...rawUpdatedData,
       group1: Boolean(rawUpdatedData?.group1),
       group2: Boolean(rawUpdatedData?.group2),
       group3: Boolean(rawUpdatedData?.group3),
       group4: Boolean(rawUpdatedData?.group4),
-      group5: Boolean(rawUpdatedData?.group5)
+      group5: Boolean(rawUpdatedData?.group5),
+      o_dau: rawUpdatedData.o_dau || formData.address || '',
+      lam_gi: rawUpdatedData.lam_gi || formData.job_title || ''
     };
-    const count = Object.values(sanitizedData).filter(Boolean).length;
-    const completed = count >= 4 ? 1 : 0;
+    const completed = filledTTL1Count >= 5 ? 1 : 0;
     
     // Optimistic local state update
-    setFormData((prev: any) => ({ ...prev, ttl1_completed: completed, ttl1_data: JSON.stringify(sanitizedData) }));
+    setFormData((prev: any) => ({
+      ...prev,
+      ttl1_completed: completed,
+      ttl1_data: JSON.stringify(fullTtl1Data),
+      address: fullTtl1Data.o_dau || prev.address,
+      job_title: fullTtl1Data.lam_gi || prev.job_title
+    }));
 
     try {
       await api.put(`/contacts/${contact.id}`, {
         ttl1_completed: completed,
-        ttl1_data: JSON.stringify(sanitizedData)
+        ttl1_data: JSON.stringify(fullTtl1Data),
+        address: fullTtl1Data.o_dau || formData.address,
+        job_title: fullTtl1Data.lam_gi || formData.job_title
       });
       addToast('Cập nhật Form TTL1 thành công!', 'success');
-      onUpdate?.({ ...formData, ttl1_completed: completed, ttl1_data: JSON.stringify(sanitizedData) });
+      onUpdate?.({
+        ...formData,
+        ttl1_completed: completed,
+        ttl1_data: JSON.stringify(fullTtl1Data),
+        address: fullTtl1Data.o_dau || formData.address,
+        job_title: fullTtl1Data.lam_gi || formData.job_title
+      });
       window.dispatchEvent(new CustomEvent('contact-updated'));
     } catch (e: any) {
       addToast('Lỗi khi lưu Form TTL1', 'error');
@@ -3194,16 +3232,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const renderMarketingNoteSection = (margin = '1rem 0 0 0') => {
-    const rawNote = (contact?.lead_note || contact?.marketing_note || contact?.lead_notes || contact?.notes || formData.lead_note || formData.notes || '').trim();
-    const { cleanNote, measurementData } = parseWebhookData(rawNote);
+    const rawNote = (contact?.lead_note || contact?.marketing_note || contact?.lead_notes || contact?.notes || formData?.lead_note || formData?.notes || '').trim();
+    const { cleanNote } = parseWebhookData(rawNote);
     const locationPref = contact?.lead_preferred_location || contact?.preferred_location;
     const bedroomPref = contact?.lead_bedroom_count || contact?.bedroom_count;
     const demandPref = contact?.lead_demand_type || contact?.demand_type;
-    const budgetPref = contact?.lead_budget || contact?.budget;
-    const rawDataType = contact?.lead_type || contact?.customer_type;
-    // Don't render dataType badge if it's the property type / loai_hinh already shown in Form Leads
-    const dataType = (rawDataType && rawDataType !== contact?.type) ? rawDataType : null;
-    const hasMarketingInfo = !!(cleanNote || locationPref || bedroomPref || demandPref || budgetPref || dataType);
+    const rawBudget = contact?.lead_budget || contact?.budget || formData?.lead_budget || formData?.budget;
+    const numBudget = Number(rawBudget);
+    const isBudgetValid = rawBudget !== undefined && rawBudget !== null && 
+      rawBudget !== '0' && rawBudget !== '0.00' && rawBudget !== '0.0' && rawBudget !== 0 && 
+      !isNaN(numBudget) && numBudget > 0;
+    const budgetPref = isBudgetValid ? (
+      numBudget >= 1000000
+        ? (numBudget >= 1000000000 
+            ? `${(numBudget / 1000000000).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} tỷ` 
+            : `${(numBudget / 1000000).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} triệu`)
+        : `${numBudget.toLocaleString('vi-VN')} đ`
+    ) : null;
+    const hasMarketingInfo = !!(cleanNote || locationPref || bedroomPref || demandPref || budgetPref);
 
     if (!hasMarketingInfo) return null;
 
@@ -3224,11 +3270,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           <h4 style={{ fontWeight: 800, fontSize: '0.9375rem', color: '#92400e', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
             {t('Ghi chú & Nhu cầu từ Marketing')}
           </h4>
-          {dataType && (
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: '#fef3c7', color: '#b45309', marginLeft: 'auto' }}>
-              {dataType}
-            </span>
-          )}
         </div>
 
         {cleanNote && (
@@ -3295,6 +3336,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             setFormData(prev => ({ ...prev, ...freshContact }));
             setBaseData(freshContact);
             lastLoadedContactIdRef.current = freshContact.id;
+            try {
+              if (freshContact.ttl1_data) {
+                const parsed = typeof freshContact.ttl1_data === 'string' ? JSON.parse(freshContact.ttl1_data) : freshContact.ttl1_data;
+                if (parsed && typeof parsed === 'object') {
+                  setTtl1Data(prev => ({
+                    ...prev,
+                    ...parsed,
+                    o_dau: parsed.o_dau || freshContact.address || prev.o_dau || '',
+                    lam_gi: parsed.lam_gi || freshContact.job_title || prev.lam_gi || ''
+                  }));
+                }
+              } else if (freshContact.address || freshContact.job_title) {
+                setTtl1Data(prev => ({
+                  ...prev,
+                  o_dau: freshContact.address || prev.o_dau || '',
+                  lam_gi: freshContact.job_title || prev.lam_gi || ''
+                }));
+              }
+            } catch {}
           }
         } catch (err) {} finally {
           setLoadingContactDetails(false);
@@ -3661,7 +3721,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [isOpen, contact?.id, fetchData]);
 
   useEffect(() => {
-    if (contact) {
+    if (isOpen && contact) {
       const isNewContact = contact.id !== prevContactId;
       
       const cleanPhone = (contact.phone || '').replace(/[^0-9]/g, '');
@@ -3682,6 +3742,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         setZaloSource('none');
       }
 
+      if (!isNewContact && prevContactId !== null) {
+        return;
+      }
+
       const wb = parseWebhookData((contact.notes || contact.lead_note || '').trim());
       const mergedContact = {
         ...contact,
@@ -3698,7 +3762,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setBaseData(mergedContact);
       setBaseTags(contact.tags || []);
       
-      let initialTtl1 = { group1: false, group2: false, group3: false, group4: false, group5: false };
+      let initialTtl1 = { group1: false, group2: false, group3: false, group4: false, group5: false, o_dau: '', lam_gi: '', gia_dinh: '', hien_trang: '', nhu_cau: '', rao_can: '', thong_tin_bo_sung: '', giai_phap: '' };
       try {
         if (contact.ttl1_data) {
           const parsed = typeof contact.ttl1_data === 'string' ? JSON.parse(contact.ttl1_data) : contact.ttl1_data;
@@ -3707,6 +3771,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           }
         }
       } catch {}
+      if (!initialTtl1.o_dau && contact.address) initialTtl1.o_dau = contact.address;
+      if (!initialTtl1.lam_gi && contact.job_title) initialTtl1.lam_gi = contact.job_title;
       setTtl1Data(initialTtl1);
 
       if (isNewContact) {
@@ -3730,7 +3796,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     } else {
       setPrevContactId(null);
     }
-  }, [contact, prevContactId, initialTab, isMobileOrTablet]);
+  }, [isOpen, contact?.id, prevContactId, initialTab, isMobileOrTablet]);
 
   useEffect(() => {
     if (formData.campaign_id && !formData.project_id && allowedCampaigns.length > 0) {
@@ -4129,13 +4195,26 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       pipeline_status: targetId,
       status: calculatedStatus
     }));
+    setBaseData((prev: any) => ({
+      ...prev,
+      pipeline_status: targetId,
+      status: calculatedStatus
+    }));
 
     try {
+      const fullTtl1 = {
+        ...ttl1Data,
+        o_dau: formData.address || ttl1Data.o_dau || '',
+        lam_gi: formData.job_title || ttl1Data.lam_gi || ''
+      };
+
       await api.put(`/contacts/${contact.id}`, {
         pipeline_status: targetId,
         status: calculatedStatus,
+        address: formData.address || ttl1Data.o_dau,
+        job_title: formData.job_title || ttl1Data.lam_gi,
         ttl1_completed: formData.ttl1_completed,
-        ttl1_data: formData.ttl1_data
+        ttl1_data: JSON.stringify(fullTtl1)
       });
 
       // Only create activity note if user explicitly provided a custom note
@@ -4155,12 +4234,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         });
       }
 
-      fetchData();
-      addToast(`Đã cập nhật trạng thái sang "${targetLabel}" thành công!`, 'success');
-      onUpdate?.({ ...formData, pipeline_status: targetId, status: calculatedStatus });
+      const updatedContactObj = { ...formData, ...contact, pipeline_status: targetId, status: calculatedStatus };
+      onUpdate?.(updatedContactObj);
       window.dispatchEvent(new CustomEvent('contact-updated'));
+      addToast(`Đã cập nhật trạng thái sang "${targetLabel}" thành công!`, 'success');
+      await fetchData();
     } catch (e: any) {
       setFormData((prev: any) => ({
+        ...prev,
+        pipeline_status: contact.pipeline_status,
+        status: contact.status
+      }));
+      setBaseData((prev: any) => ({
         ...prev,
         pipeline_status: contact.pipeline_status,
         status: contact.status
@@ -5055,33 +5140,56 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         localStorage.setItem(`richland_folders_contact_${contact.id}`, JSON.stringify(updatedFolders));
       }
 
-      // 3. Complete pipeline stage transition if pending
+      // 3. Immediately transition pipeline to dat_coc in state and baseData
+      setFormData((prev: any) => ({
+        ...prev,
+        pipeline_status: 'dat_coc',
+        status: 'customer'
+      }));
+      setBaseData((prev: any) => ({
+        ...prev,
+        pipeline_status: 'dat_coc',
+        status: 'customer'
+      }));
+
+      const fullTtl1 = {
+        ...ttl1Data,
+        o_dau: formData.address || ttl1Data.o_dau || '',
+        lam_gi: formData.job_title || ttl1Data.lam_gi || ''
+      };
+
+      // 4. Complete pipeline stage transition in database
+      await api.put(`/contacts/${contact.id}`, { 
+        pipeline_status: 'dat_coc', 
+        status: 'customer',
+        address: formData.address || ttl1Data.o_dau,
+        job_title: formData.job_title || ttl1Data.lam_gi,
+        ttl1_completed: formData.ttl1_completed,
+        ttl1_data: JSON.stringify(fullTtl1)
+      });
+
       if (pendingPipelineTransition) {
-        const { targetId, targetLabel, note } = pendingPipelineTransition;
-        const calculatedStatus = 'customer';
-
-        await api.put(`/contacts/${contact.id}`, { 
-          pipeline_status: targetId, 
-          status: calculatedStatus,
-          ttl1_completed: formData.ttl1_completed,
-          ttl1_data: formData.ttl1_data
-        });
-
-        await api.post('/activities', {
-          type: 'note',
-          subject: `Chuyển trạng thái Pipeline → ${targetLabel}`,
-          body: note || null,
-          status: 'done',
-          related_type: 'contact',
-          related_id: contact.id,
-          contact_id: contact.id,
-          user_id: currentUser?.id,
-          due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
-          done_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-        });
-
+        const { targetLabel, note } = pendingPipelineTransition;
+        if (note && note.trim()) {
+          await api.post('/activities', {
+            type: 'note',
+            subject: `Chuyển trạng thái Pipeline → ${targetLabel}`,
+            body: note.trim(),
+            status: 'done',
+            related_type: 'contact',
+            related_id: contact.id,
+            contact_id: contact.id,
+            user_id: currentUser?.id,
+            due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            done_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+          });
+        }
         setPendingPipelineTransition(null);
       }
+
+      const updatedContactObj = { ...formData, ...contact, pipeline_status: 'dat_coc', status: 'customer' };
+      onUpdate?.(updatedContactObj);
+      window.dispatchEvent(new CustomEvent('contact-updated'));
 
       if (hasCoopSalesCheck && createCoopSlipChoice) {
         addToast('Tạo phiếu cọc và tự động khởi tạo Phiếu hợp tác phân chia hoa hồng thành công!', 'success');
@@ -5100,7 +5208,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
       setDepositUncFile(null);
       
-      fetchData();
+      await fetchData();
       await fetchCoopSlip();
 
       if (hasCoopSalesCheck && createCoopSlipChoice) {
@@ -5991,10 +6099,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   flexShrink: 0
                 }}>
                   <button 
-                    onClick={handleClose} 
-                    style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                    onClick={() => {
+                      if (activeTab) {
+                        setActiveTab('');
+                      } else {
+                        handleClose();
+                      }
+                    }} 
+                    style={{ background: 'transparent', border: 'none', color: 'var(--color-text)', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}
+                    title={activeTab ? "Quay lại" : "Thoát"}
                   >
-                    <LogOut size={20} style={{ transform: 'rotate(180deg)' }} />
+                    {activeTab ? (
+                      <ArrowLeft size={20} style={{ color: 'var(--color-text)' }} />
+                    ) : (
+                      <LogOut size={20} style={{ transform: 'rotate(180deg)' }} />
+                    )}
                   </button>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0.5rem', overflow: 'hidden' }}>
                     <Avatar 
@@ -7059,8 +7178,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        padding: '12px 16px',
+                        justifyContent: 'flex-start',
+                        padding: '12px 16px 4px 16px',
                         background: 'transparent',
                         borderBottom: 'none',
                         position: 'sticky',
@@ -7068,25 +7187,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         zIndex: 10,
                         flexShrink: 0
                       }}>
-                        <button
-                          onClick={() => setActiveTab('')}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            cursor: 'pointer',
-                            padding: '6px 12px 6px 4px',
-                            marginLeft: '-4px',
-                            textAlign: 'left'
-                          }}
-                        >
-                          <ChevronLeft size={20} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)' }}>
-                            {TABS.find(t => t.id === activeTab)?.label || ''}
-                          </span>
-                        </button>
+                        <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                          {TABS.find(t => t.id === activeTab)?.label || ''}
+                        </span>
                       </div>
                     )}
 
@@ -7246,25 +7349,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                           {/* Họ & Tên */}
                           <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Họ &amp; Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                            <div style={{ display: 'flex', gap: '0.35rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', minHeight: '18px' }}>
+                              <label className="form-label" style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700 }}>Họ &amp; Tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
                               <input className="form-input sm" placeholder="Họ" value={formData.first_name || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, first_name: val }));
-                              }} style={{ flex: 1, minWidth: 0, height: '28px', fontSize: '0.78rem' }} />
+                              }} style={{ flex: 1, minWidth: 0, height: '32px', fontSize: '0.8125rem' }} />
                               <input className="form-input sm" placeholder="Tên" value={formData.last_name || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, last_name: val }));
-                              }} style={{ flex: 1, minWidth: 0, height: '28px', fontSize: '0.78rem' }} />
+                              }} style={{ flex: 1, minWidth: 0, height: '32px', fontSize: '0.8125rem' }} />
                             </div>
                           </div>
 
                           {/* SĐT chính & Email gộp chung 1 hàng */}
-                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '0.45rem', marginBottom: 0 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '8px', marginBottom: 0 }}>
                             {/* Số điện thoại chính */}
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px', minHeight: '18px' }}>
-                                <label className="form-label" style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700 }}>Số điện thoại chính <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', minHeight: '18px' }}>
+                                <label className="form-label" style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700 }}>Số điện thoại chính <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                                 <span 
                                   onClick={() => {
                                     if (!formData.phone?.trim()) return;
@@ -7284,7 +7389,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     color: zaloSource === 'primary' ? '#0068FF' : 'var(--color-text-muted)',
                                     background: zaloSource === 'primary' ? 'rgba(0, 104, 255, 0.1)' : 'var(--color-bg)',
                                     border: `1px solid ${zaloSource === 'primary' ? '#0068FF' : 'var(--color-border)'}`,
-                                    padding: '1px 5px',
+                                    padding: '1px 6px',
                                     borderRadius: '4px'
                                   }}
                                 >
@@ -7297,13 +7402,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   placeholder="09..." 
                                   value={formData.phone || ''} 
                                   onChange={e => setFormData((prev: any) => ({ ...prev, phone: e.target.value }))}
-                                  style={{ paddingRight: '48px', height: '28px', fontSize: '0.78rem' }}
+                                  style={{ paddingRight: '52px', height: '32px', fontSize: '0.8125rem' }}
                                 />
-                                <div style={{ position: 'absolute', right: '3px', display: 'flex', gap: '1px' }}>
+                                <div style={{ position: 'absolute', right: '4px', display: 'flex', gap: '2px' }}>
                                   <button 
                                     type="button" 
                                     className="btn-icon xs" 
-                                    style={{ height: '22px', width: '22px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer' }} 
+                                    style={{ height: '24px', width: '24px', border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer' }} 
                                     title="Sao chép"
                                     onClick={() => {
                                       if (formData.phone) {
@@ -7312,18 +7417,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       }
                                     }}
                                   >
-                                    <Copy size={11} />
+                                    <Copy size={12} />
                                   </button>
                                   <button 
                                     type="button" 
                                     className="btn-icon xs" 
-                                    style={{ height: '22px', width: '22px', border: 'none', background: 'transparent', color: 'var(--color-success)', cursor: 'pointer' }} 
+                                    style={{ height: '24px', width: '24px', border: 'none', background: 'transparent', color: 'var(--color-success)', cursor: 'pointer' }} 
                                     title="Gọi điện"
                                     onClick={() => {
                                       if (formData.phone) showCall(formData.phone);
                                     }}
                                   >
-                                    <Phone size={11} />
+                                    <Phone size={12} />
                                   </button>
                                 </div>
                               </div>
@@ -7331,61 +7436,61 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                             {/* Email */}
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px', minHeight: '18px' }}>
-                                <label className="form-label" style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700 }}>Email</label>
+                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', minHeight: '18px' }}>
+                                <label className="form-label" style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700 }}>Email</label>
                               </div>
                               <input className="form-input sm" placeholder="email@domain.com" value={formData.email || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, email: val }));
-                              }} style={{ height: '28px', fontSize: '0.78rem' }} />
+                              }} style={{ height: '32px', fontSize: '0.8125rem' }} />
                             </div>
                           </div>
 
                           {/* 1. HÀNG: PHÂN LOẠI LEAD (RANK) & LOẠI LEAD (LOAI_LEAD) - KHÔNG CHO PHÉP CHỈNH SỬA */}
-                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '8px', marginBottom: 0 }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                                <label className="form-label" style={{ fontSize: '0.72rem', margin: 0, fontWeight: 700 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
+                                <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>
                                   Phân loại Lead (Rank)
                                 </label>
-                                <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                   <Lock size={10} /> Cố định MKT
                                 </span>
                               </div>
                               {(() => {
                                 const currentRank = contact?.lead_phan_loai || webhookData.parsed['lead_phan_loai'] || formData.lead_phan_loai || (formData.source !== 'Website' && formData.source !== 'other' ? formData.source : '') || '—';
                                 return (
-                                  <div style={{
-                                    background: 'var(--color-bg-subtle, #f8fafc)',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: '6px',
-                                    padding: '3px 8px',
-                                    height: '28px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    fontSize: '0.78rem',
-                                    fontWeight: 700,
-                                    color: 'var(--color-text)',
-                                    cursor: 'not-allowed',
-                                    userSelect: 'none'
-                                  }}>
+                                  <div 
+                                    title="Phân loại Rank nguồn lead được map lúc Tích hợp Data"
+                                    style={{
+                                      background: 'var(--color-bg-subtle, #f8fafc)',
+                                      border: '1px solid var(--color-border)',
+                                      borderRadius: '6px',
+                                      padding: '4px 10px',
+                                      height: '32px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      fontSize: '0.8125rem',
+                                      fontWeight: 700,
+                                      color: 'var(--color-text)',
+                                      cursor: 'not-allowed',
+                                      userSelect: 'none'
+                                    }}
+                                  >
                                     <span>{currentRank}</span>
-                                    <Lock size={11} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                                    <Lock size={12} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
                                   </div>
                                 );
                               })()}
-                              <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', marginTop: '1px', display: 'block' }}>
-                                Phân loại Rank nguồn lead được map lúc Tích hợp Data
-                              </span>
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                                <label className="form-label" style={{ fontSize: '0.72rem', margin: 0, fontWeight: 700 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
+                                <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>
                                   Loại Lead : (loai_lead)
                                 </label>
-                                <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                   <Lock size={10} /> Cố định MKT
                                 </span>
                               </div>
@@ -7406,19 +7511,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     background: 'var(--color-bg-subtle, #f8fafc)',
                                     border: '1px solid var(--color-border)',
                                     borderRadius: '6px',
-                                    padding: '3px 8px',
-                                    height: '28px',
+                                    padding: '4px 10px',
+                                    height: '32px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
-                                    fontSize: '0.78rem',
+                                    fontSize: '0.8125rem',
                                     fontWeight: 700,
                                     color: 'var(--color-text)',
                                     cursor: 'not-allowed',
                                     userSelect: 'none'
                                   }}>
                                     <span>{displayLoai}</span>
-                                    <Lock size={11} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                                    <Lock size={12} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
                                   </div>
                                 );
                               })()}
@@ -7426,12 +7531,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* Dự án & Chiến dịch (Quan hệ Cha - Con) */}
-                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '8px', marginBottom: 0 }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                                <label className="form-label" style={{ fontSize: '0.72rem', margin: 0, fontWeight: 700 }}>Dự án nguồn</label>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
+                                <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Dự án nguồn</label>
                                 {currentUser?.role === 'sale' && (
-                                  <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                     <Lock size={10} /> Cố định MKT
                                   </span>
                                 )}
@@ -7444,19 +7549,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       background: 'var(--color-bg-subtle, #f8fafc)',
                                       border: '1px solid var(--color-border)',
                                       borderRadius: '6px',
-                                      padding: '3px 8px',
-                                      height: '28px',
+                                      padding: '4px 10px',
+                                      height: '32px',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'space-between',
-                                      fontSize: '0.78rem',
+                                      fontSize: '0.8125rem',
                                       fontWeight: 700,
                                       color: 'var(--color-text)',
                                       cursor: 'not-allowed',
                                       userSelect: 'none'
                                     }}>
                                       <span>{projName}</span>
-                                      <Lock size={11} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                                      <Lock size={12} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
                                     </div>
                                   );
                                 })()
@@ -7490,14 +7595,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                                <label className="form-label" style={{ fontSize: '0.72rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
+                                <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
                                 {currentUser?.role === 'sale' ? (
-                                  <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                     <Lock size={10} /> Cố định MKT
                                   </span>
                                 ) : (
-                                  <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Con dự án</span>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Con dự án</span>
                                 )}
                               </div>
                               {currentUser?.role === 'sale' ? (
@@ -7508,19 +7613,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       background: 'var(--color-bg-subtle, #f8fafc)',
                                       border: '1px solid var(--color-border)',
                                       borderRadius: '6px',
-                                      padding: '3px 8px',
-                                      height: '28px',
+                                      padding: '4px 10px',
+                                      height: '32px',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'space-between',
-                                      fontSize: '0.78rem',
+                                      fontSize: '0.8125rem',
                                       fontWeight: 700,
                                       color: 'var(--color-text)',
                                       cursor: 'not-allowed',
                                       userSelect: 'none'
                                     }}>
                                       <span>{campName}</span>
-                                      <Lock size={11} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
+                                      <Lock size={12} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
                                     </div>
                                   );
                                 })()
@@ -7560,13 +7665,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* CỤC GOM THÔNG TIN FORM ĐĂNG KÝ (FACEBOOK LEAD ADS / SCORE) */}
-                          <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                                <FileText size={12} style={{ color: 'var(--color-primary)' }} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                                <FileText size={14} style={{ color: 'var(--color-primary)' }} />
                                 <span>Thông Tin Form Đăng Ký (Facebook Lead Ads)</span>
                               </div>
-                              <span className="badge warning" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Form Leads</span>
+                              <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>Form Leads</span>
                             </div>
 
                             {(() => {
@@ -7614,39 +7719,41 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 .filter(item => Boolean(item.value && item.value !== '—' && item.value !== '-'));
 
                               return activeFields.length > 0 ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px', fontSize: '0.72rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '6px', fontSize: '0.75rem' }}>
                                   {activeFields.map(item => (
                                     <div 
                                       key={item.key} 
                                       style={{ 
                                         background: 'var(--color-surface)', 
-                                        padding: '3px 6px', 
-                                        borderRadius: '4px', 
+                                        padding: '4px 8px', 
+                                        borderRadius: '6px', 
                                         border: '1px solid var(--color-border)',
                                         gridColumn: item.fullWidth ? 'span 2' : undefined
                                       }}
                                     >
-                                      <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{item.label}</div>
-                                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', wordBreak: 'break-word' }}>
+                                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{item.label}</div>
+                                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '2px', wordBreak: 'break-word' }}>
                                         {item.value.replace(/_/g, ' ')}
                                       </div>
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                <div style={{ padding: '8px', color: 'var(--color-text-muted)', fontSize: '0.72rem', textAlign: 'center', fontStyle: 'italic', background: 'var(--color-surface)', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ padding: '8px', color: 'var(--color-text-muted)', fontSize: '0.75rem', textAlign: 'center', fontStyle: 'italic', background: 'var(--color-surface)', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
                                   Chưa có thông tin từ form đăng ký
                                 </div>
                               );
                             })()}
 
                             {/* CÁC TRƯỜNG DƯỚI FORM ĐĂNG KÝ: link_fb & link_video_ads */}
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px', marginTop: '2px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '8px', marginTop: '4px' }}>
                               {/* Link Facebook */}
                               <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px', fontWeight: 600 }}>
-                                  <Globe size={10} style={{ color: '#1877F2' }} /> Link Facebook
-                                </label>
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', minHeight: '18px' }}>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', margin: 0, fontWeight: 700 }}>
+                                    <Globe size={11} style={{ color: '#1877F2' }} /> Link Facebook
+                                  </label>
+                                </div>
                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                   <input
                                     className="form-input sm"
@@ -7656,7 +7763,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       const val = e.target.value;
                                       setFormData((prev: any) => ({ ...prev, fb_link: val, facebook_link: val, link_fb: val }));
                                     }}
-                                    style={{ paddingRight: (formData.fb_link || formData.facebook_link || formData.link_fb) ? '26px' : '6px', height: '28px', fontSize: '0.78rem' }}
+                                    style={{ paddingRight: (formData.fb_link || formData.facebook_link || formData.link_fb) ? '28px' : '8px', height: '32px', fontSize: '0.8125rem' }}
                                   />
                                   {(formData.fb_link || formData.facebook_link || formData.link_fb) && (
                                     <a
@@ -7664,10 +7771,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       target="_blank"
                                       rel="noreferrer"
                                       className="btn-icon xs"
-                                      style={{ position: 'absolute', right: '3px', height: '22px', width: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1877F2' }}
+                                      style={{ position: 'absolute', right: '4px', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1877F2' }}
                                       title="Mở link Facebook"
                                     >
-                                      <ExternalLink size={11} />
+                                      <ExternalLink size={12} />
                                     </a>
                                   )}
                                 </div>
@@ -7675,9 +7782,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                               {/* Link Video Ads */}
                               <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '2px', fontWeight: 600 }}>
-                                  <Video size={10} style={{ color: '#ef4444' }} /> Link Video Ads
-                                </label>
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', minHeight: '18px' }}>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', margin: 0, fontWeight: 700 }}>
+                                    <Video size={11} style={{ color: '#ef4444' }} /> Link Video Ads
+                                  </label>
+                                </div>
                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                   <input
                                     className="form-input sm"
@@ -7687,7 +7796,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       const val = e.target.value;
                                       setFormData((prev: any) => ({ ...prev, link_video_ads: val }));
                                     }}
-                                    style={{ paddingRight: formData.link_video_ads ? '26px' : '6px', height: '28px', fontSize: '0.78rem' }}
+                                    style={{ paddingRight: formData.link_video_ads ? '28px' : '8px', height: '32px', fontSize: '0.8125rem' }}
                                   />
                                   {formData.link_video_ads && (
                                     <a
@@ -7695,10 +7804,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       target="_blank"
                                       rel="noreferrer"
                                       className="btn-icon xs"
-                                      style={{ position: 'absolute', right: '3px', height: '22px', width: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}
-                                      title="Mở video quảng cáo"
+                                      style={{ position: 'absolute', right: '4px', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}
+                                      title="Mở Video Ads"
                                     >
-                                      <ExternalLink size={11} />
+                                      <ExternalLink size={12} />
                                     </a>
                                   )}
                                 </div>
@@ -7711,7 +7820,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
 
                         {/* CỘT PHẢI: 2. THÔNG TIN SALE KHAI THÁC (TTL1) */}
-                        <div className="card-panel" style={{ padding: '0.625rem 0.8rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                        <div className="card-panel" style={{ padding: isMobileOrTablet ? '0.625rem' : '0.625rem 0.8rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -7721,29 +7830,31 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             borderBottom: '1px solid var(--color-border-light)',
                             flexWrap: 'wrap'
                           }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <Target size={14} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: isMobileOrTablet ? '1 1 100%' : 'none', justifyContent: 'space-between' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <Target size={14} />
+                                </div>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                                  Thông tin sale khai thác (TTL1)
+                                </span>
                               </div>
-                              <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                                Thông tin sale khai thác (TTL1)
-                              </span>
                               <span 
                                 className={`badge ${filledTTL1Count >= 5 ? 'success' : 'secondary'}`} 
-                                style={{ fontSize: '0.68rem', padding: '2px 7px', fontWeight: 800 }}
+                                style={{ fontSize: '0.68rem', padding: '2px 7px', fontWeight: 800, flexShrink: 0 }}
                                 title={filledTTL1Count >= 5 ? 'Đã đạt đủ tối thiểu 5/8 trường TTL1 (Đủ điều kiện chuyển Đồng ý gặp)' : 'Cần đạt tối thiểu 5/8 trường để chuyển Đồng ý gặp'}
                               >
                                 {filledTTL1Count}/8 trường
                               </span>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <div style={{ display: 'inline-flex', background: 'var(--color-bg)', padding: '1px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: isMobileOrTablet ? '100%' : 'auto', justifyContent: isMobileOrTablet ? 'space-between' : 'flex-end', marginTop: isMobileOrTablet ? '2px' : 0 }}>
+                              <div style={{ display: 'inline-flex', background: 'var(--color-bg)', padding: '1px', borderRadius: '6px', border: '1px solid var(--color-border-light)', flex: isMobileOrTablet ? 1 : 'none' }}>
                                 <button
                                   type="button"
                                   className={`btn xs ${ttl1ViewMode === 'fields' ? 'primary' : 'ghost'}`}
                                   onClick={() => setTtl1ViewMode('fields')}
-                                  style={{ padding: '2px 8px', fontSize: '0.72rem', height: '24px', borderRadius: '4px' }}
+                                  style={{ padding: '2px 8px', fontSize: '0.72rem', height: '26px', borderRadius: '4px', flex: isMobileOrTablet ? 1 : 'none', textAlign: 'center' }}
                                   title="Xem và chỉnh sửa từng trường"
                                 >
                                   Từng trường
@@ -7752,7 +7863,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   type="button"
                                   className={`btn xs ${ttl1ViewMode === 'text' ? 'primary' : 'ghost'}`}
                                   onClick={() => setTtl1ViewMode('text')}
-                                  style={{ padding: '2px 8px', fontSize: '0.72rem', height: '24px', borderRadius: '4px' }}
+                                  style={{ padding: '2px 8px', fontSize: '0.72rem', height: '26px', borderRadius: '4px', flex: isMobileOrTablet ? 1 : 'none', textAlign: 'center' }}
                                 >
                                   Dạng văn bản
                                 </button>
@@ -7764,7 +7875,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   navigator.clipboard.writeText(ttl1SummaryText);
                                   addToast('Đã sao chép 8 trường thông tin TTL1!', 'success');
                                 }}
-                                style={{ padding: '2px 8px', fontSize: '0.72rem', height: '24px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                                style={{ padding: '2px 10px', fontSize: '0.72rem', height: '26px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
                                 title="Sao chép toàn bộ thông tin TTL1 để chia sẻ"
                               >
                                 <Copy size={11} />
@@ -7786,9 +7897,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           ) : (
                             <>
                               {/* KHỐI 1: CHÂN DUNG KHÁCH HÀNG (1) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                              <div style={{ background: 'var(--color-bg)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>1. Chân dung khách hàng</span>
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>1. Chân dung khách hàng</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <span 
                                       onClick={() => setActiveTab('scoring')}
@@ -7800,29 +7911,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(3, 1fr)', gap: '8px' }}>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Ở đâu (1)</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Ở đâu (1)</label>
                                     <input
                                       className="form-input sm"
                                       placeholder="Nơi ở / địa chỉ..."
-                                      value={formData.address || ''}
-                                      onChange={e => setFormData((prev: any) => ({ ...prev, address: e.target.value }))}
-                                      style={{ height: '28px', fontSize: '0.78rem' }}
+                                      value={formData.address || ttl1Data.o_dau || ''}
+                                      onChange={e => {
+                                        const val = e.target.value;
+                                        const next = { ...ttl1Data, o_dau: val };
+                                        setTtl1Data(next);
+                                        setFormData((prev: any) => ({ ...prev, address: val, ttl1_data: next }));
+                                      }}
+                                      style={{ height: '32px', fontSize: '0.8125rem' }}
                                     />
                                   </div>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Làm gì (2)</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Làm gì (2)</label>
                                     <input
                                       className="form-input sm"
                                       placeholder="Nghề nghiệp..."
-                                      value={formData.job_title || ''}
-                                      onChange={e => setFormData((prev: any) => ({ ...prev, job_title: e.target.value }))}
-                                      style={{ height: '28px', fontSize: '0.78rem' }}
+                                      value={formData.job_title || ttl1Data.lam_gi || ''}
+                                      onChange={e => {
+                                        const val = e.target.value;
+                                        const next = { ...ttl1Data, lam_gi: val };
+                                        setTtl1Data(next);
+                                        setFormData((prev: any) => ({ ...prev, job_title: val, ttl1_data: next }));
+                                      }}
+                                      style={{ height: '32px', fontSize: '0.8125rem' }}
                                     />
                                   </div>
                                   <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Gia đình (3)</label>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Gia đình (3)</label>
                                     <input
                                       className="form-input sm"
                                       placeholder="Gia đình..."
@@ -7833,22 +7954,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         setTtl1Data(next);
                                         setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                       }}
-                                      style={{ height: '28px', fontSize: '0.78rem' }}
+                                      style={{ height: '32px', fontSize: '0.8125rem' }}
                                     />
                                   </div>
                                 </div>
                               </div>
 
                               {/* KHỐI 2: KHAI THÁC 3 TIÊU CHÍ CỐT LÕI (2) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>2. Khai thác 3 tiêu chí cốt lõi</span>
+                              <div style={{ background: 'var(--color-bg)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>2. Khai thác 3 tiêu chí cốt lõi</span>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Hiện trạng (4):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Hiện trạng (4):</label>
                                   <AutoResizeTextarea
                                     className="form-input sm"
-                                    minRows={1}
-                                    maxRows={5}
+                                    minRows={2}
+                                    maxRows={6}
                                     placeholder="Hiện trạng nơi ở / đầu tư hiện tại..."
                                     value={ttl1Data.hien_trang || ''}
                                     onChange={e => {
@@ -7857,16 +7978,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
+                                    style={{ width: '100%', fontSize: '0.8125rem', lineHeight: 1.4, padding: '6px 8px' }}
                                   />
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Nhu cầu (5):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Nhu cầu (5):</label>
                                   <AutoResizeTextarea
                                     className="form-input sm"
-                                    minRows={1}
-                                    maxRows={5}
+                                    minRows={2}
+                                    maxRows={6}
                                     placeholder="Nhu cầu cụ thể (diện tích, dòng tiền, mục đích...)"
                                     value={ttl1Data.nhu_cau || ''}
                                     onChange={e => {
@@ -7875,16 +7996,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
+                                    style={{ width: '100%', fontSize: '0.8125rem', lineHeight: 1.4, padding: '6px 8px' }}
                                   />
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Rào cản (6):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Rào cản (6):</label>
                                   <AutoResizeTextarea
                                     className="form-input sm"
-                                    minRows={1}
-                                    maxRows={5}
+                                    minRows={2}
+                                    maxRows={6}
                                     placeholder="Rào cản lăn tăn (tài chính, pháp lý, người quyết định...)"
                                     value={ttl1Data.rao_can || ''}
                                     onChange={e => {
@@ -7893,19 +8014,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
+                                    style={{ width: '100%', fontSize: '0.8125rem', lineHeight: 1.4, padding: '6px 8px' }}
                                   />
                                 </div>
                               </div>
 
                               {/* KHỐI 3: THÔNG TIN BỔ SUNG (NẾU CÓ) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Thông tin bổ sung (nếu có)</span>
+                              <div style={{ background: 'var(--color-bg)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>3. Thông tin bổ sung (nếu có)</span>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                   <AutoResizeTextarea
                                     className="form-input sm"
-                                    minRows={1}
-                                    maxRows={5}
+                                    minRows={2}
+                                    maxRows={6}
                                     placeholder="Đã báo giá, thắc mắc thủ tục, hẹn tháng 09 vào xem nhà mẫu..."
                                     value={ttl1Data.thong_tin_bo_sung || ''}
                                     onChange={e => {
@@ -7914,21 +8035,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
+                                    style={{ width: '100%', fontSize: '0.8125rem', lineHeight: 1.4, padding: '6px 8px' }}
                                   />
                                 </div>
                               </div>
 
                               {/* KHỐI 4: KẾ HOẠCH CHỐT DEAL & NGÂN SÁCH (4) */}
-                              <div style={{ background: 'var(--color-bg)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>4. Kế hoạch chốt deal &amp; Ngân sách</span>
+                              <div style={{ background: 'var(--color-bg)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>4. Kế hoạch chốt deal &amp; Ngân sách</span>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Giải pháp tiếp theo (7):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Giải pháp tiếp theo (7):</label>
                                   <AutoResizeTextarea
                                     className="form-input sm"
-                                    minRows={1}
-                                    maxRows={5}
+                                    minRows={2}
+                                    maxRows={6}
                                     placeholder="Kế hoạch xử lý tiếp theo của Sale (gọi lại, gửi layout, chốt lịch hẹn...)"
                                     value={ttl1Data.giai_phap || ''}
                                     onChange={e => {
@@ -7937,12 +8058,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       setTtl1Data(next);
                                       setFormData((prev: any) => ({ ...prev, ttl1_data: next }));
                                     }}
-                                    style={{ width: '100%', fontSize: '0.78rem', lineHeight: 1.35, padding: '4px 6px' }}
+                                    style={{ width: '100%', fontSize: '0.8125rem', lineHeight: 1.4, padding: '6px 8px' }}
                                   />
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '2px' }}>Ngân sách (8):</label>
+                                  <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Ngân sách (8):</label>
                                   <CurrencyInput
                                     value={formData.budget || formData.budget_range || 0}
                                     onChange={val => setFormData((prev: any) => ({ ...prev, budget: val, budget_range: String(val) }))}

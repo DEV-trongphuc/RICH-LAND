@@ -11,39 +11,107 @@ class NotificationController {
         $unread = $this->db->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND tenant_id=? AND is_read=0");
         $unread->execute([$auth['user_id'], $auth['tenant_id']]);
         
-        $avatars = [];
+        $userLookup = [];
+        $userList = [];
         try {
-            // Lấy avatar từ bảng users (chứa đầy đủ full_name và avatar_url của tất cả nhân sự)
+            // Lấy avatar và thông tin từ bảng users (chứa đầy đủ full_name, username, avatar_url)
             $avatarsStmt = $this->db->query("
-                SELECT full_name AS name, avatar_url AS avatar FROM users
+                SELECT id, full_name, username, email, avatar_url FROM users
             ");
             if ($avatarsStmt) {
                 foreach ($avatarsStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                    if (!empty($row['name'])) {
-                        $avatars[$row['name']] = $row['avatar'] ?? '';
+                    $fn = trim((string)($row['full_name'] ?? ''));
+                    $un = trim((string)($row['username'] ?? ''));
+                    $av = trim((string)($row['avatar_url'] ?? ''));
+                    
+                    if (!empty($fn)) {
+                        $userLookup[mb_strtolower($fn)] = ['name' => $fn, 'avatar' => $av];
+                        $userList[] = ['name' => $fn, 'avatar' => $av, 'len' => mb_strlen($fn)];
+                    }
+                    if (!empty($un) && !isset($userLookup[mb_strtolower($un)])) {
+                        $userLookup[mb_strtolower($un)] = ['name' => (!empty($fn) ? $fn : $un), 'avatar' => $av];
+                        $userList[] = ['name' => $un, 'avatar' => $av, 'len' => mb_strlen($un)];
                     }
                 }
+                // Sắp xếp tên dài trước để tránh khớp nhầm tên ngắn
+                usort($userList, fn($a, $b) => $b['len'] <=> $a['len']);
             }
         } catch (\Throwable $e) {}
 
         // Duyệt qua từng thông báo để lấy trực tiếp actor name & avatar
         foreach ($items as &$item) {
-            $isWarning = ($item['type'] === 'warning') || (isset($item['title']) && (mb_strpos(mb_strtolower($item['title']), 'trùng số') !== false || mb_strpos(mb_strtolower($item['title']), 'rửa nguồn') !== false || mb_strpos(mb_strtolower($item['title']), 'cảnh báo') !== false));
+            $isWarning = ($item['type'] === 'warning') || (isset($item['title']) && (mb_strpos(mb_strtolower($item['title']), 'trùng số') !== false || mb_strpos(mb_strtolower($item['title']), 'rửa nguồn') !== false || mb_strpos(mb_strtolower($item['title']), 'cảnh báo sla') !== false));
             
             $actorName = null;
-            if (!$isWarning && !empty($item['body'])) {
-                $cleanBody = preg_replace('/^Nhân viên\s+/u', '', $item['body']);
-                if (preg_match('/^(.+?)(?:\s*\([^)]*\))?\s+(?:đã|vừa|gửi|báo|có|check-in)\s+/u', $cleanBody, $matches)) {
-                    $possibleName = trim($matches[1]);
-                    if (isset($avatars[$possibleName])) {
-                        $actorName = $possibleName;
+            $actorAvatar = null;
+
+            if (!$isWarning) {
+                $title = trim((string)($item['title'] ?? ''));
+                $body = trim((string)($item['body'] ?? ''));
+                $fullText = $title . ' ' . $body;
+
+                // 1. Regex bóc tách các mẫu thông báo cụ thể
+                // Mẫu: "Có yêu cầu hỗ trợ mới từ Zcreator: ..."
+                if (preg_match('/từ\s+([^:,\.\(\)\n]+?)(?::|\.|\s+vừa|\s+đã|\(|$)/ui', $fullText, $m)) {
+                    $candidate = trim($m[1]);
+                    $candLower = mb_strtolower($candidate);
+                    if (isset($userLookup[$candLower])) {
+                        $actorName = $userLookup[$candLower]['name'];
+                        $actorAvatar = $userLookup[$candLower]['avatar'];
+                    } else if (mb_strlen($candidate) >= 2 && !preg_match('/^(hệ thống|quản trị|mkt|admin)$/ui', $candidate)) {
+                        $actorName = $candidate;
+                    }
+                }
+
+                // Mẫu: "Zcreator vừa nhắc tên bạn" hoặc "Nguyễn Văn A đã trả lời..."
+                if (!$actorName && preg_match('/^([^\s]+(?:\s+[^\s]+){0,4})\s+(?:vừa|đã|gửi|báo|có|check-in)\s+/ui', $title, $m)) {
+                    $candidate = trim($m[1]);
+                    $candLower = mb_strtolower($candidate);
+                    if (isset($userLookup[$candLower])) {
+                        $actorName = $userLookup[$candLower]['name'];
+                        $actorAvatar = $userLookup[$candLower]['avatar'];
+                    } else if (mb_strlen($candidate) >= 2 && !preg_match('/^(hệ thống|thông báo|cảnh báo|cập nhật)$/ui', $candidate)) {
+                        $actorName = $candidate;
+                    }
+                }
+
+                // Mẫu: "Sale Nhân viên đã đăng ký..." trong body
+                if (!$actorName && preg_match('/^(?:Nhân viên|Sale|Admin)?\s*([^\s]+(?:\s+[^\s]+){0,4})\s+(?:đã|vừa|gửi|báo|có|check-in)\s+/ui', $body, $m)) {
+                    $candidate = trim($m[1]);
+                    $candLower = mb_strtolower($candidate);
+                    if (isset($userLookup[$candLower])) {
+                        $actorName = $userLookup[$candLower]['name'];
+                        $actorAvatar = $userLookup[$candLower]['avatar'];
+                    } else if (mb_strlen($candidate) >= 2 && !preg_match('/^(hệ thống|bạn|phiếu|giao dịch|công việc)$/ui', $candidate)) {
+                        $actorName = $candidate;
+                    }
+                }
+
+                // Mẫu: "bởi Admin MTP"
+                if (!$actorName && preg_match('/bởi\s+([^\s]+(?:\s+[^\s]+){0,3})/ui', $fullText, $m)) {
+                    $candidate = trim($m[1]);
+                    $candLower = mb_strtolower($candidate);
+                    if (isset($userLookup[$candLower])) {
+                        $actorName = $userLookup[$candLower]['name'];
+                        $actorAvatar = $userLookup[$candLower]['avatar'];
+                    }
+                }
+
+                // 2. Nếu chưa tìm ra, quét trực tiếp danh sách nhân viên xuất hiện trong tiêu đề/nội dung
+                if (!$actorName) {
+                    foreach ($userList as $u) {
+                        if ($u['len'] >= 3 && mb_stripos($fullText, $u['name']) !== false) {
+                            $actorName = $u['name'];
+                            $actorAvatar = $u['avatar'];
+                            break;
+                        }
                     }
                 }
             }
             
             if ($actorName) {
                 $item['actor_name'] = $actorName;
-                $item['actor_avatar'] = !empty($avatars[$actorName]) ? $avatars[$actorName] : null;
+                $item['actor_avatar'] = !empty($actorAvatar) ? $actorAvatar : null;
             } else {
                 $item['actor_name'] = null;
                 $item['actor_avatar'] = '/LOGO.jpg';

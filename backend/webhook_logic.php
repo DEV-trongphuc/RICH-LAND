@@ -4243,8 +4243,55 @@ if (!function_exists('redistributePendingLeads')) {
                     $lockStmt->execute();
                     $lockStmt->close();
                     
-                    // Assign to next consultant
-                    $assignResult = getNextConsultantInRound($conn, $roundId);
+                    // Calculate excludeIds (max attempts and cooldown)
+                    $maxAttempts = (int) get_system_setting($conn, 'lead_max_recall_attempts');
+                    $cooldownMins = (int) get_system_setting($conn, 'lead_recall_cooldown_minutes');
+                    $excludeIds = [];
+
+                    if ($maxAttempts > 0) {
+                        $attStmt = $conn->prepare("
+                            SELECT assigned_to, COUNT(*) as cnt 
+                            FROM distribution_logs 
+                            WHERE lead_id = ? AND status = 'recalled' AND received_at >= CURDATE() 
+                            GROUP BY assigned_to
+                        ");
+                        if ($attStmt) {
+                            $attStmt->bind_param("i", $leadId);
+                            $attStmt->execute();
+                            $attRes = $attStmt->get_result();
+                            while ($attRow = $attRes->fetch_assoc()) {
+                                if ((int)$attRow['cnt'] >= $maxAttempts) {
+                                    $excludeIds[] = (int)$attRow['assigned_to'];
+                                }
+                            }
+                            $attStmt->close();
+                        }
+                    }
+
+                    if ($cooldownMins > 0) {
+                        $coolStmt = $conn->prepare("
+                            SELECT DISTINCT assigned_to 
+                            FROM distribution_logs 
+                            WHERE lead_id = ? AND status = 'recalled' 
+                              AND received_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                        ");
+                        if ($coolStmt) {
+                            $coolStmt->bind_param("ii", $leadId, $cooldownMins);
+                            $coolStmt->execute();
+                            $coolRes = $coolStmt->get_result();
+                            while ($coolRow = $coolRes->fetch_assoc()) {
+                                $excludeIds[] = (int)$coolRow['assigned_to'];
+                            }
+                            $coolStmt->close();
+                        }
+                    }
+
+                    if (!empty($excludeIds)) {
+                        $excludeIds = array_values(array_unique($excludeIds));
+                    }
+
+                    // Assign to next consultant with exclusions
+                    $assignResult = getNextConsultantInRound($conn, $roundId, null, $excludeIds);
                     
                     $newConsultantId = null;
                     $newStatus = 'assigned';
@@ -4277,8 +4324,8 @@ if (!function_exists('redistributePendingLeads')) {
                             }
                         }
                         $ncStmt->close();
-                    } else {
-                        // Fallback to Admin
+                    } else if (empty($excludeIds)) {
+                        // Fallback to Admin (only if we did NOT hit the attempts limit for the only available consultant)
                         $fbSettings = get_system_setting($conn);
                         $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
                         $fbCc = $fbSettings['fallback_cc_email'] ?? '';
@@ -4295,6 +4342,18 @@ if (!function_exists('redistributePendingLeads')) {
                             }
                             $admStmt->close();
                         }
+                    }
+
+                    // If still no consultant assigned (all sales reached max attempts or in cooldown):
+                    if (!$newConsultantId && !$isFallbackAdmin) {
+                        // Defer next attempt to tomorrow 08:00 if reached max attempts, or +30 mins if cooldown
+                        $nextAttempt = !empty($excludeIds) ? date('Y-m-d 08:00:00', strtotime('+1 day')) : date('Y-m-d H:i:s', strtotime('+30 minutes'));
+                        $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending', next_attempt_date = ? WHERE id = ?");
+                        $upLead->bind_param("si", $nextAttempt, $leadId);
+                        $upLead->execute();
+                        $upLead->close();
+                        $conn->commit();
+                        continue;
                     }
                     
                     // Update lead
@@ -4318,9 +4377,6 @@ if (!function_exists('redistributePendingLeads')) {
                     $logMsg = "Tự động phân bổ lại sau khi tạm hoãn qua ngày mới.{$compSuffix}";
                     if ($isFallbackAdmin && $fallbackAdminData) {
                         $logMsg = "Tự động phân bổ lại sau ngày mới chuyển fallback về Admin: " . $fallbackAdminData['name'];
-                    } else if (!$newConsultantId) {
-                        $newStatus = 'pending';
-                        $logMsg = "Tự động phân bổ lại sau ngày mới. Không tìm thấy Sale hoạt động khác trong vòng, chuyển lead về trạng thái Chờ xử lý (Pending).";
                     }
                     
                     logDistribution($conn, $leadId, $newConsultantId, $roundId, $newStatus, $logMsg, false);

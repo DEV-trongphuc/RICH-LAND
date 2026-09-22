@@ -2631,20 +2631,55 @@ export const Header = ({
                             }}
                           >
                             <div style={{ position: 'relative', display: 'flex', flexShrink: 0, marginTop: 2 }}>
-                              {notif.actor_name ? (
-                                /* Sale / Admin gửi → avatar đúng người */
-                                <div style={{ position: 'relative', display: 'inline-flex' }}>
-                                  <Avatar src={notif.actor_avatar || undefined} name={notif.actor_name} size={38} />
-                                  <span style={{ position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: '50%', background: (() => { switch (notif.type) { case 'warning': return '#ef4444'; case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return '#3b82f6'; case 'project_roster': return '#10b981'; case 'project_document': return '#f59e0b'; case 'project_comment': case 'attendance_update': return '#8b5cf6'; case 'attendance': return '#eab308'; default: return '#6b7280'; } })(), border: '1.5px solid var(--color-surface, #ffffff)', boxShadow: '0 1px 3px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {(() => { switch (notif.type) { case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return <CheckSquare size={11} style={{ color: 'white' }} />; case 'project_roster': return <Users size={11} style={{ color: 'white' }} />; case 'project_document': return <FileText size={11} style={{ color: 'white' }} />; case 'project_comment': return <MessageSquare size={11} style={{ color: 'white' }} />; case 'warning': return <AlertTriangle size={11} style={{ color: 'white' }} />; case 'attendance_update': return <Clock size={11} style={{ color: 'white' }} />; default: return <Info size={11} style={{ color: 'white' }} />; } })()}
-                                  </span>
-                                </div>
-                              ) : (
-                                /* Cảnh báo hệ thống / hoặc không có user → logo Richland */
-                                <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
-                                  <img src="/LOGO.jpg" alt="Richland" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </div>
-                              )}
+                              {(() => {
+                                let actorName = notif.actor_name;
+                                let actorAvatar = notif.actor_avatar && notif.actor_avatar !== '/LOGO.jpg' ? notif.actor_avatar : undefined;
+
+                                if (!actorName && !isWarning) {
+                                  const text = `${notif.title || ''} ${notif.body || ''}`;
+                                  let m = text.match(/từ\s+([^:,\.\(\)\n]+?)(?::|\.|\s+vừa|\s+đã|\(|$)/i);
+                                  if (m && m[1]?.trim() && !m[1].trim().match(/^(hệ thống|quản trị|mkt|admin)$/i)) {
+                                    actorName = m[1].trim();
+                                  }
+                                  if (!actorName) {
+                                    m = (notif.title || '').match(/^([^\s]+(?:\s+[^\s]+){0,3})\s+(?:vừa|đã|gửi|báo|có|check-in)\s+/i);
+                                    if (m && m[1]?.trim() && !m[1].trim().match(/^(hệ thống|thông báo|cảnh báo|cập nhật)$/i)) {
+                                      actorName = m[1].trim();
+                                    }
+                                  }
+                                  if (!actorName) {
+                                    m = (notif.body || '').match(/^(?:Nhân viên|Sale|Admin)?\s*([^\s]+(?:\s+[^\s]+){0,3})\s+(?:đã|vừa|gửi|báo|có|check-in)\s+/i);
+                                    if (m && m[1]?.trim() && !m[1].trim().match(/^(hệ thống|bạn|phiếu|giao dịch|công việc)$/i)) {
+                                      actorName = m[1].trim();
+                                    }
+                                  }
+                                  if (!actorName) {
+                                    m = text.match(/bởi\s+([^\s]+(?:\s+[^\s]+){0,3})/i);
+                                    if (m && m[1]?.trim() && !m[1].trim().match(/^(hệ thống|quản trị)$/i)) {
+                                      actorName = m[1].trim();
+                                    }
+                                  }
+                                }
+
+                                if (actorName) {
+                                  return (
+                                    /* Sale / Admin gửi → avatar đúng người */
+                                    <div style={{ position: 'relative', display: 'inline-flex' }}>
+                                      <Avatar src={actorAvatar} name={actorName} size={38} />
+                                      <span style={{ position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: '50%', background: (() => { switch (notif.type) { case 'warning': return '#ef4444'; case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return '#3b82f6'; case 'project_roster': return '#10b981'; case 'project_document': return '#f59e0b'; case 'project_comment': case 'attendance_update': return '#8b5cf6'; case 'attendance': return '#eab308'; default: return '#6b7280'; } })(), border: '1.5px solid var(--color-surface, #ffffff)', boxShadow: '0 1px 3px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {(() => { switch (notif.type) { case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return <CheckSquare size={11} style={{ color: 'white' }} />; case 'project_roster': return <Users size={11} style={{ color: 'white' }} />; case 'project_document': return <FileText size={11} style={{ color: 'white' }} />; case 'project_comment': return <MessageSquare size={11} style={{ color: 'white' }} />; case 'warning': return <AlertTriangle size={11} style={{ color: 'white' }} />; case 'attendance_update': return <Clock size={11} style={{ color: 'white' }} />; default: return <Info size={11} style={{ color: 'white' }} />; } })()}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  /* Cảnh báo hệ thống / hoặc không có user → logo Richland */
+                                  <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
+                                    <img src="/LOGO.jpg" alt="Richland" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  </div>
+                                );
+                              })()}
                             </div>
 
                             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative' }}>

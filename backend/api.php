@@ -10204,7 +10204,7 @@ switch ($action) {
             ]);
 
             // Sync contacts table - set pipeline_status to not_lead, unassign owner, clear proposal flag
-            $updContact = $conn->prepare("UPDATE contacts SET pipeline_status = 'not_lead', owner_id = NULL, not_lead_proposed = 0 WHERE lead_id = ? OR (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0)");
+            $updContact = $conn->prepare("UPDATE contacts SET pipeline_status = 'not_lead', owner_id = NULL, not_lead_proposed = 0 WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ?) AND phone IS NOT NULL AND phone != '')");
             if ($updContact) {
                 $updContact->bind_param("ii", $report['lead_id'], $report['lead_id']);
                 $updContact->execute();
@@ -10620,7 +10620,7 @@ switch ($action) {
             ]);
 
             // Reset not_lead_proposed on contacts table so contact returns to sales rep's active list
-            $updContact = $conn->prepare("UPDATE contacts SET not_lead_proposed = 0 WHERE lead_id = ? OR (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0)");
+            $updContact = $conn->prepare("UPDATE contacts SET not_lead_proposed = 0 WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ?) AND phone IS NOT NULL AND phone != '')");
             if ($updContact) {
                 $updContact->bind_param("ii", $report['lead_id'], $report['lead_id']);
                 $updContact->execute();

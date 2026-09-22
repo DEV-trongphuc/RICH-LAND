@@ -276,6 +276,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [activeAssigneeDropdownId, setActiveAssigneeDropdownId] = useState<string | null>(null);
   const [deleteSubtaskTarget, setDeleteSubtaskTarget] = useState<{ id: string; title: string } | null>(null);
   const [showParticipantDropdown, setShowParticipantDropdown] = useState(false);
+  const [participantSearchTerm, setParticipantSearchTerm] = useState('');
   const [showTeamDropdown, setShowTeamDropdown] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   const [showHideConfirmModal, setShowHideConfirmModal] = useState(false);
@@ -4855,7 +4856,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     {/* Dash add button */}
                     <button
                       type="button"
-                      onClick={() => setShowParticipantDropdown(!showParticipantDropdown)}
+                      onClick={() => {
+                        setShowParticipantDropdown(!showParticipantDropdown);
+                        if (!showParticipantDropdown) setParticipantSearchTerm('');
+                      }}
                       disabled={currentUser?.role === 'viewer'}
                       style={{
                         border: '1px dashed var(--color-primary)',
@@ -4880,54 +4884,101 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       <div 
                         ref={participantDropdownRef}
                         style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        marginTop: '6px',
-                        zIndex: 9999,
-                        background: 'var(--color-surface)',
-                        border: '1px solid var(--color-border-light)',
-                        borderRadius: '12px',
-                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
-                        minWidth: '220px',
-                        maxHeight: '230px',
-                        overflowY: 'auto',
-                        padding: '6px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px'
-                      }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '4px 8px' }}>
-                          {t('Chọn người liên quan:')}
-                        </div>
-                        {users.map((u: any) => {
-                          const isSelected = participantIds.includes(Number(u.id));
-                          return (
-                            <div
-                              key={u.id}
-                              onClick={() => handleToggleParticipant(Number(u.id))}
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          marginTop: '6px',
+                          zIndex: 9999,
+                          background: 'var(--color-surface)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
+                          minWidth: '250px',
+                          width: '270px',
+                          maxHeight: '320px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {/* Search header */}
+                        <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-surface)' }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '6px' }}>
+                            {t('Chọn người liên quan:')}
+                          </div>
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <Search size={13} style={{ position: 'absolute', left: 8, color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder={t('Tìm kiếm nhân sự...')}
+                              value={participantSearchTerm}
+                              onChange={(e) => setParticipantSearchTerm(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              autoFocus
                               style={{
-                                padding: '6px 8px',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
+                                paddingLeft: '28px',
+                                paddingRight: '8px',
                                 fontSize: '0.75rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                background: isSelected ? 'var(--color-primary-light)' : 'transparent',
-                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                                fontWeight: isSelected ? 600 : 400
+                                height: '30px',
+                                borderRadius: '6px',
+                                width: '100%',
+                                background: 'var(--color-bg-subtle, rgba(0,0,0,0.02))'
                               }}
-                              className="hover-bg-alt"
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={20} />
-                                <span>{u.full_name || u.name}</span>
-                              </div>
-                              {isSelected && <Check size={12} color="var(--color-primary)" strokeWidth={3} />}
-                            </div>
-                          );
-                        })}
+                            />
+                          </div>
+                        </div>
+
+                        {/* List */}
+                        <div style={{ overflowY: 'auto', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px', maxHeight: '230px' }} className="custom-scrollbar">
+                          {(() => {
+                            const filtered = users.filter((u: any) => {
+                              if (!participantSearchTerm.trim()) return true;
+                              const s = participantSearchTerm.toLowerCase();
+                              const name = (u.full_name || u.name || '').toLowerCase();
+                              const email = (u.email || '').toLowerCase();
+                              const role = (getRoleDisplayName(u) || '').toLowerCase();
+                              return name.includes(s) || email.includes(s) || role.includes(s);
+                            });
+
+                            if (filtered.length === 0) {
+                              return (
+                                <div style={{ textAlign: 'center', padding: '12px 8px', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                  {t('Không tìm thấy nhân sự phù hợp')}
+                                </div>
+                              );
+                            }
+
+                            return filtered.map((u: any) => {
+                              const isSelected = participantIds.includes(Number(u.id));
+                              return (
+                                <div
+                                  key={u.id}
+                                  onClick={() => handleToggleParticipant(Number(u.id))}
+                                  style={{
+                                    padding: '6px 8px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.75rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    background: isSelected ? 'var(--color-primary-light)' : 'transparent',
+                                    color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                    fontWeight: isSelected ? 600 : 400
+                                  }}
+                                  className="hover-bg-alt"
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={20} />
+                                    <span>{u.full_name || u.name}</span>
+                                  </div>
+                                  {isSelected && <Check size={12} color="var(--color-primary)" strokeWidth={3} />}
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>

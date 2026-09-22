@@ -919,8 +919,9 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     }
                     
                     // Update lead table
-                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = ?, last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL WHERE id = ?");
-                    $upLead->bind_param("isi", $assignedConsultantId, $newStatus, $row['lead_id']);
+                    $nextAttemptDate = (!$assignedConsultantId && !empty($excludeIds)) ? date('Y-m-d 08:00:00', strtotime('+1 day')) : null;
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = ?, last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = ? WHERE id = ?");
+                    $upLead->bind_param("issi", $assignedConsultantId, $newStatus, $nextAttemptDate, $row['lead_id']);
                     $upLead->execute();
                     $upLead->close();
                     
@@ -1574,8 +1575,9 @@ if (!function_exists('recallInactiveLeads')) {
                         $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Ngoài khung giờ làm việc / tất cả Sale đang bận. Hệ thống tạm giữ.";
                     }
                 } else if (!$newConsultantId) {
-                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending', target_round_id = ?, next_attempt_date = NULL, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
-                    $upLead->bind_param("ii", $roundId, $leadId);
+                    $nextAttemptDate = !empty($excludeIds) ? date('Y-m-d 08:00:00', strtotime('+1 day')) : null;
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending', target_round_id = ?, next_attempt_date = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                    $upLead->bind_param("isii", $roundId, $nextAttemptDate, $leadId);
                     $upLead->execute();
                     $upLead->close();
                     
@@ -2901,20 +2903,28 @@ function releaseExpiredLeadsToKho($conn) {
 
     $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
 
-    $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources') ?: 'R3_Fb,R3,R2,broadcast';
-    $applicableSources = array_map('trim', explode(',', $applicableSourcesStr));
-    $applicableSourcesEscaped = array_map(function($s) use ($conn) {
-        return "'" . $conn->real_escape_string($s) . "'";
-    }, $applicableSources);
-    $sourcesFilter = "AND (c.source IN (" . implode(',', $applicableSourcesEscaped) . ") OR c.source = 'databank')";
+    $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources');
+    if ($applicableSourcesStr === null || trim($applicableSourcesStr) === '' || trim($applicableSourcesStr) === '*' || trim(strtolower($applicableSourcesStr)) === 'all') {
+        $sourcesFilter = "";
+    } else {
+        $applicableSources = array_map('trim', explode(',', $applicableSourcesStr));
+        $applicableSources = array_filter($applicableSources);
+        $applicableSourcesEscaped = array_map(function($s) use ($conn) {
+            return "'" . $conn->real_escape_string($s) . "'";
+        }, $applicableSources);
+        if (!empty($applicableSourcesEscaped)) {
+            $sourcesFilter = "AND (c.source IN (" . implode(',', $applicableSourcesEscaped) . ") OR c.source = 'databank')";
+        } else {
+            $sourcesFilter = "";
+        }
+    }
     
-    $sql = "SELECT c.id AS contact_id, c.person_id, c.owner_id, c.tenant_id
+    $sql = "SELECT c.id AS contact_id, c.person_id, c.owner_id, c.tenant_id, c.first_name, c.last_name, c.pipeline_status
             FROM contacts c
             WHERE c.security_expires_at <= NOW()
               AND c.security_expires_at IS NOT NULL
               AND c.deleted_at IS NULL
               AND c.pipeline_status NOT IN ((SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1), 'da_coc', 'dong_deal', 'thanh_cong')
-              AND NOT (c.pipeline_status = ? AND (c.parallel_assigned IS NULL OR c.parallel_assigned = 0))
               $sourcesFilter
               AND NOT EXISTS (
                   SELECT 1 FROM cooperation_slips cs
@@ -2924,7 +2934,6 @@ function releaseExpiredLeadsToKho($conn) {
               
     $stmt = $conn->prepare($sql);
     if (!$stmt) return;
-    $stmt->bind_param("s", $triggerStatus);
     $stmt->execute();
     $res = $stmt->get_result();
     if (!$res) {
@@ -3105,7 +3114,7 @@ function releaseExpiredLeadsToKho($conn) {
                 $updAllNotes->close();
 
                 // Clear assignment on leads table
-                $updLeads = $conn->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
+                $updLeads = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'unassigned', last_assigned_at = NULL WHERE person_id = ?");
                 $updLeads->bind_param("i", $personId);
                 $updLeads->execute();
                 $updLeads->close();
@@ -3137,12 +3146,21 @@ function assignParallelLeads($conn) {
     
     $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
     
-    $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources') ?: 'R3_Fb,R3,R2,broadcast';
-    $applicableSources = array_map('trim', explode(',', $applicableSourcesStr));
-    $applicableSourcesEscaped = array_map(function($s) use ($conn) {
-        return "'" . $conn->real_escape_string($s) . "'";
-    }, $applicableSources);
-    $sourcesFilter = "AND c.source IN (" . implode(',', $applicableSourcesEscaped) . ")";
+    $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources');
+    if ($applicableSourcesStr === null || trim($applicableSourcesStr) === '' || trim($applicableSourcesStr) === '*' || trim(strtolower($applicableSourcesStr)) === 'all') {
+        $sourcesFilter = "";
+    } else {
+        $applicableSources = array_map('trim', explode(',', $applicableSourcesStr));
+        $applicableSources = array_filter($applicableSources);
+        $applicableSourcesEscaped = array_map(function($s) use ($conn) {
+            return "'" . $conn->real_escape_string($s) . "'";
+        }, $applicableSources);
+        if (!empty($applicableSourcesEscaped)) {
+            $sourcesFilter = "AND (c.source IN (" . implode(',', $applicableSourcesEscaped) . ") OR c.source = 'databank')";
+        } else {
+            $sourcesFilter = "";
+        }
+    }
 
     $sql = "SELECT c.id as contact_id, c.person_id, c.owner_id, c.project_id, c.email, c.phone, c.first_name, c.last_name, c.source, c.notes, c.customer_type, c.tenant_id,
                    (SELECT round_id FROM distribution_logs WHERE lead_id = c.id AND status = 'assigned' ORDER BY id DESC LIMIT 1) as original_round_id
@@ -3203,7 +3221,8 @@ function assignParallelLeads($conn) {
         }
         
         if (!$roundId) {
-            logSync("No round found for parallel assignment of contact $contactId. Skipping.");
+            logSync("No round found for parallel assignment of contact $contactId. Marking parallel_assigned = -1 for direct Databank release.");
+            $conn->query("UPDATE contacts SET parallel_assigned = -1 WHERE id = $contactId");
             continue;
         }
         
@@ -3243,8 +3262,12 @@ function assignParallelLeads($conn) {
             $cStmt->close();
             
             if (empty($consultants)) {
-                logSync("No other active consultants in round $roundId to assign parallelly. Skipping.");
-                $conn->rollback();
+                logSync("No other active consultants in round $roundId to assign parallelly. Marking parallel_assigned = -1 for direct Databank release.");
+                $updNoParallel = $conn->prepare("UPDATE contacts SET parallel_assigned = -1 WHERE id = ?");
+                $updNoParallel->bind_param("i", $contactId);
+                $updNoParallel->execute();
+                $updNoParallel->close();
+                $conn->commit();
                 continue;
             }
             
@@ -4082,7 +4105,14 @@ function sendScheduledAttendanceReports($conn) {
 logSync("Cronjob finished.");
 
 if (!defined('DIAG_TOKEN')) {
-    // --- Chạy giải phóng lead hết hạn bảo mật ra Kho chung ---
+    // --- 1. Chạy phân bổ song song ở trạng thái Chưa Xác Định quá 3 giờ ---
+    try {
+        assignParallelLeads($conn);
+    } catch (Exception $e) {
+        logSync("Error running assignParallelLeads: " . $e->getMessage());
+    }
+
+    // --- 2. Chạy giải phóng lead hết hạn bảo mật ra Kho chung ---
     try {
         releaseExpiredLeadsToKho($conn);
     } catch (Exception $e) {
@@ -4133,13 +4163,6 @@ if (!defined('DIAG_TOKEN')) {
         checkCapiStuckAlert($conn);
     } catch (Exception $e) {
         logSync("Error running checkCapiStuckAlert: " . $e->getMessage());
-    }
-
-    // --- Chạy phân bổ song song ở trạng thái Chưa Xác Định quá 3 giờ ---
-    try {
-        assignParallelLeads($conn);
-    } catch (Exception $e) {
-        logSync("Error running assignParallelLeads: " . $e->getMessage());
     }
 
     // --- Chạy Báo cáo Ngày nếu đã đến giờ ---
