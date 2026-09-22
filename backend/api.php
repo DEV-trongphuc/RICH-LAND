@@ -9130,6 +9130,19 @@ switch ($action) {
             break;
         }
 
+        // Reject report if lead / contact is already Not Lead
+        $chkNotLead = $conn->prepare("SELECT pipeline_status, not_lead_proposed FROM contacts WHERE lead_id = ? LIMIT 1");
+        if ($chkNotLead) {
+            $chkNotLead->bind_param("i", $lead_id);
+            $chkNotLead->execute();
+            $cRes = $chkNotLead->get_result()->fetch_assoc();
+            $chkNotLead->close();
+            if ($cRes && ($cRes['pipeline_status'] === 'not_lead' || (int)($cRes['not_lead_proposed'] ?? 0) === 1)) {
+                echo json_encode(['success' => false, 'message' => 'Dữ liệu này đã được đánh dấu Not Lead (data lỗi/không hợp lệ), không cần gửi ticket báo lỗi bù data.']);
+                break;
+            }
+        }
+
         // Prevent duplicate pending reports for same lead + consultant + round
         $checkStmt = $conn->prepare("SELECT id FROM data_reports WHERE lead_id=? AND consultant_id=? AND round_id=? AND status='pending'");
         $checkStmt->bind_param("iii", $lead_id, $sale_id, $round_id);

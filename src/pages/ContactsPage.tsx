@@ -536,6 +536,10 @@ export const ContactsPage: React.FC = () => {
   const [submittingReport, setSubmittingReport] = useState(false);
 
   const handleOpenReportModal = (contact: any) => {
+    if (contact?.status === 'not_lead' || contact?.pipeline_status === 'not_lead' || Number(contact?.not_lead_proposed || 0) === 1) {
+      addToast('Khách hàng Not Lead không cần tạo ticket Báo lỗi bù data.', 'error');
+      return;
+    }
     setSelectedContactForReport(contact);
     setReportReasonType('Số điện thoại không đúng / Thuê bao');
     setReportDetails('');
@@ -3112,10 +3116,13 @@ export const ContactsPage: React.FC = () => {
                                     Từ chối
                                   </span>
                                 )}
-                                {(!c.report_status || c.report_status === 'rejected') && (
+                                {(!c.report_status || c.report_status === 'rejected') && c.status !== 'not_lead' && c.pipeline_status !== 'not_lead' && Number(c.not_lead_proposed || 0) !== 1 && (
                                   <button onClick={() => handleOpenReportModal(c)} className="btn sm danger" style={{ height: 28, padding: '0 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                     <AlertCircle size={11} /> Báo lỗi
                                   </button>
+                                )}
+                                {(!c.report_status || c.report_status === 'rejected') && (c.status === 'not_lead' || c.pipeline_status === 'not_lead' || Number(c.not_lead_proposed || 0) === 1) && (
+                                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>
                                 )}
                               </div>
                             ) : (

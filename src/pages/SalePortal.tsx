@@ -9513,6 +9513,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
 
                       {((effectiveRole === 'sale' && !Number(lead.is_accepted)) || lead.report_status || (isAllowedToReport &&
+                        lead.status !== 'reminder' && lead.status !== 'databank_claim' &&
+                        lead.status !== 'not_lead' && lead.pipeline_status !== 'not_lead' && lead.contact_pipeline_status !== 'not_lead' && !Number(lead.not_lead_proposed) &&
                         (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
                         (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)))) && (
                           <div onClick={e => e.stopPropagation()} style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
@@ -9550,7 +9552,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   {t('Từ chối')}
                                 </span>
                               )}
-                              {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport && lead.status !== 'reminder' && lead.status !== 'databank_claim' &&
+                              {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport &&
+                                lead.status !== 'reminder' && lead.status !== 'databank_claim' &&
+                                lead.status !== 'not_lead' && lead.pipeline_status !== 'not_lead' && lead.contact_pipeline_status !== 'not_lead' && !Number(lead.not_lead_proposed) &&
                                 (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
                                 (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
                                   <button onClick={() => handleOpenReportModal(lead)} className="btn sm danger" style={{ height: 30, padding: '0 10px' }}>
@@ -9694,7 +9698,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 <XCircle size={16} />
                               </div>
                             )}
-                            {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport && lead.status !== 'reminder' && lead.status !== 'databank_claim' &&
+                            {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport &&
+                              lead.status !== 'reminder' && lead.status !== 'databank_claim' &&
+                              lead.status !== 'not_lead' && lead.pipeline_status !== 'not_lead' && lead.contact_pipeline_status !== 'not_lead' && !Number(lead.not_lead_proposed) &&
                               (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
                               (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
                                 <button

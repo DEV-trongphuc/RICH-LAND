@@ -5460,6 +5460,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const handleCreateTicket = async () => {
     if (!ticketForm.subject.trim() || isSubmitting) return;
     const isSelfEnteredOrDb = ['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim';
+    const isNotLeadItem = (formData.pipeline_status || contact?.pipeline_status) === 'not_lead' || (formData.status || contact?.status) === 'not_lead' || Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) === 1;
+    if (isNotLeadItem && ticketForm.category === 'lead_error_compensation') {
+      addToast('Khách hàng Not Lead không cần tạo ticket Báo lỗi bù data.', 'error');
+      return;
+    }
     if (isSelfEnteredOrDb && ticketForm.category === 'lead_error_compensation') {
       addToast('Khách hàng tự khai thác / Databank không hỗ trợ tạo ticket Báo lỗi bù data.', 'error');
       return;
@@ -5486,6 +5491,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const handleSubmitReport = async () => {
+    const isNotLeadItem = (formData.pipeline_status || contact?.pipeline_status) === 'not_lead' || (formData.status || contact?.status) === 'not_lead' || Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) === 1;
+    if (isNotLeadItem) {
+      addToast('Khách hàng Not Lead không cần tạo ticket Báo lỗi bù data.', 'error');
+      return;
+    }
     const leadId = formData.lead_id || contact?.lead_id;
     const saleId = formData.owner_id || contact?.owner_id;
     const roundId = formData.dl_round_id || contact?.dl_round_id;
@@ -6945,6 +6955,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     {group.title === 'Nghiệp vụ & Hỗ trợ' && 
                                      !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
                                      (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
+                                     (formData.pipeline_status || contact?.pipeline_status) !== 'not_lead' &&
+                                     (formData.status || contact?.status) !== 'not_lead' &&
+                                     Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) !== 1 &&
                                      Number(formData.dl_round_id || contact?.dl_round_id) > 0 && (
                                        (formData.ticket_status || contact?.ticket_status || contact?.report_status) ? (
                                          <div
@@ -13328,19 +13341,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               <div className="modal-body">
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label className="form-label">Loại hỗ trợ *</label>
-                  <CustomSelect
-                    options={[
+                  {(() => {
+                    const isSelfEnteredOrDb = ['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim';
+                    const isNotLeadItem = (formData.pipeline_status || contact?.pipeline_status) === 'not_lead' || (formData.status || contact?.status) === 'not_lead' || Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) === 1;
+                    const catOptions = [
                       { value: 'technical_support', label: 'Hỗ trợ kỹ thuật / Yêu cầu chung' },
-                      { value: 'lead_error_compensation', label: 'Báo lỗi data / Yêu cầu bù data' }
-                    ]}
-                    value={ticketForm.category || 'technical_support'}
-                    onChange={val => setTicketForm({ ...ticketForm, category: val.toString() })}
-                  />
-                  {(['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim') && (
-                    <span style={{ fontSize: '0.725rem', color: '#dc2626', fontWeight: 600, display: 'block', marginTop: '4px' }}>
-                      * Khách hàng tự khai thác / Databank chỉ hỗ trợ gửi ticket Hỗ trợ kỹ thuật (không hỗ trợ báo lỗi bù data).
-                    </span>
-                  )}
+                      ...(!isSelfEnteredOrDb && !isNotLeadItem ? [{ value: 'lead_error_compensation', label: 'Báo lỗi data / Yêu cầu bù data' }] : [])
+                    ];
+                    return (
+                      <>
+                        <CustomSelect
+                          options={catOptions}
+                          value={ticketForm.category || 'technical_support'}
+                          onChange={val => setTicketForm({ ...ticketForm, category: val.toString() })}
+                        />
+                        {isSelfEnteredOrDb && (
+                          <span style={{ fontSize: '0.725rem', color: '#dc2626', fontWeight: 600, display: 'block', marginTop: '4px' }}>
+                            * Khách hàng tự khai thác / Databank chỉ hỗ trợ gửi ticket Hỗ trợ kỹ thuật (không hỗ trợ báo lỗi bù data).
+                          </span>
+                        )}
+                        {isNotLeadItem && (
+                          <span style={{ fontSize: '0.725rem', color: '#6b7280', fontWeight: 600, display: 'block', marginTop: '4px' }}>
+                            * Khách hàng Not Lead không cần báo lỗi bù data.
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
