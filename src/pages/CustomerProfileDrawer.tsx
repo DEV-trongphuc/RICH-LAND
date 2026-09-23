@@ -8084,7 +8084,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                   <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, marginBottom: '3px' }}>Ngân sách:</label>
                                   <CurrencyInput
-                                    value={formData.budget || formData.budget_range || 0}
+                                    value={Number(formData.budget) > 0 ? formData.budget : (formData.budget_range || 0)}
                                     onChange={val => setFormData((prev: any) => ({ ...prev, budget: val, budget_range: String(val) }))}
                                     placeholder="0.00 đ"
                                   />

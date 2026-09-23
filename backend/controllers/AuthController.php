@@ -23,17 +23,12 @@ class AuthController {
 
         if (!$account || !$password) respond(422, null, 'Email / Tên đăng nhập và mật khẩu là bắt buộc', false);
 
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        
-        // 1. Brute force check: Limit to 10 failed attempts per 15 mins per IP
-        $stmtLimit = $this->db->prepare("
-            SELECT COUNT(*) FROM login_attempts 
-            WHERE ip_address = ? AND is_successful = 0 AND attempt_time > DATE_SUB(NOW(), INTERVAL 15 MINUTE)
-        ");
-        $stmtLimit->execute([$ip]);
-        if ((int)$stmtLimit->fetchColumn() >= 10) {
-            respond(429, null, 'Bạn đã thử đăng nhập sai quá nhiều lần. Vui lòng quay lại sau 15 phút.', false);
+        $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        if (strpos($ip, ',') !== false) {
+            $ip = trim(explode(',', $ip)[0]);
         }
+        
+        // Brute force lockout disabled per user request (no 15-minute lock limits)
 
         $stmt = $this->db->prepare(
             'SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.logo_url as tenant_logo
@@ -56,10 +51,11 @@ class AuthController {
             respond(401, null, 'Email / Tên đăng nhập hoặc mật khẩu không đúng', false);
         }
 
-        // Record successful attempt & Clear old failures for this IP
+        // Record successful attempt & Clear failed attempts for this account & IP
         $this->db->prepare("INSERT INTO login_attempts (ip_address, email, is_successful) VALUES (?, ?, 1)")
              ->execute([$ip, $account]);
-        $this->db->prepare("DELETE FROM login_attempts WHERE ip_address = ? AND attempt_time < NOW()")->execute([$ip]);
+        $this->db->prepare("DELETE FROM login_attempts WHERE (LOWER(email) = LOWER(?) OR ip_address = ?) AND is_successful = 0")
+             ->execute([$account, $ip]);
 
         $rememberMe = !empty($body['remember_me']);
 

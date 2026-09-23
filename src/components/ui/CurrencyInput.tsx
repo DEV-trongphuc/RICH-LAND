@@ -13,6 +13,43 @@ interface CurrencyInputProps {
   showTextHelper?: boolean;
 }
 
+export const parseCurrencyValue = (val: string | number | null | undefined): number => {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') {
+    return isNaN(val) ? 0 : Math.round(val);
+  }
+  const str = String(val).trim();
+  if (!str || str === '0' || str === '0.00') return 0;
+
+  // Check for smart units like "50 tỷ", "50 ty", "50t", "500 tr", "200k"
+  const tyMatch = str.toLowerCase().match(/^([\d.,]+)\s*(tỷ|ty|t|b|bil|billion)$/);
+  if (tyMatch) {
+    const numPart = parseFloat(tyMatch[1].replace(',', '.'));
+    if (!isNaN(numPart)) return Math.round(numPart * 1000000000);
+  }
+  const trMatch = str.toLowerCase().match(/^([\d.,]+)\s*(triệu|trieu|tr|m|mil|million)$/);
+  if (trMatch) {
+    const numPart = parseFloat(trMatch[1].replace(',', '.'));
+    if (!isNaN(numPart)) return Math.round(numPart * 1000000);
+  }
+  const kMatch = str.toLowerCase().match(/^([\d.,]+)\s*(nghìn|nghin|ngàn|ngan|k)$/);
+  if (kMatch) {
+    const numPart = parseFloat(kMatch[1].replace(',', '.'));
+    if (!isNaN(numPart)) return Math.round(numPart * 1000);
+  }
+
+  // Check if it's a decimal format like '5000000000.00' from MySQL / API (exactly one dot followed by digits)
+  if (/^-?\d+\.\d+$/.test(str)) {
+    const parsed = parseFloat(str);
+    return isNaN(parsed) ? 0 : Math.round(parsed);
+  }
+
+  // If it's formatted with thousand separators (dots or commas)
+  const clean = str.replace(/[^0-9]/g, '');
+  const parsed = parseInt(clean, 10);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   value,
   onChange,
@@ -26,21 +63,20 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 }) => {
   const [displayValue, setDisplayValue] = useState('');
 
-  // Helper to format number with commas
+  // Helper to format number with commas/dots
   const formatWithCommas = (val: string | number) => {
-    if (val === undefined || val === null || val === '') return '';
-    const clean = String(val).replace(/[^0-9]/g, '');
-    if (clean === '') return '';
-    return new Intl.NumberFormat('vi-VN').format(parseInt(clean));
+    const num = parseCurrencyValue(val);
+    if (!num) return '';
+    return new Intl.NumberFormat('vi-VN').format(num);
   };
 
   // Synchronize internal display value with external value
   useEffect(() => {
-    if (value === undefined || value === null || value === 0 || value === '') {
+    const num = parseCurrencyValue(value);
+    if (num === 0) {
       setDisplayValue('');
     } else {
-      const cleanExternal = String(value).replace(/[^0-9]/g, '');
-      const formatted = formatWithCommas(cleanExternal);
+      const formatted = new Intl.NumberFormat('vi-VN').format(num);
       if (formatted !== displayValue) {
         setDisplayValue(formatted);
       }
@@ -51,13 +87,22 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     const rawInput = e.target.value;
     
     // Allow empty inputs
-    if (rawInput === '') {
+    if (rawInput.trim() === '') {
       setDisplayValue('');
       onChange(0);
       return;
     }
 
-    // Keep only numbers
+    // Check if the user typed text unit shortcuts like "50 tỷ", "50ty", "500tr", "100k"
+    const parsedWithUnit = parseCurrencyValue(rawInput);
+    if (parsedWithUnit > 0 && /[a-zA-Zà-ỹÀ-Ỹ]/.test(rawInput)) {
+      if (parsedWithUnit > 9999999999999) return;
+      setDisplayValue(new Intl.NumberFormat('vi-VN').format(parsedWithUnit));
+      onChange(parsedWithUnit);
+      return;
+    }
+
+    // Standard digit typing with thousand separators
     const numericString = rawInput.replace(/[^0-9]/g, '');
     if (numericString === '') {
       setDisplayValue('');
@@ -70,7 +115,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     // Avoid exceeding max value (9999 billion)
     if (numericValue > 9999999999999) return;
 
-    setDisplayValue(formatWithCommas(numericValue));
+    setDisplayValue(new Intl.NumberFormat('vi-VN').format(numericValue));
     onChange(numericValue);
   };
 
@@ -91,7 +136,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     return '';
   };
 
-  const rawNumericValue = parseInt(displayValue.replace(/[^0-9]/g, ''), 10) || 0;
+  const rawNumericValue = parseCurrencyValue(displayValue);
   const vietnameseText = numberToText(rawNumericValue);
   const abbreviation = rawNumericValue > 0 ? getAbbreviation(rawNumericValue) : '';
 
@@ -126,3 +171,4 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     </div>
   );
 };
+
