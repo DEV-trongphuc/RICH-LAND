@@ -29,58 +29,42 @@ if (defined('APP_ENV') && APP_ENV === 'production') {
 require_once __DIR__ . '/config/Database.php';
 require_once __DIR__ . '/config/JWT.php';
 
-// ── CORS ──────────────────────────────────────────────────────
+// ── CORS & OPTIONS EARLY EXIT ─────────────────────────────────
 $origin  = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowed = array_map('trim', explode(',', ALLOWED_ORIGINS));
+$allowed[] = 'https://crm.richland.city';
+$allowed[] = 'http://crm.richland.city';
 
-// Dynamically fetch and allow frontend_url from system_settings
-try {
-    $db = Database::getInstance();
-    
-
-
-    $stmtSetting = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'frontend_url' LIMIT 1");
-    if ($stmtSetting) {
-        $feUrl = $stmtSetting->fetchColumn();
-        if (!empty($feUrl)) {
-            $parsed = parse_url($feUrl);
-            if (isset($parsed['scheme']) && isset($parsed['host'])) {
-                $allowed[] = $parsed['scheme'] . '://' . $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
-            }
-        }
-    }
-} catch (Throwable $e) {
-    // Avoid crashing on DB issues during CORS phase
-}
-
-if (isset($_GET['action']) && $_GET['action'] === 'get_user_role') {
-    header('Content-Type: application/json');
-    $db = Database::getInstance();
-    $res = $db->query("SELECT id, role, full_name, email, team_id, permissions_json FROM users WHERE email LIKE '%haidang%' OR full_name LIKE '%Đăng%'");
-    $users = $res->fetchAll(PDO::FETCH_ASSOC);
-    echo json_encode($users);
-    exit;
-}
-
-
-// Also allow any localhost origin (any port) for local dev
 $isLocalhost = (bool) preg_match('#^https?://localhost(:\d+)?$#', $origin);
-if ($isLocalhost || in_array($origin, $allowed, true)) {
-    header("Access-Control-Allow-Origin: $origin");
-    header('Access-Control-Allow-Credentials: true');
-} else {
-    header("Access-Control-Allow-Origin: " . ($allowed[0] ?? ''));
-}
+$allowOriginHeader = ($isLocalhost || in_array($origin, $allowed, true) || empty($origin)) ? ($origin ?: '*') : ($allowed[0] ?? '*');
+
+header("Access-Control-Allow-Origin: $allowOriginHeader");
+header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-HTTP-Method-Override');
 header('Vary: Origin');
 header('Content-Type: application/json; charset=UTF-8');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
+// Early exit for OPTIONS preflight requests - ZERO database connections needed!
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
+if (isset($_GET['action']) && $_GET['action'] === 'get_user_role') {
+    $db = Database::getInstance();
+    $res = $db->query("SELECT id, role, full_name, email, team_id, permissions_json FROM users WHERE email LIKE '%haidang%' OR full_name LIKE '%Đăng%'");
+    $users = $res->fetchAll(PDO::FETCH_ASSOC);
+    Database::close();
+    echo json_encode($users);
+    exit;
+}
 
 // ── Helper functions ──────────────────────────────────────────
 function respond(int $code, $data = null, string $message = '', bool $success = true): void {
+    if (class_exists('Database')) {
+        Database::close();
+    }
     if (!headers_sent()) {
         http_response_code($code);
         header('Content-Type: application/json; charset=UTF-8');
