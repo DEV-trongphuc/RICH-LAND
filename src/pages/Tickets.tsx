@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2, Sparkles, Check, X, Edit, Copy, BarChart2, Scale, Calendar, Info, ArrowRight, Ban, UserPlus, Send } from 'lucide-react';
+import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2, Sparkles, Check, X, Edit, Copy, BarChart2, Scale, Calendar, Info, ArrowRight, Ban, UserPlus, Send, PlusCircle } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -1598,6 +1598,29 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                               {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt')}
                             </button>
                           </div>
+                        ) : r.status === 'approved_no_comp' && user?.role !== 'sale' ? (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleCompensateNoComp(r.id); }}
+                              disabled={isCompensatingNoComp}
+                              className="btn sm"
+                              style={{
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                color: '#ffffff',
+                                border: 'none',
+                                fontWeight: 700,
+                                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)',
+                                minWidth: '85px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                              title={t('Bù lượt cho TVV')}
+                            >
+                              <PlusCircle size={13} />
+                              {isCompensatingNoComp ? t('Đang xử lý...') : t('Bù lượt')}
+                            </button>
+                          </div>
                         ) : null}
                       </td>
                     </tr>
@@ -1765,6 +1788,36 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       >
                         <CheckCircle2 size={12} />
                         <span>{t('Duyệt')}</span>
+                      </button>
+                    </div>
+                  )}
+                  {r.status === 'approved_no_comp' && user?.role !== 'sale' && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem', width: '100%' }} onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCompensateNoComp(r.id);
+                        }}
+                        disabled={isCompensatingNoComp}
+                        className="btn sm"
+                        style={{
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          color: '#ffffff',
+                          border: 'none',
+                          height: 36,
+                          borderRadius: 10,
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          flex: 1,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)'
+                        }}
+                      >
+                        <PlusCircle size={14} />
+                        <span>{isCompensatingNoComp ? t('Đang xử lý...') : t('Bù lượt cho TVV')}</span>
                       </button>
                     </div>
                   )}
@@ -2031,8 +2084,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 <button type="button" className="btn ghost" onClick={() => setApproveModalOpen(false)}>{t("Hủy")}</button>
                 <button
                   type="button"
-                  className="btn primary"
-                  style={{ background: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}
+                  className="btn outline"
+                  style={{ color: '#2563eb', borderColor: '#bfdbfe', background: '#eff6ff', fontWeight: 600 }}
                   onClick={() => submitApprove(true)}
                   disabled={isActioning !== null}
                 >
@@ -2041,7 +2094,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 <button
                   type="button"
                   className="btn primary"
-                  style={{ background: '#10b981', borderColor: '#10b981' }}
+                  style={{ background: '#10b981', borderColor: '#10b981', boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)', fontWeight: 700 }}
                   onClick={() => submitApprove(false)}
                   disabled={isActioning !== null}
                 >

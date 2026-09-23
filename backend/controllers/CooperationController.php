@@ -455,16 +455,27 @@ class CooperationController {
 
         $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true);
 
-        $allowedStatuses = ['pending_signatures', 'pending_manager_approval', 'approved_pending_signatures'];
+        $allowedStatuses = ['pending_signatures', 'pending_manager_approval', 'approved_pending_signatures', 'rejected', 'disputed'];
         if (!$isManagerOrAdmin && !in_array($slip['status'], $allowedStatuses)) {
             respond(400, null, 'Không thể cập nhật tỷ lệ cho phiếu hợp tác đã được phê duyệt hoặc khóa', false);
         }
 
-        // Admin updates expected_commission in deposits if present in the body
+        $isCreator = (int)($slip['created_by'] ?? 0) === (int)$auth['user_id'];
+        $isOwner = (int)($slip['owner_id'] ?? 0) === (int)$auth['user_id'];
+        if (in_array($slip['status'], ['rejected', 'disputed'], true) && !$isCreator && !$isOwner && !$isManagerOrAdmin) {
+            respond(403, null, 'Chỉ chủ sở hữu, người tạo phiếu hoặc Quản lý/GĐKD mới có quyền chỉnh sửa lại tỷ lệ sau khi bị bác bỏ hoặc bị treo', false);
+        }
+
+        // Update expected_commission in deposits if present in the body
         $expectedCommission = isset($b['expected_commission']) ? (int)$b['expected_commission'] : null;
-        if ($expectedCommission !== null && $slip['deposit_slip_id']) {
-            $stmtDep = $this->db->prepare("UPDATE deposits SET expected_commission = ? WHERE id = ?");
-            $stmtDep->execute([$expectedCommission, $slip['deposit_slip_id']]);
+        if ($expectedCommission !== null) {
+            if (!empty($slip['deposit_slip_id'])) {
+                $stmtDep = $this->db->prepare("UPDATE deposits SET expected_commission = ? WHERE id = ?");
+                $stmtDep->execute([$expectedCommission, $slip['deposit_slip_id']]);
+            } else if (!empty($slip['contact_id'])) {
+                $stmtDep = $this->db->prepare("UPDATE deposits SET expected_commission = ? WHERE contact_id = ? ORDER BY id DESC LIMIT 1");
+                $stmtDep->execute([$expectedCommission, $slip['contact_id']]);
+            }
         }
 
         $sharesJson = json_encode($shares);
@@ -818,16 +829,19 @@ class CooperationController {
 
         $shares = json_decode($slip['shares_json'] ?? '[]', true) ?: [];
 
-        // Return to pending_signatures so sales can update percentages
+        $authorName = $auth['full_name'] ?? 'Thành viên';
+        $fullDetails = $authorName . ' đã từ chối: ' . $details;
+
+        // Set to disputed (PHIEU_TREO) and clear signatures
         $stmt = $this->db->prepare("
             UPDATE cooperation_slips 
-            SET status = 'rejected', dispute_details = ?, signatures_json = '{}' 
+            SET status = 'disputed', dispute_details = ?, signatures_json = '{}' 
             WHERE id = ?
         ");
-        $stmt->execute([$details, $id]);
+        $stmt->execute([$fullDetails, $id]);
 
         // Email shareholders about dispute/rejection
-        $emailSubject = "[RICH LAND] Từ chối / Khiếu nại Phiếu hợp tác #" . $id;
+        $emailSubject = "[RICH LAND] Khiếu nại / Từ chối Phiếu hợp tác #" . $id;
         $emailTitle = "KHIẾU NẠI PHIẾU HỢP TÁC";
         $emailContent = "Chào các thành viên,<br/><br/>" .
                         "Phiếu hợp tác chia sẻ hoa hồng #" . $id . " đã bị từ chối / gửi phản hồi khiếu nại bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong>.<br/>" .
@@ -835,8 +849,23 @@ class CooperationController {
                         "Vui lòng truy cập hệ thống RICH LAND CRM để xem chi tiết và cập nhật lại.";
         $this->notifyShareholders($id, $shares, $emailSubject, $emailTitle, $emailContent);
 
+        // Báo Quản lý / GĐKD phân xử theo kịch bản TC-30
+        try {
+            require_once __DIR__ . '/../NotificationService.php';
+            $custName = trim(($slip['first_name'] ?? '') . ' ' . ($slip['last_name'] ?? '')) ?: ('Khách #' . $slip['contact_id']);
+            NotificationService::send($this->db, (int)$slip['tenant_id'], 'COOPERATION_SLIP_STALE', [
+                'slip_id' => $id,
+                'contact_id' => (int)$slip['contact_id'],
+                'customer_name' => $custName,
+                'missing_signers' => $authorName . ' (Từ chối: ' . $details . ')',
+                'hours' => 0
+            ]);
+        } catch (\Throwable $notifEx) {
+            // Notification non-blocking
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'REJECT_COOPERATION_SLIP', 'cooperation_slip', $id, "Từ chối phiếu hợp tác ID: $id. Lý do: $details");
-        respond(200, null, 'Đã từ chối phiếu hợp tác và yêu cầu ký lại từ đầu');
+        respond(200, null, 'Đã chuyển phiếu sang trạng thái Bị treo / Khiếu nại và thông báo Quản lý phân xử');
     }
 
     public function createSlip(array $auth): void {

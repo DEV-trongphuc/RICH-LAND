@@ -422,9 +422,6 @@ export const Login = () => {
                     autoComplete="username"
                     required
                   />
-                  <div className="input-actions-right">
-                    <Mail size={19} className="input-icon-right" />
-                  </div>
                 </div>
               </div>
 
@@ -440,19 +437,16 @@ export const Login = () => {
                     autoComplete="current-password"
                     required
                   />
-                  <div className="input-actions-right">
-                    <Lock size={19} className="input-icon-right-lock" />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      tabIndex={-1}
-                      className="input-btn-right"
-                      title={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
-                      aria-label={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
-                    >
-                      {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                    className="input-btn-right"
+                    title={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
+                    aria-label={showPassword ? t("Ẩn mật khẩu") : t("Hiện mật khẩu")}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
                 </div>
               </div>
 
@@ -889,40 +883,22 @@ export const Login = () => {
           display: flex;
           align-items: center;
         }
-        .input-actions-right {
+        .input-btn-right {
           position: absolute;
-          right: 14px;
+          right: 12px;
           top: 50%;
           transform: translateY(-50%);
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          z-index: 2;
-        }
-        .input-icon-right,
-        .input-icon-right-lock {
-          color: #64748b;
-          pointer-events: none;
-          transition: color 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .input-wrapper:focus-within .input-icon-right,
-        .input-wrapper:focus-within .input-icon-right-lock {
-          color: #ef4444;
-        }
-        .input-btn-right {
           background: transparent;
           border: none;
           color: #64748b;
           cursor: pointer;
-          padding: 6px;
+          padding: 8px;
           border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: all 0.2s ease;
+          z-index: 2;
         }
         .input-btn-right:hover {
           color: #f1f5f9;
@@ -930,9 +906,9 @@ export const Login = () => {
         }
         .input-field {
           width: 100%;
-          height: 50px;
-          padding-left: 16px !important;
-          padding-right: 48px !important;
+          height: 52px;
+          padding-left: 20px !important;
+          padding-right: 20px !important;
           border-radius: 14px;
           border: 1px solid rgba(255, 255, 255, 0.1);
           background: rgba(15, 23, 42, 0.85);
@@ -942,7 +918,7 @@ export const Login = () => {
           box-sizing: border-box;
         }
         .input-field.input-field-password {
-          padding-right: 80px !important;
+          padding-right: 52px !important;
         }
         .input-field:focus {
           outline: none;
@@ -1175,21 +1151,18 @@ export const Login = () => {
             border-radius: 24px;
           }
           .input-field {
-            height: 56px !important;
+            height: 58px !important;
             font-size: 16px !important;
-            padding-left: 18px !important;
-            padding-right: 52px !important;
+            padding-left: 22px !important;
+            padding-right: 22px !important;
             border-radius: 16px !important;
           }
           .input-field.input-field-password {
-            padding-right: 84px !important;
-          }
-          .input-actions-right {
-            right: 16px;
-            gap: 10px;
+            padding-right: 56px !important;
           }
           .input-btn-right {
-            padding: 8px;
+            right: 14px;
+            padding: 10px;
           }
           .submit-btn-custom {
             height: 52px;

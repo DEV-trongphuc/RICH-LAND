@@ -87,9 +87,11 @@ echo "[" . date('Y-m-d H:i:s') . "] Using PHP binary: " . $phpBin . "\n";
 // Danh sách các tiến trình con chạy tuần tự
 // cron_sync.php sẽ xử lý đồng bộ Google Sheets, chia số, báo cáo Ngày/Tuần/Tháng, và gọi AI/Sync Queue
 // cron_mailer.php sẽ gửi email và tin nhắn Zalo bất đồng bộ từ hàng đợi gửi tin
+// cron_cooperation_slips.php sẽ quét các phiếu hợp tác quá 24h chưa ký để tự đổi sang PHIEU_TREO và cảnh báo quản lý
 $tasks = [
     'cron_sync.php',
-    'cron_mailer.php'
+    'cron_mailer.php',
+    'cron_cooperation_slips.php'
 ];
 
 require_once __DIR__ . '/db_connect.php';

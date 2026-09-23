@@ -4205,6 +4205,14 @@ if (!defined('DIAG_TOKEN')) {
         logSync("Error running recurring tasks cron: " . $recurrenceEx->getMessage());
     }
 
+    // --- Quét phiếu hợp tác quá 24h chưa ký để chuyển PHIEU_TREO (TC-30) ---
+    try {
+        require_once __DIR__ . '/cron_cooperation_slips.php';
+        runCooperationSlipsCron($conn);
+    } catch (Exception $coopEx) {
+        logSync("Error running cooperation slips cron: " . $coopEx->getMessage());
+    }
+
     if (php_sapi_name() === 'cli') {
         $conn->close();
     }

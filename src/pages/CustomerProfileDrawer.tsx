@@ -5558,14 +5558,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     animate: { y: 0, x: 0, opacity: 1 },
     exit: isMobileOrTablet ? { y: '100%' } : { opacity: 0, x: '250px' },
     transition: { type: 'spring' as const, damping: 30, stiffness: 250, mass: 0.8 },
-    drag: isMobileOrTablet ? ('y' as const) : false,
-    dragConstraints: { top: 0 },
-    dragElastic: { top: 0.05, bottom: 0.7 },
-    onDragEnd: (event: any, info: any) => {
-      if (isMobileOrTablet && (info.offset.y > 150 || info.velocity.y > 400)) {
-        handleClose();
-      }
-    }
+    drag: false
   };
 
   if (!contact) return null;
@@ -5785,21 +5778,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 right: 0,
                 top: 0,
                 bottom: 0,
-                height: isMobileOrTablet ? '92dvh' : '100vh',
-                marginTop: isMobileOrTablet ? '8dvh' : 0,
-                borderRadius: isMobileOrTablet ? '24px 24px 0 0' : 0,
+                height: isMobileOrTablet ? '100dvh' : '100vh',
+                marginTop: 0,
+                borderRadius: 0,
                 overflow: 'hidden',
-                boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
+                boxShadow: isMobileOrTablet ? 'none' : '-10px 0 30px rgba(0,0,0,0.15)',
                 zIndex: zIndex || 1000010,
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'fixed',
-                background: 'var(--color-surface)'
+                background: 'var(--color-surface)',
+                paddingTop: isMobileOrTablet ? 'env(safe-area-inset-top, 0px)' : 0,
+                paddingBottom: isMobileOrTablet ? 'env(safe-area-inset-bottom, 0px)' : 0
               }}
             >
-              {isMobileOrTablet && (
-                <div style={{ width: '36px', height: '5px', background: 'var(--color-border)', borderRadius: '999px', margin: '12px auto 2px', flexShrink: 0 }} />
-              )}
               <AnimatePresence>
                 {showAvatarModal && (
                   <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000020 }}>
@@ -7541,7 +7533,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* Dự án & Chiến dịch (Quan hệ Cha - Con) */}
-                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '8px', marginBottom: 0 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: '8px', marginBottom: 0, width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
                                 <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Dự án nguồn</label>
@@ -7726,7 +7718,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 .filter(item => Boolean(item.value && item.value !== '—' && item.value !== '-'));
 
                               return activeFields.length > 0 ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '6px', fontSize: '0.75rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: '6px', fontSize: '0.75rem', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                                   {activeFields.map(item => (
                                     <div 
                                       key={item.key} 
@@ -7735,7 +7727,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         padding: '4px 8px', 
                                         borderRadius: '6px', 
                                         border: '1px solid var(--color-border)',
-                                        gridColumn: item.fullWidth ? 'span 2' : undefined
+                                        gridColumn: (item.fullWidth && !isMobileOrTablet) ? 'span 2' : undefined,
+                                        minWidth: 0,
+                                        boxSizing: 'border-box'
                                       }}
                                     >
                                       <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{item.label}</div>
@@ -7753,15 +7747,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             })()}
 
                             {/* CÁC TRƯỜNG DƯỚI FORM ĐĂNG KÝ: link_fb & link_video_ads */}
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '8px', marginTop: '4px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: '8px', marginTop: '4px', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                               {/* Link Facebook */}
-                              <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div className="form-group" style={{ marginBottom: 0, minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', minHeight: '18px' }}>
                                   <label className="form-label" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', margin: 0, fontWeight: 700 }}>
                                     <Globe size={11} style={{ color: '#1877F2' }} /> Link Facebook
                                   </label>
                                 </div>
-                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                                   <input
                                     className="form-input sm"
                                     placeholder="https://facebook.com/profile..."
@@ -7770,7 +7764,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       const val = e.target.value;
                                       setFormData((prev: any) => ({ ...prev, fb_link: val, facebook_link: val, link_fb: val }));
                                     }}
-                                    style={{ paddingRight: (formData.fb_link || formData.facebook_link || formData.link_fb) ? '28px' : '8px', height: '32px', fontSize: '0.8125rem' }}
+                                    style={{ paddingRight: (formData.fb_link || formData.facebook_link || formData.link_fb) ? '28px' : '8px', height: '32px', fontSize: '0.8125rem', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}
                                   />
                                   {(formData.fb_link || formData.facebook_link || formData.link_fb) && (
                                     <a
@@ -7788,13 +7782,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
 
                               {/* Link Video Ads */}
-                              <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div className="form-group" style={{ marginBottom: 0, minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', minHeight: '18px' }}>
                                   <label className="form-label" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', margin: 0, fontWeight: 700 }}>
                                     <Video size={11} style={{ color: '#ef4444' }} /> Link Video Ads
                                   </label>
                                 </div>
-                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                                   <input
                                     className="form-input sm"
                                     placeholder="https://facebook.com/watch/... hoặc link video"
@@ -7803,7 +7797,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       const val = e.target.value;
                                       setFormData((prev: any) => ({ ...prev, link_video_ads: val }));
                                     }}
-                                    style={{ paddingRight: formData.link_video_ads ? '28px' : '8px', height: '32px', fontSize: '0.8125rem' }}
+                                    style={{ paddingRight: formData.link_video_ads ? '28px' : '8px', height: '32px', fontSize: '0.8125rem', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}
                                   />
                                   {formData.link_video_ads && (
                                     <a
@@ -8105,7 +8099,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, 1fr)', gap: '0.875rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: '0.875rem', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                           <div className="form-group">
                             <label className="form-label">Người đang phụ trách</label>
                             {currentUser?.role === 'sale' ? (
@@ -8309,15 +8303,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                           <div className="form-group">
                             <label className="form-label">Mạng xã hội</label>
-                            <div style={{ display: 'flex', gap: '0.5rem', flexDirection: isMobileOrTablet ? 'column' : 'row' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexDirection: isMobileOrTablet ? 'column' : 'row', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                               <input className="form-input" placeholder="Zalo Link (https://zalo.me/...)" value={formData.zalo_link || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, zalo_link: val }));
-                              }} style={{ flex: 1, minWidth: 0 }} />
+                              }} style={{ flex: 1, minWidth: 0, width: '100%', maxWidth: '100%', boxSizing: 'border-box' }} />
                               <input className="form-input" placeholder="FB Link (https://facebook.com/...)" value={formData.fb_link || ''} onChange={e => {
                                 const val = e.target.value;
                                 setFormData((prev: any) => ({ ...prev, fb_link: val }));
-                              }} style={{ flex: 1, minWidth: 0 }} />
+                              }} style={{ flex: 1, minWidth: 0, width: '100%', maxWidth: '100%', boxSizing: 'border-box' }} />
                             </div>
                           </div>
 

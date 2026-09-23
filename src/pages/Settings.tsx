@@ -278,15 +278,20 @@ const SettingsInner = () => {
     { id: 'lead_scoring', tab: 'lead_scoring', category: t('Dữ liệu & Vòng đời'), subtab: t('Quy tắc Lead Scoring'), title: t('Quy tắc chấm điểm Lead Scoring'), desc: t('Cấu hình điểm số cho các tiêu chí nhân khẩu học, hành vi và suy giảm độ nhiệt'), keywords: ['scoring', 'lead score', 'điểm', 'nóng', 'lạnh', 'tiêu chí'] },
 
     // Giao tiếp & Báo cáo
-    { id: 'email_config', tab: 'email_config', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Gửi Email'), desc: t('Cấu hình Google Apps Script hoặc Amazon SES SMTP gửi email hệ thống'), keywords: ['email', 'smtp', 'ses', 'gmail', 'appscript', 'test email'] },
-    { id: 'zalo_bot', tab: 'zalo_bot', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Zalo Bot'), desc: t('Kết nối Zalo OA / Zalo Personal Bot gửi thông báo lead & báo cáo'), keywords: ['zalo', 'bot', 'zalo oa', 'webhook', 'xác thực', 'group chat'] },
-    { id: 'telegram_bot', tab: 'telegram_bot', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Telegram Bot'), desc: t('Tích hợp Telegram Bot gửi tin nhắn riêng và nhóm Admin'), keywords: ['telegram', 'bot', 'chat id', 'nhóm admin', 'webhook'] },
-    { id: 'reports_config', tab: 'automated_reports', category: t('Giao tiếp & Báo cáo'), subtab: t('Báo cáo tự động'), desc: t('Đặt lịch gửi báo cáo doanh thu & hiệu suất theo ngày/tuần/tháng'), keywords: ['báo cáo tự động', 'báo cáo ngày', 'báo cáo tuần', 'báo cáo tháng'] },
+    { id: 'email_config', tab: 'email_config', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Gửi Email'), title: t('Cấu hình Gửi Email (AppScript / Amazon SES)'), desc: t('Cấu hình Google Apps Script hoặc Amazon SES SMTP gửi email hệ thống'), keywords: ['email', 'smtp', 'ses', 'gmail', 'appscript', 'test email'] },
+    { id: 'zalo_bot', tab: 'zalo_bot', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Zalo Bot'), title: t('Cấu hình Zalo Bot (OA & Cá nhân)'), desc: t('Kết nối Zalo OA / Zalo Personal Bot gửi thông báo lead & báo cáo'), keywords: ['zalo', 'bot', 'zalo oa', 'webhook', 'xác thực', 'group chat'] },
+    { id: 'telegram_bot', tab: 'telegram_bot', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Telegram Bot'), title: t('Cấu hình Telegram Bot Thông báo'), desc: t('Tích hợp Telegram Bot gửi tin nhắn riêng và nhóm Admin'), keywords: ['telegram', 'bot', 'chat id', 'nhóm admin', 'webhook'] },
+    { id: 'reports_config', tab: 'automated_reports', category: t('Giao tiếp & Báo cáo'), subtab: t('Báo cáo tự động'), title: t('Lịch Báo cáo Tự động Định kỳ'), desc: t('Đặt lịch gửi báo cáo doanh thu & hiệu suất theo ngày/tuần/tháng'), keywords: ['báo cáo tự động', 'báo cáo ngày', 'báo cáo tuần', 'báo cáo tháng'] },
 
     // Tích hợp & AI
-    { id: 'ai_assistant', tab: 'ai_assistant', category: t('Tích hợp & Hệ thống'), subtab: t('Trợ lý AI (Gemini)'), desc: t('Cấu hình Gemini API Key và AI Screener tự động phân loại lead'), keywords: ['ai', 'gemini', 'api key', 'screener', 'trợ lý', 'phân loại'] },
-    { id: 'workflow_templates', tab: 'workflow_templates', category: t('Tích hợp & Hệ thống'), subtab: t('Mẫu Quy trình'), desc: t('Tạo các mẫu công việc tự động giao cho Sale theo giai đoạn'), keywords: ['workflow', 'mẫu công việc', 'quy trình', 'tự động giao'] },
-    { id: 'database_maintenance', tab: 'database_maintenance', category: t('Tích hợp & Hệ thống'), subtab: t('Bảo trì Database'), desc: t('Bảo trì Database, xóa lịch sử nhập rác và tự đồng bộ cấu trúc'), keywords: ['database', 'bảo trì', 'xóa log', 'tự đồng bộ'] }
+    { id: 'ai_assistant', tab: 'ai_assistant', category: t('Tích hợp & Hệ thống'), subtab: t('Trợ lý AI (Gemini)'), title: t('Trợ lý AI Gemini & AI Screener'), desc: t('Cấu hình Gemini API Key và AI Screener tự động phân loại lead'), keywords: ['ai', 'gemini', 'api key', 'screener', 'trợ lý', 'phân loại'] },
+    { id: 'workflow_templates', tab: 'workflow_templates', category: t('Tích hợp & Hệ thống'), subtab: t('Mẫu Quy trình'), title: t('Mẫu Quy trình & Công việc Tự động'), desc: t('Tạo các mẫu công việc tự động giao cho Sale theo giai đoạn'), keywords: ['workflow', 'mẫu công việc', 'quy trình', 'tự động giao'] },
+    { id: 'database_maintenance', tab: 'database_maintenance', category: t('Tích hợp & Hệ thống'), subtab: t('Bảo trì Database'), title: t('Bảo trì & Tối ưu Cơ sở Dữ liệu'), desc: t('Bảo trì Database, xóa lịch sử nhập rác và tự đồng bộ cấu trúc'), keywords: ['database', 'bảo trì', 'xóa log', 'tự đồng bộ'] },
+    { id: 'tag_management', tab: 'tag_management', category: t('Dữ liệu & Vòng đời'), subtab: t('Quản lý Thẻ (Tags)'), title: t('Quản lý Nhãn & Thẻ phân loại'), desc: t('Tạo và tùy chỉnh màu sắc các thẻ phân loại khách hàng, công ty và deal'), keywords: ['tag', 'thẻ', 'nhãn', 'phân loại', 'màu sắc'] },
+    { id: 'legacy_mapping', tab: 'legacy_mapping', category: t('Dữ liệu & Vòng đời'), subtab: t('Ánh xạ Nguồn Cũ'), title: t('Ánh xạ Nguồn Cũ & Quy tắc Đồng bộ'), desc: t('Ánh xạ nguồn dữ liệu từ các hệ thống cũ sang kênh phân bổ mới'), keywords: ['ánh xạ', 'mapping', 'nguồn cũ', 'legacy', 'đồng bộ'] },
+    { id: 'error_reasons', tab: 'error_reasons', category: t('Phân phối & Nghiệp vụ'), subtab: t('Lý do Báo lỗi'), title: t('Danh mục Lý do Báo lỗi Lead'), desc: t('Cấu hình các lý do báo cáo lỗi data để Sale lựa chọn khi phản hồi'), keywords: ['lý do lỗi', 'báo lỗi', 'ticket', 'sai số', 'spam'] },
+    { id: 'auto_approve_ticket', tab: 'auto_approve_ticket', category: t('Phân phối & Nghiệp vụ'), subtab: t('Tự động Duyệt Ticket'), title: t('Quy tắc Tự động Duyệt Ticket Báo lỗi'), desc: t('Thiết lập từ khóa và điều kiện để hệ thống tự động duyệt đền bù'), keywords: ['auto approve', 'tự động duyệt', 'ticket', 'đền bù', 'từ khóa'] },
+    { id: 'database_erd', tab: 'database_erd', category: t('Tích hợp & Hệ thống'), subtab: t('Sơ đồ ERD'), title: t('Sơ đồ Cơ sở Dữ liệu (ERD)'), desc: t('Xem trực quan cấu trúc bảng, khóa ngoại và mối quan hệ các thực thể CSDL'), keywords: ['erd', 'sơ đồ', 'database', 'bảng', 'cấu trúc', 'quan hệ'] }
   ];
 
   // Filtered search items
@@ -294,12 +299,18 @@ const SettingsInner = () => {
     ? []
     : searchableSettingsItems.filter(item => {
         const query = settingsSearchQuery.toLowerCase().trim();
+        const title = (item.title || '').toLowerCase();
+        const desc = (item.desc || '').toLowerCase();
+        const subtab = (item.subtab || '').toLowerCase();
+        const category = (item.category || '').toLowerCase();
+        const hasKeyword = Array.isArray(item.keywords) && item.keywords.some(kw => (kw ? String(kw).toLowerCase().includes(query) : false));
+
         return (
-          item.title.toLowerCase().includes(query) ||
-          item.desc.toLowerCase().includes(query) ||
-          item.subtab.toLowerCase().includes(query) ||
-          item.category.toLowerCase().includes(query) ||
-          item.keywords.some(kw => kw.toLowerCase().includes(query))
+          title.includes(query) ||
+          desc.includes(query) ||
+          subtab.includes(query) ||
+          category.includes(query) ||
+          hasKeyword
         );
       });
 

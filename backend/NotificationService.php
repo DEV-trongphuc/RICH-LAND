@@ -94,7 +94,7 @@ class NotificationService {
 
             $isAdminBroadcastEvent = in_array($eventType, [
                 'CHECKIN_LATE', 'ATTENDANCE_UPDATE', 'EXPENSE_REQUEST', 'TICKET_NEW', 
-                'COOPERATION_PENDING_APPROVAL', 'DEPOSIT_NEW', 'NIGHT_SHIFT_BOOKING', 
+                'COOPERATION_PENDING_APPROVAL', 'COOPERATION_SLIP_STALE', 'DEPOSIT_NEW', 'NIGHT_SHIFT_BOOKING', 
                 'LEAVE_REQUEST', 'HOLIDAY_REGISTRATION_OPENED', 'HOLIDAY_UPDATE', 
                 'MONTHLY_ATTENDANCE_REPORT'
             ], true);
@@ -520,6 +520,37 @@ class NotificationService {
                     'email_content' => "Chào quản trị viên,<br/><br/>" .
                                     "Phiếu hợp tác chia sẻ hoa hồng <strong>#$slipId</strong> đã thu thập đầy đủ chữ ký của các thành viên.<br/>" .
                                     "Vui lòng truy cập hệ thống CRM để phê duyệt."
+                ];
+
+            case 'COOPERATION_SLIP_STALE':
+                $recipients = self::getAdminsAndManagers($db, $tenantId);
+                $slipId = $payload['slip_id'] ?? '0';
+                $customerName = $payload['customer_name'] ?? 'Khách hàng';
+                $missingSigners = $payload['missing_signers'] ?? 'Thành viên';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Cảnh báo: Phiếu hợp tác #$slipId bị treo (>24h)",
+                    'body' => "Phiếu hợp tác #$slipId ($customerName) quá 24h chưa ký bởi: $missingSigners. Đã chuyển trạng thái Bị treo.",
+                    'type' => "cooperation",
+                    'link' => "/cooperation-slips",
+                    'zalo_msg' => "⚠️ [ CẢNH BÁO PHIẾU HỢP TÁC BỊ TREO QUÁ 24H ]\n\n"
+                        . "Phiếu hợp tác #$slipId chưa thu thập đủ chữ ký sau 24h và đã tự động chuyển sang trạng thái PHIẾU TREO.\n"
+                        . "  • Mã phiếu: #$slipId\n"
+                        . "  • Khách hàng: $customerName\n"
+                        . "  • Chưa ký: $missingSigners\n\n"
+                        . "Yêu cầu Quản lý / Giám đốc Kinh doanh truy cập hệ thống để kiểm tra và phân xử.",
+                    'tg_msg' => "⚠️ <b>[ CẢNH BÁO PHIẾU HỢP TÁC BỊ TREO QUÁ 24H ]</b>\n\n"
+                        . "Phiếu hợp tác <b>#$slipId</b> chưa thu thập đủ chữ ký sau 24h và đã tự động chuyển sang trạng thái <b>PHIẾU TREO</b>.\n"
+                        . "  • Khách hàng: <i>$customerName</i>\n"
+                        . "  • Chưa ký: <code>$missingSigners</code>\n\n"
+                        . "Yêu cầu Quản lý / GĐKD kiểm tra và phân xử tại CRM.",
+                    'email_subject' => "[RICH LAND] Cảnh báo Phiếu hợp tác #$slipId bị treo quá 24h",
+                    'email_title' => "CẢNH BÁO PHIẾU HỢP TÁC BỊ TREO",
+                    'email_content' => "Chào Quản lý / Giám đốc Kinh doanh,<br/><br/>"
+                        . "Phiếu hợp tác chia sẻ hoa hồng <strong>#$slipId</strong> (Khách hàng: " . htmlspecialchars($customerName) . ") đã vượt quá hạn 24 giờ mà chưa được tất cả thành viên ký xác nhận.<br/>"
+                        . "- <strong>Chưa ký:</strong> " . htmlspecialchars($missingSigners) . "<br/>"
+                        . "- <strong>Trạng thái:</strong> Hệ thống đã tự động chuyển sang <strong>PHIẾU TREO / TRANH CHẤP</strong>.<br/><br/>"
+                        . "Vui lòng đăng nhập hệ thống RICH LAND CRM để xem xét lịch sử chăm sóc và phân xử."
                 ];
 
             case 'DEPOSIT_NEW':

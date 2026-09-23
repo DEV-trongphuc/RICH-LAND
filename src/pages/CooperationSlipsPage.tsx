@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import api from '../api/axios';
-import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink, Search, Zap, Edit3, Loader2 } from 'lucide-react';
+import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, AlertTriangle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink, Search, Zap, Edit3, Loader2 } from 'lucide-react';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
@@ -73,6 +73,9 @@ interface SalesAccount {
   full_name: string;
   email: string;
   team_id?: number | string;
+  avatar?: string;
+  avatar_url?: string;
+  role?: string;
 }
 
 function numberToVietnameseWords(num: number): string {
@@ -162,6 +165,40 @@ export default function CooperationSlipsPage() {
       setStatusFilter('all');
     }
   }, [location.search]);
+
+  // Unified list of all company staff and shareholders (ensuring nobody is ever missing or displayed as unknown)
+  const allStaffOptions = useMemo(() => {
+    const map = new Map<string, { id: string | number; full_name: string; email?: string; avatar?: string; team_id?: any; role?: string }>();
+
+    for (const u of salesAccounts) {
+      map.set(String(u.id), {
+        id: u.id,
+        full_name: u.full_name,
+        email: u.email,
+        avatar: (u as any).avatar_url || (u as any).avatar,
+        team_id: u.team_id,
+        role: (u as any).role
+      });
+    }
+
+    for (const s of slips) {
+      if (s.shareholders) {
+        for (const sh of s.shareholders) {
+          if (!map.has(String(sh.user_id))) {
+            map.set(String(sh.user_id), {
+              id: sh.user_id,
+              full_name: sh.name,
+              email: sh.email,
+              avatar: (sh as any).avatar_url || (sh as any).avatar,
+              role: 'shareholder'
+            });
+          }
+        }
+      }
+    }
+
+    return Array.from(map.values());
+  }, [salesAccounts, slips]);
 
   // Signature Modal state
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
@@ -409,6 +446,8 @@ export default function CooperationSlipsPage() {
           if (slip.status !== 'pending_manager_approval') return false;
         } else if (statusFilter === 'approved') {
           if (slip.status !== 'approved') return false;
+        } else if (statusFilter === 'disputed') {
+          if (slip.status !== 'disputed') return false;
         } else if (statusFilter === 'rejected') {
           if (slip.status !== 'rejected') return false;
         }
@@ -431,6 +470,7 @@ export default function CooperationSlipsPage() {
     let pendingManager = 0;
     let approved = 0;
     let rejected = 0;
+    let disputed = 0;
 
     slips.forEach(slip => {
       // 1. Search Query
@@ -475,6 +515,9 @@ export default function CooperationSlipsPage() {
       if (slip.status === 'approved') {
         approved++;
       }
+      if (slip.status === 'disputed') {
+        disputed++;
+      }
       if (slip.status === 'rejected') {
         rejected++;
       }
@@ -485,7 +528,8 @@ export default function CooperationSlipsPage() {
       pending_signatures: pendingSignatures,
       pending_manager: pendingManager,
       approved,
-      rejected
+      rejected,
+      disputed
     };
   }, [slips, searchQuery, filterSale, dateRange, user?.id, isManager, isApprover]);
 
@@ -524,8 +568,8 @@ export default function CooperationSlipsPage() {
       try {
         const resUsers = await fetchAPI('users?all=1');
         if (resUsers.success) {
-          const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale');
-          setSalesAccounts(sales);
+          const staff = (resUsers.data || []).filter((u: any) => u.is_active !== 0 && u.is_active !== '0' && u.is_active !== false);
+          setSalesAccounts(staff.length > 0 ? staff : (resUsers.data || []));
         }
       } catch (err) {
         console.warn('Failed to load users for configurations:', err);
@@ -670,12 +714,15 @@ export default function CooperationSlipsPage() {
 
   const handleOpenUpdateShares = (slip: CooperationSlip) => {
     setSelectedSlipId(slip.id);
-    const initialShares = slip.shareholders.map(s => ({
+    const initialShares = (slip.shareholders || []).map(s => ({
       user_id: String(s.user_id),
       percentage: String(s.percentage)
     }));
-    setSharesInput(initialShares);
-    setUpdateExpectedCommission(Number(slip.expected_commission) || 0);
+    setSharesInput(initialShares.length > 0 ? initialShares : [{ user_id: String(user?.id), percentage: '100' }]);
+    const baseComm = Number(slip.expected_commission) > 0
+      ? Number(slip.expected_commission)
+      : (Number(slip.actual_revenue) > 0 ? Number(slip.actual_revenue) : (Number(slip.expected_revenue) || 0));
+    setUpdateExpectedCommission(baseComm);
     setChangeReason('');
     setIsUpdateOpen(true);
   };
@@ -855,8 +902,9 @@ export default function CooperationSlipsPage() {
     formattedReason += `- Hoa hồng dự kiến mới: ${reqExpectedCommission.toLocaleString('vi-VN')} VND\n`;
     formattedReason += `- Tỷ lệ phân chia mới đề xuất:\n`;
     reqShares.forEach(sh => {
-      const uObj = salesAccounts.find(u => String(u.id) === String(sh.user_id));
-      const uName = uObj ? uObj.full_name : `Sale ID ${sh.user_id}`;
+      const uObj = allStaffOptions.find(u => String(u.id) === String(sh.user_id));
+      const shFromSlip = requestAdjustmentSlip?.shareholders?.find((s: any) => String(s.user_id) === String(sh.user_id));
+      const uName = uObj ? uObj.full_name : (shFromSlip ? shFromSlip.name : `Nhân viên #${sh.user_id}`);
       formattedReason += `  + ${uName}: ${sh.percentage}%\n`;
     });
     formattedReason += `\nLý do yêu cầu: ${requestAdjustmentReason.trim()}`;
@@ -1044,6 +1092,11 @@ export default function CooperationSlipsPage() {
                   badge: { count: statusCounts.pending_manager, color: '#BD1D2D' }
                 },
                 { value: 'approved', label: 'Đã duyệt' },
+                { 
+                  value: 'disputed', 
+                  label: 'Phiếu treo (Quá 24h / Khiếu nại)',
+                  badge: statusCounts.disputed > 0 ? { count: statusCounts.disputed, color: '#ef4444' } : undefined
+                },
                 { value: 'rejected', label: 'Bác bỏ' }
               ].filter(Boolean) as any[]}
               size="sm"
@@ -1058,7 +1111,7 @@ export default function CooperationSlipsPage() {
                 onChange={val => setFilterSale(val)}
                 options={[
                   { value: 'all', label: 'Tất cả nhân viên' },
-                  ...salesAccounts.map(u => ({ value: String(u.id), label: u.full_name, avatar: (u as any).avatar }))
+                  ...allStaffOptions.map(u => ({ value: String(u.id), label: u.full_name, avatar: (u as any).avatar }))
                 ]}
                 size="sm"
                 showAvatars
@@ -1198,9 +1251,9 @@ export default function CooperationSlipsPage() {
                         <span
                           className="badge"
                           style={{
-                            background: isPendingSignatures || slip.status === 'pending_manager_approval' ? 'rgba(245, 158, 11, 0.08)' : (slip.status === 'approved' ? 'rgba(16, 185, 129, 0.08)' : (slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.08)' : 'var(--color-surface)')),
-                            color: isPendingSignatures ? '#f59e0b' : slip.status === 'approved' ? '#10b981' : slip.status === 'pending_manager_approval' ? '#f59e0b' : slip.status === 'rejected' ? '#ef4444' : 'var(--color-text)',
-                            border: isPendingSignatures || slip.status === 'pending_manager_approval' ? '1px solid rgba(245, 158, 11, 0.2)' : (slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : (slip.status === 'rejected' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid var(--color-border)')),
+                            background: isPendingSignatures || slip.status === 'pending_manager_approval' ? 'rgba(245, 158, 11, 0.08)' : (slip.status === 'approved' ? 'rgba(16, 185, 129, 0.08)' : ((slip.status === 'rejected' || slip.status === 'disputed') ? 'rgba(239, 68, 68, 0.08)' : 'var(--color-surface)')),
+                            color: isPendingSignatures ? '#f59e0b' : slip.status === 'approved' ? '#10b981' : slip.status === 'pending_manager_approval' ? '#f59e0b' : ((slip.status === 'rejected' || slip.status === 'disputed') ? '#ef4444' : 'var(--color-text)'),
+                            border: isPendingSignatures || slip.status === 'pending_manager_approval' ? '1px solid rgba(245, 158, 11, 0.2)' : (slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : ((slip.status === 'rejected' || slip.status === 'disputed') ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid var(--color-border)')),
                             padding: '4px 10px',
                             borderRadius: '30px',
                             fontSize: '0.7rem',
@@ -1224,6 +1277,11 @@ export default function CooperationSlipsPage() {
                             <>
                               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }} />
                               Chờ sếp duyệt
+                            </>
+                          ) : slip.status === 'disputed' ? (
+                            <>
+                              <AlertTriangle size={12} style={{ color: '#ef4444' }} />
+                              Phiếu treo
                             </>
                           ) : slip.status === 'rejected' ? (
                             <>
@@ -1350,6 +1408,31 @@ export default function CooperationSlipsPage() {
                           }}
                         >
                           Cấu hình chia %
+                        </button>
+                      )}
+
+                      {/* When rejected or disputed: owner/creator or approver can re-edit % and re-submit */}
+                      {(slip.status === 'rejected' || slip.status === 'disputed') && (String(slip.created_by) === String(user?.id) || String((slip as any).owner_id) === String(user?.id) || isApprover) && (
+                        <button
+                          onClick={() => handleOpenUpdateShares(slip)}
+                          style={{
+                            height: '38px',
+                            padding: '0 16px',
+                            fontSize: '0.85rem',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'pointer',
+                            border: '1px solid var(--color-primary)',
+                            background: 'rgba(163, 20, 34, 0.08)',
+                            color: 'var(--color-primary)',
+                            transition: 'all 0.2s',
+                            boxShadow: 'var(--shadow-xs)'
+                          }}
+                        >
+                          <PenTool size={14} /> Chỉnh sửa lại tỷ lệ (%) &amp; Gửi lại
                         </button>
                       )}
 
@@ -1538,6 +1621,36 @@ export default function CooperationSlipsPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-light)', animation: 'fadeIn 0.2s ease-out' }}>
                     {/* Shareholders Distribution & Signatures */}
                     <div>
+                      {/* Rejection / Disputed notice banner when slip is rejected or disputed */}
+                      {(slip.status === 'rejected' || slip.status === 'disputed') && (
+                        <div style={{
+                          marginBottom: '0.75rem',
+                          padding: '10px 14px',
+                          background: slip.status === 'disputed' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(239, 68, 68, 0.06)',
+                          border: slip.status === 'disputed' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(239, 68, 68, 0.25)',
+                          borderRadius: '10px',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '10px',
+                          color: slip.status === 'disputed' ? '#d97706' : 'var(--color-danger)'
+                        }}>
+                          <ShieldAlert size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>
+                              {slip.status === 'disputed' ? '⚠️ Phiếu hợp tác đang bị treo (Quá 24h / Khiếu nại)' : 'Phiếu hợp tác đã bị bác bỏ / từ chối ký'}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', marginTop: '3px', color: 'var(--color-text)' }}>
+                              Chi tiết: <strong>{slip.dispute_details || (slip.status === 'disputed' ? 'Quá 24h chưa hoàn tất ký xác nhận từ các bên liên quan. Đã gửi cảnh báo Quản lý / GĐKD phân xử.' : 'Thành viên từ chối ký xác nhận và yêu cầu điều chỉnh lại tỷ lệ.')}</strong>
+                            </div>
+                            <div style={{ fontSize: '0.75rem', marginTop: '4px', color: 'var(--color-text-muted)' }}>
+                              {slip.status === 'disputed' 
+                                ? 'Hệ thống đã phát cảnh báo đến Quản lý / GĐKD để trực tiếp phân xử. Chủ phiếu hoặc Quản lý có thể bấm nút "Chỉnh sửa lại tỷ lệ (%) & Gửi lại" để mở lại vòng ký mới.'
+                                : 'Chữ ký số đã được tự động hủy bỏ. Chủ phiếu hoặc Quản trị viên vui lòng bấm nút "Chỉnh sửa lại tỷ lệ (%) & Gửi lại" ở trên để cập nhật tỷ lệ và mở lại vòng ký xác nhận mới.'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <h4 style={{ fontWeight: 700, fontSize: '0.825rem', marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ phân chia &amp; Chữ ký số Sales:</h4>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem' }}>
                         {slip.shareholders.map(sh => (
@@ -1547,8 +1660,8 @@ export default function CooperationSlipsPage() {
                             style={{
                               padding: '0.75rem 1rem',
                               borderRadius: '8px',
-                              background: sh.signed ? 'rgba(16, 185, 129, 0.04)' : 'var(--color-bg)',
-                              border: sh.signed ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid var(--color-border)',
+                              background: slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.02)' : sh.signed ? 'rgba(16, 185, 129, 0.04)' : 'var(--color-bg)',
+                              border: slip.status === 'rejected' ? '1px dashed rgba(239, 68, 68, 0.3)' : sh.signed ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid var(--color-border)',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
@@ -1576,18 +1689,22 @@ export default function CooperationSlipsPage() {
                               </div>
                             </div>
 
-                            <div style={{ paddingTop: '6px', borderTop: sh.signed ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                            <div style={{ paddingTop: '6px', borderTop: slip.status === 'rejected' ? '1px dashed rgba(239, 68, 68, 0.2)' : sh.signed ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
                               <span
                                 style={{
                                   fontSize: '10px',
                                   fontWeight: 700,
-                                  color: sh.signed ? 'var(--color-success)' : 'var(--color-warning)',
+                                  color: slip.status === 'rejected' ? 'var(--color-danger)' : sh.signed ? 'var(--color-success)' : 'var(--color-warning)',
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '4px'
                                 }}
                               >
-                                {sh.signed ? (
+                                {slip.status === 'rejected' ? (
+                                  <>
+                                    <X size={10} /> Đã hủy ký (Bác bỏ)
+                                  </>
+                                ) : sh.signed ? (
                                   <>✓ Đã ký xác nhận</>
                                 ) : (
                                   <>
@@ -2571,9 +2688,10 @@ export default function CooperationSlipsPage() {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--color-bg-light)', padding: '16px', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
                 {reqShares.map((item, idx) => {
-                  const uObj = salesAccounts.find(u => String(u.id) === String(item.user_id));
-                  const uName = uObj ? uObj.full_name : `Sale ID ${item.user_id}`;
-                  const uAvatar = uObj ? (uObj as any).avatar : null;
+                  const uObj = allStaffOptions.find(u => String(u.id) === String(item.user_id));
+                  const shFromSlip = requestAdjustmentSlip?.shareholders?.find((s: any) => String(s.user_id) === String(item.user_id));
+                  const uName = uObj ? uObj.full_name : (shFromSlip ? shFromSlip.name : `Nhân viên #${item.user_id}`);
+                  const uAvatar = uObj ? uObj.avatar : ((shFromSlip as any)?.avatar || null);
                   return (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                       {/* Read-only User Display with Avatar */}
@@ -2735,9 +2853,10 @@ export default function CooperationSlipsPage() {
                   </span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg-light)', padding: '12px', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
                     {selectedSlipForHandleRequest.adjustment_request.shares.map((sh: any, idx: number) => {
-                      const uObj = salesAccounts.find(u => String(u.id) === String(sh.user_id));
-                      const uName = uObj ? uObj.full_name : `Sale ID ${sh.user_id}`;
-                      const uAvatar = uObj ? (uObj as any).avatar : null;
+                      const uObj = allStaffOptions.find(u => String(u.id) === String(sh.user_id));
+                      const shFromSlip = selectedSlipForHandleRequest?.shareholders?.find((s: any) => String(s.user_id) === String(sh.user_id));
+                      const uName = uObj ? uObj.full_name : (shFromSlip ? shFromSlip.name : `Nhân viên #${sh.user_id}`);
+                      const uAvatar = uObj ? uObj.avatar : ((shFromSlip as any)?.avatar || null);
                       return (
                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--color-surface)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -2880,31 +2999,23 @@ export default function CooperationSlipsPage() {
                           }
                           options={[
                             { value: '', label: '-- Chọn nhân viên --' },
-                            ...salesAccounts
+                            ...allStaffOptions
                               .filter(s => {
                                 // Always allow the currently selected user for this slot
                                 if (String(s.id) === String(item.user_id)) return true;
                                 
-                                if (idx === 0) return true;
-                                
-                                // 1. Cannot be the current user (if not slot 0)
-                                if (String(s.id) === String(user?.id)) return false;
-                                
-                                // 2. Cannot be from the same team as the creator (idx 0)
-                                const creatorId = sharesInput[0]?.user_id;
-                                const creatorObj = salesAccounts.find(u => String(u.id) === String(creatorId));
-                                if (creatorObj && creatorObj.team_id && String(s.team_id) === String(creatorObj.team_id)) {
-                                  return false;
-                                }
-                                
-                                // 3. Cannot be already selected in another slot
+                                // Cannot be already selected in another slot
                                 if (sharesInput.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(s.id))) {
                                   return false;
                                 }
                                 
                                 return true;
                               })
-                              .map(s => ({ value: String(s.id), label: s.full_name, avatar: (s as any).avatar }))
+                              .map(s => ({ 
+                                value: String(s.id), 
+                                label: s.full_name || `Nhân viên #${s.id}`, 
+                                avatar: s.avatar 
+                              }))
                           ]}
                           size="sm"
                           showAvatars

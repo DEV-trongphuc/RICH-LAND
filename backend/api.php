@@ -9260,8 +9260,8 @@ switch ($action) {
             $conn->begin_transaction();
             try {
                 // 1. Insert report as approved
-                $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, resolved_by, created_at, resolved_at) VALUES (?, ?, ?, ?, 'approved', 'Hệ thống', (SELECT created_at FROM leads WHERE id = ?), (SELECT created_at FROM leads WHERE id = ?))");
-                $stmt->bind_param("iiisii", $lead_id, $sale_id, $round_id, $reason, $lead_id, $lead_id);
+                $stmt = $conn->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, resolved_by, created_at, resolved_at) VALUES (?, ?, ?, ?, 'approved', 'Hệ thống', NOW(), NOW())");
+                $stmt->bind_param("iiis", $lead_id, $sale_id, $round_id, $reason);
                 $stmt->execute();
                 $report_id = $stmt->insert_id;
                 $stmt->close();
@@ -10160,7 +10160,7 @@ switch ($action) {
 
             // 2. Mark report as approved or approved_no_comp
             $statusVal = $no_compensation ? 'approved_no_comp' : 'approved';
-            $updRep = $conn->prepare("UPDATE data_reports SET status=?, approval_reason=?, resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
+            $updRep = $conn->prepare("UPDATE data_reports SET status=?, approval_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
             $updRep->bind_param("sssi", $statusVal, $approval_reason, $adminName, $report_id);
             $updRep->execute();
 
@@ -10460,7 +10460,7 @@ switch ($action) {
             }
 
             // 1. Update report status to 'approved'
-            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
+            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', resolved_by=?, resolved_at=NOW() WHERE id=?");
             $updRep->bind_param("si", $adminName, $report_id);
             $updRep->execute();
 
@@ -10610,7 +10610,7 @@ switch ($action) {
                 }
             }
 
-            $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
+            $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_by=?, resolved_at=NOW() WHERE id=?");
             $stmt->bind_param("ssi", $reject_reason, $adminName, $report_id);
             $stmt->execute();
 
