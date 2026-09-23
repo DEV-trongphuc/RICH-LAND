@@ -9,15 +9,42 @@ $username = $_ENV['DB_USER'] ?? "zccqvhhh_crm-rlvn";
 $password = $_ENV['DB_PASS'] ?? '$1;RKuCwX)VD;k~#';
 $dbname = $_ENV['DB_NAME'] ?? "zccqvhhh_crm-rlvn";
 
-$conn = new mysqli($servername, $username, $password, $dbname);
+// Connection with auto-retry on max_user_connections (error 1203)
+$conn = null;
+$maxRetries = 5;
+for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+    try {
+        $conn = new mysqli($servername, $username, $password, $dbname);
+        if (!$conn->connect_error) {
+            break;
+        }
+    } catch (\Throwable $e) {
+        if ($attempt < $maxRetries && (strpos($e->getMessage(), 'max_user_connections') !== false || $e->getCode() == 1203)) {
+            usleep(150000); // Wait 150ms for an idle connection to free up
+            continue;
+        }
+        throw $e;
+    }
+}
 
-if ($conn->connect_error) {
-    die(json_encode(["success" => false, "message" => "Connection failed: " . $conn->connect_error]));
+if (!$conn || $conn->connect_error) {
+    die(json_encode(["success" => false, "message" => "Connection failed: " . ($conn ? $conn->connect_error : "Connection limit reached")]));
 }
 
 $conn->set_charset("utf8mb4");
-// BUG-FIX: Đảm bảo MySQL chạy cùng múi giờ với PHP để hàm NOW(), CURDATE() thống kê chính xác
+// Đảm bảo MySQL chạy cùng múi giờ với PHP
 $conn->query("SET time_zone = '+07:00'");
+// Giảm session timeout để giải phóng connection ngay nếu bị treo
+@$conn->query("SET SESSION wait_timeout = 15");
+@$conn->query("SET SESSION interactive_timeout = 15");
+
+// Tự động đóng connection ngay khi PHP gửi xong response, không để connection ở trạng thái Sleep
+register_shutdown_function(function() {
+    global $conn;
+    if ($conn instanceof mysqli && @$conn->ping()) {
+        @$conn->close();
+    }
+});
 
 // Global helper: Log Zalo/Email/Telegram communications to database
 if (!function_exists('log_communication')) {
