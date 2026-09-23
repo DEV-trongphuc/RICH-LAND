@@ -408,34 +408,37 @@ $subResource   = $segments[2] ?? null;
 
 $db = Database::getInstance();
 
-// ── Auto-Migrate Database schema ───────────────────────────────
-try {
-    $db->exec("CREATE TABLE IF NOT EXISTS schema_migrations (
-        migration VARCHAR(255) PRIMARY KEY,
-        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+// ── Auto-Migrate Database schema (Gated to avoid metadata locks on every request) ──
+if (isset($_GET['run_migrations']) && $_GET['run_migrations'] === 'richland2026') {
+    try {
+        $db->exec("CREATE TABLE IF NOT EXISTS schema_migrations (
+            migration VARCHAR(255) PRIMARY KEY,
+            applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-    $applied = $db->query("SELECT migration FROM schema_migrations")->fetchAll(PDO::FETCH_COLUMN) ?: [];
-    $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql', 'migrate_fractional_quantities.sql', 'migrate_pipeline_stage_slugs.sql', 'migrate_citizen_id_varchar.sql'];
-    
-    foreach ($sqlFiles as $file) {
-        if (!in_array($file, $applied, true)) {
-            $path = __DIR__ . '/' . $file;
-            if (file_exists($path)) {
-                $sql = file_get_contents($path);
-                $stmts = array_filter(array_map('trim', explode(';', $sql)));
-                foreach ($stmts as $s) {
-                    if ($s !== '') {
-                        $db->exec($s);
+        $applied = $db->query("SELECT migration FROM schema_migrations")->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql', 'migrate_fractional_quantities.sql', 'migrate_pipeline_stage_slugs.sql', 'migrate_citizen_id_varchar.sql'];
+        
+        foreach ($sqlFiles as $file) {
+            if (!in_array($file, $applied, true)) {
+                $path = __DIR__ . '/' . $file;
+                if (file_exists($path)) {
+                    $sql = file_get_contents($path);
+                    $stmts = array_filter(array_map('trim', explode(';', $sql)));
+                    foreach ($stmts as $s) {
+                        if ($s !== '') {
+                            $db->exec($s);
+                        }
                     }
+                    $stmtInsert = $db->prepare("INSERT INTO schema_migrations (migration) VALUES (?)");
+                    $stmtInsert->execute([$file]);
                 }
-                $stmtInsert = $db->prepare("INSERT INTO schema_migrations (migration) VALUES (?)");
-                $stmtInsert->execute([$file]);
             }
         }
+        respond(200, ['status' => 'migrations applied']);
+    } catch (Exception $e) {
+        error_log("Auto Migration Error: " . $e->getMessage());
     }
-} catch (Exception $e) {
-    error_log("Auto Migration Error: " . $e->getMessage());
 }
 
 // ── Auto-wipe expired shift registrations ────────────────

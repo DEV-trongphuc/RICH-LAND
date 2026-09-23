@@ -24,10 +24,10 @@ function runSql(sql) {
 }
 
 async function main() {
-  const pl = await runSql("SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE, LEFT(INFO, 100) as INFO_SNIP FROM information_schema.processlist WHERE USER = 'zccqvhhh_crm-rlvn' ORDER BY TIME DESC");
+  const pl = await runSql("SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO FROM information_schema.processlist WHERE USER = 'zccqvhhh_crm-rlvn' ORDER BY TIME DESC");
   console.log('Total count:', pl.data ? pl.data.length : pl);
   if (pl.data) {
-    console.log(JSON.stringify(pl.data, null, 2));
+    console.log(JSON.stringify(pl.data.slice(0, 10), null, 2));
   }
 }
 main();

@@ -10,20 +10,28 @@ $password = $_ENV['DB_PASS'] ?? '$1;RKuCwX)VD;k~#';
 $dbname = $_ENV['DB_NAME'] ?? "zccqvhhh_crm-rlvn";
 
 // Connection with auto-retry on max_user_connections (error 1203)
+/** @var mysqli $conn */
 $conn = null;
-$maxRetries = 5;
+$maxRetries = 15;
 for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
     try {
-        $conn = new mysqli($servername, $username, $password, $dbname);
-        if (!$conn->connect_error) {
+        $conn = @new mysqli($servername, $username, $password, $dbname);
+        if ($conn && !$conn->connect_error) {
             break;
         }
     } catch (\Throwable $e) {
-        if ($attempt < $maxRetries && (strpos($e->getMessage(), 'max_user_connections') !== false || $e->getCode() == 1203)) {
-            usleep(150000); // Wait 150ms for an idle connection to free up
+        $msg = $e->getMessage();
+        if ($attempt < $maxRetries && (strpos($msg, 'max_user_connections') !== false || $e->getCode() == 1203 || strpos($msg, '1203') !== false)) {
+            usleep(100000 + mt_rand(50000, 200000)); // Wait with jittered backoff
             continue;
         }
         throw $e;
+    }
+    if ($conn && $conn->connect_errno) {
+        if ($attempt < $maxRetries && ($conn->connect_errno == 1203 || strpos($conn->connect_error, 'max_user_connections') !== false || strpos($conn->connect_error, '1203') !== false)) {
+            usleep(100000 + mt_rand(50000, 200000));
+            continue;
+        }
     }
 }
 
@@ -31,18 +39,20 @@ if (!$conn || $conn->connect_error) {
     die(json_encode(["success" => false, "message" => "Connection failed: " . ($conn ? $conn->connect_error : "Connection limit reached")]));
 }
 
+/** @var mysqli $conn */
 $conn->set_charset("utf8mb4");
 // Đảm bảo MySQL chạy cùng múi giờ với PHP
 $conn->query("SET time_zone = '+07:00'");
 // Giảm session timeout để giải phóng connection ngay nếu bị treo
-@$conn->query("SET SESSION wait_timeout = 15");
-@$conn->query("SET SESSION interactive_timeout = 15");
+@$conn->query("SET SESSION wait_timeout = 10");
+@$conn->query("SET SESSION interactive_timeout = 10");
 
 // Tự động đóng connection ngay khi PHP gửi xong response, không để connection ở trạng thái Sleep
 register_shutdown_function(function() {
-    global $conn;
-    if ($conn instanceof mysqli && @$conn->ping()) {
-        @$conn->close();
+    if (isset($GLOBALS['conn']) && $GLOBALS['conn'] instanceof mysqli) {
+        try {
+            @$GLOBALS['conn']->close();
+        } catch (\Throwable $e) {}
     }
 });
 

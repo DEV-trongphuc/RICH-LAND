@@ -99,6 +99,8 @@ require_once __DIR__ . '/db_connect.php';
 // Ghi nhận thời điểm cron chạy gần nhất vào system_settings để giám sát hệ thống
 if (isset($conn) && $conn instanceof mysqli) {
     @$conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('last_cron_master_run', NOW()) ON DUPLICATE KEY UPDATE setting_value = NOW()");
+    @$conn->close();
+    $conn = null;
 }
 
 foreach ($tasks as $task) {

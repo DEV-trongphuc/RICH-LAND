@@ -58,6 +58,7 @@ if (in_array($baseAction, [
 require_once 'env.php';
 require_once 'config.php';
 require_once 'db_connect.php';
+/** @var mysqli $conn */
 require_once 'permission_matrix_helper.php';
 require_once __DIR__ . '/utils/rag_helpers.php';
 
@@ -67,6 +68,8 @@ $allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:3000',
+    'https://crm.richland.city',
+    'http://crm.richland.city',
     'https://rich-land.vercel.app',
     'https://crm-richland.vercel.app'
 ];
@@ -2421,131 +2424,14 @@ switch ($action) {
         $stmtSale->close();
         break;
     case 'get_sse_updates':
-        // SSE runs persistently, disable execution timeout
-        set_time_limit(0);
-        
-        // Prevent buffer buffering
-        if (function_exists('apache_setenv')) {
-            @apache_setenv('no-gzip', '1');
+        // Close DB connection immediately to prevent holding connection in sleep state
+        if (isset($conn) && $conn instanceof mysqli) {
+            try { @$conn->close(); } catch (\Throwable $e) {}
         }
-        @ini_set('zlib.output_compression', '0');
-        @ini_set('implicit_flush', '1');
-        ob_implicit_flush(true);
-
         header('Content-Type: text/event-stream');
-        header('Cache-Control: no-cache');
-        header('Connection: keep-alive');
-        header('X-Accel-Buffering: no'); // Tells Nginx not to buffer output
-
-        $isSale = in_array($decodedUser['role'], ['sale', 'sales', 'manager'], true);
-        $saleId = $isSale ? ($currentSaleConsultantId ?? 0) : (int) $decodedUser['id'];
-
-        $lastLeadCount = -1;
-        $lastNotifCount = -1;
-        $lastCoopCount = -1;
-
-        $maxIterations = 16; // Runs for ~48 seconds to free up PHP workers periodically
-        for ($iteration = 0; $iteration < $maxIterations; $iteration++) {
-            // Check connection status: if client disconnected, stop immediately
-            if (connection_aborted()) {
-                break;
-            }
-
-            // 1. Count unaccepted leads
-            $leadCount = 0;
-            if ($isSale) {
-                $sqlLead = "
-                    SELECT COUNT(*) as cnt
-                    FROM distribution_logs dl
-                    INNER JOIN (
-                        SELECT lead_id, MAX(id) as max_id 
-                        FROM distribution_logs 
-                        WHERE status != 'silent' AND assigned_to = ?
-                        GROUP BY lead_id
-                    ) dl_max ON dl.id = dl_max.max_id
-                    JOIN leads l ON dl.lead_id = l.id
-                    WHERE dl.assigned_to = ? AND l.is_accepted = 0
-                ";
-            } else {
-                $sqlLead = "
-                    SELECT COUNT(*) as cnt
-                    FROM distribution_logs dl
-                    INNER JOIN (
-                        SELECT lead_id, MAX(id) as max_id 
-                        FROM distribution_logs 
-                        WHERE status != 'silent'
-                        GROUP BY lead_id, assigned_to
-                    ) dl_max ON dl.id = dl_max.max_id
-                    JOIN leads l ON dl.lead_id = l.id
-                    WHERE l.is_accepted = 0
-                ";
-            }
-            $stmt = $conn->prepare($sqlLead);
-            if ($stmt) {
-                if ($isSale) {
-                    $stmt->bind_param("ii", $saleId, $saleId);
-                }
-                $stmt->execute();
-                $leadCount = (int)($stmt->get_result()->fetch_assoc()['cnt'] ?? 0);
-                $stmt->close();
-            }
-
-            // 2. Count unread notifications
-            $notifCount = 0;
-            $sqlNotif = "SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND is_read = 0";
-            $stmt = $conn->prepare($sqlNotif);
-            if ($stmt) {
-                $stmt->bind_param("i", $decodedUser['id']);
-                $stmt->execute();
-                $notifCount = (int)($stmt->get_result()->fetch_assoc()['cnt'] ?? 0);
-                $stmt->close();
-            }
-
-            // 3. Count pending signature cooperation slips
-            $coopCount = 0;
-            $sqlCoop = "
-                SELECT COUNT(*) as cnt
-                FROM cooperation_slips cs
-                WHERE (cs.status = 'pending_signatures' OR cs.status = 'approved_pending_signatures')
-                  AND JSON_CONTAINS(JSON_KEYS(COALESCE(cs.shares_json, '{}')), JSON_QUOTE(CAST(? AS CHAR)))
-                  AND NOT JSON_CONTAINS(JSON_KEYS(COALESCE(cs.signatures_json, '{}')), JSON_QUOTE(CAST(? AS CHAR)))
-            ";
-            $stmt = $conn->prepare($sqlCoop);
-            if ($stmt) {
-                $uidStr = (string)$decodedUser['id'];
-                $stmt->bind_param("ss", $uidStr, $uidStr);
-                $stmt->execute();
-                $coopCount = (int)($stmt->get_result()->fetch_assoc()['cnt'] ?? 0);
-                $stmt->close();
-            }
-
-            // Detect changes
-            if ($leadCount !== $lastLeadCount || $notifCount !== $lastNotifCount || $coopCount !== $lastCoopCount) {
-                $lastLeadCount = $leadCount;
-                $lastNotifCount = $notifCount;
-                $lastCoopCount = $coopCount;
-
-                echo "event: update\n";
-                echo "data: " . json_encode([
-                    'new_leads' => $leadCount,
-                    'unread_notifications' => $notifCount,
-                    'pending_coops' => $coopCount
-                ]) . "\n\n";
-
-                // Flush buffers
-                while (ob_get_level() > 0) {
-                    ob_end_flush();
-                }
-                flush();
-            }
-
-            // Sleep 3 seconds before checking again
-            sleep(3);
-        }
-
-        // Output dummy ping before close to keep HTTP connection neat
-        echo "event: close\n";
-        echo "data: ok\n\n";
+        header('Cache-Control: no-cache, no-transform');
+        header('Connection: close');
+        echo "event: close\ndata: ok\n\n";
         flush();
         exit;
 

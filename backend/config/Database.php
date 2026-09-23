@@ -14,16 +14,17 @@ class Database {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ];
-            $maxRetries = 5;
+            $maxRetries = 15;
             for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
                 try {
                     self::$instance = new PDO($dsn, DB_USER, DB_PASS, $opts);
-                    @self::$instance->exec("SET SESSION wait_timeout = 15");
-                    @self::$instance->exec("SET SESSION interactive_timeout = 15");
+                    @self::$instance->exec("SET SESSION wait_timeout = 10");
+                    @self::$instance->exec("SET SESSION interactive_timeout = 10");
                     break;
                 } catch (\PDOException $e) {
-                    if ($attempt < $maxRetries && ($e->getCode() == 1203 || strpos($e->getMessage(), 'max_user_connections') !== false)) {
-                        usleep(150000);
+                    $msg = $e->getMessage();
+                    if ($attempt < $maxRetries && ($e->getCode() == 1203 || strpos($msg, 'max_user_connections') !== false || strpos($msg, '1203') !== false)) {
+                        usleep(100000 + mt_rand(50000, 200000));
                         continue;
                     }
                     throw $e;
@@ -35,6 +36,9 @@ class Database {
 
     public static function close(): void {
         self::$instance = null;
+        if (isset($GLOBALS['db'])) {
+            $GLOBALS['db'] = null;
+        }
     }
 }
 

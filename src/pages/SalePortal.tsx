@@ -3301,7 +3301,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const loadCheckInStatus = async () => {
     if (!token) return;
     try {
-      const res = await fetchAPI('check-ins&today_only=1');
+      const res = await fetchAPI('check-ins?today_only=1');
       if (res.success) {
         setTodayCheckIn(res.data);
       }
