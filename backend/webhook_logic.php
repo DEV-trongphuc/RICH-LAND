@@ -1072,6 +1072,13 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
         }
         $consultants[] = $row;
     }
+    if (isset($cStmt)) {
+        $cStmt->close();
+    }
+
+    if (empty($consultants)) {
+        return null;
+    }
 
     $starvationCounts = [];
     if ($starvationEnabled === 1 && !empty($consultants)) {

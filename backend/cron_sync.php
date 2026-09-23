@@ -1330,6 +1330,7 @@ if (!function_exists('recallInactiveLeads')) {
 
             $elapsedSeconds = time() - strtotime($row['last_interaction_date']);
             if ($elapsedSeconds >= $leadRecallMins * 60) {
+                $row['lead_recall_minutes'] = $leadRecallMins;
                 $leads[] = $row;
             }
         }

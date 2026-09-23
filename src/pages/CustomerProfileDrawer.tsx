@@ -5085,8 +5085,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
     // Verify milestones total sum
     const totalM = depositMilestones.reduce((acc, m) => acc + (parseFloat(m.amount) || 0), 0);
-    if (totalM > parseFloat(depositPrice)) {
-      addToast(`Tổng tiền các đợt thanh toán (${totalM.toLocaleString()} VND) không được vượt quá Doanh thu dự kiến (${parseFloat(depositPrice).toLocaleString()} VND)`, 'error');
+    if (parseFloat(depositPrice) > 0 && totalM > parseFloat(depositPrice)) {
+      addToast(`Tổng tiền các đợt thanh toán (${totalM.toLocaleString()} VND) không được vượt quá Giá bán căn hộ (${parseFloat(depositPrice).toLocaleString()} VND)`, 'error');
       return;
     }
 
@@ -5366,15 +5366,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const handleSaveMilestones = async () => {
-    const totalAmount = tempMilestones.reduce((sum, m) => sum + (Number(m.expected_amount) || 0), 0);
-    if (Math.abs(totalAmount - selectedDepForManage.price) > 1) {
-      addToast(`Tổng tiền các đợt (${totalAmount.toLocaleString()} VND) phải bằng đúng Giá bán căn hộ (${selectedDepForManage.price.toLocaleString()} VND)`, 'error');
+    if (!tempMilestones || tempMilestones.length === 0) {
+      addToast('Lịch trình thanh toán phải có ít nhất 1 đợt tiền.', 'error');
       return;
     }
 
-    const hasProof = tempMilestones.some(m => m.unc_file_path && m.unc_file_path.trim() !== '');
-    if (!hasProof) {
-      addToast('Lịch trình thanh toán bắt buộc phải có ít nhất 1 minh chứng.', 'error');
+    for (let m of tempMilestones) {
+      if (!m.milestone_name || !m.milestone_name.trim()) {
+        addToast('Tên đợt thanh toán không được để trống.', 'error');
+        return;
+      }
+    }
+
+    const totalAmount = tempMilestones.reduce((sum, m) => sum + (Number(m.expected_amount) || 0), 0);
+    if (totalAmount <= 0) {
+      addToast('Tổng số tiền các đợt thanh toán phải lớn hơn 0.', 'error');
+      return;
+    }
+    if (selectedDepForManage?.price > 0 && totalAmount > selectedDepForManage.price) {
+      addToast(`Tổng tiền các đợt thanh toán (${totalAmount.toLocaleString()} VND) không được vượt quá Giá bán căn hộ (${selectedDepForManage.price.toLocaleString()} VND)`, 'error');
+      return;
+    }
+
+    // Bắt buộc minh chứng UNC cho Đợt 1 (các đợt sau không bắt buộc)
+    const firstMilestone = tempMilestones[0];
+    const hasFirstMilestoneProof = Boolean(firstMilestone && firstMilestone.unc_file_path && String(firstMilestone.unc_file_path).trim() !== '');
+    if (!hasFirstMilestoneProof) {
+      addToast('Đợt 1 bắt buộc phải có minh chứng chuyển khoản (UNC). Vui lòng tải lên ảnh UNC cho Đợt 1.', 'error');
       return;
     }
 

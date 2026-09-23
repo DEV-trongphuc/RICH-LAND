@@ -2185,11 +2185,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   }, [activeTab, targetConsultantId]);
 
-  const effectiveRole = displayUser?.role;
+  const rawRole = String(displayUser?.role || '').toLowerCase();
+  const effectiveRole = rawRole === 'sales' ? 'sale' : rawRole;
 
   // Find oldest active offered lead to accept
   const activeIncomingOffer = useMemo(() => {
-    if (!['sale', 'manager'].includes(String(effectiveRole).toLowerCase())) return null;
+    if (!['sale', 'sales', 'manager'].includes(String(effectiveRole).toLowerCase())) return null;
     const unacceptedLeads = (data.leads || []).filter((l: any) => {
       if (Number(l.is_accepted)) return false;
       const recallMins = Number(l.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
@@ -5290,7 +5291,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
         {/* Pending Leads Section */}
         {(() => {
-          if (effectiveRole !== 'sale') return null; // Admin / Manager do not receive or accept lead offers
+          if (!['sale', 'sales'].includes(effectiveRole)) return null; // Admin / Manager do not receive or accept lead offers
           const pendingLeads = (data.leads || []).filter((l: any) => {
             if (Number(l.is_accepted)) return false;
             if (dismissedLeadIds.includes(Number(l.lead_id || l.id))) return false;
