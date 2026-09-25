@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, AlignLeft, Phone, Mail, Users, CheckSquare, Zap, PhoneOutgoing, PhoneIncoming, Camera } from 'lucide-react';
+import { X, Calendar, Clock, AlignLeft, Phone, Mail, Users, CheckSquare, Zap, PhoneOutgoing, PhoneIncoming, Camera, Paperclip, Eye, Trash2 } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
 import { CustomSelect } from './CustomSelect';
 import { MentionInput } from './MentionInput';
@@ -69,6 +69,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
   });
   const [proofImageFile, setProofImageFile] = useState<File | null>(null);
   const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -78,10 +79,23 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
       const tzOffset = defaultDate.getTimezoneOffset() * 60000;
       const localISOTime = new Date(defaultDate.getTime() - tzOffset).toISOString().slice(0, 16);
 
+      // Check existing attachment in body or expense_image_url
+      let existingAttachment = activity?.expense_image_url || null;
+      let cleanBody = activity?.body || '';
+      if (!existingAttachment && cleanBody) {
+        const linkMatch = cleanBody.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m);
+        if (linkMatch) {
+          existingAttachment = linkMatch[1].trim();
+        }
+      }
+      if (cleanBody) {
+        cleanBody = cleanBody.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+      }
+
       setFormData({
         type: activity?.type || 'call',
         subject: activity?.subject || DEFAULT_SUBJECTS[activity?.type || 'call'] || '',
-        body: activity?.body || '',
+        body: cleanBody,
         due_date: localISOTime,
         priority: activity?.priority || 'medium',
         status: activity?.status || (activity?.type === 'call' ? 'done' : 'planned'),
@@ -91,7 +105,8 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
         call_duration: 5
       });
       setProofImageFile(null);
-      setProofImagePreview(null);
+      setProofImagePreview(existingAttachment);
+      setLightboxUrl(null);
     }
   }, [isOpen, activity]);
 
@@ -120,7 +135,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
       if (!subject.trim()) { addToast('Vui lòng nhập tiêu đề hoạt động', 'error'); return; }
     }
 
-    if (formData.type === 'meeting' && status === 'done' && !proofImageFile) {
+    if (formData.type === 'meeting' && status === 'done' && !proofImageFile && !proofImagePreview) {
       addToast('Vui lòng tải lên ảnh minh chứng để hoàn thành gặp gỡ', 'error');
       return;
     }
@@ -129,7 +144,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
     
     try {
       let uploadedUrl = '';
-      if (formData.type === 'meeting' && status === 'done' && proofImageFile) {
+      if (proofImageFile) {
         let fileToUpload = proofImageFile;
         if (proofImageFile.type.startsWith('image/')) {
           fileToUpload = await compressToWebP(proofImageFile);
@@ -140,18 +155,29 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         uploadedUrl = uploadRes.data.data?.url ?? '';
-        if (!uploadedUrl) throw new Error('Không thể tải ảnh minh chứng lên');
+        if (!uploadedUrl && formData.type === 'meeting' && status === 'done') {
+          throw new Error('Không thể tải ảnh minh chứng lên');
+        }
+      } else if (proofImagePreview && !proofImagePreview.startsWith('blob:') && !proofImagePreview.startsWith('data:')) {
+        // Retain existing uploaded URL
+        uploadedUrl = proofImagePreview;
       }
 
       const formattedDate = formData.due_date ? formData.due_date.replace('T', ' ') : null;
       let activityId = activity?.id;
+
+      // If uploadedUrl exists and not meeting, append link to body so it displays in timeline
+      let finalBody = body;
+      if (uploadedUrl && formData.type !== 'meeting') {
+        finalBody = (finalBody ? finalBody + '\n\n' : '') + `Tài liệu/Link đính kèm: ${uploadedUrl}`;
+      }
 
       if (activity?.id) {
         await api.put(`/activities/${activity.id}`, {
           ...formData,
           due_date: formattedDate,
           subject,
-          body,
+          body: finalBody,
           status
         });
         addToast('Đã cập nhật hoạt động thành công', 'success');
@@ -160,7 +186,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
           ...formData,
           due_date: formattedDate,
           subject,
-          body,
+          body: finalBody,
           status,
           related_type: entityType,
           related_id: entityId,
@@ -175,7 +201,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
 
       if (uploadedUrl && activityId) {
         await api.post(`/activities/${activityId}/comments`, {
-          content: 'Ảnh minh chứng hoàn thành gặp gỡ: ' + (body || ''),
+          content: 'Tệp/Ảnh đính kèm tương tác: ' + (body || ''),
           attachments: [uploadedUrl],
           parent_id: null
         });
@@ -567,59 +593,100 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
 
               {/* CỘT PHẢI: GHI CHÚ CHI TIẾT & MẪU KHAI THÁC LẦN 1 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', height: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px', flexWrap: 'wrap', gap: '6px' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: 0, fontSize: '0.78rem', fontWeight: 700 }}>
                     <AlignLeft size={13} /> Ghi chú chi tiết
                   </label>
-                  <button
-                    type="button"
-                    className="btn xs outline"
-                    onClick={() => {
-                      const templateHtml = [
-                        '<div><b>1. Nghiên cứu khách hàng:</b></div>',
-                        `<div>- Ở đâu: ${customerData?.address || ''}</div>`,
-                        `<div>- Làm gì: ${customerData?.job_title || ''}</div>`,
-                        `<div>- Gia đình: ${customerData?.ttl1_data?.gia_dinh || ''}</div>`,
-                        '<div><br></div>',
-                        '<div><b>2. TIẾP CẬN KHÁCH HÀNG - KHAI THÁC NHU CẦU:</b></div>',
-                        `<div>- Hiện trạng: ${customerData?.ttl1_data?.hien_trang || ''}</div>`,
-                        `<div>- Nhu cầu mua: ${customerData?.ttl1_data?.nhu_cau || ''}</div>`,
-                        `<div>- Rào cản: ${customerData?.ttl1_data?.rao_can || ''}</div>`,
-                        '<div><br></div>',
-                        '<div><b>3. THÔNG TIN BỔ SUNG (nếu có):</b></div>',
-                        `<div>- ${customerData?.ttl1_data?.thong_tin_bo_sung || ''}</div>`,
-                        '<div><br></div>',
-                        '<div><b>4. GIẢI PHÁP TIẾP THEO & NGÂN SÁCH:</b></div>',
-                        `<div>- Giải pháp: ${customerData?.ttl1_data?.giai_phap || ''}</div>`,
-                        '<div>- Ngân sách: </div>'
-                      ].join('');
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      className="btn xs outline"
+                      onClick={() => {
+                        const templateHtml = [
+                          '<div><b>1. Nghiên cứu khách hàng:</b></div>',
+                          `<div>- Ở đâu: ${customerData?.address || ''}</div>`,
+                          `<div>- Làm gì: ${customerData?.job_title || ''}</div>`,
+                          `<div>- Gia đình: ${customerData?.ttl1_data?.gia_dinh || ''}</div>`,
+                          '<div><br></div>',
+                          '<div><b>2. TIẾP CẬN KHÁCH HÀNG - KHAI THÁC NHU CẦU:</b></div>',
+                          `<div>- Hiện trạng: ${customerData?.ttl1_data?.hien_trang || ''}</div>`,
+                          `<div>- Nhu cầu mua: ${customerData?.ttl1_data?.nhu_cau || ''}</div>`,
+                          `<div>- Rào cản: ${customerData?.ttl1_data?.rao_can || ''}</div>`,
+                          '<div><br></div>',
+                          '<div><b>3. THÔNG TIN BỔ SUNG (nếu có):</b></div>',
+                          `<div>- ${customerData?.ttl1_data?.thong_tin_bo_sung || ''}</div>`,
+                          '<div><br></div>',
+                          '<div><b>4. GIẢI PHÁP TIẾP THEO & NGÂN SÁCH:</b></div>',
+                          `<div>- Giải pháp: ${customerData?.ttl1_data?.giai_phap || ''}</div>`,
+                          '<div>- Ngân sách: </div>'
+                        ].join('');
 
-                      if (formData.body && formData.body.trim()) {
-                        setFormData(prev => ({ ...prev, body: prev.body + '<div><br></div>' + templateHtml }));
-                        addToast('Đã chèn thêm mẫu Khai thác lần 1!', 'success');
-                      } else {
-                        setFormData(prev => ({ ...prev, body: templateHtml }));
-                        addToast('Đã áp dụng mẫu Khai thác lần 1!', 'success');
-                      }
-                    }}
-                    style={{
-                      fontSize: '0.7rem',
-                      padding: '2px 8px',
-                      height: '24px',
-                      borderRadius: '6px',
-                      color: 'var(--color-primary)',
-                      borderColor: 'var(--color-primary)',
-                      fontWeight: 700,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      background: 'rgba(163, 20, 34, 0.05)',
-                      cursor: 'pointer'
-                    }}
-                    title="Chèn khung 4 phần chuẩn: 1. Nghiên cứu KH - 2. Tiếp cận & Nhu cầu - 3. Thông tin bổ sung - 4. Giải pháp tiếp theo"
-                  >
-                    <span>📋 Mẫu Khai thác Lần 1</span>
-                  </button>
+                        if (formData.body && formData.body.trim()) {
+                          setFormData(prev => ({ ...prev, body: prev.body + '<div><br></div>' + templateHtml }));
+                          addToast('Đã chèn thêm mẫu Khai thác lần 1!', 'success');
+                        } else {
+                          setFormData(prev => ({ ...prev, body: templateHtml }));
+                          addToast('Đã áp dụng mẫu Khai thác lần 1!', 'success');
+                        }
+                      }}
+                      style={{
+                        fontSize: '0.7rem',
+                        padding: '2px 8px',
+                        height: '24px',
+                        borderRadius: '6px',
+                        color: 'var(--color-primary)',
+                        borderColor: 'var(--color-primary)',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: 'rgba(189, 29, 45, 0.05)',
+                        cursor: 'pointer'
+                      }}
+                      title="Chèn khung 4 phần chuẩn: 1. Nghiên cứu KH - 2. Tiếp cận & Nhu cầu - 3. Thông tin bổ sung - 4. Giải pháp tiếp theo"
+                    >
+                      <span>📋 Mẫu Khai thác Lần 1</span>
+                    </button>
+
+                    <label
+                      className="btn xs outline"
+                      style={{
+                        fontSize: '0.7rem',
+                        padding: '2px 8px',
+                        height: '24px',
+                        borderRadius: '6px',
+                        color: 'var(--color-text)',
+                        borderColor: 'var(--color-border)',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        cursor: 'pointer',
+                        margin: 0
+                      }}
+                      title="Đính kèm ảnh chứng từ / tương tác"
+                    >
+                      <Paperclip size={12} />
+                      <span>Đính kèm ảnh</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) {
+                            addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+                            return;
+                          }
+                          const previewUrl = URL.createObjectURL(file);
+                          setProofImageFile(file);
+                          setProofImagePreview(previewUrl);
+                          addToast('Đã đính kèm ảnh thành công!', 'success');
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  </div>
                 </div>
                 <MentionInput 
                   className="form-input" 
@@ -647,8 +714,87 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                     setProofImagePreview(previewUrl);
                     addToast('Đã dán tệp từ clipboard!', 'success');
                   }}
-                  style={{ minHeight: isMobile ? '140px' : '260px' }}
+                  style={{ minHeight: isMobile ? '130px' : '220px' }}
                 />
+
+                {/* KHU VỰC PREVIEW HÌNH ẢNH ĐÍNH KÈM TRỰC QUAN */}
+                {proofImagePreview && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px 12px',
+                      background: 'var(--color-bg)',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-border)',
+                      marginTop: '4px'
+                    }}
+                  >
+                    {/* Thumbnail Preview */}
+                    <div
+                      style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        border: '1px solid var(--color-border)',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        background: 'var(--color-surface)'
+                      }}
+                      onClick={() => setLightboxUrl(proofImagePreview)}
+                      title="Nhấn để xem ảnh phóng to"
+                    >
+                      <img
+                        src={proofImagePreview}
+                        alt="Attached preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+
+                    {/* File Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {proofImageFile?.name || (proofImagePreview.startsWith('blob:') ? 'Ảnh đính kèm tương tác' : proofImagePreview.split('/').pop())}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {proofImageFile && (
+                          <span>{(proofImageFile.size / 1024).toFixed(1)} KB</span>
+                        )}
+                        <span style={{ color: '#10b981', fontWeight: 600 }}>● Ảnh đính kèm</span>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <button
+                        type="button"
+                        className="btn xs outline"
+                        style={{ padding: '4px 8px', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={() => setLightboxUrl(proofImagePreview)}
+                        title="Xem ảnh phóng to"
+                      >
+                        <Eye size={12} /> Xem
+                      </button>
+                      <button
+                        type="button"
+                        className="btn xs ghost text-danger"
+                        style={{ padding: '4px 6px', color: 'var(--color-danger)' }}
+                        onClick={() => {
+                          setProofImageFile(null);
+                          setProofImagePreview(null);
+                        }}
+                        title="Xóa ảnh"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
               </div>
             </div>
           </form>
@@ -671,6 +817,53 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Lightbox Modal để xem ảnh phóng to */}
+      {lightboxUrl && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 999999,
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+            <img
+              src={lightboxUrl}
+              alt="Full preview"
+              style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+            />
+            <button
+              type="button"
+              onClick={() => setLightboxUrl(null)}
+              style={{
+                position: 'absolute',
+                top: '-12px',
+                right: '-12px',
+                background: 'rgba(0,0,0,0.85)',
+                border: '2px solid white',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+              title="Đóng"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </AnimatePresence>
   );
 };

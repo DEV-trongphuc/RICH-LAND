@@ -54,12 +54,8 @@ const TicketsPage = lazy(() => import('./pages/TicketsPage').then(module => ({ d
 const DownloadPage = lazy(() => import('./pages/DownloadPage').then(module => ({ default: module.DownloadPage })));
 const AITrainingPage = lazy(() => import('./pages/AITrainingPage').then(module => ({ default: module.AITrainingPage })));
 
-// Loading spinner fallback
-const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-[400px]">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-  </div>
-);
+// Lightweight null fallback so each tab/page renders its own dedicated, tailored skeleton
+const PageLoader = () => null;
 
 const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: ('superadmin' | 'admin' | 'manager' | 'director' | 'assistant' | 'viewer' | 'sale')[] }) => {
   const { user, token } = useAuth();

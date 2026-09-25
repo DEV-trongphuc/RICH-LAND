@@ -11,6 +11,7 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
 import { TableSkeleton } from '../components/ui/Skeleton';
 const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
+const DepositDetailDrawer = lazy(() => import('../components/DepositDetailDrawer').then(module => ({ default: module.DepositDetailDrawer })));
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 
 const formatNumberWithCommas = (val: any) => {
@@ -151,6 +152,7 @@ export default function DepositsPage() {
 
   const [showContactDrawer, setShowContactDrawer] = useState(false);
   const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [contactDrawerInitialTab, setContactDrawerInitialTab] = useState<string>('deals');
   const [sharesData, setSharesData] = useState<any[]>([]);
 
   const [tempExpectedCommission, setTempExpectedCommission] = useState<number>(0);
@@ -162,12 +164,13 @@ export default function DepositsPage() {
     setTempSharesData(updated);
   };
 
-  const handleOpenContactDrawer = async (contactId: number) => {
+  const handleOpenContactDrawer = async (contactId: number, tab = 'deals') => {
     try {
       const res = await fetchAPI(`contacts/${contactId}`);
       const c = res.data || res;
       if (c) {
         setSelectedContact(c);
+        setContactDrawerInitialTab(tab);
         setShowContactDrawer(true);
       }
     } catch (err) {
@@ -851,10 +854,18 @@ export default function DepositsPage() {
                       {/* Project & Client */}
                       <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
                         <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{dep.project_name}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                        <div 
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', cursor: 'pointer' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenContactDrawer(dep.contact_id, 'deals');
+                          }}
+                          className="hover:underline"
+                          title="Click để mở Drawer hồ sơ khách hàng & chi tiết cọc"
+                        >
                           <Avatar src={dep.avatar_url} name={`${dep.last_name || ''} ${dep.first_name || ''}`} size="sm" style={{ width: 24, height: 24, fontSize: 10 }} />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                            Khách: <strong style={{ color: 'var(--color-text)' }}>{dep.last_name} {dep.first_name}</strong> ({dep.phone})
+                            Khách: <strong style={{ color: 'var(--color-primary, #BD1D2D)' }}>{dep.last_name} {dep.first_name}</strong> ({dep.phone})
                           </span>
                         </div>
                       </td>
@@ -934,6 +945,33 @@ export default function DepositsPage() {
                       {/* Actions */}
                       <td style={{ padding: '1rem', verticalAlign: 'middle', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          {/* Detail Drawer Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenContactDrawer(dep.contact_id, 'deals');
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              height: '32px',
+                              background: 'rgba(189, 29, 45, 0.08)',
+                              border: '1px solid rgba(189, 29, 45, 0.2)',
+                              color: 'var(--color-primary, #BD1D2D)',
+                              borderRadius: '8px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Xem chi tiết phiếu cọc & hồ sơ khách hàng"
+                          >
+                            <Eye size={13} />
+                            <span>Chi tiết</span>
+                          </button>
+
                           {/* Update Button */}
                           {dep.status !== 'cancelled' && (() => {
                             const isCreator = String(dep.created_by) === String(user?.id);
@@ -1483,487 +1521,19 @@ export default function DepositsPage() {
         </div>
       </CustomModal>
 
-      {/* Manage Milestones Modal */}
-      <CustomModal
-        isOpen={showManageModal}
-        onClose={() => setShowManageModal(false)}
-        title={`Chi tiết & Lịch trình thanh toán - Căn ${selectedDepForManage?.unit_code}`}
-        width="980px"
-      >
-        {selectedDepForManage && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {/* Brief Info with Customer Details and Sales Team */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr',
-              gap: '1.5rem',
-              background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-hover) 100%)',
-              padding: '1.5rem',
-              borderRadius: '12px',
-              border: '1px solid var(--color-border-light)',
-              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
-            }}>
-              {/* Left Column: Customer details */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div
-                    onClick={() => handleOpenContactDrawer(selectedDepForManage.contact_id)}
-                    style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    <Avatar
-                      src={selectedDepForManage.avatar_url}
-                      name={`${selectedDepForManage.last_name} ${selectedDepForManage.first_name}`}
-                      size="lg"
-                    />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 600 }}>Khách hàng</span>
-                    <h4
-                      onClick={() => handleOpenContactDrawer(selectedDepForManage.contact_id)}
-                      style={{
-                        margin: 0,
-                        fontSize: '1.1rem',
-                        fontWeight: 800,
-                        color: 'var(--color-primary)',
-                        cursor: 'pointer',
-                        textDecoration: 'underline decoration-dotted',
-                        transition: 'opacity 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-                    >
-                      {selectedDepForManage.last_name} {selectedDepForManage.first_name}
-                    </h4>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                      SĐT: {selectedDepForManage.phone}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Sales team section */}
-                <div style={{ marginTop: '0.25rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
-                    Nhân sự chăm sóc & tỷ lệ chia hoa hồng:
-                  </span>
-                  {isAdmin && tempSharesData && tempSharesData.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {tempSharesData.map((sh, sIdx) => (
-                        <div
-                          key={sIdx}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            background: 'var(--color-surface)',
-                            border: '1px solid var(--color-border-light)',
-                            padding: '6px 12px',
-                            borderRadius: '8px',
-                            maxWidth: '360px'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Avatar src={sh.avatar} name={sh.name} size="sm" />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{sh.name}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={sh.percentage}
-                              onChange={(e) => handleTempSharePercentChange(sIdx, e.target.value)}
-                              className="form-input"
-                              style={{ width: '60px', height: '28px', textAlign: 'center', padding: '2px', fontSize: '0.8rem' }}
-                            />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>%</span>
-                          </div>
-                        </div>
-                      ))}
-                      {(() => {
-                        const totalPct = tempSharesData.reduce((sum, s) => sum + (Number(s.percentage) || 0), 0);
-                        if (totalPct !== 100) {
-                          return (
-                            <span style={{ fontSize: '0.725rem', color: 'var(--color-danger)', fontWeight: 600 }}>
-                              * Tổng tỷ lệ phải bằng 100% (Hiện tại: {totalPct}%)
-                            </span>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                  ) : sharesData && sharesData.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {sharesData.map((sh, sIdx) => (
-                        <div
-                          key={sIdx}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            background: 'var(--color-surface)',
-                            border: '1px solid var(--color-border-light)',
-                            padding: '3px 8px',
-                            borderRadius: '16px',
-                            boxShadow: 'var(--shadow-sm)'
-                          }}
-                        >
-                          <Avatar src={sh.avatar} name={sh.name} size="sm" />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{sh.name}</span>
-                          <span style={{
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            color: '#2563eb',
-                            padding: '1px 5px',
-                            borderRadius: '8px'
-                          }}>
-                            {sh.percentage}%
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                      Bán độc lập (Chỉ có chủ sở hữu cọc)
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Column: Transaction details */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Dự án & Căn hộ</span>
-                    <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>{selectedDepForManage.project_name} - Căn {selectedDepForManage.unit_code}</span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Thời gian tạo phiếu</span>
-                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>
-                      {new Date(selectedDepForManage.created_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
-                    </span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Tổng giá trị căn hộ</span>
-                    <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '1rem' }}>{formatMoney(selectedDepForManage.price)}</span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Hoa hồng dự kiến</span>
-                    {isAdmin ? (
-                      <CurrencyInput
-                        value={tempExpectedCommission}
-                        onChange={(val) => setTempExpectedCommission(val || 0)}
-                        className="form-input"
-                        style={{ height: '32px', fontSize: '0.9rem', fontWeight: 800, color: '#059669', width: '100%', maxWidth: '160px' }}
-                      />
-                    ) : (
-                      <span style={{ fontWeight: 800, color: '#059669', fontSize: '1rem' }}>{formatMoney(selectedDepForManage.expected_commission)}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Milestones List */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <h4 style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem' }}>Các đợt thanh toán</h4>
-                {canEditMilestones && (
-                  <button
-                    className="btn sm"
-                    onClick={handleAddMilestoneRow}
-                    style={{
-                      padding: '4px 10px',
-                      fontSize: '0.75rem',
-                      background: 'rgba(16, 185, 129, 0.08)',
-                      color: '#10b981',
-                      border: '1px solid rgba(16, 185, 129, 0.2)',
-                      fontWeight: 700,
-                      borderRadius: '6px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    + Thêm đợt
-                  </button>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {/* Table Header */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr 1.5fr',
-                  gap: '12px',
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  background: 'var(--color-surface-hover)',
-                  borderBottom: '2px solid var(--color-border)',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  color: 'var(--color-text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  <div>Tên đợt thanh toán</div>
-                  <div>Ngày tạo</div>
-                  <div>Số tiền (VND)</div>
-                  <div style={{ textAlign: 'center' }}>Trạng thái</div>
-                  <div style={{ textAlign: 'center' }}>Minh chứng</div>
-                  <div style={{ textAlign: 'right' }}>Thao tác</div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }}>
-                  {tempMilestones.map((m, idx) => {
-                    const isLocked = m.status === 'approved' || m.status === 'paid';
-                    return (
-                      <div
-                        key={m.tempId || m.id}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr 1.5fr',
-                          gap: '12px',
-                          alignItems: 'center',
-                          padding: '10px 12px',
-                          background: 'var(--color-surface)',
-                          border: '1px solid var(--color-border-light)',
-                          borderRadius: '8px',
-                          transition: 'all 0.2s',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                        }}
-                      >
-                        {/* Name input */}
-                        <div>
-                          <input
-                            type="text"
-                            placeholder="Tên đợt (ví dụ: Đợt 1 - Cọc giữ chỗ)"
-                            value={m.milestone_name}
-                            disabled={!canEditMilestones}
-                            onChange={e => handleUpdateMilestoneField(idx, 'milestone_name', e.target.value)}
-                            className="form-input"
-                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
-                          />
-                        </div>
-
-                        {/* Created Date */}
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '4px', fontWeight: 500 }}>
-                          {new Date(m.created_at || selectedDepForManage.created_at).toLocaleDateString('vi-VN')}
-                        </div>
-
-                        {/* Amount input */}
-                        <div>
-                          <input
-                            type="text"
-                            placeholder="Số tiền"
-                            value={formatNumberWithCommas(m.expected_amount)}
-                            disabled={isLocked || !canEditMilestones}
-                            onChange={e => {
-                              const rawVal = e.target.value.replace(/[^0-9]/g, '');
-                              handleUpdateMilestoneField(idx, 'expected_amount', rawVal ? parseInt(rawVal, 10) : 0);
-                            }}
-                            className="form-input"
-                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
-                          />
-                        </div>
-
-                        {/* Status + dates */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                          <span style={{
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            padding: '4px 8px',
-                            borderRadius: '9999px',
-                            background: m.status === 'approved' ? 'rgba(16, 185, 129, 0.12)' : m.status === 'paid' ? 'rgba(37, 99, 235, 0.12)' : m.status === 'failed' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(107, 114, 128, 0.12)',
-                            color: m.status === 'approved' ? '#10b981' : m.status === 'paid' ? '#2563eb' : m.status === 'failed' ? '#ef4444' : '#6b7280',
-                            textAlign: 'center',
-                            display: 'inline-block',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'Từ chối' : 'Chờ nộp'}
-                          </span>
-                          {m.approval_date && m.status === 'approved' && (
-                            <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 500, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                              {new Date(m.approval_date).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(',', '')}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* UNC proof */}
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
-                          {/* Upload UNC - hidden if m.unc_file_path is present */}
-                          {!m.unc_file_path && m.status !== 'approved' && canEditMilestones && (
-                            <label
-                              className="btn sm"
-                              style={{
-                                padding: '0 8px',
-                                height: '30px',
-                                cursor: actioningMilestoneId !== null ? 'not-allowed' : 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: '6px',
-                                border: '1px solid var(--color-border)',
-                                background: 'var(--color-surface)',
-                                color: 'var(--color-text-muted)',
-                                opacity: actioningMilestoneId !== null ? 0.5 : 1,
-                                pointerEvents: actioningMilestoneId !== null ? 'none' : 'auto',
-                                transition: 'all 0.15s'
-                              }}
-                              title="Tải ảnh chuyển khoản (UNC)"
-                            >
-                              <Upload size={13} />
-                              <input
-                                type="file"
-                                accept="image/*"
-                                style={{ display: 'none' }}
-                                disabled={actioningMilestoneId !== null}
-                                onChange={e => handleUploadUncFromModal(e, idx)}
-                              />
-                            </label>
-                          )}
-
-                          {/* View UNC link - Show thumbnail image instead of eye icon */}
-                          {m.unc_file_path && (() => {
-                            const downloadUrl = m.unc_file_path.startsWith('uploads/') ? `${import.meta.env.VITE_API_URL || '/backend'}/${m.unc_file_path}` : `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`;
-                            const isPdf = m.unc_file_path.toLowerCase().endsWith('.pdf');
-                            return (
-                              <a
-                                href={downloadUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  width: '32px',
-                                  height: '32px',
-                                  borderRadius: '6px',
-                                  overflow: 'hidden',
-                                  border: '1px solid var(--color-border-light)',
-                                  background: '#ffffff',
-                                  boxShadow: 'var(--shadow-sm)',
-                                  transition: 'transform 0.15s'
-                                }}
-                                className="hover-scale"
-                                title="Bấm để xem chi tiết minh chứng"
-                              >
-                                {isPdf ? (
-                                  <FileText size={16} color="var(--color-primary)" />
-                                ) : (
-                                  <img 
-                                    src={downloadUrl} 
-                                    alt="Minh chứng" 
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                  />
-                                )}
-                              </a>
-                            );
-                          })()}
-                        </div>
-
-                        {/* Actions (Approve/Reject or Delete) */}
-                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'flex-end' }}>
-                          {/* Admin approval/rejection */}
-                          {isAdmin && m.status === 'paid' && (
-                            <>
-                              <button
-                                onClick={() => handleApproveFromModal(idx)}
-                                disabled={actioningMilestoneId !== null}
-                                style={{
-                                  padding: '0 8px',
-                                  height: '30px',
-                                  background: '#10b981',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  cursor: actioningMilestoneId !== null ? 'not-allowed' : 'pointer',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  opacity: actioningMilestoneId !== null ? 0.6 : 1
-                                }}
-                                title="Phê duyệt đợt tiền này"
-                              >
-                                {actioningMilestoneId === m.id && actioningType === 'approve' && (
-                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 4 }} />
-                                )}
-                                Duyệt
-                              </button>
-                              <button
-                                onClick={() => handleRejectFromModal(idx)}
-                                disabled={actioningMilestoneId !== null}
-                                style={{
-                                  padding: '0 8px',
-                                  height: '30px',
-                                  background: '#ef4444',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  cursor: actioningMilestoneId !== null ? 'not-allowed' : 'pointer',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  opacity: actioningMilestoneId !== null ? 0.6 : 1
-                                }}
-                                title="Từ chối minh chứng"
-                              >
-                                {actioningMilestoneId === m.id && actioningType === 'reject' && (
-                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 4 }} />
-                                )}
-                                Từ chối
-                              </button>
-                            </>
-                          )}
-
-                          {/* Delete row */}
-                          {!isLocked && canEditMilestones && (
-                            <button
-                              onClick={() => handleRemoveMilestoneRow(idx)}
-                              style={{
-                                padding: '0 8px',
-                                height: '30px',
-                                color: '#ef4444',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                background: 'transparent',
-                                borderRadius: '6px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s'
-                              }}
-                              title="Xóa đợt thanh toán"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
-              <button className="btn" onClick={() => setShowManageModal(false)} style={{ minWidth: 80 }}>
-                Hủy
-              </button>
-              {canEditMilestones && (
-                <button className="btn primary" onClick={handleSaveMilestones} style={{ minWidth: 100 }} disabled={isSavingMilestones}>
-                  {isSavingMilestones ? 'Đang lưu...' : 'Lưu lịch trình'}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </CustomModal>
+      {/* Manage Milestones & Discussion Drawer */}
+      {showManageModal && selectedDepForManage && (
+        <Suspense fallback={null}>
+          <DepositDetailDrawer
+            isOpen={showManageModal}
+            onClose={() => setShowManageModal(false)}
+            deposit={selectedDepForManage}
+            onSaveSuccess={() => {
+              loadData();
+            }}
+          />
+        </Suspense>
+      )}
 
       {showContactDrawer && selectedContact && (
         <Suspense fallback={null}>
@@ -1971,6 +1541,7 @@ export default function DepositsPage() {
             isOpen={showContactDrawer}
             onClose={() => setShowContactDrawer(false)}
             contact={selectedContact}
+            initialTab={contactDrawerInitialTab || 'deals'}
             onUpdate={() => {
               loadData();
             }}

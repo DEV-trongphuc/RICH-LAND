@@ -17,6 +17,7 @@ import { useUIStore } from '../../store/uiStore';
 import { POSModal } from '../ui/POSModal';
 import { AlertToast } from '../ui/AlertToast';
 import { StatRowSkeleton } from '../ui/Skeleton';
+import { WorkspaceStickyPomodoro } from '../WorkspaceStickyPomodoro';
 import { 
   Ticket as TicketIcon, 
   Activity, 
@@ -68,6 +69,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    // Smoothly dismiss splash screen once main app layout is mounted
+    if (typeof (window as any).hideSplashScreen === 'function') {
+      (window as any).hideSplashScreen();
+    }
   }, []);
   
   const { showPOS, setShowPOS } = useUIStore();
@@ -897,7 +905,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         )}
 
 
-        <main className="responsive-main" style={{ flex: 1, overflow: 'auto', padding: '1.25rem 1.75rem', position: 'relative', zIndex: 10 }}>
+        <main className="responsive-main" style={{ flex: 1, overflow: 'auto', padding: isMobile ? '0.875rem 0.875rem 100px 0.875rem' : '1.25rem 1.75rem', position: 'relative', zIndex: 10 }}>
           <div style={{ width: '100%' }}>
             {children}
           </div>
@@ -905,6 +913,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </div>
       <AlertToast />
       <QuickAddLeadModal />
+
+      {/* Workspace Sticky Pomodoro Timer - on Bàn làm việc (/workspace, /portal, /) */}
+      {(location.pathname === '/workspace' || location.pathname === '/portal' || location.pathname === '/' || location.pathname.includes('workspace')) && (
+        <WorkspaceStickyPomodoro />
+      )}
+
       {showPOS && (
         <POSModal 
           onClose={() => setShowPOS(false)} 

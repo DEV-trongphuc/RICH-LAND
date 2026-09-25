@@ -1417,47 +1417,78 @@ const ConsultantsInner = () => {
             </div>
           </div>
           {isMobile ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem 0.5rem 6rem 0.5rem' }}>
               {paginatedUsers.map(u => (
                 <div
                   key={u.id}
                   onClick={() => openEditModal(u)}
                   style={{
-                    padding: '12px 16px',
+                    padding: '14px 16px',
                     background: 'var(--color-surface)',
                     border: '1px solid var(--color-border-light)',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                    borderRadius: '16px',
+                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: '12px',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-                    <div style={{ flexShrink: 0 }}>
+                    <div style={{ flexShrink: 0, position: 'relative' }}>
                       <Avatar
                         src={u.avatar}
                         name={u.name}
-                        size={42}
+                        size={46}
                         style={{
                           filter: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
                           opacity: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 0.5 : 1
                         }}
                       />
+                      <span style={{
+                        position: 'absolute',
+                        bottom: -1,
+                        right: -1,
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        border: '2px solid var(--color-surface)',
+                        background: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? '#94a3b8' : '#10b981'
+                      }} />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.2 }}>
-                        {u.name}
-                      </span>
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                        {t('Điện thoại:')} {u.phone || '—'}
-                      </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: '2px', flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {u.name}
+                        </span>
+                        <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontWeight: 600, flexShrink: 0 }}>
+                          #{u.id}
+                        </span>
+                      </div>
+                      
+                      {/* Email display prominently */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <Mail size={12} style={{ flexShrink: 0, opacity: 0.85 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email || t('Chưa có email')}</span>
+                      </div>
+
+                      {/* Phone & Status info */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                        {u.phone && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                            <Phone size={10} style={{ color: 'var(--color-text-light)' }} />
+                            <span>{u.phone}</span>
+                          </span>
+                        )}
+                        {u.phone && <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-border)' }} />}
+                        <span>{u.status === 'active' ? t('Đang hoạt động') : t('Tạm ngưng')}</span>
+                      </div>
                     </div>
                   </div>
                   {isWriteAuthorized && (
-                    <div style={{ color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                       <ChevronRight size={18} />
                     </div>
                   )}

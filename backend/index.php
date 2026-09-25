@@ -384,6 +384,7 @@ require_once __DIR__ . '/controllers/CapiController.php';
 require_once __DIR__ . '/controllers/CheckInController.php';
 require_once __DIR__ . '/controllers/TeamController.php';
 require_once __DIR__ . '/controllers/WorkflowTaskTemplateController.php';
+require_once __DIR__ . '/controllers/TaskGroupController.php';
 
 // ── Parse route ───────────────────────────────────────────────
 $requestUri = strtok($_SERVER['REQUEST_URI'], '?');
@@ -630,11 +631,27 @@ switch ($resource) {
         elseif ($resourceId && $subResource === 'toggle-mute' && $method === 'POST') $ctrl->toggleMute($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'hide-status' && $method === 'GET')  $ctrl->getHideStatus($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'toggle-hide' && $method === 'POST') $ctrl->toggleHide($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'move-group' && $method === 'POST') (new TaskGroupController($db))->moveTask($auth, (int)$resourceId);
+        elseif ($resourceId === 'bulk-move-group' && $method === 'POST') (new TaskGroupController($db))->bulkMove($auth);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // TASK GROUPS
+    case 'task-groups':
+        $auth = requireAuth();
+        $ctrl = new TaskGroupController($db);
+        if (!$resourceId && $method === 'GET') $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST') $ctrl->store($auth);
+        elseif ($resourceId === 'reorder' && $method === 'POST') $ctrl->reorder($auth);
+        elseif ($resourceId === 'bulk-move' && $method === 'POST') $ctrl->bulkMove($auth);
+        elseif ($resourceId && $subResource === 'toggle-pin' && $method === 'POST') $ctrl->togglePin($auth, (int)$resourceId);
+        elseif ($resourceId && $method === 'PUT') $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
@@ -1000,7 +1017,11 @@ switch ($resource) {
     case 'deposits':
         $auth = requireAuth();
         $ctrl = new DepositController($db);
-        if ($resourceId && $subResource === 'milestones' && ($segments[3] ?? '') !== '' && ($segments[4] ?? '') === 'approve' && $method === 'POST') $ctrl->approveMilestone($auth, (int)$resourceId, (int)$segments[3]);
+        if ($resourceId && $subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && isset($segments[3]) && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$segments[3]);
+        elseif ($resourceId === 'comments' && $subResource && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$subResource);
+        elseif ($resourceId && $subResource === 'milestones' && ($segments[3] ?? '') !== '' && ($segments[4] ?? '') === 'approve' && $method === 'POST') $ctrl->approveMilestone($auth, (int)$resourceId, (int)$segments[3]);
         elseif ($resourceId && $subResource === 'milestones' && ($segments[3] ?? '') !== '' && ($segments[4] ?? '') === 'reject' && $method === 'POST') $ctrl->rejectMilestone($auth, (int)$resourceId, (int)$segments[3]);
         elseif ($resourceId && $subResource === 'milestones' && ($segments[3] ?? '') !== '' && $method === 'POST') {
             // Upload UNC standard POST
@@ -1019,7 +1040,11 @@ switch ($resource) {
     case 'cooperation-slips':
         $auth = requireAuth();
         $ctrl = new CooperationController($db);
-        if ($resourceId === 'suggestions' && $method === 'GET') $ctrl->getSuggestions($auth);
+        if ($resourceId && $subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && isset($segments[3]) && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$segments[3]);
+        elseif ($resourceId === 'comments' && $subResource && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$subResource);
+        elseif ($resourceId === 'suggestions' && $method === 'GET') $ctrl->getSuggestions($auth);
         elseif ($resourceId && $subResource === 'adjustment' && $method === 'POST') $ctrl->createAdjustmentSlip($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'shares' && $method === 'PUT') $ctrl->updateShares($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'sign' && $method === 'POST') $ctrl->signSlip($auth, (int)$resourceId);

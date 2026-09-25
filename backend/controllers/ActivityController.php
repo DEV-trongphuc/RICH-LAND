@@ -527,6 +527,15 @@ class ActivityController {
         }
         $priority = $_GET['priority'] ?? '';
         if ($priority) { $where[]='a.priority=?'; $params[]=$priority; }
+        $taskGroupId = $_GET['task_group_id'] ?? '';
+        if ($taskGroupId !== '') {
+            if ($taskGroupId === 'null' || $taskGroupId === 'unassigned') {
+                $where[] = 'a.task_group_id IS NULL';
+            } else {
+                $where[] = 'a.task_group_id = ?';
+                $params[] = (int)$taskGroupId;
+            }
+        }
         $w=implode(' AND ',$where);
 
         $cnt=$this->db->prepare("SELECT COUNT(*) FROM activities a WHERE $w");
@@ -543,6 +552,7 @@ class ActivityController {
                    p.name as project_name,
                    camp.name as campaign_name,
                    t.name as team_name,
+                   tg.name as task_group_name, tg.color as task_group_color, tg.icon as task_group_icon,
                    (SELECT COUNT(*) FROM activity_comments ac WHERE ac.activity_id = a.id) as comment_count,
                    EXISTS(SELECT 1 FROM task_hidden_users thu WHERE thu.task_id = a.id AND thu.user_id = " . (int)$auth['user_id'] . ") as is_hidden,
                    (SELECT e.image_url FROM expenses e WHERE e.tenant_id = a.tenant_id AND e.title = REPLACE(a.subject, 'Ghi nhận Chi phí: ', '') AND e.image_url IS NOT NULL AND e.image_url != '' ORDER BY e.id DESC LIMIT 1) as expense_image_url
@@ -556,6 +566,7 @@ class ActivityController {
             LEFT JOIN projects p ON a.related_type='project' AND a.related_id=p.id
             LEFT JOIN marketing_campaigns camp ON a.related_type='campaign' AND a.related_id=camp.id
             LEFT JOIN teams t ON a.related_type='team' AND a.related_id=t.id
+            LEFT JOIN task_groups tg ON a.task_group_id=tg.id
             WHERE $w ORDER BY a.$sortBy $order
             LIMIT $limit OFFSET $offset
         ");
@@ -605,10 +616,11 @@ class ActivityController {
             $done_at = empty($b['done_at']) ? date('Y-m-d H:i:s') : $b['done_at'];
         }
         $contactId = empty($b['contact_id']) ? null : (int)$b['contact_id'];
+        $taskGroupId = empty($b['task_group_id']) ? null : (int)$b['task_group_id'];
 
         $this->db->prepare("
-            INSERT INTO activities (tenant_id,user_id,created_by,type,subject,body,status,priority,due_date,done_at,related_type,related_id,contact_id,tags,participant_ids,progress,require_approval,approver_id,approval_status,link)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO activities (tenant_id,user_id,created_by,type,subject,body,status,priority,due_date,done_at,related_type,related_id,contact_id,tags,participant_ids,progress,require_approval,approver_id,approval_status,link,task_group_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ")->execute([
             $auth['tenant_id'], $targetUserId, $auth['user_id'], $b['type'],
             $b['subject'], $b['body']??null, $status, $b['priority']??'medium',
@@ -618,7 +630,8 @@ class ActivityController {
             (int)($b['progress']??0), (int)($b['require_approval']??0),
             empty($b['approver_id']) ? null : (int)$b['approver_id'],
             $b['approval_status']??null,
-            $b['link']??null
+            $b['link']??null,
+            $taskGroupId
         ]);
         $actId = (int)$this->db->lastInsertId();
 
@@ -870,7 +883,7 @@ class ActivityController {
             }
         }
 
-        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id','contact_id','tags','participant_ids','progress','require_approval','approver_id','approval_status','link'];
+        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id','contact_id','tags','participant_ids','progress','require_approval','approver_id','approval_status','link','task_group_id'];
         $sets=[];$params=[];
         foreach($fields as $f){
             if(array_key_exists($f,$b)){

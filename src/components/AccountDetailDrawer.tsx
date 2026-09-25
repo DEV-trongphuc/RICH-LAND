@@ -511,7 +511,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 setNationality(erp.nationality || '');
                 setMaritalStatus(erp.marital_status || 'single');
                 setPersonalEmail(erp.personal_email || '');
-                setHometown('');
+                setHometown(erp.hometown || '');
                 setCertificates(erp.certificates || []);
                 setHrRecords(erp.hr_records || []);
                 setAssignedAssets(erp.assigned_assets || []);
@@ -942,7 +942,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           nationality: nationality,
           marital_status: maritalStatus,
           personal_email: personalEmail,
-          hometown: '',
+          hometown: hometown || '',
           bank_branch: bankBranch
         }
       });
@@ -1235,7 +1235,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           position: 'fixed',
           top: 0,
           bottom: 0,
-          left: 'var(--sidebar-width, 220px)',
+          left: isMobileOrTablet ? 0 : 'var(--sidebar-width, 220px)',
           right: 0,
           zIndex: 10600,
           backgroundColor: 'var(--color-surface)',
@@ -1333,10 +1333,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     display: 'flex', 
                     flexDirection: 'column', 
                     gap: '1rem', 
-                    padding: '1.25rem 1rem', 
+                    padding: '1.25rem 1rem 7rem 1rem', 
                     overflowY: 'auto', 
                     background: 'var(--color-bg)',
-                    height: '100%'
+                    height: '100%',
+                    WebkitOverflowScrolling: 'touch'
                   } : { width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', borderRight: '1px solid var(--color-border)', padding: '1.5rem 1rem', background: 'var(--color-surface)', height: '100%' }}
                 >
                   {/* Profile Card inside Sidebar */}
@@ -1628,12 +1629,13 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   className={!isMobileOrTablet ? styles.contentArea : undefined} 
                   style={isMobileOrTablet ? { 
                     flex: 1, 
-                    padding: '1.25rem 1rem', 
+                    padding: '1.25rem 1rem 7rem 1rem', 
                     overflowY: 'auto', 
                     backgroundColor: 'var(--color-bg)', 
                     width: '100%',
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    WebkitOverflowScrolling: 'touch'
                   } : undefined}
                 >
                   {isMobileOrTablet && activeTab && (
@@ -1707,6 +1709,24 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       <div className="form-group">
                         <label className="form-label">{t('Quốc tịch')}</label>
                         <input className="form-input" value={nationality} onChange={e => setNationality(e.target.value)} placeholder={t('Việt Nam')} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Quê quán / Nguyên quán')}</label>
+                        <input className="form-input" value={hometown} onChange={e => setHometown(e.target.value)} placeholder={t('Hà Nội')} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Tình trạng hôn nhân')}</label>
+                        <CustomSelect
+                          options={[
+                            { value: 'single', label: t('Độc thân') },
+                            { value: 'married', label: t('Đã kết hôn') },
+                            { value: 'divorced', label: t('Đã ly hôn') },
+                            { value: 'other', label: t('Khác') }
+                          ]}
+                          value={maritalStatus}
+                          onChange={val => setMaritalStatus(String(val))}
+                          placeholder={t('Chọn tình trạng...')}
+                        />
                       </div>
                       <div className="form-group">
                         <label className="form-label">{t('Email cá nhân')}</label>

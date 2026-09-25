@@ -4,6 +4,7 @@ import { CustomModal } from './CustomModal';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { fetchAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
+import { triggerFullConfetti } from '../../utils/confettiHelper';
 
 interface SmartCheckInModalProps {
   isOpen: boolean;
@@ -258,7 +259,7 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
     }
   };
 
-  // AI Face Detection & Auto Capture Loop
+  // AI Face Detection & Auto Capture Loop (Smooth 3.0s Countdown)
   useEffect(() => {
     if (!isCameraActive || capturedImage || isSuccessScreen || autoCapturedRef.current || isManualMode) {
       return;
@@ -274,6 +275,7 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
       const video = videoRef.current;
       if (video.readyState >= 2 && video.videoWidth > 0) {
         let detected = false;
+        const detectionConfidence = 3.4; // ~3.0s (30 ticks * 100ms) for smooth 3-2-1 countdown
 
         // 1. Native FaceDetector API
         if ('FaceDetector' in window) {
@@ -313,7 +315,7 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
 
         if (detected) {
           setFaceScanProgress(prev => {
-            const next = prev + 30;
+            const next = Math.min(100, Number((prev + detectionConfidence).toFixed(1)));
             if (next >= 100 && !autoCapturedRef.current) {
               autoCapturedRef.current = true;
               setScanStatusText(t('Đã phát hiện khuôn mặt! Đang tự động chụp...'));
@@ -329,21 +331,23 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                     toast.success(t('Đã tự động quét khuôn mặt! Vui lòng nhập lý do đi trễ.'));
                   }
                 }
-              }, 200);
+              }, 120);
               return 100;
             }
-            setScanStatusText(t('Đã tìm thấy khuôn mặt... Giữ yên!'));
+            const remainingSecs = next >= 68 ? 1 : next >= 34 ? 2 : 3;
+            const pct = Math.min(99, Math.round(next));
+            setScanStatusText(`${t('Giữ yên khuôn mặt...')} (${remainingSecs}s • ${pct}%)`);
             return next;
           });
         } else {
-          setFaceScanProgress(prev => Math.max(0, prev - 15));
+          setFaceScanProgress(prev => Math.max(0, Number((prev - 6).toFixed(1))));
           setScanStatusText(t('Đưa khuôn mặt vào hình bầu dục...'));
         }
       }
       isDetecting = false;
     };
 
-    intervalId = setInterval(detectFaceFrame, 220);
+    intervalId = setInterval(detectFaceFrame, 100);
 
     return () => {
       clearInterval(intervalId);
@@ -435,14 +439,15 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
 
         setSuccessMeta({ time: timeStr, date: dateStr, isLate });
         setIsSuccessScreen(true);
+        triggerFullConfetti();
 
         onCheckInSuccess();
 
-        // Auto close modal after 1s
+        // Auto close modal after 2.2s
         setTimeout(() => {
           setIsSuccessScreen(false);
           onClose();
-        }, 1000);
+        }, 2200);
       } else {
         toast.error(res.message || t('Check-in thất bại'));
       }
@@ -577,9 +582,9 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
             <span>{successMeta?.time || ''} • {successMeta?.date || ''}</span>
           </div>
 
-          {/* 1s Animated Countdown Progress Bar */}
+          {/* 2.2s Animated Countdown Progress Bar */}
           <div style={{ width: '100%', maxWidth: '260px', height: 4, background: 'var(--color-border-light)', borderRadius: 99, overflow: 'hidden', margin: '0 auto 1.5rem auto' }}>
-            <div className="checkin-progress-bar" style={{ height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: 99, animation: 'checkin-progress-fill 1s linear forwards' }} />
+            <div className="checkin-progress-bar" style={{ height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: 99, animation: 'checkin-progress-fill 2.2s linear forwards' }} />
           </div>
         </div>
       ) : (
@@ -713,8 +718,33 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                           border: faceScanProgress > 60 ? '2px dashed #10b981' : '2px dashed rgba(255,255,255,0.4)',
                           boxShadow: faceScanProgress > 60 ? '0 0 20px rgba(16, 185, 129, 0.3)' : 'none',
                           pointerEvents: 'none',
-                          transition: 'all 0.3s ease'
-                        }} />
+                          transition: 'all 0.3s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {/* 3-2-1 Countdown Indicator */}
+                          {faceScanProgress > 5 && faceScanProgress < 100 && (
+                            <div style={{
+                              width: '48px',
+                              height: '48px',
+                              borderRadius: '50%',
+                              background: 'rgba(16, 185, 129, 0.85)',
+                              backdropFilter: 'blur(8px)',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '1.5rem',
+                              fontWeight: 900,
+                              boxShadow: '0 0 24px rgba(16, 185, 129, 0.8)',
+                              border: '2px solid rgba(255, 255, 255, 0.6)',
+                              zIndex: 30
+                            }}>
+                              {faceScanProgress >= 68 ? '1' : faceScanProgress >= 34 ? '2' : '3'}
+                            </div>
+                          )}
+                        </div>
                       </>
                     )}
                   </>

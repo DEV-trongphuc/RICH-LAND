@@ -102,8 +102,12 @@ class UserController {
     public function update(array $auth,int $id): void {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && (int)$auth['user_id'] !== (int)$id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
         
-        $b = getBody();
-        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'signature_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json', 'job_title', 'team_id', 'zalo_chat_id', 'telegram_chat_id', 'bio'];
+        $fields = [
+            'email', 'full_name', 'phone', 'avatar_url', 'signature_url', 'is_active', 'dob', 'gender',
+            'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json', 'job_title', 'team_id',
+            'zalo_chat_id', 'telegram_chat_id', 'bio', 'work_start_time', 'work_end_time', 'work_schedule',
+            'overtime_mode', 'use_custom_work_hours', 'leave_start', 'leave_end', 'extra_fields_json'
+        ];
         if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) {
             $fields[] = 'role';
             $fields[] = 'is_active';
@@ -161,7 +165,7 @@ class UserController {
                     $val = null;
                 } else if (in_array($f, ['team_id']) && (empty($val) || $val === 0 || $val === '0' || $val === 'null')) {
                     $val = null;
-                } else if ($f === 'permissions_json' && is_array($val)) {
+                } else if (in_array($f, ['permissions_json', 'work_schedule', 'extra_fields_json']) && is_array($val)) {
                     $val = json_encode($val);
                 }
                 $sets[]="$f=?";

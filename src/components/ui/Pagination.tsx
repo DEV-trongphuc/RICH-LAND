@@ -8,6 +8,7 @@ interface PaginationProps {
   onChange: (page: number) => void;
   showSizeChanger?: boolean;
   onPageSizeChange?: (size: number) => void;
+  isLightText?: boolean;
 }
 
 export const Pagination: React.FC<PaginationProps> = ({

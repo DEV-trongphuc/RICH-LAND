@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { AppIcon } from '../common/AppIcons';
 import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers, Clock, Home, CheckSquare, LifeBuoy, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -25,8 +26,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'TỔNG QUAN',
     items: [
-      { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
       { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' },
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Báo cáo', href: '/reports-crm', icon: BarChart2 },
       { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] }
     ]
@@ -35,7 +36,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     title: 'KHÁCH HÀNG',
     items: [
       { name: 'Khách hàng', href: '/contacts', icon: Users },
-      { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Nhật ký Data', href: '/data', icon: Database, hideForRoles: ['sale'] },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, hideForRoles: ['sale', 'sales', 'viewer'] },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper', hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
@@ -103,6 +103,31 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
   const [pendingDepositsCount, setPendingDepositsCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const navContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToActiveItem = (behavior: ScrollBehavior = 'smooth') => {
+    if (!navContainerRef.current) return;
+    const activeEl = navContainerRef.current.querySelector('#sidebar-active-item') as HTMLElement;
+    if (activeEl) {
+      const container = navContainerRef.current;
+      const elTop = activeEl.offsetTop;
+      const elHeight = activeEl.offsetHeight;
+      const containerHeight = container.clientHeight;
+      const scrollTop = container.scrollTop;
+
+      if (elTop < scrollTop || (elTop + elHeight) > (scrollTop + containerHeight)) {
+        container.scrollTo({
+          top: elTop - containerHeight / 2 + elHeight / 2,
+          behavior
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => scrollToActiveItem('smooth'), 120);
+    return () => clearTimeout(timer);
+  }, [location.pathname, location.search]);
 
   // Poll pending counts every 60s
   useEffect(() => {
@@ -237,13 +262,6 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
   const visibleGroups = SIDEBAR_GROUPS.map(group => {
     let items = [...group.items];
-    if (group.title === 'TỔNG QUAN' && user?.role === 'sale') {
-      items = [
-        { name: 'Tổng quan', href: '/', icon: LayoutDashboard, end: true },
-        { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' },
-        { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] }
-      ];
-    }
     const getModuleKeyForHref = (href: string): string | null => {
       if (href.startsWith('/attendance')) return 'attendance';
       if (href.startsWith('/expenses')) return 'expense';
@@ -295,15 +313,16 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         onMouseLeave={() => setIsHovered(false)}
         style={{
           width: isCollapsed ? 60 : 220,
-          background: 'var(--sidebar-bg)',
-          color: '#dadada',
+          background: 'radial-gradient(ellipse at 15% 0%, rgba(189, 29, 45, 0.08) 0%, transparent 50%), linear-gradient(180deg, #100d0e 0%, #0b090a 40%, #070708 100%)',
+          color: '#e2e8f0',
           display: 'flex',
           flexDirection: 'column',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           flexShrink: 0,
           position: 'relative',
           zIndex: 50,
-          boxShadow: '4px 0 24px rgba(0,0,0,0.12)'
+          borderRight: '1px solid rgba(255, 255, 255, 0.06)',
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.35)'
         }}
       >
         {/* Logo Area */}
@@ -317,7 +336,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             alignItems: 'center',
             padding: isCollapsed ? '12px 0 0 0' : '12px 1rem 0 1rem',
             gap: '0.75rem',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
             flexShrink: 0,
             justifyContent: isCollapsed ? 'center' : 'flex-start',
             overflow: 'hidden',
@@ -345,7 +364,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
           {!isCollapsed && (
             <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-              <span style={{ fontSize: '1.2rem', fontWeight: 900, whiteSpace: 'nowrap', color: 'white', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+              <span style={{ fontSize: '1.2rem', fontWeight: 900, whiteSpace: 'nowrap', color: '#ffffff', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
                 RICH LAND
               </span>
               <span style={{
@@ -353,67 +372,67 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 fontWeight: 800,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                background: 'linear-gradient(135deg, #f45b69 0%, #e63946 50%, #BD1D2D 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: '#ef4444',
                 marginTop: '3px',
                 whiteSpace: 'nowrap'
               }}>
-                / DATA AUTOMATION
+                / REAL ESTATE CRM
               </span>
             </div>
           )}
         </div>
 
         {/* Quick Action Button */}
-        <div style={{ padding: isCollapsed ? '0.5rem 0.25rem' : '0.875rem 0.75rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          {isCollapsed ? (
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
-                if (onMobileClose) onMobileClose();
-              }}
-              style={{
-                width: 32, height: 32, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #BD1D2D 0%, #9e1824 50%, #660f17 100%)',
-                color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', boxShadow: '0 2px 8px rgba(189, 29, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)', transition: 'all 0.2s'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(189, 29, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)';
-              }}
-              title={((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? t("Thêm data cá nhân") : t("Thêm data nhanh")}
-            >
-              <Plus size={16} />
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
-                if (onMobileClose) onMobileClose();
-              }}
-              className="btn primary"
-              style={{
-                width: '100%', height: 34, borderRadius: '8px',
-                background: 'linear-gradient(135deg, #BD1D2D 0%, #9e1824 50%, #660f17 100%)',
-                color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: 6, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(189, 29, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)', transition: 'all 0.2s'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(189, 29, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)';
-              }}
-            >
-              <Plus size={14} /> {((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? t("Thêm data cá nhân") : t("Thêm data nhanh")}
-            </button>
-          )}
-        </div>
+        {['admin', 'superadmin', 'super_admin', 'director', 'sale', 'sales', 'marketing', 'manager'].includes(String(user?.role || '').toLowerCase()) && (
+          <div style={{ padding: isCollapsed ? '0.5rem 0.25rem' : '0.875rem 0.75rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            {isCollapsed ? (
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+                  if (onMobileClose) onMobileClose();
+                }}
+                style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #BD1D2D 0%, #9e1824 50%, #660f17 100%)',
+                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', boxShadow: '0 2px 8px rgba(189, 29, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)', transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(189, 29, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)';
+                }}
+                title={((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? t("Thêm data cá nhân") : t("Thêm data nhanh")}
+              >
+                <Plus size={16} />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+                  if (onMobileClose) onMobileClose();
+                }}
+                className="btn primary"
+                style={{
+                  width: '100%', height: 34, borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #BD1D2D 0%, #9e1824 50%, #660f17 100%)',
+                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: 6, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(189, 29, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)', transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(189, 29, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)';
+                }}
+              >
+                <Plus size={14} /> {((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? t("Thêm data cá nhân") : t("Thêm data nhanh")}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Collapse Button */}
         <button
@@ -421,20 +440,36 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           className="responsive-hide-mobile no-active-scale"
           style={{
             position: 'absolute', right: -12, top: '50%', transform: 'translateY(-50%)',
-            width: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary)', color: '#ffffff',
+            width: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary, #BD1D2D)', color: '#ffffff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', zIndex: 200, border: 'none',
-            boxShadow: '0 2px 10px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s',
+            cursor: 'pointer', zIndex: 200, border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 2px 10px rgba(189, 29, 45, 0.45)', transition: 'all 0.2s',
             opacity: isHovered ? 1 : 0,
             visibility: isHovered ? 'visible' : 'hidden',
             pointerEvents: isHovered ? 'auto' : 'none'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
           }}
         >
           <ChevronLeft size={14} style={{ transform: isCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
         </button>
 
         {/* Nav */}
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}>
+        <div
+          ref={navContainerRef}
+          className="sidebar-nav-container"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            scrollbarWidth: 'none',
+            scrollBehavior: 'smooth'
+          }}
+        >
           <div style={{ position: 'relative', padding: '1rem 0', display: 'flex', flexDirection: 'column' }}>
 
             {visibleGroups.map((group, groupIdx) => (
@@ -445,7 +480,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                     fontWeight: 800,
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
-                    color: 'rgba(255, 255, 255, 0.28)',
+                    color: 'rgba(255, 255, 255, 0.35)',
                     padding: '0.375rem 1rem',
                     whiteSpace: 'nowrap',
                     display: 'block'
@@ -453,7 +488,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                     {t(group.title)}
                   </span>
                 )}
-                 {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
+                 {group.items.map(({ name, href, end, badgeKey }) => {
                    const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'supportTickets' ? supportTicketsCount : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'pendingExpenses' ? pendingExpensesCount : badgeKey === 'pendingDeposits' ? pendingDepositsCount : badgeKey === 'workspaceTasks' ? (undoneTasksCount + pendingLeadsCount) : 0;
                    const checkIsActive = (locationPath: string, locationSearch: string, itemHref: string) => {
                      const qIdx = itemHref.indexOf('?');
@@ -482,6 +517,8 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                       key={name + href}
                       to={href}
                       end={end}
+                      id={isActive ? 'sidebar-active-item' : undefined}
+                      data-active={isActive ? 'true' : 'false'}
                       className={() => `sidebar-nav-item ${isActive ? 'active' : ''}`}
                       title={isCollapsed ? displayName : undefined}
                       onClick={(e) => {
@@ -490,16 +527,17 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                           window.dispatchEvent(new CustomEvent('refresh-page', { detail: { path: targetPath } }));
                         }
                         if (onMobileClose) onMobileClose();
+                        setTimeout(() => scrollToActiveItem('smooth'), 50);
                       }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '0.75rem',
                         padding: isCollapsed ? '0.5rem 0' : '0.45rem 1rem',
                         justifyContent: isCollapsed ? 'center' : 'flex-start',
-                        color: isActive ? '#dadada' : 'rgba(255,255,255,0.5)',
+                        color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                         textDecoration: 'none', fontSize: '0.825rem',
                         fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
                         position: 'relative',
-                        background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
+                        background: isActive ? 'linear-gradient(90deg, rgba(189, 29, 45, 0.16) 0%, rgba(189, 29, 45, 0.03) 100%)' : 'transparent',
                         whiteSpace: 'nowrap', overflow: 'hidden',
                       }}
                     >
@@ -511,24 +549,24 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                               left: 0,
                               top: 0,
                               bottom: 0,
-                              width: 4,
-                              background: 'var(--color-primary)',
+                              width: 3,
+                              background: '#BD1D2D',
                               borderRadius: '0 2px 2px 0',
                               zIndex: 10
                             }} />
                           )}
                           {/* Icon Box — with badge dot when collapsed */}
                           <div style={{
-                            width: 30, height: 30, borderRadius: 8,
-                            background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
+                            width: 30, height: 30,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0, transition: 'all 0.2s', position: 'relative'
                           }}>
-                            <Icon size={15} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
+                            <AppIcon name={name} size={26} />
                             {isCollapsed && badgeCount > 0 && (
                               <div style={{
-                                position: 'absolute', top: 3, right: 3, width: 6, height: 6,
-                                borderRadius: '50%', background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444'
+                                position: 'absolute', top: 0, right: 0, width: 8, height: 8,
+                                borderRadius: '50%', background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444',
+                                boxShadow: '0 0 0 1.5px #140e11'
                               }} />
                             )}
                           </div>
@@ -566,10 +604,25 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           </div>
         </div>
 
-
-
-        {/* Pulse animation */}
-        <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }`}</style>
+        {/* Pulse animation and scroll styling */}
+        <style>{`
+          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+          .sidebar-nav-container {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            scroll-behavior: smooth;
+          }
+          .sidebar-nav-container::-webkit-scrollbar {
+            display: none;
+          }
+          .sidebar-nav-item {
+            scroll-margin: 50px 0;
+          }
+          .sidebar-nav-item:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.07) !important;
+            color: #ffffff !important;
+          }
+        `}</style>
       </aside>
     </>
   );

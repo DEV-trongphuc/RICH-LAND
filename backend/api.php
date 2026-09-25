@@ -48,7 +48,8 @@ if (in_array($baseAction, [
     'pos', 'custom-fields', 'inventory', 'tags', 'pipeline-stages', 
     'users', 'reports', 'quotes', 'invoices', 'expenses', 'products',
     'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns', 'marketing-campaigns', 'upload', 'teams', 'dashboard',
-    'notifications', 'workflow-task-templates', 'search', 'export', 'import', 'system', 'test-benchmark'
+    'notifications', 'workflow-task-templates', 'search', 'export', 'import', 'system', 'test-benchmark',
+    'task-groups'
 ], true)) {
     $_SERVER['REQUEST_URI'] = '/backend/' . $action . (!empty($_GET) ? '?' . http_build_query($_GET) : '');
     require_once __DIR__ . '/index.php';
@@ -1872,6 +1873,144 @@ if (!function_exists('getTicketNotifyAdmins')) {
 }
 
 switch ($action) {
+    case 'save_workspace_settings':
+        $token = getBearerToken();
+        $user = $token ? verify_jwt($token, $JWT_SECRET) : null;
+        $userId = (int)($user['id'] ?? ($user['user_id'] ?? 0));
+        if (!$userId) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng đăng nhập để lưu cấu hình']);
+            break;
+        }
+        $raw = file_get_contents('php://input');
+        $b = json_decode($raw, true);
+        if (!is_array($b)) $b = [];
+
+        $stmt = $conn->prepare("SELECT extra_fields_json FROM users WHERE id = ? LIMIT 1");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $userRow = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $extra = [];
+        if (!empty($userRow['extra_fields_json'])) {
+            $decodedExtra = json_decode($userRow['extra_fields_json'], true);
+            if (is_array($decodedExtra)) {
+                $extra = $decodedExtra;
+            }
+        }
+
+        if (!isset($extra['workspace_settings']) || !is_array($extra['workspace_settings'])) {
+            $extra['workspace_settings'] = [];
+        }
+
+        if (isset($b['bg'])) $extra['workspace_settings']['bg'] = trim((string)$b['bg']);
+        if (isset($b['cols'])) $extra['workspace_settings']['cols'] = max(2, min(6, (int)$b['cols']));
+        if (isset($b['overlay'])) $extra['workspace_settings']['overlay'] = max(0, min(100, (int)$b['overlay']));
+        if (isset($b['task_order']) && is_array($b['task_order'])) {
+            $cleanedOrder = array_values(array_unique(array_filter(array_map('intval', $b['task_order']), fn($id) => $id > 0)));
+            $extra['workspace_settings']['task_order'] = $cleanedOrder;
+            $extra['workspace_task_order'] = $cleanedOrder;
+        }
+        $extra['workspace_settings']['updated_at'] = date('Y-m-d H:i:s');
+
+        $jsonStr = json_encode($extra, JSON_UNESCAPED_UNICODE);
+        $upStmt = $conn->prepare("UPDATE users SET extra_fields_json = ? WHERE id = ?");
+        $upStmt->bind_param("si", $jsonStr, $userId);
+        $success = $upStmt->execute();
+        $upStmt->close();
+
+        echo json_encode([
+            'success' => $success,
+            'data' => $extra['workspace_settings'],
+            'message' => $success ? 'Đã lưu cấu hình bàn làm việc thành công' : 'Không thể cập nhật cấu hình'
+        ]);
+        break;
+
+    case 'save_workspace_task_order':
+        $token = getBearerToken();
+        $user = $token ? verify_jwt($token, $JWT_SECRET) : null;
+        $userId = (int)($user['id'] ?? ($user['user_id'] ?? 0));
+        if (!$userId) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $b = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($b)) $b = [];
+
+        $rawOrder = $b['task_order'] ?? ($b['order'] ?? []);
+        $cleanedOrder = is_array($rawOrder)
+            ? array_values(array_unique(array_filter(array_map('intval', $rawOrder), fn($id) => $id > 0)))
+            : [];
+
+        $stmt = $conn->prepare("SELECT extra_fields_json FROM users WHERE id = ? LIMIT 1");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $userRow = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $extra = [];
+        if (!empty($userRow['extra_fields_json'])) {
+            $decodedExtra = json_decode($userRow['extra_fields_json'], true);
+            if (is_array($decodedExtra)) {
+                $extra = $decodedExtra;
+            }
+        }
+
+        if (!isset($extra['workspace_settings']) || !is_array($extra['workspace_settings'])) {
+            $extra['workspace_settings'] = [];
+        }
+
+        $extra['workspace_settings']['task_order'] = $cleanedOrder;
+        $extra['workspace_task_order'] = $cleanedOrder;
+        $extra['workspace_settings']['task_order_updated_at'] = date('Y-m-d H:i:s');
+
+        $jsonStr = json_encode($extra, JSON_UNESCAPED_UNICODE);
+        $upStmt = $conn->prepare("UPDATE users SET extra_fields_json = ? WHERE id = ?");
+        $upStmt->bind_param("si", $jsonStr, $userId);
+        $success = $upStmt->execute();
+        $upStmt->close();
+
+        echo json_encode([
+            'success' => $success,
+            'data' => ['task_order' => $cleanedOrder],
+            'message' => $success ? 'Đã lưu thứ tự thẻ bàn làm việc' : 'Lỗi cập nhật'
+        ]);
+        break;
+
+    case 'get_workspace_settings':
+        $token = getBearerToken();
+        $user = $token ? verify_jwt($token, $JWT_SECRET) : null;
+        $userId = (int)($user['id'] ?? ($user['user_id'] ?? 0));
+        if (!$userId) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $stmt = $conn->prepare("SELECT extra_fields_json FROM users WHERE id = ? LIMIT 1");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $userRow = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $wsSettings = [
+            'bg' => '/imgs/myerp_dark_brand_wallpaper.jpg',
+            'cols' => 4,
+            'overlay' => 0,
+            'task_order' => []
+        ];
+
+        if (!empty($userRow['extra_fields_json'])) {
+            $decoded = json_decode($userRow['extra_fields_json'], true);
+            if (is_array($decoded) && isset($decoded['workspace_settings']) && is_array($decoded['workspace_settings'])) {
+                $wsSettings = array_merge($wsSettings, $decoded['workspace_settings']);
+            }
+            if (is_array($decoded) && !empty($decoded['workspace_task_order'])) {
+                $wsSettings['task_order'] = $decoded['workspace_task_order'];
+            }
+        }
+
+        echo json_encode(['success' => true, 'data' => $wsSettings]);
+        break;
+
     case 'debug_companies_db':
         $res = $conn->query("DESCRIBE companies")->fetch_all(MYSQLI_ASSOC);
         echo json_encode(['success' => true, 'columns' => $res]);
@@ -16020,7 +16159,7 @@ switch ($action) {
                                  COUNT(*) as cnt 
                           FROM distribution_logs 
                           WHERE $dateCondition $roundCondition 
-                            AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
+                            AND status IN ('assigned', 'grabbed', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
                           GROUP BY assigned_to, adjusted_status";
         $countsRes = $conn->query($leadCountsSql);
         $consultantStatusCounts = [];
@@ -16032,6 +16171,7 @@ switch ($action) {
                 if (!isset($consultantStatusCounts[$cId])) {
                     $consultantStatusCounts[$cId] = [
                         'assigned' => 0,
+                        'grabbed' => 0,
                         'compensation' => 0,
                         'rule_6_month' => 0,
                         'pending_work_hours' => 0,
@@ -16046,8 +16186,9 @@ switch ($action) {
         foreach ($consultants as $cId => &$c) {
             if (isset($consultantStatusCounts[$cId])) {
                 $sc = $consultantStatusCounts[$cId];
-                $c['assigned_count'] = $sc['assigned'] + $sc['compensation'] + $sc['rule_6_month'] + $sc['pending_work_hours'] + max(0, $sc['error'] - $sc['compensation']);
-                $c['compensation_count'] = $sc['compensation'];
+                $c['assigned_count'] = ($sc['assigned'] ?? 0) + ($sc['grabbed'] ?? 0) + ($sc['compensation'] ?? 0) + ($sc['rule_6_month'] ?? 0) + ($sc['pending_work_hours'] ?? 0) + max(0, ($sc['error'] ?? 0) - ($sc['compensation'] ?? 0));
+                $c['grabbed_count'] = (int)($sc['grabbed'] ?? 0);
+                $c['compensation_count'] = (int)($sc['compensation'] ?? 0);
             }
         }
         unset($c);
@@ -16062,7 +16203,7 @@ switch ($action) {
                             FROM distribution_logs dl
                             JOIN leads l ON dl.lead_id = l.id
                             WHERE $dateCondition $roundCondition 
-                              AND dl.status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours')
+                              AND dl.status IN ('assigned', 'grabbed', 'compensation', 'error', 'rule_6_month', 'pending_work_hours')
                             GROUP BY dl.assigned_to, COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định'), adjusted_status";
         $srcRes = $conn->query($sourceCountsSql);
         $consultantSourceStatusCounts = [];
@@ -16079,6 +16220,7 @@ switch ($action) {
                 if (!isset($consultantSourceStatusCounts[$cId][$sourceName])) {
                     $consultantSourceStatusCounts[$cId][$sourceName] = [
                         'assigned' => 0,
+                        'grabbed' => 0,
                         'compensation' => 0,
                         'rule_6_month' => 0,
                         'pending_work_hours' => 0,
@@ -16124,7 +16266,7 @@ switch ($action) {
 
                 // Now calculate the adjusted counts for each source
                 foreach ($sCounts as $src => $sc) {
-                    $c['sources'][$src] = $sc['assigned'] + $sc['compensation'] + $sc['rule_6_month'] + $sc['pending_work_hours'] + $adjustedErrors[$src];
+                    $c['sources'][$src] = ($sc['assigned'] ?? 0) + ($sc['grabbed'] ?? 0) + ($sc['compensation'] ?? 0) + ($sc['rule_6_month'] ?? 0) + ($sc['pending_work_hours'] ?? 0) + ($adjustedErrors[$src] ?? 0);
                 }
             }
         }
@@ -16363,13 +16505,14 @@ switch ($action) {
                         WHERE assigned_to = ? 
                           AND received_at BETWEEN ? AND ? 
                           $roundCondition
-                          AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours', 'reminder', 'databank_claim')
+                          AND status IN ('assigned', 'grabbed', 'compensation', 'error', 'rule_6_month', 'pending_work_hours', 'reminder', 'databank_claim')
                         GROUP BY adjusted_status";
 
         $totalAssigned = 0;
         $totalCompensationReceived = 0;
         $statusCounts = [
             'assigned' => 0,
+            'grabbed' => 0,
             'compensation' => 0,
             'rule_6_month' => 0,
             'pending_work_hours' => 0,
@@ -16389,7 +16532,7 @@ switch ($action) {
             $stmtA->close();
         }
 
-        $totalAssigned = $statusCounts['assigned'] + $statusCounts['compensation'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['reminder'] + $statusCounts['databank_claim'] + max(0, $statusCounts['error'] - $statusCounts['compensation']);
+        $totalAssigned = $statusCounts['assigned'] + $statusCounts['grabbed'] + $statusCounts['compensation'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['reminder'] + $statusCounts['databank_claim'] + max(0, $statusCounts['error'] - $statusCounts['compensation']);
         $totalCompensationReceived = $statusCounts['compensation'];
 
         // 3. Query Ticket Approved Compensations (Approved reports resolved in range)
@@ -16531,6 +16674,7 @@ switch ($action) {
                 'name' => $cName,
                 'avatar' => $cAvatar,
                 'total_assigned' => $totalAssigned,
+                'total_grabbed' => $statusCounts['grabbed'],
                 'total_compensation_received' => $totalCompensationReceived,
                 'breakdown' => [
                     'ticket' => $ticketCompCount,

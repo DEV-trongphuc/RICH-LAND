@@ -4175,10 +4175,24 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             {t('Chưa có lịch sử phân bổ chi tiết cho data này.')}
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                          <div style={{ position: 'relative', paddingLeft: '22px', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '6px' }}>
+                            {/* Vertical connecting timeline line */}
+                            <div style={{
+                              position: 'absolute',
+                              left: '8px',
+                              top: '8px',
+                              bottom: '12px',
+                              width: '2px',
+                              backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'var(--color-border-light, #e2e8f0)',
+                              zIndex: 1
+                            }} />
+
                             {distributionLogs.map((log: any, idx: number) => {
                               const isRecalled = log.status === 'recalled';
                               const isAssigned = log.status === 'assigned';
+                              
+                              const dotColor = isRecalled ? '#ef4444' : isAssigned ? '#10b981' : '#f59e0b';
+                              const dotBg = isRecalled ? 'rgba(239, 68, 68, 0.15)' : isAssigned ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)';
                               
                               const badgeStyle = isRecalled
                                 ? { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5', label: t('Thu hồi') }
@@ -4187,60 +4201,84 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 : { bg: '#fef3c7', text: '#b45309', border: '#fcd34d', label: t('Chờ xử lý') };
 
                               return (
-                                <div key={log.id || idx} style={{
-                                  background: theme === 'dark' ? 'rgba(0,0,0,0.25)' : '#ffffff',
-                                  border: '1px solid var(--color-border-light)',
-                                  borderRadius: '10px',
-                                  padding: '0.75rem 0.875rem',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '6px'
-                                }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <span style={{
-                                        fontSize: '0.65rem',
-                                        fontWeight: 800,
-                                        padding: '2px 6px',
-                                        borderRadius: '4px',
-                                        background: badgeStyle.bg,
-                                        color: badgeStyle.text,
-                                        border: `1px solid ${badgeStyle.border}`,
-                                        textTransform: 'uppercase'
-                                      }}>
-                                        {badgeStyle.label}
-                                      </span>
-                                      {log.consultant_name && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                          <Avatar src={log.consultant_avatar} name={log.consultant_name} size={18} />
-                                          <span>{log.consultant_name}</span>
-                                        </div>
-                                      )}
-                                      {log.round_name && (
-                                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                                          ({log.round_name})
-                                        </span>
-                                      )}
-                                    </div>
-                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <Clock size={11} /> {log.received_at}
-                                    </span>
+                                <div key={log.id || idx} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {/* Timeline Dot Node */}
+                                  <div style={{
+                                    position: 'absolute',
+                                    left: '-22px',
+                                    top: '4px',
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '50%',
+                                    backgroundColor: dotBg,
+                                    border: `2px solid ${dotColor}`,
+                                    zIndex: 2,
+                                    boxShadow: `0 0 6px ${dotColor}35`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}>
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor }} />
                                   </div>
 
-                                  {log.message && (
-                                    <div style={{
-                                      fontSize: '0.78rem',
-                                      color: theme === 'dark' ? '#cbd5e1' : '#475569',
-                                      background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-                                      padding: '6px 10px',
-                                      borderRadius: '6px',
-                                      borderLeft: `3px solid ${isRecalled ? '#ef4444' : isAssigned ? '#10b981' : '#f59e0b'}`,
-                                      lineHeight: 1.4,
-                                      whiteSpace: 'pre-wrap'
-                                    }}>
-                                      {log.message}
+                                  {/* Card Body - NO BORDER LEFT */}
+                                  <div style={{
+                                    background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#ffffff',
+                                    border: '1px solid var(--color-border-light, #e2e8f0)',
+                                    borderRadius: '10px',
+                                    padding: '0.625rem 0.875rem',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '6px',
+                                    boxShadow: theme === 'dark' ? 'none' : '0 2px 6px rgba(0, 0, 0, 0.02)'
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{
+                                          fontSize: '0.65rem',
+                                          fontWeight: 800,
+                                          padding: '2px 8px',
+                                          borderRadius: '20px',
+                                          background: badgeStyle.bg,
+                                          color: badgeStyle.text,
+                                          border: `1px solid ${badgeStyle.border}`,
+                                          textTransform: 'uppercase',
+                                          letterSpacing: '0.02em'
+                                        }}>
+                                          {badgeStyle.label}
+                                        </span>
+                                        {log.consultant_name && (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                            <Avatar src={log.consultant_avatar} name={log.consultant_name} size={18} />
+                                            <span>{log.consultant_name}</span>
+                                          </div>
+                                        )}
+                                        {log.round_name && (
+                                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', padding: '1px 6px', borderRadius: '4px' }}>
+                                            {log.round_name}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                                        <Clock size={11} style={{ color: dotColor }} /> {log.received_at}
+                                      </span>
                                     </div>
-                                  )}
+
+                                    {log.message && (
+                                      <div style={{
+                                        fontSize: '0.78rem',
+                                        color: theme === 'dark' ? '#cbd5e1' : '#475569',
+                                        background: theme === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'var(--color-bg, #f8fafc)',
+                                        padding: '6px 10px',
+                                        borderRadius: '6px',
+                                        border: '1px solid var(--color-border-light, #e2e8f0)',
+                                        lineHeight: 1.4,
+                                        whiteSpace: 'pre-wrap'
+                                      }}>
+                                        {log.message}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             })}

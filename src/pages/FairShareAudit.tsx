@@ -93,6 +93,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
         avatar: c.avatar,
         receive_ratio: c.receive_ratio,
         assigned_count: c.assigned_count,
+        grabbed_count: c.grabbed_count || 0,
         sources: { ...c.sources },
         ticket_count: c.ticket_count,
         total_ticket_count: c.total_ticket_count,
@@ -130,6 +131,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
       avatar: c.avatar,
       receive_ratio: c.receive_ratio,
       assigned_count: c.assigned_count,
+      grabbed_count: c.grabbed_count || 0,
       sources: { ...c.sources },
       ticket_count: c.ticket_count,
       total_ticket_count: c.total_ticket_count,
@@ -1457,6 +1459,11 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                       {t("Đã chia")}
                     </span>
                     <span style={{ opacity: 0.7 }}>+</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#d97706' }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#d97706' }} />
+                      {t("Giật lead")}
+                    </span>
+                    <span style={{ opacity: 0.7 }}>+</span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#BD1D2D' }}>
                       <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#BD1D2D' }} />
                       {t("Bù")}
@@ -1663,9 +1670,21 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                             <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                               ({t("thực tế")}: {baselineC.assigned_count})
                             </span>
+                            {baselineC.grabbed_count > 0 && (
+                              <span style={{ fontSize: '0.65rem', color: '#d97706', fontWeight: 700, background: 'rgba(217, 119, 6, 0.1)', padding: '1px 6px', borderRadius: '4px', border: '1px solid rgba(217, 119, 6, 0.2)', marginTop: '2px' }}>
+                                {baselineC.grabbed_count} {t("giật")}
+                              </span>
+                            )}
                           </div>
                         ) : (
-                          c.assigned_count
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                            <span>{c.assigned_count}</span>
+                            {c.grabbed_count > 0 && (
+                              <span style={{ fontSize: '0.65rem', color: '#d97706', fontWeight: 700, background: 'rgba(217, 119, 6, 0.1)', padding: '1px 6px', borderRadius: '4px', border: '1px solid rgba(217, 119, 6, 0.2)' }}>
+                                {c.grabbed_count} {t("giật")}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td style={{ padding: '14px 18px', width: '260px', verticalAlign: 'middle' }}>
@@ -1960,11 +1979,17 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                 </div>
 
                 {/* Core Stats Overview */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: (compensationDetails.total_grabbed > 0 ? '1fr 1fr 1fr' : '1fr 1fr'), gap: '0.75rem' }}>
                   <div style={{ background: 'rgba(189, 29, 45, 0.04)', border: '1px solid rgba(189, 29, 45, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Thành công")}</span>
                     <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>{compensationDetails.total_assigned}</span>
                   </div>
+                  {compensationDetails.total_grabbed > 0 && (
+                    <div style={{ background: 'rgba(217, 119, 6, 0.04)', border: '1px solid rgba(217, 119, 6, 0.2)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Giật Lead")}</span>
+                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#d97706' }}>{compensationDetails.total_grabbed}</span>
+                    </div>
+                  )}
                   <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Data Bù Đã Nhận")}</span>
                     <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#10b981' }}>{compensationDetails.total_compensation_received}</span>

@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import api from '../api/axios';
-import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, AlertTriangle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink, Search, Zap, Edit3, Loader2 } from 'lucide-react';
+import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, AlertTriangle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink, Search, Zap, Edit3, Loader2, Eye } from 'lucide-react';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
@@ -18,6 +18,215 @@ import { CardSkeleton } from '../components/ui/Skeleton';
 import { getModulePermissionScope } from '../store/authStore';
 import { compressToWebP } from '../utils/imageCompress';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
+import { MentionInput } from '../components/ui/MentionInput';
+import { formatCommentBody } from '../utils/commentFormatter';
+import { MessageSquare, Send } from 'lucide-react';
+
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
+
+const CooperationSlipDiscussionSection: React.FC<{ slipId: number }> = ({ slipId }) => {
+  const { user } = useAuth();
+  const { addToast } = useUIStore();
+  const [comments, setComments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const loadComments = async () => {
+    if (!slipId) return;
+    setLoading(true);
+    try {
+      const res = await fetchAPI(`cooperation-slips/${slipId}/comments`);
+      if (res.success) {
+        setComments(res.data || []);
+      }
+    } catch (e) {
+      console.error("Error loading cooperation slip comments:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadComments();
+  }, [slipId]);
+
+  const handleAddComment = async () => {
+    const hasContent = newCommentText.includes('<img') || 
+                       newCommentText.includes('comment-attachment-chip') || 
+                       newCommentText.includes('<a') ||
+                       !!newCommentText.replace(/<[^>]*>/g, '').trim();
+    if (!hasContent || !slipId || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetchAPI(`cooperation-slips/${slipId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ body: newCommentText })
+      });
+      if (res.success) {
+        setNewCommentText('');
+        addToast('Gửi bình luận thành công!', 'success');
+        loadComments();
+      } else {
+        addToast(res.message || 'Lỗi gửi bình luận', 'error');
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      const res = await fetchAPI(`cooperation-slips/comments/${commentId}`, { method: 'DELETE' });
+      if (res.success) {
+        addToast('Đã xóa bình luận', 'success');
+        loadComments();
+      } else {
+        addToast(res.message || 'Lỗi xóa bình luận', 'error');
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Lỗi kết nối', 'error');
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }} onClick={e => e.stopPropagation()}>
+      <h4 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <MessageSquare size={14} color="var(--color-primary, #BD1D2D)" /> Thảo luận &amp; Bình luận ({comments.length}):
+      </h4>
+
+      {/* Comments List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
+            <Loader2 size={18} className="spin animate-spin" style={{ color: 'var(--color-primary)' }} />
+          </div>
+        ) : comments.length === 0 ? (
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
+            Chưa có bình luận nào cho phiếu hợp tác này.
+          </p>
+        ) : (
+          comments.map(c => {
+            const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role);
+            const isAuthor = user?.id && String(user.id) === String(c.user_id);
+            const canDelete = isAdmin || isAuthor;
+
+            return (
+              <div 
+                key={c.id} 
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  background: 'var(--color-bg-light)',
+                  border: '1px solid var(--color-border-light)',
+                  padding: '10px 14px',
+                  borderRadius: '12px'
+                }}
+              >
+                <Avatar src={c.avatar_url} name={c.user_name} size="sm" />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>{c.user_name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                        {new Date(c.created_at).toLocaleString('vi-VN')}
+                      </span>
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDeleteComment(c.id)}
+                          style={{ background: 'none', border: 'none', color: 'var(--color-danger, #ef4444)', cursor: 'pointer', padding: '2px' }}
+                          title="Xóa bình luận"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '4px' }}>
+                    {c.body && (/<[a-z][\s\S]*>/i.test(c.body) || /[📕📄📊📝📦🖼️📎]/.test(c.body)) ? (
+                      <div 
+                        className="rich-comment-content"
+                        dangerouslySetInnerHTML={{ __html: formatCommentBody(c.body) }}
+                        style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', lineHeight: 1.4 }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {c.body}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Input box */}
+      <div style={{ background: 'var(--color-surface, #ffffff)', border: '1px solid var(--color-border)', padding: '8px 12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <MentionInput
+          value={newCommentText}
+          onChange={(e: any) => setNewCommentText(e.target.value)}
+          placeholder="Viết bình luận phiếu hợp tác... Gõ @ để nhắc tên đồng nghiệp"
+          style={{ 
+            width: '100%', 
+            minHeight: '55px', 
+            border: 'none', 
+            borderRadius: 0, 
+            outline: 'none', 
+            background: 'transparent', 
+            color: 'var(--color-text)', 
+            boxSizing: 'border-box',
+            fontSize: '0.825rem'
+          }}
+          disabled={isSubmitting}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px', borderTop: '1px dashed var(--color-border-light)' }}>
+          {(() => {
+            const hasContent = newCommentText.includes('<img') || 
+                               newCommentText.includes('comment-attachment-chip') || 
+                               newCommentText.includes('<a') ||
+                               !!(newCommentText && newCommentText.replace(/<[^>]*>/g, '').trim());
+            return (
+              <button
+                type="button"
+                disabled={isSubmitting || !hasContent}
+                onClick={handleAddComment}
+                className="btn primary sm"
+                style={{
+                  padding: '4px 14px',
+                  fontSize: '0.75rem',
+                  borderRadius: '16px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'var(--color-primary, #BD1D2D)',
+                  borderColor: 'var(--color-primary, #BD1D2D)',
+                  color: '#fff',
+                  cursor: hasContent ? 'pointer' : 'not-allowed',
+                  opacity: hasContent ? 1 : 0.6,
+                  border: 'none'
+                }}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={12} className="spin animate-spin" /> Đang gửi...
+                  </>
+                ) : (
+                  <>
+                    <Send size={12} /> <span>Gửi</span>
+                  </>
+                )}
+              </button>
+            );
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface CooperationSlip {
   id: number;
@@ -249,6 +458,32 @@ export default function CooperationSlipsPage() {
   const [showHandleRequestModal, setShowHandleRequestModal] = useState(false);
   const [handleRequestNote, setHandleRequestNote] = useState('');
   const [isHandlingRequest, setIsHandlingRequest] = useState(false);
+  const [selectedContactForDrawer, setSelectedContactForDrawer] = useState<any | null>(null);
+  const [showContactDrawer, setShowContactDrawer] = useState(false);
+  const [contactDrawerInitialTab, setContactDrawerInitialTab] = useState<string>('cooperation');
+
+  const handleOpenSlipContactDrawer = async (slip: CooperationSlip) => {
+    try {
+      if (slip.contact_id) {
+        const res = await fetchAPI(`contacts/${slip.contact_id}`);
+        const c = res.data || res;
+        if (c && c.id) {
+          setSelectedContactForDrawer(c);
+          setContactDrawerInitialTab('cooperation');
+          setShowContactDrawer(true);
+          return;
+        }
+      }
+    } catch (_) {}
+    setSelectedContactForDrawer({
+      id: slip.contact_id,
+      first_name: slip.first_name,
+      last_name: slip.last_name,
+      phone: slip.phone
+    });
+    setContactDrawerInitialTab('cooperation');
+    setShowContactDrawer(true);
+  };
 
   const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -1217,13 +1452,21 @@ export default function CooperationSlipsPage() {
                         </div>
 
                         <div className="coop-slip-header-info-row2">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div 
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenSlipContactDrawer(slip);
+                            }}
+                            className="hover:underline"
+                            title="Click để mở Drawer hồ sơ khách hàng & chi tiết hợp tác"
+                          >
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách:</span>
                             <Avatar 
                               name={`${slip.last_name} ${slip.first_name}`} 
                               size={18}
                             />
-                            <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text)' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-primary, #BD1D2D)' }}>
                               {slip.last_name} {slip.first_name}
                             </span>
                           </div>
@@ -1386,7 +1629,29 @@ export default function CooperationSlipsPage() {
 
                     {/* Right: Actions */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
-                      
+                      {/* Detail Drawer Button */}
+                      <button
+                        onClick={() => handleOpenSlipContactDrawer(slip)}
+                        style={{
+                          height: '38px',
+                          padding: '0 14px',
+                          fontSize: '0.85rem',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          border: '1px solid rgba(189, 29, 45, 0.2)',
+                          background: 'rgba(189, 29, 45, 0.08)',
+                          color: 'var(--color-primary, #BD1D2D)',
+                          transition: 'all 0.2s'
+                        }}
+                        title="Xem chi tiết phiếu hợp tác & hồ sơ khách hàng"
+                      >
+                        <Eye size={14} /> Chi tiết
+                      </button>
+
                       {/* Sign / Update buttons */}
                       {(slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && (String(slip.created_by) === String(user?.id) || isApprover) && (
                         <button
@@ -1929,6 +2194,9 @@ export default function CooperationSlipsPage() {
                         <span>Ý kiến phản hồi / Lý do từ chối: <strong>{slip.dispute_details}</strong>. Vui lòng cập nhật lại tỷ lệ chia sẻ và ký xác nhận lại.</span>
                       </div>
                     )}
+
+                    {/* Discussion & Comments */}
+                    <CooperationSlipDiscussionSection slipId={slip.id} />
                   </div>
                 )}
               </div>
@@ -3143,26 +3411,19 @@ export default function CooperationSlipsPage() {
         }}
         initialSignatureUrl={user?.signature_url}
       />
-      {/* Signature Setup Modal */}
-      <SignaturePadModal
-        isOpen={showQuickSignatureModal}
-        onClose={() => setShowQuickSignatureModal(false)}
-        onSave={async (newSigUrl) => {
-          const res = await fetchAPI('update_profile', {
-            method: 'POST',
-            body: JSON.stringify({ signature_url: newSigUrl })
-          });
-          if (res.success) {
-            updateUser({ signature_url: newSigUrl });
-            if (signingSlip) {
-              handleSignSlip(signingSlip.id, newSigUrl);
-            }
-          } else {
-            throw new Error(res.message || t('Lỗi lưu chữ ký'));
-          }
-        }}
-        initialSignatureUrl={user?.signature_url}
-      />
+      {showContactDrawer && selectedContactForDrawer && (
+        <Suspense fallback={null}>
+          <CustomerProfileDrawer
+            isOpen={showContactDrawer}
+            onClose={() => setShowContactDrawer(false)}
+            contact={selectedContactForDrawer}
+            initialTab={contactDrawerInitialTab || 'cooperation'}
+            onUpdate={() => {
+              loadData();
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

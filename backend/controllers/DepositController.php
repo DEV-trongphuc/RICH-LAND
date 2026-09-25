@@ -982,6 +982,100 @@ class DepositController {
         }
     }
 
+    public function getComments(array $auth, int $id): void {
+        $stmt = $this->db->prepare("
+            SELECT c.*, u.full_name as user_name, u.avatar_url 
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.entity_type = 'deposit' AND c.entity_id = ? AND c.tenant_id = ?
+            ORDER BY c.created_at DESC
+        ");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $comments = array_map(function($row) {
+            if (!empty($row['attachments'])) {
+                $decoded = json_decode($row['attachments'], true);
+                $row['attachments'] = is_array($decoded) ? $decoded : [];
+            } else {
+                $row['attachments'] = [];
+            }
+            return $row;
+        }, $rows);
+        respond(200, $comments, 'Lấy danh sách bình luận thành công');
+    }
+
+    public function addComment(array $auth, int $id): void {
+        $b = getBody();
+        $body = trim($b['body'] ?? '');
+        $attachments = !empty($b['attachments']) && is_array($b['attachments']) ? json_encode($b['attachments'], JSON_UNESCAPED_UNICODE) : null;
+        if (!$body && !$attachments) {
+            respond(422, null, 'Nội dung hoặc tệp đính kèm bình luận là bắt buộc', false);
+        }
+        $parentId = !empty($b['parent_id']) ? (int)$b['parent_id'] : null;
+
+        $stmt = $this->db->prepare("
+            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body, attachments, parent_id) 
+            VALUES (?, 'deposit', ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$auth['tenant_id'], $id, $auth['user_id'], $body, $attachments, $parentId]);
+        $newId = $this->db->lastInsertId();
+
+        // Parse mentions in comment body
+        $mentions = [];
+        if (preg_match_all('/data-user-id=(?:&quot;|["\']|\\\\+["\'])?(\d+)/i', (string)$body, $matches)) {
+            $uids = array_filter(array_map('intval', $matches[1]));
+            foreach ($uids as $uid) {
+                if ($uid !== (int)$auth['user_id']) {
+                    $stmtUser = $this->db->prepare("SELECT id, email, full_name, role FROM users WHERE id=?");
+                    $stmtUser->execute([$uid]);
+                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                    if ($userRow) {
+                        $mentions[$uid] = $userRow;
+                    }
+                }
+            }
+        }
+
+        // Send notifications to mentioned users
+        if (!empty($mentions)) {
+            require_once __DIR__ . '/../NotificationService.php';
+            foreach ($mentions as $mUid => $mUser) {
+                try {
+                    NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                        'user_id' => $mUid,
+                        'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                        'comment' => "Đã nhắc đến bạn trong thảo luận phiếu đặt cọc",
+                        'link' => "/deposits?id=" . $id . "&highlight_comment_id=" . $newId
+                    ]);
+                } catch (Exception $e) {
+                    error_log("Failed to send mention notification for deposit comment: " . $e->getMessage());
+                }
+            }
+        }
+
+        respond(201, ['id' => $newId], 'Thêm bình luận thành công');
+    }
+
+    public function deleteComment(array $auth, int $commentId): void {
+        $stmt = $this->db->prepare("SELECT * FROM comments WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$commentId, $auth['tenant_id']]);
+        $comment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$comment) {
+            respond(404, null, 'Không tìm thấy bình luận', false);
+        }
+
+        $isAdmin = in_array($auth['role'] ?? '', ['admin', 'superadmin', 'super_admin', 'director'], true);
+        if ((int)$comment['user_id'] !== (int)$auth['user_id'] && !$isAdmin) {
+            respond(403, null, 'Bạn không có quyền xóa bình luận này', false);
+        }
+
+        $this->db->prepare("DELETE FROM comments WHERE (id = ? OR parent_id = ?) AND tenant_id = ?")
+            ->execute([$commentId, $commentId, $auth['tenant_id']]);
+
+        respond(200, null, 'Đã xóa bình luận');
+    }
+
     private function getSetting(string $key, string $default): string {
         $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
         $stmt->execute([$key]);

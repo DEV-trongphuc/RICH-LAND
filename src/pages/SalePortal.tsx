@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo, lazy, Suspense } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
@@ -8,12 +8,31 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check, KeyRound, Loader2, Shield, Mail, ShieldCheck, Lock as LockIcon, Bell,
-  Play, Sparkles, ArrowRight, Eye, MapPin, Pin
+  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, Square, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check, KeyRound, Loader2, Shield, Mail, ShieldCheck, Lock as LockIcon, Bell,
+  Play, Sparkles, ArrowRight, Eye, EyeOff, MapPin, Pin, Palette, BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { triggerFullConfetti } from '../utils/confettiHelper';
+import {
+  DndContext,
+  closestCenter,
+  pointerWithin,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragEndEvent,
+  type DragStartEvent
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  rectSortingStrategy,
+  arrayMove,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const WarRoomFlightDeck = lazy(() => import('../components/Dashboard/WarRoomFlightDeck').then(module => ({ default: module.WarRoomFlightDeck })));
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
@@ -36,6 +55,7 @@ import { MentionInput } from '../components/ui/MentionInput';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { VietnameseDateInput } from '../components/ui/VietnameseDateInput';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
 import { EmptyCard } from '../components/ui/EmptyCard';
@@ -52,6 +72,13 @@ const AttendancePage = lazy(() => import('./AttendancePage'));
 import api from '../api/axios';
 const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 const WorkspaceTaskDrawer = lazy(() => import('./WorkspaceTaskDrawer').then(module => ({ default: module.WorkspaceTaskDrawer })));
+import { WorkspaceCustomizerModal, preloadWorkspaceWallpapers } from '../components/ui/WorkspaceCustomizerModal';
+import { WorkspaceTaskStatsModal } from '../components/ui/WorkspaceTaskStatsModal';
+import { TaskCompleteConfirmModal } from '../components/ui/TaskCompleteConfirmModal';
+import { WORKSPACE_INSPIRATIONAL_QUOTES } from '../data/inspirationalQuotes';
+import { parseTaskBody, extractCleanCardDescription, isTaskEffectivelyDone, isTaskPersonalForUser, getTaskEffectiveProgress } from '../utils/taskBodyParser';
+import { TaskGroupSection, TaskGroupBadge, type TaskGroup, type TaskGroupsSummary } from '../components/TaskGroups/TaskGroupSection';
+import { WorkspaceView } from '../components/Workspace/WorkspaceView';
 import styles from './EntityDrawer.module.css';
 
 
@@ -452,6 +479,528 @@ const getDueDateLabel = (dateStr: string | null | undefined, isDone: boolean, t:
   return d.toLocaleDateString('vi-VN');
 };
 
+const formatVietnameseFullName = (nameStr: string) => {
+  if (!nameStr || typeof nameStr !== 'string') return '';
+  const parts = nameStr.trim().split(/\s+/);
+  if (parts.length <= 1) return nameStr;
+  const lastName = parts.pop();
+  return `${lastName} ${parts.join(' ')}`;
+};
+
+interface WorkspaceCardInnerProps {
+  task: any;
+  isMobile: boolean;
+  wsBg: string;
+  theme: string;
+  isPinned: boolean;
+  togglePinTask: (id: number) => void;
+  users: any[];
+  t: (key: string) => string;
+  getDueDateLabel: (dateStr: string | null | undefined, isDone: boolean, t: any) => string;
+  parseDescriptionAndChecklist: (descText: string) => any;
+  setChecklist: (cl: any) => void;
+  setSelectedTaskForDetails: (task: any) => void;
+  handleOpenContactProfile: (id: number, tab?: string, initData?: any) => void;
+  setSelectedTaskParticipants: (users: any[]) => void;
+  setParticipantsModalOpen: (open: boolean) => void;
+  isDragging?: boolean;
+  isOverlay?: boolean;
+  taskGroups?: TaskGroup[];
+  onAssignGroup?: (taskId: number, groupId: number | null) => Promise<void>;
+  onOpenCreateGroupModal?: () => void;
+  onOpenCreateModal?: () => void;
+  onToggleComplete?: (taskId: number, e: React.MouseEvent) => void;
+  isCompleting?: boolean;
+}
+
+const WorkspaceCardInner: React.FC<WorkspaceCardInnerProps> = React.memo(({
+  task,
+  isMobile,
+  wsBg,
+  theme,
+  isPinned,
+  togglePinTask,
+  users,
+  t,
+  getDueDateLabel,
+  parseDescriptionAndChecklist,
+  setChecklist,
+  setSelectedTaskForDetails,
+  handleOpenContactProfile,
+  setSelectedTaskParticipants,
+  setParticipantsModalOpen,
+  isDragging,
+  isOverlay,
+  taskGroups,
+  onAssignGroup,
+  onOpenCreateGroupModal,
+  onOpenCreateModal,
+  onToggleComplete,
+  isCompleting
+}) => {
+  const isCompleted = isTaskEffectivelyDone(task);
+  const isOverdue = !isCompleted && task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
+  const isToday = !isCompleted && task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
+
+  let dateBadgeColor = 'var(--color-text-muted)';
+  let dateBadgeBg = 'var(--color-bg)';
+  if (isOverdue) {
+    dateBadgeColor = 'var(--color-danger)';
+    dateBadgeBg = 'rgba(239, 68, 68, 0.08)';
+  } else if (isToday) {
+    dateBadgeColor = 'var(--color-warning)';
+    dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
+  }
+
+  const parsedBody = parseTaskBody(task.body);
+  const link = (parsedBody.links?.[0]?.url) || (task.body && !task.body.trim().startsWith('{')
+    ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '')
+    : '');
+
+  const description = parsedBody.description;
+  const cleanDesc = extractCleanCardDescription(task.body);
+
+  const checklistTotal = parsedBody.checklist?.length || 0;
+  const checklistDone = parsedBody.checklist?.filter((c: any) => c.done || c.checked).length || 0;
+  const progressVal = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : (task.progress || 0);
+
+  let cardBorder = wsBg
+    ? (theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.85)')
+    : '1px solid var(--color-border-light)';
+  let cardBg = wsBg
+    ? (theme === 'dark' ? 'rgba(30, 41, 59, 0.92)' : 'rgba(255, 255, 255, 0.95)')
+    : 'var(--color-surface)';
+  let cardShadow = wsBg
+    ? (theme === 'dark' ? '0 8px 24px rgba(0, 0, 0, 0.35)' : '0 8px 24px -4px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)')
+    : 'var(--shadow-sm)';
+  if (isPinned) {
+    cardBorder = '2px solid var(--color-primary, #BD1D2D)';
+    cardBg = wsBg 
+      ? (theme === 'dark' ? 'rgba(189, 29, 45, 0.22)' : 'rgba(254, 242, 242, 0.96)')
+      : 'rgba(189, 29, 45, 0.03)';
+    cardShadow = 'var(--shadow-md), 0 0 12px rgba(189, 29, 45, 0.1)';
+  } else if (isOverdue && task.status !== 'done') {
+    cardBorder = '1.5px solid var(--color-danger)';
+    cardShadow = 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)';
+  }
+
+  if (isOverlay) {
+    cardShadow = '0 24px 48px -8px rgba(0, 0, 0, 0.38), 0 0 0 2px var(--color-primary, #BD1D2D)';
+    cardBorder = '2px solid var(--color-primary, #BD1D2D)';
+  }
+
+  return (
+    <div 
+      style={{
+        padding: isMobile ? '12px 14px' : '1rem 1.25rem',
+        background: cardBg,
+        border: cardBorder,
+        backdropFilter: wsBg ? 'blur(6px)' : 'none',
+        WebkitBackdropFilter: wsBg ? 'blur(6px)' : 'none',
+        borderRadius: '14px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? '0.5rem' : '0.75rem',
+        boxShadow: cardShadow,
+        transition: isMobile ? 'none' : (isOverlay ? 'none' : 'box-shadow 0.2s ease, border-color 0.2s ease'),
+        cursor: isOverlay ? 'grabbing' : 'grab',
+        position: 'relative',
+        width: '100%',
+        maxWidth: '100%',
+        height: isOverlay ? 'auto' : '100%',
+        flex: isOverlay ? 'none' : '1 1 auto',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        transform: isOverlay ? 'scale(1.02)' : 'translateZ(0)',
+        WebkitTransform: isOverlay ? 'scale(1.02)' : 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        opacity: isDragging ? 0.35 : 1,
+        userSelect: 'none'
+      }}
+      className={`${isMobile ? 'active-press' : (isOverlay ? '' : 'hover-lift active-press')} ${isCompleting ? 'workspace-card-completing' : ''}`}
+      onClick={() => {
+        if (isDragging) return;
+        const parsed = parseDescriptionAndChecklist(description);
+        const checklistItems = (parsedBody.checklist && parsedBody.checklist.length > 0)
+          ? parsedBody.checklist.map(c => ({ text: String(c.text || ''), checked: Boolean(c.checked) }))
+          : parsed.checklist;
+        const parsedTask = {
+          id: task.id,
+          title: task.subject,
+          done: task.status === 'done',
+          priority: task.priority,
+          due_date: task.due_date || '',
+          created_at: task.created_at,
+          link,
+          description: parsedBody.pureDescription || parsed.pureDescription,
+          user_id: task.user_id,
+          user_name: task.user_name || 'Hệ thống',
+          tags: task.tags || '',
+          participant_ids: task.participant_ids || '',
+          progress: task.progress || 0,
+          require_approval: task.require_approval || 0,
+          approver_id: task.approver_id,
+          approval_status: task.approval_status,
+          contact_id: task.contact_id,
+          contact_name: task.contact_name,
+          contact_avatar: task.contact_avatar,
+          related_type: task.related_type,
+          related_id: task.related_id,
+          body: task.body,
+          created_by: task.created_by,
+          created_by_name: task.created_by_name,
+          created_by_avatar: task.created_by_avatar,
+          due_sla_notified: parsedBody.due_sla_notified,
+          subtask_sla_notified: parsedBody.subtask_sla_notified
+        };
+        setChecklist(checklistItems);
+        setSelectedTaskForDetails(parsedTask);
+      }}
+    >
+      {/* Top Tags & Priority */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', flex: 1, alignItems: 'center' }}>
+          {/* Task Group Badge */}
+          {onAssignGroup && (
+            <TaskGroupBadge
+              task={task}
+              groups={taskGroups || []}
+              onAssignGroup={onAssignGroup}
+              onOpenCreateModal={onOpenCreateModal || onOpenCreateGroupModal}
+              isLightText={!!wsBg}
+            />
+          )}
+          {task.tags && task.tags.split(',').filter(Boolean).map((tag: string) => {
+            const trimmedTag = tag.trim();
+            if (trimmedTag === 'internal_task') return null;
+            return (
+              <span 
+                key={tag} 
+                style={{ 
+                  fontSize: '0.65rem', 
+                  padding: '1px 6px', 
+                  borderRadius: '20px', 
+                  background: 'var(--color-bg)', 
+                  color: 'var(--color-text-light)', 
+                  fontWeight: 700 
+                }}
+              >
+                #{trimmedTag}
+              </span>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          {task.priority === 'high' && (
+            <span style={{ fontSize: '0.625rem', fontWeight: 800, padding: '1px 6px', borderRadius: '20px', background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>
+              {t('Khẩn cấp')}
+            </span>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePinTask(task.id);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{
+              border: 'none',
+              background: isPinned ? 'rgba(189, 29, 45, 0.15)' : 'transparent',
+              color: isPinned ? 'var(--color-primary, #BD1D2D)' : 'var(--color-text-light)',
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s'
+            }}
+            title={isPinned ? t('Bỏ ghim công việc') : t('Ghim công việc')}
+          >
+            <Pin size={14} style={{ transform: isPinned ? 'rotate(0deg)' : 'rotate(45deg)', transition: 'transform 0.2s' }} />
+          </button>
+        </div>
+      </div>
+
+      {/* Task Image Preview */}
+      {task.first_image_url && (
+        <div style={{
+          width: '100%',
+          height: '120px',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          border: '1px solid var(--color-border-light)',
+          background: 'var(--color-bg-alt)',
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <img 
+            src={task.first_image_url.startsWith('http') || task.first_image_url.startsWith('blob:') || task.first_image_url.startsWith('data:')
+              ? task.first_image_url 
+              : `${import.meta.env.VITE_API_URL || '/backend'}/${task.first_image_url}`} 
+            alt="Task Preview" 
+            loading="lazy"
+            decoding="async"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+            onError={(e) => {
+              (e.currentTarget as HTMLElement).parentElement!.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
+
+      {/* Title & Description with Quick Complete Checkbox */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+        {onToggleComplete && (
+          <button
+            type="button"
+            className={`task-quick-check-btn ${isCompleted ? 'completed' : ''} ${isCompleting ? 'bouncing' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComplete(task.id, e);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            title={isCompleted ? t('Đánh dấu chưa xong') : t('Hoàn thành công việc')}
+            style={{ marginTop: '2px' }}
+          >
+            {isCompleted && <Check size={11} strokeWidth={3.5} />}
+          </button>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+          <h3 style={{ 
+            fontWeight: 700, 
+            fontSize: isMobile ? '0.875rem' : '0.925rem', 
+            color: isCompleted ? 'var(--color-text-muted)' : 'var(--color-text)', 
+            textDecoration: isCompleted ? 'line-through' : 'none',
+            textDecorationColor: isCompleted ? 'var(--color-text-muted)' : 'transparent',
+            transition: 'all 0.3s ease',
+            margin: 0, 
+            lineHeight: 1.35 
+          }}>
+            {task.subject}
+          </h3>
+          {cleanDesc && (
+            <p style={{
+              fontSize: isMobile ? '0.725rem' : '0.75rem',
+              color: 'var(--color-text-muted)',
+              margin: 0,
+              lineHeight: 1.4,
+              display: '-webkit-box',
+              WebkitLineClamp: isMobile ? 2 : 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              opacity: isCompleted ? 0.7 : 1
+            }}>
+              {cleanDesc}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Progress Bar indicator */}
+      <div style={{ marginTop: 'auto', paddingTop: '2px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tiến độ')}:</span>
+          <span style={{ fontSize: '0.68rem', fontWeight: 800, color: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary, #BD1D2D)' }}>{progressVal}%</span>
+        </div>
+        <div style={{ width: '100%', height: '6px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
+          <div 
+            style={{ 
+              width: `${progressVal}%`, 
+              height: '100%', 
+              background: progressVal === 100 
+                ? 'var(--color-success)' 
+                : 'linear-gradient(90deg, #BD1D2D, #F97316)', 
+                borderRadius: '99px',
+              transition: 'width 0.4s var(--transition-fluid)' 
+            }} 
+          />
+        </div>
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--color-border-light)', margin: '4px 0 6px 0' }} />
+
+      {/* Customer row */}
+      {(() => {
+        const hasCustomer = Boolean((task.related_type === 'contact' && task.related_id) || task.contact_name || task.contact_id);
+        const customerId = task.contact_id || (task.related_type === 'contact' ? task.related_id : null);
+        const customerDisplayName = formatVietnameseFullName(task.contact_name || (task.related_type === 'contact' ? t('Khách hàng') : ''));
+
+        if (!hasCustomer || !customerDisplayName) return null;
+
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+            <span
+              style={{
+                fontSize: '0.725rem',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '20px',
+                color: 'var(--color-text, #334155)',
+                background: 'var(--color-bg-subtle, rgba(0,0,0,0.03))',
+                border: '1px solid var(--color-border-light, rgba(0,0,0,0.06))',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: customerId ? 'pointer' : 'default',
+                maxWidth: '100%',
+                transition: 'all 0.15s ease'
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                if (customerId) {
+                  e.stopPropagation();
+                  handleOpenContactProfile(Number(customerId), 'info', {
+                    id: Number(customerId),
+                    full_name: customerDisplayName,
+                    avatar_url: task.contact_avatar,
+                    _isLoading: true
+                  });
+                }
+              }}
+              title={customerDisplayName}
+            >
+              <Avatar 
+                src={task.contact_avatar} 
+                name={customerDisplayName} 
+                size={15} 
+              />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {customerDisplayName}
+              </span>
+            </span>
+          </div>
+        );
+      })()}
+
+      {/* Footer metadata */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', minHeight: '26px' }}>
+        <div>
+          {task.due_date && (
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '3px 8px', borderRadius: '20px', color: dateBadgeColor, background: dateBadgeBg, display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+              <Calendar size={11} /> {getDueDateLabel(task.due_date, task.status === 'done', t)}
+              {isOverdue && task.status !== 'done' && <ShieldAlert size={10} style={{ marginLeft: 2 }} />}
+            </span>
+          )}
+        </div>
+
+        {(() => {
+          const assigneeUser = users.find((u: any) => String(u.id) === String(task.user_id));
+          const approverUser = task.approver_id ? users.find((u: any) => String(u.id) === String(task.approver_id)) : null;
+          const participantIds = task.participant_ids ? task.participant_ids.split(',').filter(Boolean) : [];
+          const participantUsers = participantIds.map((id: string) => users.find((u: any) => String(u.id) === String(id))).filter(Boolean);
+
+          return (
+            <div 
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }} 
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                if (participantUsers.length > 0) {
+                  e.stopPropagation();
+                  setSelectedTaskParticipants(participantUsers);
+                  setParticipantsModalOpen(true);
+                }
+              }}
+            >
+              {/* Assignee Avatar */}
+              {assigneeUser && (
+                <div title={`Chịu trách nhiệm: ${assigneeUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
+                  <Avatar src={assigneeUser.avatar_url || assigneeUser.avatar} name={assigneeUser.full_name} size={24} />
+                  <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-primary, #BD1D2D)', borderRadius: '50%', width: 10, height: 10, border: '1.5px solid var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                </div>
+              )}
+
+              {/* Approver Avatar */}
+              {approverUser && (
+                <div title={`Người duyệt: ${approverUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
+                  <Avatar src={approverUser.avatar_url || approverUser.avatar} name={approverUser.full_name} size={24} />
+                  <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-warning)', borderRadius: '50%', width: 10, height: 10, border: '1.5px solid var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                </div>
+              )}
+
+              {/* Overlapping Participant Avatars */}
+              {participantUsers.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px', position: 'relative' }}>
+                  {participantUsers.slice(0, 3).map((pUser: any, pIdx: number) => (
+                    <div
+                      key={pUser.id}
+                      title={`Người liên quan: ${pUser.full_name}`}
+                      style={{
+                        marginLeft: pIdx > 0 ? '-8px' : '0px',
+                        border: '1.5px solid var(--color-surface)',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        zIndex: 10 - pIdx,
+                        display: 'flex'
+                      }}
+                    >
+                      <Avatar src={pUser.avatar_url || pUser.avatar} name={pUser.full_name} size={22} />
+                    </div>
+                  ))}
+                  {participantUsers.length > 3 && (
+                    <div
+                      style={{
+                        marginLeft: '-8px',
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        background: 'var(--color-border)',
+                        color: 'var(--color-text-muted)',
+                        fontSize: '0.65rem',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1.5px solid var(--color-surface)',
+                        zIndex: 5,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      +{participantUsers.length - 3}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  );
+});
+WorkspaceCardInner.displayName = 'WorkspaceCardInner';
+
+const SortableWorkspaceCard: React.FC<WorkspaceCardInnerProps> = React.memo((props) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: props.task.id, disabled: props.isMobile });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 1,
+    touchAction: props.isMobile ? 'pan-y' : 'none',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column'
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...(props.isMobile ? {} : listeners)}>
+      <WorkspaceCardInner {...props} isDragging={isDragging} />
+    </div>
+  );
+});
+SortableWorkspaceCard.displayName = 'SortableWorkspaceCard';
+
 const DebouncedSearchInput: React.FC<{
   initialValue: string;
   placeholder: string;
@@ -545,6 +1094,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const loc = location || routerLocation;
   const { user, token, login, logout, updateUser } = useAuth();
   const currentUser = user;
+  const isSaleUser = currentUser && ['sale', 'sales'].includes(String(currentUser.role).toLowerCase());
+  const isTopAdmin = Boolean(currentUser && ['superadmin', 'super_admin', 'admin'].includes(String(currentUser.role).toLowerCase()));
+  const [adminViewFull, setAdminViewFull] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ws_admin_view_full') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const { language, setLanguage, t } = useLanguage();
   const { showConfirm, closeConfirm } = useUIStore();
   const [showWorkspaceHelpModal, setShowWorkspaceHelpModal] = useState(false);
@@ -872,7 +1430,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [profileDrawerTab, setProfileDrawerTab] = useState<string>('info');
 
   // Tab & Layout states
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'workspace' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants' | 'attendance-portal'>(activeTabProp || 'dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'workspace' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants' | 'attendance-portal'>(activeTabProp || 'workspace');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -880,15 +1438,162 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   // Filter states for workspace tasks
   const [wsSearch, setWsSearch] = useState('');
+  const [isWsSearchFocused, setIsWsSearchFocused] = useState(false);
+  const [debouncedWsSearch, setDebouncedWsSearch] = useState('');
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedWsSearch(wsSearch);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [wsSearch]);
   const [wsPriority, setWsPriority] = useState('');
   const [wsStatus, setWsStatus] = useState('planned'); // Default: hide completed
+  const [showDoneTasks, setShowDoneTasks] = useState(false);
   const [wsViewMode, setWsViewMode] = useState<'grid' | 'kanban' | 'focus'>('grid');
+  const [hideWorkspaceAlerts, setHideWorkspaceAlerts] = useState(true);
+  const [showWorkspaceCustomizer, setShowWorkspaceCustomizer] = useState(false);
+  const [isWorkspaceStatsModalOpen, setIsWorkspaceStatsModalOpen] = useState(false);
+  const [currentQuoteIdx, setCurrentQuoteIdx] = useState(() => Math.floor(Math.random() * WORKSPACE_INSPIRATIONAL_QUOTES.length));
+
+  const handleNextQuote = () => {
+    setCurrentQuoteIdx(prev => (prev + 1) % WORKSPACE_INSPIRATIONAL_QUOTES.length);
+  };
+
+  const handlePrevQuote = () => {
+    setCurrentQuoteIdx(prev => (prev - 1 + WORKSPACE_INSPIRATIONAL_QUOTES.length) % WORKSPACE_INSPIRATIONAL_QUOTES.length);
+  };
+
+  const handleShuffleQuote = () => {
+    setCurrentQuoteIdx(prev => {
+      let next = Math.floor(Math.random() * WORKSPACE_INSPIRATIONAL_QUOTES.length);
+      if (next === prev) next = (next + 1) % WORKSPACE_INSPIRATIONAL_QUOTES.length;
+      return next;
+    });
+  };
+
+  const [wsBg, setWsBg] = useState<string>(() => {
+    const uid = currentUser?.id || user?.id;
+    const bg = uid ? (localStorage.getItem(`ws_custom_bg_${uid}`) || '/imgs/myerp_dark_brand_wallpaper.jpg') : '/imgs/myerp_dark_brand_wallpaper.jpg';
+    if (typeof window !== 'undefined' && bg && (bg.startsWith('http') || bg.startsWith('/'))) {
+      const img = new Image();
+      try { (img as any).fetchPriority = 'high'; } catch (_) {}
+      img.src = bg;
+    }
+    return bg;
+  });
+  const [wsCols, setWsCols] = useState<number>(() => {
+    const uid = currentUser?.id || user?.id;
+    const val = uid ? localStorage.getItem(`ws_custom_cols_${uid}`) : null;
+    return val ? Number(val) : 4;
+  });
+  const [wsOverlay, setWsOverlay] = useState<number>(() => {
+    const uid = currentUser?.id || user?.id;
+    const val = uid ? localStorage.getItem(`ws_custom_overlay_${uid}`) : null;
+    return val !== null ? Number(val) : 0;
+  });
+
+  const [wsTaskOrder, setWsTaskOrder] = useState<number[]>(() => {
+    const uid = currentUser?.id || user?.id;
+    if (!uid) return [];
+    try {
+      const raw = localStorage.getItem(`ws_task_order_${uid}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveTaskOrderDebounceRef = useRef<any>(null);
+  const handlePersistTaskOrder = (newOrder: number[]) => {
+    const uid = currentUser?.id || user?.id;
+    setWsTaskOrder(newOrder);
+    if (uid) {
+      localStorage.setItem(`ws_task_order_${uid}`, JSON.stringify(newOrder));
+    }
+    if (saveTaskOrderDebounceRef.current) {
+      clearTimeout(saveTaskOrderDebounceRef.current);
+    }
+    saveTaskOrderDebounceRef.current = setTimeout(() => {
+      fetchAPI('save_workspace_task_order', {
+        method: 'POST',
+        body: JSON.stringify({ task_order: newOrder })
+      }).catch(err => {
+        console.error('Lỗi khi lưu thứ tự task:', err);
+      });
+    }, 400);
+  };
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 6,
+      },
+    })
+  );
+  const [activeDragTask, setActiveDragTask] = useState<any | null>(null);
+
+  useEffect(() => {
+    const uid = currentUser?.id || user?.id;
+    if (uid) {
+      const preloadSingleBg = (url: string) => {
+        if (!url || url.startsWith('linear-gradient') || url.startsWith('radial-gradient')) return;
+        try {
+          const img = new Image();
+          (img as any).fetchPriority = 'high';
+          img.src = url;
+        } catch (_) {}
+      };
+
+      const savedBg = localStorage.getItem(`ws_custom_bg_${uid}`) || '';
+      const savedCols = localStorage.getItem(`ws_custom_cols_${uid}`);
+      const savedOverlay = localStorage.getItem(`ws_custom_overlay_${uid}`);
+
+      setWsBg(savedBg);
+      if (savedBg) preloadSingleBg(savedBg);
+      setWsCols(savedCols ? Number(savedCols) : 4);
+      if (savedOverlay) setWsOverlay(Number(savedOverlay));
+      preloadWorkspaceWallpapers();
+
+      // Synchronize with backend database for cross-device consistency
+      fetchAPI('get_workspace_settings').then(res => {
+        if (res && res.success && res.data) {
+          const { bg, cols, overlay, task_order } = res.data;
+          const finalBg = bg || '';
+          const finalCols = (cols !== undefined && cols >= 2 && cols <= 6) ? cols : 4;
+
+          setWsBg(finalBg);
+          if (finalBg) preloadSingleBg(finalBg);
+          localStorage.setItem(`ws_custom_bg_${uid}`, finalBg);
+
+          setWsCols(finalCols);
+          localStorage.setItem(`ws_custom_cols_${uid}`, String(finalCols));
+
+          if (overlay !== undefined && overlay >= 0 && overlay <= 100) {
+            setWsOverlay(overlay);
+            localStorage.setItem(`ws_custom_overlay_${uid}`, String(overlay));
+          }
+          if (task_order && Array.isArray(task_order) && task_order.length > 0) {
+            setWsTaskOrder(task_order);
+            localStorage.setItem(`ws_task_order_${uid}`, JSON.stringify(task_order));
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [currentUser?.id, user?.id]);
+
   const [pinnedTaskIds, setPinnedTaskIds] = useState<number[]>([]);
 
   useEffect(() => {
-    if (user?.id) {
+    const uid = currentUser?.id || user?.id;
+    if (uid) {
       try {
-        const stored = localStorage.getItem(`pinned_tasks_${user.id}`);
+        const stored = localStorage.getItem(`pinned_tasks_${uid}`);
         if (stored) {
           setPinnedTaskIds(JSON.parse(stored).map(Number).filter(Boolean));
         } else {
@@ -898,7 +1603,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         setPinnedTaskIds([]);
       }
     }
-  }, [user]);
+  }, [currentUser?.id, user?.id]);
 
   const togglePinTask = (taskId: number) => {
     const numericId = Number(taskId);
@@ -907,6 +1612,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       updated = updated.filter(id => id !== numericId);
       toast.success(t('Đã bỏ ghim công việc'));
     } else {
+      const targetTask = wsTasks.find((t: any) => Number(t.id) === numericId);
+      if (targetTask && (isTaskEffectivelyDone(targetTask) || targetTask.status === 'done' || Number(targetTask.progress || 0) >= 100)) {
+        toast.error(t('Không thể ghim công việc đã hoàn thành.'));
+        return;
+      }
       if (updated.length >= 8) {
         toast.error(t('Bạn chỉ được ghim tối đa 8 công việc lên đầu ưu tiên.'));
         return;
@@ -915,10 +1625,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       toast.success(t('Đã ghim công việc thành công!'));
     }
     setPinnedTaskIds(updated);
-    if (user?.id) {
-      localStorage.setItem(`pinned_tasks_${user.id}`, JSON.stringify(updated));
+    const uid = currentUser?.id || user?.id;
+    if (uid) {
+      localStorage.setItem(`pinned_tasks_${uid}`, JSON.stringify(updated));
     }
   };
+
+  // Task Groups State
+  const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([]);
+  const [taskGroupsSummary, setTaskGroupsSummary] = useState<TaskGroupsSummary | null>(null);
+  const [activeTaskGroupId, setActiveTaskGroupId] = useState<string | number>('all');
+  const [loadingTaskGroups, setLoadingTaskGroups] = useState(false);
+  const [showCardCreateGroupModal, setShowCardCreateGroupModal] = useState(false);
+  const [taskToConfirmComplete, setTaskToConfirmComplete] = useState<any | null>(null);
+  const [isConfirmingComplete, setIsConfirmingComplete] = useState(false);
+  const [completingTaskId, setCompletingTaskId] = useState<number | null>(null);
 
   const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
   const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
@@ -944,8 +1665,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsTasksPage, setWsTasksPage] = useState(1);
   const [wsTasksPageSize, setWsTasksPageSize] = useState(12);
 
-
-
   const [showUpcomingMeetingsModal, setShowUpcomingMeetingsModal] = useState(false);
   const [meetingSearchText, setMeetingSearchText] = useState('');
   const [meetingFilterStatus, setMeetingFilterStatus] = useState<'all' | 'planned' | 'overdue' | 'done'>('all');
@@ -957,14 +1676,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [showMeetingSaleDropdown, setShowMeetingSaleDropdown] = useState(false);
   const [meetingTeamSearchText, setMeetingTeamSearchText] = useState('');
   const [meetingSaleSearchText, setMeetingSaleSearchText] = useState('');
-
-  const formatVietnameseFullName = (nameStr: string) => {
-    if (!nameStr || typeof nameStr !== 'string') return '';
-    const parts = nameStr.trim().split(/\s+/);
-    if (parts.length <= 1) return nameStr;
-    const lastName = parts.pop();
-    return `${lastName} ${parts.join(' ')}`;
-  };
 
   const isUserAdminRole = ['admin', 'superadmin', 'assistant', 'super_admin'].includes(String(currentUser?.role).toLowerCase());
   const isUserManagerRole = String(currentUser?.role).toLowerCase() === 'manager';
@@ -1399,128 +2110,159 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
   const filteredWsTasks = useMemo(() => {
-    let list = wsTasks;
     const targetUserId = wsUserId ? Number(wsUserId) : Number(currentUser?.id);
+    const searchVal = (debouncedWsSearch || wsSearch || '').toLowerCase();
+    const datePreset = wsDatePreset && wsDatePreset !== 'all' ? getPresetDates(wsDatePreset) : null;
 
-    // Filter out hidden tasks or filter by hidden status only
-    if (wsStatus === 'hidden') {
-      list = list.filter(task => task.is_hidden && Number(task.is_hidden) === 1);
-    } else {
-      list = list.filter(task => !task.is_hidden || Number(task.is_hidden) !== 1);
-      
-      // Filter by Status
-      if (wsStatus && wsStatus !== 'all') {
-        list = list.filter(task => task.status === wsStatus);
+    const filtered = wsTasks.filter(task => {
+      // 0. Strict privacy isolation for admin / staff:
+      const shouldViewAll = isTopAdmin && adminViewFull;
+      if (!shouldViewAll) {
+        const uid = Number(currentUser?.id || 0);
+        const uidStr = String(uid);
+        const userName = String(currentUser?.username || '').toLowerCase();
+        const fullName = String((currentUser as any)?.full_name || currentUser?.name || '').toLowerCase();
+        const taskBody = String(task.body || '').toLowerCase();
+        const taskTags = String(task.tags || '').toLowerCase();
+
+        const isAssignee = Number(task.user_id) === uid;
+        const isCreator = Number(task.created_by) === uid;
+        const isApprover = Number(task.approver_id) === uid;
+        const isParticipant = task.participant_ids ? String(task.participant_ids).split(',').map(s => s.trim()).includes(uidStr) : false;
+        const isMentioned = taskBody.includes(`data-user-id="${uid}"`) ||
+                            taskBody.includes(`data-user-id='${uid}'`) ||
+                            taskBody.includes(`data-user-id=${uid}`) ||
+                            (fullName && taskBody.includes(`@${fullName}`)) ||
+                            (userName && (taskBody.includes(`@${userName}`) || taskTags.includes(`@${userName}`)));
+        const isContactOrDealInvolved = (task.contact_owner_id && Number(task.contact_owner_id) === uid) ||
+                                       (task.owner_id && Number(task.owner_id) === uid) ||
+                                       (task.collaborator_ids && String(task.collaborator_ids).split(',').map(s => s.trim()).includes(uidStr));
+
+        if (!isAssignee && !isCreator && !isApprover && !isParticipant && !isMentioned && !isContactOrDealInvolved) {
+          return false;
+        }
       }
-    }
 
-    // Filter by Priority
-    if (wsPriority && wsPriority !== 'all') {
-      list = list.filter(task => task.priority === wsPriority);
-    }
-
-    // Filter by Date Preset
-    if (wsDatePreset && wsDatePreset !== 'all') {
-      const { start, end } = getPresetDates(wsDatePreset);
-      if (wsDatePreset === 'overdue') {
-        list = list.filter(task => {
-          if (task.status === 'done') return false;
-          if (!task.due_date) return false;
-          return task.due_date.slice(0, 10) <= end;
-        });
+      // 1. Filter out hidden tasks or filter by hidden status only
+      if (wsStatus === 'hidden') {
+        if (!task.is_hidden || Number(task.is_hidden) !== 1) return false;
       } else {
-        list = list.filter(task => {
+        if (task.is_hidden && Number(task.is_hidden) === 1) return false;
+        // Filter by Status: hide completed tasks unless showDoneTasks or explicitly filtered by wsStatus === 'done'
+        if (!showDoneTasks && wsStatus !== 'done' && isTaskEffectivelyDone(task)) return false;
+        if (wsStatus && wsStatus !== 'all' && wsStatus !== 'planned' && !showDoneTasks && task.status !== wsStatus) return false;
+      }
+
+      // 2. Filter by Priority
+      if (wsPriority && wsPriority !== 'all' && task.priority !== wsPriority) return false;
+
+      // 3. Filter by Date Preset
+      if (datePreset) {
+        if (wsDatePreset === 'overdue') {
+          if (isTaskEffectivelyDone(task) || !task.due_date || task.due_date.slice(0, 10) > datePreset.end) {
+            return false;
+          }
+        } else {
           if (!task.due_date) return false;
           const dt = task.due_date.slice(0, 10);
-          if (start && dt < start) return false;
-          if (end && dt > end) return false;
-          return true;
-        });
+          if (datePreset.start && dt < datePreset.start) return false;
+          if (datePreset.end && dt > datePreset.end) return false;
+        }
       }
-    }
 
-    // Filter by main subtabs
-    if (wsSubTab === 'customer') {
-      list = list.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type));
-    } else if (wsSubTab === 'personal') {
-      list = list.filter(task => task.tags?.split(',').map((t: string) => t.trim()).includes('personal_task'));
-    } else if (wsSubTab === 'team') {
-      list = list.filter(task => {
+      // 4. Filter by main subtabs
+      const isTaskPersonal = isTaskPersonalForUser(task, currentUser?.id);
+
+      if (wsSubTab === 'customer') {
+        if (!task.related_type || !['contact', 'deal', 'company'].includes(task.related_type)) return false;
+      } else if (wsSubTab === 'personal') {
+        if (!isTaskPersonal) return false;
+      } else if (wsSubTab === 'team') {
         const isClientRelated = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
-        const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-        const isPersonal = tagsList.includes('personal_task');
-        return !isClientRelated && !isPersonal;
-      });
+        if (isClientRelated || isTaskPersonal) return false;
 
-      // Filter by team sub-filters (announcements, campaigns, policies, internal tasks)
-      if (wsTeamSubFilter !== 'all') {
-        const targetTag = `internal_${wsTeamSubFilter}`;
-        list = list.filter(task => {
-          const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-          return tagsList.includes(targetTag);
-        });
-      }
-    }
-
-    // Apply quick filters (assignee, approver, collaborator)
-    if (wsTaskFilter === 'assigned_to_me') {
-      list = list.filter(task => Number(task.user_id) === targetUserId);
-    } else if (wsTaskFilter === 'approve_by_me') {
-      list = list.filter(task => Number(task.require_approval) === 1 && Number(task.approver_id) === targetUserId);
-    } else if (wsTaskFilter === 'collaborator') {
-      list = list.filter(task => {
-        const pIds = task.participant_ids ? task.participant_ids.split(',').map(Number).filter(Boolean) : [];
-        return pIds.includes(targetUserId);
-      });
-    }
-
-    // Sort pinned tasks to the top
-    if (pinnedTaskIds.length > 0) {
-      list = [...list].sort((a, b) => {
-        const aPinned = pinnedTaskIds.includes(Number(a.id));
-        const bPinned = pinnedTaskIds.includes(Number(b.id));
-        if (aPinned && !bPinned) return -1;
-        if (!aPinned && bPinned) return 1;
-        return 0;
-      });
-    }
-
-    if (!wsSearch) return list;
-    const searchVal = wsSearch.toLowerCase();
-    return list.filter(task => {
-      const subject = task.subject ? String(task.subject).toLowerCase() : '';
-      const body = task.body ? String(task.body).toLowerCase() : '';
-      const contactName = task.contact_name ? String(task.contact_name).toLowerCase() : '';
-      const companyName = task.company_name ? String(task.company_name).toLowerCase() : '';
-      const dealName = task.deal_name ? String(task.deal_name).toLowerCase() : '';
-      const userName = task.user_name ? String(task.user_name).toLowerCase() : '';
-      const teamName = task.team_name ? String(task.team_name).toLowerCase() : '';
-      const projectName = task.project_name ? String(task.project_name).toLowerCase() : '';
-      const campaignName = task.campaign_name ? String(task.campaign_name).toLowerCase() : '';
-      
-      // Parse description from JSON body if present
-      let description = '';
-      if (task.body && task.body.trim().startsWith('{"erp_task":')) {
-        try {
-          const parsed = JSON.parse(task.body);
-          description = (parsed.erp_task?.description || '').toLowerCase();
-        } catch (e) {}
+        // Filter by team sub-filters
+        if (wsTeamSubFilter !== 'all') {
+          const targetTag = `internal_${wsTeamSubFilter}`;
+          if (!task.tags || !task.tags.includes(targetTag)) return false;
+        }
       }
 
-      return (
-        subject.includes(searchVal) ||
-        body.includes(searchVal) ||
-        description.includes(searchVal) ||
-        contactName.includes(searchVal) ||
-        companyName.includes(searchVal) ||
-        dealName.includes(searchVal) ||
-        userName.includes(searchVal) ||
-        teamName.includes(searchVal) ||
-        projectName.includes(searchVal) ||
-        campaignName.includes(searchVal)
-      );
+      // 5. Apply quick filters (assignee, approver, collaborator)
+      if (wsTaskFilter === 'assigned_to_me') {
+        if (Number(task.user_id) !== targetUserId) return false;
+      } else if (wsTaskFilter === 'approve_by_me') {
+        if (Number(task.require_approval) !== 1 || Number(task.approver_id) !== targetUserId) return false;
+      } else if (wsTaskFilter === 'collaborator') {
+        if (!task.participant_ids) return false;
+        const pIds = task.participant_ids.split(',');
+        if (!pIds.includes(String(targetUserId))) return false;
+      }
+
+      // 6. Search filtering
+      if (searchVal) {
+        const subject = task.subject ? String(task.subject).toLowerCase() : '';
+        const body = task.body ? String(task.body).toLowerCase() : '';
+        const contactName = task.contact_name ? String(task.contact_name).toLowerCase() : '';
+        const companyName = task.company_name ? String(task.company_name).toLowerCase() : '';
+        const dealName = task.deal_name ? String(task.deal_name).toLowerCase() : '';
+        const userName = task.user_name ? String(task.user_name).toLowerCase() : '';
+        const teamName = task.team_name ? String(task.team_name).toLowerCase() : '';
+        const projectName = task.project_name ? String(task.project_name).toLowerCase() : '';
+        const campaignName = task.campaign_name ? String(task.campaign_name).toLowerCase() : '';
+
+        return (
+          subject.includes(searchVal) ||
+          body.includes(searchVal) ||
+          contactName.includes(searchVal) ||
+          companyName.includes(searchVal) ||
+          dealName.includes(searchVal) ||
+          userName.includes(searchVal) ||
+          teamName.includes(searchVal) ||
+          projectName.includes(searchVal) ||
+          campaignName.includes(searchVal)
+        );
+      }
+
+      // 7. Task Group filtering
+      if (activeTaskGroupId === 'personal') {
+        if (!isTaskPersonal) return false;
+      } else if (activeTaskGroupId === 'unassigned') {
+        if (task.task_group_id) return false;
+      } else if (activeTaskGroupId !== 'all') {
+        if (Number(task.task_group_id) !== Number(activeTaskGroupId)) return false;
+      }
+
+      return true;
     });
-  }, [wsTasks, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser, wsUserId, wsPriority, wsStatus, wsDatePreset, pinnedTaskIds]);
+
+    // Sắp xếp: 1. Ghim (Pinned) -> 2. Khẩn cấp (Urgent / High) -> 3. Sắp xếp tùy chỉnh wsTaskOrder -> 4. created_at DESC
+    return [...filtered].sort((a, b) => {
+      const aPinned = pinnedTaskIds.includes(Number(a.id));
+      const bPinned = pinnedTaskIds.includes(Number(b.id));
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+
+      const aUrgent = (a.priority === 'urgent' || a.priority === 'high' || a.priority === 'cao');
+      const bUrgent = (b.priority === 'urgent' || b.priority === 'high' || b.priority === 'cao');
+      if (aUrgent && !bUrgent) return -1;
+      if (!aUrgent && bUrgent) return 1;
+
+      if (wsTaskOrder && wsTaskOrder.length > 0) {
+        const aIdx = wsTaskOrder.indexOf(Number(a.id));
+        const bIdx = wsTaskOrder.indexOf(Number(b.id));
+        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+        if (aIdx !== -1) return -1;
+        if (bIdx !== -1) return 1;
+      }
+
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+
+      return Number(b.id || 0) - Number(a.id || 0);
+    });
+  }, [wsTasks, debouncedWsSearch, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser, wsUserId, wsPriority, wsStatus, showDoneTasks, wsDatePreset, pinnedTaskIds, wsTaskOrder, activeTaskGroupId, adminViewFull, isTopAdmin]);
 
   const workspaceStats = useMemo(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -1528,28 +2270,47 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     now.setHours(0, 0, 0, 0);
     const todayTime = now.getTime();
     
-    let tabTasks = wsTasks;
-    if (wsSubTab === 'customer') {
-      tabTasks = tabTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type));
-    } else if (wsSubTab === 'personal') {
-      tabTasks = tabTasks.filter(task => task.tags?.split(',').map((t: string) => t.trim()).includes('personal_task'));
-    } else if (wsSubTab === 'team') {
-      tabTasks = tabTasks.filter(task => {
-        const isClientRelated = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
-        const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-        const isPersonal = tagsList.includes('personal_task');
-        return !isClientRelated && !isPersonal;
-      });
-    }
-
     let overdue = 0;
     let dueToday = 0;
     let upcoming = 0;
     let pendingApproval = 0;
+    let assignedToMe = 0;
+    let collaborator = 0;
 
-    tabTasks.forEach(task => {
+    const currentUserIdStr = String(currentUser?.id);
+
+    wsTasks.forEach(task => {
       // Skip hidden tasks in statistics
       if (task.is_hidden || Number(task.is_hidden) === 1) return;
+
+      const shouldViewAll = isTopAdmin && adminViewFull;
+      if (!shouldViewAll) {
+        const uid = Number(currentUser?.id || 0);
+        const isAssignee = Number(task.user_id) === uid;
+        const isCreator = Number(task.created_by) === uid;
+        const isApprover = Number(task.approver_id) === uid;
+        const isParticipant = task.participant_ids ? String(task.participant_ids).split(',').map(s => s.trim()).includes(currentUserIdStr) : false;
+        const isContactOrDealInvolved = (task.contact_owner_id && Number(task.contact_owner_id) === uid) ||
+                                       (task.owner_id && Number(task.owner_id) === uid) ||
+                                       (task.collaborator_ids && String(task.collaborator_ids).split(',').map(s => s.trim()).includes(currentUserIdStr));
+        const isManagerViewingTeam = String(currentUser?.role || '').toLowerCase() === 'manager' && (wsSubTab === 'team' || (wsTeamId && wsTeamId !== 'all_teams_bypass') || ((currentUser as any)?.team_id && Number(task.team_id) === Number((currentUser as any)?.team_id)));
+
+        if (!isAssignee && !isCreator && !isApprover && !isParticipant && !isContactOrDealInvolved && !isManagerViewingTeam) {
+          return;
+        }
+      }
+
+      // Filter tasks based on current wsSubTab
+      const isTaskPersonal = isTaskPersonalForUser(task, currentUser?.id);
+
+      if (wsSubTab === 'customer') {
+        if (!task.related_type || !['contact', 'deal', 'company'].includes(task.related_type)) return;
+      } else if (wsSubTab === 'personal') {
+        if (!isTaskPersonal) return;
+      } else if (wsSubTab === 'team') {
+        const isClientRelated = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
+        if (isClientRelated || isTaskPersonal) return;
+      }
 
       // Pending approval
       if (Number(task.require_approval) === 1 && task.approval_status === 'pending' && Number(task.approver_id) === Number(currentUser?.id)) {
@@ -1557,6 +2318,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }
 
       if (task.status === 'done') return;
+
+      // Assigned to me
+      if (Number(task.user_id) === Number(currentUser?.id)) {
+        assignedToMe++;
+      }
+
+      // Related / Collaborator
+      if (task.participant_ids) {
+        const pIds = task.participant_ids.split(',');
+        if (pIds.includes(currentUserIdStr)) {
+          collaborator++;
+        }
+      }
 
       if (task.due_date) {
         const dt = task.due_date.slice(0, 10);
@@ -1575,8 +2349,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }
     });
 
-    return { overdue, dueToday, upcoming, pendingApproval };
-  }, [wsTasks, wsSubTab, currentUser]);
+    return { overdue, dueToday, upcoming, pendingApproval, assignedToMe, collaborator };
+  }, [wsTasks, wsSubTab, currentUser, adminViewFull, isTopAdmin]);
 
   const paginatedWsTasks = useMemo(() => {
     const startIndex = (wsTasksPage - 1) * wsTasksPageSize;
@@ -2665,10 +3439,351 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (callsRes.data && callsRes.data.data) {
         setCompletedCallsCount(callsRes.data.data.total || 0);
       }
+      fetchTaskGroups();
     } catch (e) {
       console.error(e);
     } finally {
       setLoadingWsTasks(false);
+    }
+  };
+
+  const fetchTaskGroups = useCallback(async () => {
+    try {
+      setLoadingTaskGroups(true);
+      const res = await api.get('/task-groups');
+      if (res.data?.success) {
+        const payload = res.data.data ?? res.data;
+        let list: any[] = [];
+        if (Array.isArray(payload)) {
+          list = payload;
+        } else if (Array.isArray(payload?.groups)) {
+          list = payload.groups;
+        } else if (Array.isArray(payload?.items)) {
+          list = payload.items;
+        } else if (Array.isArray(res.data?.groups)) {
+          list = res.data.groups;
+        } else if (Array.isArray(res.data?.items)) {
+          list = res.data.items;
+        }
+        setTaskGroups(Array.isArray(list) ? list : []);
+        setTaskGroupsSummary(payload?.summary || res.data?.summary || null);
+      } else {
+        setTaskGroups([]);
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách nhóm công việc:', err);
+      setTaskGroups([]);
+    } finally {
+      setLoadingTaskGroups(false);
+    }
+  }, []);
+
+  const enrichedTaskGroups = useMemo(() => {
+    const list = Array.isArray(taskGroups) ? taskGroups : [];
+    return list.map(g => {
+      const gTasks = wsTasks.filter(t => Number(t.task_group_id) === Number(g.id));
+      const gTotal = gTasks.length;
+      const gDone = gTasks.filter(t => isTaskEffectivelyDone(t)).length;
+      return {
+        ...g,
+        total_tasks: gTotal,
+        completed_tasks: gDone,
+        pending_tasks: Math.max(0, gTotal - gDone),
+        progress_percent: gTotal > 0 ? Math.round((gDone / gTotal) * 100) : 0
+      };
+    });
+  }, [taskGroups, wsTasks]);
+
+  const computedGroupSummary = useMemo<TaskGroupsSummary>(() => {
+    const totalAll = wsTasks.length;
+    const doneAll = wsTasks.filter(t => isTaskEffectivelyDone(t)).length;
+    const unassignedTasks = wsTasks.filter(t => !t.task_group_id);
+    const totalUnassigned = unassignedTasks.length;
+    const doneUnassigned = unassignedTasks.filter(t => isTaskEffectivelyDone(t)).length;
+
+    const curUid = Number(currentUser?.id || 0);
+    const personalTasks = wsTasks.filter(t => isTaskPersonalForUser(t, curUid));
+    const totalPersonal = personalTasks.length;
+    const donePersonal = personalTasks.filter(t => isTaskEffectivelyDone(t)).length;
+
+    return {
+      all: {
+        total_tasks: totalAll,
+        completed_tasks: doneAll,
+        pending_tasks: Math.max(0, totalAll - doneAll),
+        progress_percent: totalAll > 0 ? Math.round((doneAll / totalAll) * 100) : 0
+      },
+      unassigned: {
+        total_tasks: totalUnassigned,
+        completed_tasks: doneUnassigned,
+        pending_tasks: Math.max(0, totalUnassigned - doneUnassigned),
+        progress_percent: totalUnassigned > 0 ? Math.round((doneUnassigned / totalUnassigned) * 100) : 0
+      },
+      personal: {
+        total_tasks: totalPersonal,
+        completed_tasks: donePersonal,
+        pending_tasks: Math.max(0, totalPersonal - donePersonal),
+        progress_percent: totalPersonal > 0 ? Math.round((donePersonal / totalPersonal) * 100) : 0
+      }
+    };
+  }, [wsTasks, currentUser]);
+
+  const handleCreateTaskGroup = async (data: { name: string; color: string; icon: string }) => {
+    setShowCardCreateGroupModal(false);
+    const tempId = -Date.now();
+    const optimisticGroup: TaskGroup = {
+      id: tempId,
+      user_id: Number(currentUser?.id || 0),
+      name: data.name,
+      color: data.color || '#3b82f6',
+      icon: data.icon || 'Folder',
+      order_index: 999,
+      is_pinned: 0,
+      total_tasks: 0,
+      completed_tasks: 0,
+      pending_tasks: 0,
+      progress_percent: 0,
+      created_at: new Date().toISOString()
+    };
+    setTaskGroups(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      return [...list, optimisticGroup];
+    });
+
+    try {
+      const res = await api.post('/task-groups', data);
+      if (res.data?.success) {
+        toast.success(t('Đã tạo nhóm công việc mới thành công!'));
+        const newGroup = res.data.data;
+        if (newGroup && newGroup.id) {
+          setTaskGroups(prev => {
+            const list = Array.isArray(prev) ? prev : [];
+            const filtered = list.filter(g => g.id !== tempId && g.id !== newGroup.id);
+            return [...filtered, newGroup];
+          });
+          setActiveTaskGroupId(newGroup.id);
+        }
+        fetchTaskGroups();
+        return res.data;
+      } else {
+        setTaskGroups(prev => (Array.isArray(prev) ? prev : []).filter(g => g.id !== tempId));
+        throw new Error(res.data?.message || t('Lỗi khi tạo nhóm công việc'));
+      }
+    } catch (err: any) {
+      setTaskGroups(prev => (Array.isArray(prev) ? prev : []).filter(g => g.id !== tempId));
+      toast.error(err.response?.data?.message || err.message || t('Lỗi khi tạo nhóm công việc'));
+      throw err;
+    }
+  };
+
+  const handleUpdateTaskGroup = async (id: number, data: { name: string; color: string; icon: string }) => {
+    try {
+      setTaskGroups(prev => {
+        const list = Array.isArray(prev) ? prev : [];
+        return list.map(g => g.id === id ? { ...g, ...data } : g);
+      });
+      const res = await api.put(`/task-groups/${id}`, data);
+      if (res.data?.success) {
+        toast.success(t('Đã cập nhật nhóm công việc!'));
+        fetchTaskGroups();
+        fetchWorkspaceTasks();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || t('Lỗi khi cập nhật nhóm'));
+      fetchTaskGroups();
+    }
+  };
+
+  const handleDeleteTaskGroup = async (id: number) => {
+    try {
+      const res = await api.delete(`/task-groups/${id}`);
+      if (res.data?.success) {
+        toast.success(t('Đã xóa nhóm công việc!'));
+        if (activeTaskGroupId === id) {
+          setActiveTaskGroupId('all');
+        }
+        await fetchTaskGroups();
+        await fetchWorkspaceTasks();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || t('Lỗi khi xóa nhóm'));
+    }
+  };
+
+  const handleTogglePinTaskGroup = async (id: number) => {
+    try {
+      setTaskGroups(prev => {
+        const list = Array.isArray(prev) ? prev : [];
+        const updated = list.map(g => g.id === id ? { ...g, is_pinned: g.is_pinned === 1 ? 0 : 1 } : g);
+        return [...updated].sort((a, b) => {
+          if ((b.is_pinned || 0) !== (a.is_pinned || 0)) {
+            return (b.is_pinned || 0) - (a.is_pinned || 0);
+          }
+          return (a.order_index || 0) - (b.order_index || 0);
+        });
+      });
+      const res = await api.post(`/task-groups/${id}/toggle-pin`);
+      if (res.data?.success) {
+        toast.success(res.data.message || t('Đã cập nhật trạng thái ghim nhóm!'));
+        await fetchTaskGroups();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || t('Lỗi khi ghim nhóm'));
+      await fetchTaskGroups();
+    }
+  };
+
+  const handleReorderTaskGroups = async (orderIds: number[]) => {
+    try {
+      setTaskGroups(prev => {
+        const list = Array.isArray(prev) ? prev : [];
+        const map = new Map(list.map(g => [g.id, g]));
+        const reordered: TaskGroup[] = [];
+        orderIds.forEach(id => {
+          const g = map.get(id);
+          if (g) reordered.push(g);
+        });
+        list.forEach(g => {
+          if (!orderIds.includes(g.id)) reordered.push(g);
+        });
+        return reordered;
+      });
+
+      const res = await api.post('/task-groups/reorder', { order_ids: orderIds });
+      if (res.data?.success) {
+        toast.success(t('Đã lưu thứ tự ưu tiên nhóm mới!'));
+        await fetchTaskGroups();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || t('Lỗi khi sắp xếp thứ tự nhóm'));
+      await fetchTaskGroups();
+    }
+  };
+
+  const handleAssignTaskGroup = async (taskId: number, groupId: number | null, customMsg?: string | false) => {
+    try {
+      const res = await api.post(`/activities/${taskId}/move-group`, { task_group_id: groupId });
+      if (res.data?.success) {
+        if (customMsg !== false) {
+          toast.success(customMsg || t('Đã chuyển nhóm công việc thành công!'));
+        }
+        const chosen = (taskGroups || []).find(g => g.id === groupId);
+        setWsTasks(prev => prev.map(t => {
+          if (Number(t.id) === Number(taskId)) {
+            return {
+              ...t,
+              task_group_id: groupId,
+              task_group_name: chosen ? chosen.name : null,
+              task_group_color: chosen ? chosen.color : null,
+              task_group_icon: chosen ? chosen.icon : null
+            };
+          }
+          return t;
+        }));
+        await fetchTaskGroups();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || t('Lỗi khi chuyển nhóm'));
+    }
+  };
+
+  useEffect(() => {
+    const handleTaskLocalUpdate = (e: any) => {
+      const updated = e.detail;
+      if (!updated?.id) return;
+      setWsTasks(prev => prev.map(t => Number(t.id) === Number(updated.id) ? { ...t, ...updated } : t));
+    };
+    window.addEventListener('task-local-updated', handleTaskLocalUpdate);
+    return () => window.removeEventListener('task-local-updated', handleTaskLocalUpdate);
+  }, []);
+
+  const handleDropTaskOnGroup = useCallback(async (taskId: number, targetGroupId: number | null) => {
+    const task = wsTasks.find(t => Number(t.id) === Number(taskId));
+    if (!task) return;
+
+    const currentGroupId = task.task_group_id ? Number(task.task_group_id) : null;
+    const targetGroup = targetGroupId ? (taskGroups || []).find(g => Number(g.id) === targetGroupId) : null;
+    const targetGroupName = targetGroupId ? (targetGroup?.name || t('nhóm')) : t('Chưa phân nhóm');
+
+    if (currentGroupId === targetGroupId) {
+      toast(t('Công việc đã nằm trong nhóm "{name}" rồi!').replace('{name}', targetGroupName), {
+        icon: 'ℹ️',
+        duration: 3000
+      });
+      return;
+    }
+
+    if (!currentGroupId) {
+      await handleAssignTaskGroup(taskId, targetGroupId, t('Đã chuyển công việc vào nhóm "{name}"').replace('{name}', targetGroupName));
+      return;
+    }
+
+    const oldGroup = (taskGroups || []).find(g => Number(g.id) === currentGroupId);
+    const oldGroupName = task.task_group_name || oldGroup?.name || t('nhóm cũ');
+
+    showConfirm({
+      title: t('Chuyển nhóm công việc'),
+      message: t('Công việc này đang thuộc nhóm "{old}". Bạn có muốn chuyển sang nhóm "{new}" không?')
+        .replace('{old}', oldGroupName)
+        .replace('{new}', targetGroupName),
+      confirmText: t('Chuyển nhóm'),
+      cancelText: t('Hủy'),
+      isDanger: false,
+      onConfirm: async () => {
+        await handleAssignTaskGroup(taskId, targetGroupId, t('Đã chuyển công việc sang nhóm "{name}" thành công!').replace('{name}', targetGroupName));
+      }
+    });
+  }, [wsTasks, taskGroups, handleAssignTaskGroup, showConfirm, t]);
+
+  const customCollisionDetection = useCallback((args: any) => {
+    const pointerCollisions = pointerWithin(args);
+    const groupCollision = pointerCollisions.find(c => String(c.id).startsWith('group-'));
+    if (groupCollision) {
+      return [groupCollision];
+    }
+    return closestCenter(args);
+  }, []);
+
+  const handleGridDragStart = (event: DragStartEvent) => {
+    const found = paginatedWsTasks.find(t => String(t.id) === String(event.active.id));
+    setActiveDragTask(found || null);
+    setDraggedTaskId(Number(event.active.id));
+  };
+
+  const handleGridDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragTask(null);
+    setDraggedTaskId(null);
+    if (!over) return;
+
+    if (String(over.id).startsWith('group-')) {
+      const targetGroupStr = String(over.id).replace('group-', '');
+      const targetGroupId = targetGroupStr === 'unassigned' ? null : Number(targetGroupStr);
+      handleDropTaskOnGroup(Number(active.id), targetGroupId);
+      return;
+    }
+
+    if (active.id === over.id) return;
+
+    const oldIndex = paginatedWsTasks.findIndex(t => String(t.id) === String(active.id));
+    const newIndex = paginatedWsTasks.findIndex(t => String(t.id) === String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    let baseOrder = wsTaskOrder.length > 0 
+      ? [...wsTaskOrder] 
+      : filteredWsTasks.map(t => Number(t.id));
+
+    const activeIdNum = Number(active.id);
+    const overIdNum = Number(over.id);
+
+    if (!baseOrder.includes(activeIdNum)) baseOrder.push(activeIdNum);
+    if (!baseOrder.includes(overIdNum)) baseOrder.push(overIdNum);
+
+    const fromIdx = baseOrder.indexOf(activeIdNum);
+    const toIdx = baseOrder.indexOf(overIdNum);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      const updatedOrder = arrayMove(baseOrder, fromIdx, toIdx);
+      handlePersistTaskOrder(updatedOrder);
     }
   };
 
@@ -2702,6 +3817,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const colLabel = targetCol === 'todo' ? 'Cần làm' : targetCol === 'in_progress' ? 'Đang làm' : 'Đã xong';
       toast.success(`Đã chuyển công việc sang cột ${colLabel}`);
       if (nextStatus === 'done') {
+        setPinnedTaskIds(prev => {
+          const next = prev.filter(id => id !== Number(taskId));
+          const uid = currentUser?.id || user?.id;
+          if (uid) {
+            try { localStorage.setItem(`pinned_tasks_${uid}`, JSON.stringify(next)); } catch (e) {}
+          }
+          return next;
+        });
         triggerFullConfetti();
       }
       fetchWorkspaceTasks();
@@ -2711,11 +3834,85 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
+  const handleToggleTaskStatus = async (taskId: number, e?: React.MouseEvent) => {
+    try {
+      const task = wsTasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const isCurrentlyDone = isTaskEffectivelyDone(task);
+
+      if (isCurrentlyDone) {
+        await api.put(`/activities/${taskId}`, { status: 'planned', progress: 0 });
+        toast.success(t('Đã mở lại công việc'));
+        fetchPortalTasks();
+        fetchWorkspaceTasks();
+        return;
+      }
+
+      if (task?.type === 'meeting') {
+        try {
+          const res = await api.get(`/activities/${taskId}/comments`);
+          const commentsList = res.data.data || [];
+          const hasImage = commentsList.some((c: any) => {
+            const atts = Array.isArray(c.attachments) ? c.attachments : JSON.parse(c.attachments || '[]');
+            return atts.some((att: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(att));
+          });
+
+          if (!hasImage) {
+            setMeetingToComplete(task);
+            setProofCommentText(t('Ảnh minh chứng hoàn thành gặp gỡ'));
+            setProofImageFile(null);
+            setProofImagePreview(null);
+            return;
+          }
+        } catch (e) {
+          toast.error(t('Lỗi khi kiểm tra minh chứng'));
+          return;
+        }
+      }
+
+      setTaskToConfirmComplete(task);
+    } catch (e) {
+      toast.error(t('Lỗi khi cập nhật trạng thái công việc'));
+    }
+  };
+
+  const handleConfirmCompleteTask = async (task: any) => {
+    if (!task?.id) return;
+    const taskId = task.id;
+
+    setIsConfirmingComplete(true);
+    setCompletingTaskId(taskId);
+    triggerFullConfetti();
+
+    try {
+      await api.put(`/activities/${taskId}`, { status: 'done', progress: 100 });
+      toast.success(t('Đã hoàn thành công việc! 🎉'));
+      setTaskToConfirmComplete(null);
+      setPinnedTaskIds(prev => {
+        const next = prev.filter(id => id !== Number(taskId));
+        const uid = currentUser?.id || user?.id;
+        if (uid) {
+          try { localStorage.setItem(`pinned_tasks_${uid}`, JSON.stringify(next)); } catch (e) {}
+        }
+        return next;
+      });
+      fetchPortalTasks();
+      fetchWorkspaceTasks();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || t('Lỗi khi cập nhật trạng thái công việc'));
+    } finally {
+      setIsConfirmingComplete(false);
+      setCompletingTaskId(null);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'workspace') {
       fetchWorkspaceTasks();
+      fetchTaskGroups();
     }
-  }, [activeTab, wsPriority, wsStatus, wsDatePreset, wsStartDate, wsEndDate, wsTeamId, wsUserId, wsActivityType, wsRelatedType, wsSubTab]);
+  }, [activeTab, wsPriority, wsStatus, showDoneTasks, wsDatePreset, wsStartDate, wsEndDate, wsTeamId, wsUserId, wsActivityType, wsRelatedType, wsSubTab]);
 
   useEffect(() => {
     if (activeTab === 'workspace') {
@@ -3157,41 +4354,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       toast.error(t('Lỗi khi cập nhật công việc'));
     } finally {
       setIsUpdatingTask(false);
-    }
-  };
-
-  const handleToggleTaskStatus = async (taskId: number) => {
-    try {
-      const task = wsTasks.find(t => t.id === taskId);
-      if (task?.type === 'meeting') {
-        try {
-          const res = await api.get(`/activities/${taskId}/comments`);
-          const commentsList = res.data.data || [];
-          const hasImage = commentsList.some((c: any) => {
-            const atts = Array.isArray(c.attachments) ? c.attachments : JSON.parse(c.attachments || '[]');
-            return atts.some((att: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(att));
-          });
-
-          if (!hasImage) {
-            setMeetingToComplete(task);
-            setProofCommentText(t('Ảnh minh chứng hoàn thành gặp gỡ'));
-            setProofImageFile(null);
-            setProofImagePreview(null);
-            return;
-          }
-        } catch (e) {
-          toast.error(t('Lỗi khi kiểm tra minh chứng'));
-          return;
-        }
-      }
-
-      await api.put(`/activities/${taskId}`, { status: 'done' });
-      toast.success(t('Đã hoàn thành công việc'));
-      triggerFullConfetti();
-      fetchPortalTasks();
-      fetchWorkspaceTasks();
-    } catch (e) {
-      toast.error(t('Lỗi khi cập nhật trạng thái công việc'));
     }
   };
 
@@ -4256,7 +5418,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           nationality: editNationality,
           marital_status: editMaritalStatus,
           personal_email: editPersonalEmail,
-          hometown: '',
+          hometown: editHometown || '',
           bank_branch: editBankBranch
         }
       });
@@ -5144,2778 +6306,136 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   // Active Sale Portal View
   const renderWorkspaceView = () => {
-    const currentUser = user;
-    const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
-    const teamOptions = [
-      { value: '', label: t('Tất cả Nhóm') },
-      ...teamsList.map((t: any) => ({ value: String(t.id), label: t.name }))
-    ];
-
-    const consultantOptions = [
-      { value: '', label: t('Tất cả Nhân viên') },
-      ...users.map((u: any) => ({ value: String(u.id), label: u.full_name || u.username, avatar: u.avatar || u.avatar_url }))
-    ];
+    const isSaleUser = ['sale', 'telesale', 'sales'].includes(String(user?.role || currentUser?.role || '').toLowerCase());
+    const isTopAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || currentUser?.role || '').toLowerCase());
+    const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(String(user?.role || currentUser?.role || '').toLowerCase());
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: wsViewMode === 'focus' ? '0' : '1.25rem', paddingBottom: isMobile ? '100px' : '0' }}>
-        {wsViewMode !== 'focus' && (
-          <>
-            {/* Workspace Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1 className="page-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {t("Bàn làm việc")}
-                <button
-                  onClick={() => setShowWorkspaceHelpModal(true)}
-                  style={{
-                    background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-                    border: '1px solid var(--color-border)',
-                    padding: '3px 8px',
-                    borderRadius: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    cursor: 'pointer',
-                    color: 'var(--color-text-muted)',
-                    transition: 'all 0.2s',
-                    height: '24px'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = 'var(--color-primary)';
-                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                    e.currentTarget.style.background = 'var(--color-primary-light)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = 'var(--color-text-muted)';
-                    e.currentTarget.style.borderColor = 'var(--color-border)';
-                    e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
-                  }}
-                  title={t("Xem hướng dẫn sử dụng Bàn làm việc")}
-                >
-                  <Info size={12} />
-                  <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
-                </button>
-              </h1>
-              
-              {/* Completed Calls Count Pill */}
-              <div 
-                onClick={handleOpenCallsModal}
-                className="hover-lift"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: 'rgba(16, 185, 129, 0.08)',
-                  border: '1px solid rgba(16, 185, 129, 0.15)',
-                  padding: '4px 10px',
-                  borderRadius: '20px',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  color: '#10b981',
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                  whiteSpace: 'nowrap',
-                  height: '24px'
-                }}
-              >
-                <Phone size={11} style={{ flexShrink: 0 }} />
-                <span>
-                  {t('Đã gọi:')} <strong>{completedCallsCount}</strong>
-                </span>
-              </div>
-            </div>
-            <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-              {t("Quản lý toàn bộ công việc cần thực hiện, lọc chi tiết theo tiến độ và độ ưu tiên.")}
-            </p>
-          </div>
-          {!isMobile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                className="btn secondary"
-                onClick={handleStartFocusSession}
-                style={{
-                  background: 'rgba(189, 29, 45, 0.06)',
-                  border: '1px solid rgba(189, 29, 45, 0.25)',
-                  color: 'var(--color-primary, #BD1D2D)',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  borderRadius: '10px',
-                  padding: '8px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(189, 29, 45, 0.12)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(189, 29, 45, 0.06)'; }}
-              >
-                <Play size={14} />
-                <span>{t('Bắt đầu Phiên Làm Việc')}</span>
-              </button>
-
-              <button 
-                className="btn primary" 
-                style={{ background: 'var(--color-primary, #BD1D2D)', borderColor: 'var(--color-primary, #BD1D2D)' }}
-                onClick={() => {
-                  setSelectedTaskForDetails({
-                    id: 'new',
-                    subject: '',
-                    priority: 'medium',
-                    due_date: new Date().toISOString().slice(0, 10),
-                    description: '',
-                    link: '',
-                    user_id: String(user?.id || ''),
-                    progress: 0,
-                    require_approval: 0,
-                    approver_id: '',
-                    tags: wsSubTab === 'personal' ? 'personal_task' : '',
-                    internal_type: wsSubTab === 'team' ? 'task' : '',
-                    scope: wsSubTab === 'team' ? 'team' : '',
-                    participant_ids: '',
-                    related_contact_ids: [],
-                    checklist: [],
-                    project_id: '',
-                    campaign_id: '',
-                    team_id: '',
-                    campaign_target: ''
-                  });
-                }}
-              >
-                <Plus size={16} /> {t('Tạo công việc')}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Pending Leads Section */}
-        {(() => {
-          if (!['sale', 'sales'].includes(effectiveRole)) return null; // Admin / Manager do not receive or accept lead offers
-          const pendingLeads = (data.leads || []).filter((l: any) => {
-            if (Number(l.is_accepted)) return false;
-            if (dismissedLeadIds.includes(Number(l.lead_id || l.id))) return false;
-            const status = String(l.status || l.distribution_status || '').toLowerCase();
-            if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
-              return false;
-            }
-            return true;
-          });
-          if (pendingLeads.length === 0) return null;
-          return (
-            <div 
-              style={{
-                background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.03) 0%, rgba(163, 20, 34, 0.08) 100%)',
-                border: '1px solid rgba(163, 20, 34, 0.15)',
-                borderRadius: '16px',
-                padding: '1.25rem',
-                marginBottom: '1rem',
-                animation: 'pulseGlow 2s infinite alternate'
-              }}
-            >
-              <style>{`
-                @keyframes pulseGlow {
-                  0% { box-shadow: 0 4px 6px -1px rgba(163, 20, 34, 0.05), 0 2px 4px -1px rgba(163, 20, 34, 0.03); }
-                  100% { box-shadow: 0 10px 15px -3px rgba(163, 20, 34, 0.15), 0 4px 6px -2px rgba(163, 20, 34, 0.05); }
-                }
-                @keyframes pulseDot {
-                  0% { transform: scale(0.9); opacity: 0.6; }
-                  100% { transform: scale(1.1); opacity: 1; }
-                }
-                .pulsing-dot-red {
-                  width: 8px;
-                  height: 8px;
-                  border-radius: 50%;
-                  background-color: var(--color-primary);
-                  display: inline-block;
-                  animation: pulseDot 0.8s infinite alternate;
-                }
-              `}</style>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                <span className="pulsing-dot-red" />
-                {t('DATA MỚI ĐANG CHỜ TIẾN NHẬN')} ({pendingLeads.length})
-              </h3>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                {pendingLeads.map((lead: any) => {
-                  const leadRecallMins = Number(lead.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
-                  const limitMs = leadRecallMins * 60 * 1000;
-                  const isOverdue = leadRecallMins > 0 && (Date.now() - parseServerDate(lead.received_at || lead.last_interaction_date).getTime()) >= limitMs;
-
-                  return (
-                    <div 
-                      key={lead.log_id} 
-                      style={{
-                        background: 'var(--color-surface)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: '12px',
-                        padding: '1rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        gap: '0.75rem',
-                        boxShadow: 'var(--shadow-sm)',
-                        position: 'relative'
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <Avatar name={lead.lead_name || 'K'} size={32} />
-                          <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
-                            {lead.lead_name || t('Khách hàng mới')}
-                          </span>
-                        </div>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                          SĐT: {(() => {
-                            const phone = lead.phone || '';
-                            if (!phone) return '—';
-                            if (phone.length < 6) return '***';
-                            return phone.slice(0, 4) + '***' + phone.slice(-3);
-                          })()}
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: '4px 0 0 0' }}>
-                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#ffe3e8', color: '#8a0f1b', fontWeight: 700 }}>
-                            {lead.round_name || t('Bàn giao')}
-                          </span>
-                        </div>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                          {lead.source ? `${t('Nguồn:')} ${lead.source}` : t('Nguồn: Chưa cấu hình')}
-                        </p>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.5rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
-                            {t('Chia lúc:')} {lead.received_at ? parseServerDate(lead.received_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                          </span>
-                          {leadRecallMins > 0 && (
-                            <span style={{ fontSize: '0.72rem', color: isOverdue ? 'var(--color-danger)' : '#f59e0b', fontWeight: 700, marginTop: '2px' }}>
-                              {isOverdue ? t('Quá hạn tiếp nhận') : (
-                                <LeadRecallTimer
-                                  lastInteractionDate={lead.last_interaction_date}
-                                  receivedAt={lead.received_at}
-                                  leadRecallMinutes={leadRecallMins}
-                                  t={t}
-                                />
-                              )}
-                            </span>
-                          )}
-                        </div>
-
-                        {isOverdue ? (
-                          <button 
-                            onClick={() => handleDismissOverdueLead(lead.lead_id || lead.id)}
-                            className="btn outline danger sm hover-lift"
-                            style={{
-                              height: '32px',
-                              borderRadius: '8px',
-                              fontWeight: 700,
-                              padding: '0 14px',
-                              fontSize: '0.8rem',
-                              cursor: 'pointer',
-                              border: '1px solid var(--color-danger)',
-                              color: 'var(--color-danger)',
-                              background: 'transparent'
-                            }}
-                          >
-                            {t('Xóa')}
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => handleAcceptLead(lead.lead_id)} 
-                            className="btn primary sm hover-lift"
-                            style={{
-                              height: '32px',
-                              borderRadius: '8px',
-                              fontWeight: 700,
-                              padding: '0 14px',
-                              background: 'var(--color-primary)',
-                              color: '#fff',
-                              fontSize: '0.8rem',
-                              cursor: 'pointer',
-                              border: 'none'
-                            }}
-                          >
-                            {t('Tiếp nhận')}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Main Subtabs Selection */}
-        {isMobile ? (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
-            gap: '0.75rem', 
-            marginBottom: '1rem',
-            width: '100%'
-          }}>
-            {/* Dropdown filter on the left */}
-            <div style={{ position: 'relative', flex: 1 }}>
-              <select
-                value={wsSubTab}
-                onChange={(e) => {
-                  setWsSubTab(e.target.value as any);
-                  setWsTeamSubFilter('all');
-                }}
-                style={{
-                  width: '100%',
-                  height: '38px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  padding: '0 2.25rem 0 0.75rem',
-                  appearance: 'none',
-                  outline: 'none',
-                  boxShadow: 'var(--shadow-sm)'
-                }}
-              >
-                {[
-                  { id: 'all', label: `${t('Tất cả')} (${wsTasks.filter(task => !task.is_hidden || Number(task.is_hidden) !== 1).length})` },
-                  { id: 'customer', label: `${t('Công việc khách hàng')} (${wsTasks.filter(task => (!task.is_hidden || Number(task.is_hidden) !== 1) && task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length})` },
-                  { id: 'team', label: `${t('Công việc nội bộ team')} (${wsTasks.filter(task => {
-                      const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
-                      const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                      return (!task.is_hidden || Number(task.is_hidden) !== 1) && !isClient && !tagsList.includes('personal_task');
-                    }).length})` },
-                  { id: 'personal', label: `${t('Công việc cá nhân')} (${wsTasks.filter(task => {
-                      const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                      return (!task.is_hidden || Number(task.is_hidden) !== 1) && tagsList.includes('personal_task');
-                    }).length})` }
-                ].map(opt => (
-                  <option key={opt.id} value={opt.id}>{opt.label}</option>
-                ))}
-              </select>
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                right: '0.75rem',
-                transform: 'translateY(-50%)',
-                color: 'var(--color-text-muted)',
-                pointerEvents: 'none',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                <ChevronDown size={14} />
-              </div>
-            </div>
-
-            {/* Tạo công việc button on the right */}
-            <button 
-              className="btn primary sm" 
-              onClick={() => {
-                setSelectedTaskForDetails({
-                  id: 'new',
-                  subject: '',
-                  priority: 'medium',
-                  due_date: new Date().toISOString().slice(0, 10),
-                  description: '',
-                  link: '',
-                  user_id: String(user?.id || ''),
-                  progress: 0,
-                  require_approval: 0,
-                  approver_id: '',
-                  tags: wsSubTab === 'personal' ? 'personal_task' : '',
-                  internal_type: wsSubTab === 'team' ? 'task' : '',
-                  scope: wsSubTab === 'team' ? 'team' : '',
-                  participant_ids: '',
-                  related_contact_ids: [],
-                  checklist: [],
-                  project_id: '',
-                  campaign_id: '',
-                  team_id: '',
-                  campaign_target: ''
-                });
-              }}
-              style={{
-                height: '38px',
-                borderRadius: '10px',
-                fontWeight: 700,
-                padding: '0 12px',
-                fontSize: '0.8rem',
-                whiteSpace: 'nowrap',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                flexShrink: 0
-              }}
-            >
-              <Plus size={14} /> {t('Tạo công việc')}
-            </button>
-          </div>
-        ) : (
-          <div className="segmented-control-wrapper" style={{ marginBottom: '1rem' }}>
-            <div style={{
-              display: 'flex',
-              background: 'var(--color-border-light)',
-              border: '1px solid var(--color-border)',
-              padding: '2px',
-              borderRadius: '8px',
-              gap: '2px',
-              width: 'fit-content',
-              position: 'relative'
-            }}>
-              {[
-                { id: 'all', label: t('Tất cả'), icon: <Layers size={14} />, count: wsTasks.filter(task => !task.is_hidden || Number(task.is_hidden) !== 1).length },
-                { id: 'customer', label: t('Công việc khách hàng'), icon: <Users size={14} />, count: wsTasks.filter(task => (!task.is_hidden || Number(task.is_hidden) !== 1) && task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
-                { id: 'team', label: t('Công việc nội bộ team'), icon: <CheckSquare size={14} />, count: wsTasks.filter(task => {
-                    const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
-                    const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                    return (!task.is_hidden || Number(task.is_hidden) !== 1) && !isClient && !tagsList.includes('personal_task');
-                  }).length
-                },
-                { id: 'personal', label: t('Công việc cá nhân'), icon: <User size={14} />, count: wsTasks.filter(task => {
-                    const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                    return (!task.is_hidden || Number(task.is_hidden) !== 1) && tagsList.includes('personal_task');
-                  }).length
-                }
-              ].map(tab => {
-                const isSelected = wsSubTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      setWsSubTab(tab.id as any);
-                      setWsTeamSubFilter('all');
-                    }}
-                    style={{
-                      padding: '6px 16px',
-                      height: '34px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      fontSize: '0.85rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      background: 'transparent',
-                      color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      position: 'relative',
-                      outline: 'none',
-                      boxShadow: 'none',
-                      flexShrink: 0,
-                      zIndex: 2,
-                      transition: 'color 0.2s ease'
-                    }}
-                  >
-                    {isSelected && (
-                      <motion.div 
-                        layoutId="activeWsSubTabIndicator"
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'var(--color-surface)',
-                          borderRadius: '6px',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                          zIndex: 1
-                        }}
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                      />
-                    )}
-                    
-                    <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {tab.icon}
-                      <span>{tab.label}</span>
-                    </span>
-                    
-                    <span style={{
-                      position: 'relative',
-                      zIndex: 2,
-                      fontSize: '0.75rem',
-                      padding: '2px 6px',
-                      borderRadius: '10px',
-                      background: isSelected ? 'var(--color-border-light)' : 'rgba(0, 0, 0, 0.04)',
-                      color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
-                      fontWeight: 800,
-                      transition: 'background 0.2s ease, color 0.2s ease'
-                    }}>
-                      {tab.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Team sub-filters */}
-        {wsSubTab === 'team' && (
-          <div className="no-scrollbar" style={{
-            display: 'flex',
-            gap: '8px',
-            alignItems: 'center',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            padding: isMobile ? '4px 0' : '8px 12px',
-            background: isMobile ? 'transparent' : 'var(--color-surface)',
-            border: isMobile ? 'none' : '1px solid var(--color-border-light)',
-            borderRadius: '12px',
-            width: '100%',
-            marginBottom: '0.75rem'
-          }}>
-            {!isMobile && (
-              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', marginRight: '6px', whiteSpace: 'nowrap' }}>
-                {t('Phân loại nội bộ:')}
-              </span>
-            )}
-            {[
-              { id: 'all', label: t('Tất cả'), color: 'var(--color-text-light)' },
-              { id: 'task', label: t('Nhiệm vụ'), color: 'var(--color-success)' },
-              { id: 'announcement', label: t('Thông báo'), color: 'var(--color-primary)' },
-              { id: 'campaign', label: t('Chiến dịch'), color: '#db2777' },
-              { id: 'policy', label: t('Chính sách'), color: '#ea580c' }
-            ].map(sub => {
-              const isSelected = wsTeamSubFilter === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  onClick={() => setWsTeamSubFilter(sub.id as any)}
-                  style={{
-                    padding: '5px 14px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    background: isSelected ? sub.color : 'rgba(128, 128, 128, 0.12)',
-                    color: isSelected ? 'white' : 'var(--color-text-light)',
-                    whiteSpace: 'nowrap'
-                  }}
-                  className="hover-lift"
-                >
-                  {sub.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Grab Lead Workspace Widget */}
-        {activeOffers.map((offer: any) => (
-          <GrabLeadOfferWidget
-            key={offer.offer_id}
-            offer={offer}
-            onClaim={handleGrabLead}
-            t={t}
-            theme={theme}
-          />
-        ))}
-
-        {/* Unified Alert & Suggestion Center */}
-        {(() => {
-          const hasUncontacted = uncontactedCount > 0;
-          const hasCoops = pendingCoopsCount > 0;
-          
-          const todayStr = new Date().toISOString().slice(0, 10);
-          const uid = currentUser?.id ? Number(currentUser.id) : 0;
-          const isMyTask = (t: any) => {
-            if (!uid) return false;
-            const assignee = Number(t.assignee_id || t.user_id || 0);
-            return assignee === uid;
-          };
-          const myOverdueCount = (wsTasks || []).filter((t: any) => t.status !== 'done' && isMyTask(t) && t.due_date && t.due_date.slice(0, 10) < todayStr).length;
-          const myDueTodayCount = (wsTasks || []).filter((t: any) => t.status !== 'done' && isMyTask(t) && t.due_date && t.due_date.slice(0, 10) === todayStr).length;
-          const myHighPriorityTask = (wsTasks || []).find((t: any) => t.status !== 'done' && isMyTask(t) && (t.priority === 'high' || t.priority === 'urgent'));
-          const totalOverdueCount = workspaceStats.overdue || 0;
-          const totalDueTodayCount = workspaceStats.dueToday || 0;
-          const teamHighPriorityTask = (wsTasks || []).find((t: any) => t.status !== 'done' && (t.priority === 'high' || t.priority === 'urgent'));
-
-          // Calculate AI Priority Message
-          let aiCount = 0;
-          let aiMessage: React.ReactNode = '';
-          if (myOverdueCount > 0) {
-            aiCount = myOverdueCount;
-            aiMessage = (
-              <>
-                Hôm nay bạn có <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{myOverdueCount}</strong> công việc quá hạn cần xử lý gấp.
-              </>
-            );
-          } else if (myHighPriorityTask) {
-            aiCount = 1;
-            aiMessage = (
-              <>
-                Bạn có công việc ưu tiên cao (<strong style={{ fontWeight: 800 }}>{myHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}</strong>) cần xử lý.
-              </>
-            );
-          } else if (myDueTodayCount > 0) {
-            aiCount = myDueTodayCount;
-            aiMessage = (
-              <>
-                Hôm nay bạn có <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{myDueTodayCount}</strong> công việc đến hạn cần hoàn thành.
-              </>
-            );
-          } else if (totalOverdueCount > 0) {
-            aiCount = totalOverdueCount;
-            aiMessage = (
-              <>
-                Toàn đội ngũ hiện có <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{totalOverdueCount}</strong> công việc quá hạn cần đôn đốc.
-              </>
-            );
-          } else if (teamHighPriorityTask) {
-            aiCount = 1;
-            aiMessage = (
-              <>
-                Có công việc ưu tiên cao của đội ngũ (<strong style={{ fontWeight: 800 }}>{teamHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}</strong>) cần theo dõi.
-              </>
-            );
-          } else if (totalDueTodayCount > 0) {
-            aiCount = totalDueTodayCount;
-            aiMessage = (
-              <>
-                Hôm nay toàn đội ngũ có <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{totalDueTodayCount}</strong> công việc đến hạn cần hoàn thành.
-              </>
-            );
-          } else {
-            aiMessage = t('Hệ thống vận hành tối ưu. Các công việc hiện được sắp xếp đúng kế hoạch.');
-          }
-
-          const meetingCount = upcomingMeetingsList.length;
-
-          // Check if there is anything to show
-          const hasAnyAlert = hasUncontacted || hasCoops || aiCount > 0 || meetingCount > 0;
-          if (!hasAnyAlert) return null;
-
-          const actionBtnStyle = {
-            height: '30px',
-            borderRadius: '20px',
-            border: 'none',
-            padding: '0 12px',
-            fontSize: '0.725rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            marginLeft: 'auto'
-          };
-
-          return (
-            <div style={{
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border-light)',
-              borderRadius: '16px',
-              padding: isMobile ? '12px 14px' : '1rem 1.5rem',
-              marginBottom: '1rem',
-              boxShadow: 'var(--shadow-sm)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '10px' }}>
-                <Sparkles size={16} style={{ color: 'var(--color-primary)' }} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.03em', color: 'var(--color-text)' }}>
-                  {t('Cảnh báo & Gợi ý xử lý')}
-                </span>
-              </div>
-
-              {/* Alert Items Stack */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {/* 1. Uncontacted leads alert */}
-                {hasUncontacted && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', padding: '4px 0' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <AlertCircle size={15} />
-                      </div>
-                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {t('Yêu cầu liên hệ khách hàng mới: ')}
-                        <strong style={{ color: '#ef4444', fontWeight: 800 }}>{uncontactedCount}</strong>
-                        {t(' data chưa liên hệ.')}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => navigate('/contacts?status=not_contacted')}
-                      style={{
-                        ...actionBtnStyle,
-                        background: 'rgba(239, 68, 68, 0.08)',
-                        color: '#ef4444'
-                      }}
-                      className="hover-lift"
-                    >
-                      {t('Xem ngay')} <ChevronRight size={12} />
-                    </button>
-                  </div>
-                )}
-
-                {/* 2. Cooperation slips alert */}
-                {hasCoops && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', padding: '4px 0', borderTop: '1px dashed var(--color-border-light)', paddingTop: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Scale size={15} />
-                      </div>
-                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {t('Yêu cầu ký phiếu hợp tác: ')}
-                        <strong style={{ color: '#10b981', fontWeight: 800 }}>{pendingCoopsCount}</strong>
-                        {t(' phiếu đang chờ bạn ký.')}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const firstSlipId = pendingCoopSlips[0]?.id;
-                        navigate(firstSlipId ? `/cooperation-slips?sign_id=${firstSlipId}` : '/cooperation-slips');
-                      }}
-                      style={{
-                        ...actionBtnStyle,
-                        background: 'rgba(16, 185, 129, 0.08)',
-                        color: '#10b981'
-                      }}
-                      className="hover-lift"
-                    >
-                      {t('Ký ngay')} <ChevronRight size={12} />
-                    </button>
-                  </div>
-                )}
-
-                {/* 3. AI suggestion alert */}
-                {aiCount > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', padding: '4px 0', borderTop: '1px dashed var(--color-border-light)', paddingTop: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Sparkles size={14} />
-                      </div>
-                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {aiMessage}
-                      </span>
-                    </div>
-                    <button
-                      onClick={handleStartFocusSession}
-                      style={{
-                        ...actionBtnStyle,
-                        background: 'rgba(189, 29, 45, 0.08)',
-                        color: 'var(--color-primary)'
-                      }}
-                      className="hover-lift"
-                    >
-                      {t('Xử lý ngay')} <ChevronRight size={12} />
-                    </button>
-                  </div>
-                )}
-
-                {/* 4. Upcoming meetings alert */}
-                {meetingCount > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', padding: '4px 0', borderTop: '1px dashed var(--color-border-light)', paddingTop: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Calendar size={14} />
-                      </div>
-                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {t('Lịch hẹn sắp diễn ra: ')}
-                        <strong style={{ color: '#d97706', fontWeight: 800 }}>{meetingCount}</strong>
-                        {t(' cuộc hẹn gặp khách hàng đã lên lịch.')}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setShowUpcomingMeetingsModal(true)}
-                      style={{
-                        ...actionBtnStyle,
-                        background: 'rgba(245, 158, 11, 0.08)',
-                        color: '#d97706'
-                      }}
-                      className="hover-lift"
-                    >
-                      {t('Xem danh sách')} <ChevronRight size={12} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Consolidated Workspace Toolbar Row (Pills + Search + Filters + View Controls) */}
-        <div style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border-light)',
-          borderRadius: isMobile ? '12px' : '16px',
-          padding: isMobile ? '8px 10px' : '0.625rem 0.875rem',
-          boxShadow: '0 4px 20px -8px rgba(0,0,0,0.05)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: isMobile ? '8px' : '0.625rem',
-          marginBottom: '1rem'
-        }}>
-          {/* Top Group: Horizontal Scrollable Status Pills & Team Dropdown */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            overflowX: 'auto',
-            whiteSpace: 'nowrap',
-            width: '100%',
-            paddingBottom: isMobile ? '2px' : '0'
-          }} className="custom-scrollbar-hidden">
-            {/* Overdue Pill */}
-            <div 
-              onClick={() => {
-                setWsDatePreset('overdue');
-                setWsStatus('planned');
-                setWsTaskFilter('all');
-              }}
-              style={{
-                padding: isMobile ? '4px 10px' : '5px 12px',
-                borderRadius: '20px',
-                border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border)',
-                background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-                color: 'var(--color-danger)',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: isMobile ? '0.725rem' : '0.78rem',
-                fontWeight: 700,
-                flexShrink: 0,
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <Clock size={isMobile ? 12 : 13} />
-              <span>{t('Quá hạn')}</span>
-              <span style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.675rem', fontWeight: 800 }}>
-                {workspaceStats.overdue}
-              </span>
-            </div>
-
-            {/* Due Today Pill */}
-            <div 
-              onClick={() => {
-                setWsDatePreset('today');
-                setWsStatus('planned');
-                setWsTaskFilter('all');
-              }}
-              style={{
-                padding: isMobile ? '4px 10px' : '5px 12px',
-                borderRadius: '20px',
-                border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border)',
-                background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
-                color: 'var(--color-warning)',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: isMobile ? '0.725rem' : '0.78rem',
-                fontWeight: 700,
-                flexShrink: 0,
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <Calendar size={isMobile ? 12 : 13} />
-              <span>{t('Đến hạn')}</span>
-              <span style={{ background: 'var(--color-warning)', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.675rem', fontWeight: 800 }}>
-                {workspaceStats.dueToday}
-              </span>
-            </div>
-
-            {/* Upcoming Pill */}
-            <div 
-              onClick={() => {
-                setWsDatePreset('tomorrow');
-                setWsStatus('planned');
-                setWsTaskFilter('all');
-              }}
-              style={{
-                padding: isMobile ? '4px 10px' : '5px 12px',
-                borderRadius: '20px',
-                border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border)',
-                background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                color: 'var(--color-info)',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: isMobile ? '0.725rem' : '0.78rem',
-                fontWeight: 700,
-                flexShrink: 0,
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <ArrowUpRight size={isMobile ? 12 : 13} />
-              <span>{t('Sắp đến hạn')}</span>
-              <span style={{ background: 'var(--color-info)', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.675rem', fontWeight: 800 }}>
-                {workspaceStats.upcoming}
-              </span>
-            </div>
-
-            {/* Waiting Approval Pill */}
-            <div 
-              onClick={() => {
-                setWsTaskFilter('approve_by_me');
-                setWsStatus('all');
-                setWsDatePreset('all');
-              }}
-              style={{
-                padding: isMobile ? '4px 10px' : '5px 12px',
-                borderRadius: '20px',
-                border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border)',
-                background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
-                color: '#8b5cf6',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: isMobile ? '0.725rem' : '0.78rem',
-                fontWeight: 700,
-                flexShrink: 0,
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <UserCheck size={isMobile ? 12 : 13} />
-              <span>{t('Chờ tôi duyệt')}</span>
-              <span style={{ background: '#8b5cf6', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.675rem', fontWeight: 800 }}>
-                {workspaceStats.pendingApproval}
-              </span>
-            </div>
-
-
-          </div>
-
-          {/* Controls Group: Search + Advanced Filters Trigger + Segmented Control + View Modes */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            width: '100%'
-          }}>
-            {/* Search Input & Filter Button */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: isMobile ? '100%' : '260px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Tìm theo tên, mô tả..."
-                  value={wsSearch}
-                  onChange={e => setWsSearch(e.target.value)}
-                  style={{ height: isMobile ? '34px' : '38px', fontSize: isMobile ? '0.78rem' : '0.85rem', padding: '6px 10px', borderRadius: '8px', width: '100%' }}
-                />
-              </div>
-              <button
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                style={{
-                  height: isMobile ? '34px' : '38px',
-                  padding: isMobile ? '0 10px' : '0 12px',
-                  borderRadius: '8px',
-                  border: showAdvancedFilters ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: showAdvancedFilters ? 'var(--color-primary-light)' : 'transparent',
-                  color: showAdvancedFilters ? 'var(--color-primary)' : 'var(--color-text)',
-                  fontSize: isMobile ? '0.75rem' : '0.8rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                <Filter size={isMobile ? 13 : 14} />
-                <span>{t('Bộ lọc')}</span>
-                {(() => {
-                  let count = 0;
-                  if (wsPriority) count++;
-                  if (wsStatus && wsStatus !== 'planned') count++;
-                  if (wsDatePreset && wsDatePreset !== 'all') count++;
-                  if (wsTeamId) count++;
-                  if (wsUserId) count++;
-                  return count > 0 ? (
-                    <span style={{
-                      background: 'var(--color-primary)',
-                      color: 'white',
-                      fontSize: '0.65rem',
-                      fontWeight: 800,
-                      borderRadius: '50%',
-                      width: '16px',
-                      height: '16px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginLeft: '2px'
-                    }}>
-                      {count}
-                    </span>
-                  ) : null;
-                })()}
-              </button>
-            </div>
-
-            {/* Segmented Control & View Mode Switcher */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap', width: isMobile ? '100%' : 'auto', justifyContent: 'space-between' }}>
-              <div className="segmented-control-wrapper" style={{ flex: isMobile ? 1 : 'none' }}>
-                <div style={{ display: 'flex', gap: '2px', background: 'var(--color-border-light)', border: '1px solid var(--color-border)', padding: '2px', borderRadius: '8px', width: isMobile ? '100%' : 'fit-content', position: 'relative' }}>
-                  {[
-                    { value: 'all', label: t('Tất cả') },
-                    { value: 'assigned_to_me', label: isMobile ? t('Tôi làm') : t('Tôi thực hiện') },
-                    { value: 'collaborator', label: isMobile ? t('Liên quan') : t('Tôi liên quan') }
-                  ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
-                    const isSelected = wsTaskFilter === tab.value;
-                    return (
-                      <button
-                        key={tab.value}
-                        onClick={() => setWsTaskFilter(tab.value as any)}
-                        style={{
-                          flex: isMobile ? 1 : 'none',
-                          width: isMobile ? 'auto' : '110px',
-                          height: isMobile ? '26px' : '28px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          fontSize: isMobile ? '0.725rem' : '0.78rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          background: isSelected ? 'var(--color-surface)' : 'transparent',
-                          color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
-                          boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          outline: 'none',
-                          padding: isMobile ? '0 4px' : '0 8px',
-                          whiteSpace: 'nowrap',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        {tab.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {!isMobile && (
-                <div style={{
-                  display: 'flex',
-                  background: 'var(--color-border-light)',
-                  border: '1px solid var(--color-border)',
-                  padding: '2px',
-                  borderRadius: '8px',
-                  gap: '2px'
-                }}>
-                  <button
-                    onClick={() => setWsViewMode('grid')}
-                    title={t('Dạng lưới')}
-                    style={{
-                      width: '32px',
-                      height: '28px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      background: wsViewMode === 'grid' ? 'var(--color-surface)' : 'transparent',
-                      color: wsViewMode === 'grid' ? 'var(--color-text)' : 'var(--color-text-light)',
-                      boxShadow: wsViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 0,
-                      outline: 'none',
-                      transform: 'none'
-                    }}
-                  >
-                    <LayoutGrid size={16} />
-                  </button>
-                  <button
-                    onClick={() => setWsViewMode('kanban')}
-                    title={t('Dạng Kanban')}
-                    style={{
-                      width: '32px',
-                      height: '28px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      background: wsViewMode === 'kanban' ? 'var(--color-surface)' : 'transparent',
-                      color: wsViewMode === 'kanban' ? 'var(--color-text)' : 'var(--color-text-light)',
-                      boxShadow: wsViewMode === 'kanban' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 0,
-                      outline: 'none',
-                      transform: 'none'
-                    }}
-                  >
-                    <Layers size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Advanced Dropdown Filters (Collapsible) */}
-          <AnimatePresence>
-            {showAdvancedFilters && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                style={{ overflow: showAdvancedFilters ? 'visible' : 'hidden' }}
-              >
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
-                  gap: '14px',
-                  paddingTop: '0.75rem',
-                  borderTop: '1px solid var(--color-border-light)'
-                }}>
-                  {/* Priority Filter */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Độ ưu tiên')}</label>
-                    <CustomSelect
-                      options={[
-                        { value: '', label: t('Tất cả độ ưu tiên') },
-                        { value: 'high', label: t('Cao') },
-                        { value: 'medium', label: t('Trung bình') },
-                        { value: 'low', label: t('Thấp') }
-                      ]}
-                      value={wsPriority}
-                      onChange={val => setWsPriority(String(val))}
-                    />
-                  </div>
-
-                  {/* Status Filter */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Trạng thái')}</label>
-                    <CustomSelect
-                      options={[
-                        { value: 'planned', label: t('Chưa hoàn thành') },
-                        { value: '', label: t('Tất cả trạng thái') },
-                        { value: 'done', label: t('Đã hoàn thành') }
-                      ]}
-                      value={wsStatus}
-                      onChange={val => setWsStatus(String(val))}
-                    />
-                  </div>
-
-                  {/* Date Preset Filter */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Thời gian hạn')}</label>
-                    <CustomSelect
-                      options={[
-                        { value: 'all', label: t('Tất cả thời gian') },
-                        { value: 'today', label: t('Hôm nay') },
-                        { value: 'tomorrow', label: t('Ngày mai') },
-                        { value: 'week', label: t('Tuần này') },
-                        { value: '7_days', label: t('7 ngày qua') },
-                        { value: '30_days', label: t('30 ngày qua') },
-                        { value: 'this_month', label: t('Tháng này') },
-                        { value: 'last_month', label: t('Tháng trước') },
-                        { value: 'overdue', label: t('Quá hạn') },
-                        { value: 'custom', label: t('Tùy chỉnh ngày...') }
-                      ]}
-                      value={wsDatePreset}
-                      onChange={val => setWsDatePreset(String(val))}
-                    />
-                  </div>
-
-                  {/* Activity Type Filter */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Phân loại công việc')}</label>
-                    <CustomSelect
-                      options={[
-                        { value: 'task', label: t('Nhiệm vụ (Tasks)') },
-                        { value: 'all', label: t('Tất cả phân loại') },
-                        { value: 'call', label: t('Cuộc gọi (Calls)') },
-                        { value: 'email', label: t('Emails') },
-                        { value: 'meeting', label: t('Cuộc gặp') },
-                        { value: 'note', label: t('Ghi chú') }
-                      ]}
-                      value={wsActivityType}
-                      onChange={val => setWsActivityType(String(val))}
-                    />
-                  </div>
-
-                  {/* Related Type Filter */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Liên quan đến')}</label>
-                    <CustomSelect
-                      options={[
-                        { value: '', label: t('Tất cả đối tượng') },
-                        { value: 'contact', label: t('Khách hàng (Contacts)') },
-                        { value: 'company', label: t('Pháp nhân (Companies)') },
-                        { value: 'deal', label: t('Giao dịch (Deals)') }
-                      ]}
-                      value={wsRelatedType}
-                      onChange={val => setWsRelatedType(String(val))}
-                    />
-                  </div>
-
-                  {/* Team filter (Admin/Manager only) */}
-                  {['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(currentUser?.role || '') && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Nhóm')}</label>
-                      <CustomSelect
-                        options={teamOptions}
-                        value={wsTeamId}
-                        onChange={val => { setWsTeamId(String(val)); setWsUserId(''); }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Consultant filter (Admin/Manager only) */}
-                  {['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(currentUser?.role || '') && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Nhân viên')}</label>
-                      <CustomSelect
-                        options={consultantOptions}
-                        value={wsUserId}
-                        onChange={val => setWsUserId(String(val))}
-                        showAvatars
-                        searchable
-                        align="right"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Custom Date Pickers */}
-                {wsDatePreset === 'custom' && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '0.75rem 0 0 0',
-                    marginTop: '0.5rem',
-                    borderTop: '1px dashed var(--color-border-light)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Từ ngày:')}</span>
-                      <input
-                        type="date"
-                        className="form-input"
-                        value={wsStartDate}
-                        onChange={e => setWsStartDate(e.target.value)}
-                        style={{ height: '36px', width: '140px', padding: '4px 8px', fontSize: '0.8rem' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đến ngày:')}</span>
-                      <input
-                        type="date"
-                        className="form-input"
-                        value={wsEndDate}
-                        onChange={e => setWsEndDate(e.target.value)}
-                        style={{ height: '36px', width: '140px', padding: '4px 8px', fontSize: '0.8rem' }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Clear Filter Toolbar */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: '12px',
-                  paddingTop: '12px',
-                  borderTop: '1px dashed var(--color-border-light)',
-                  gap: '8px',
-                  flexWrap: 'wrap'
-                }}>
-                  <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)', cursor: 'pointer', userSelect: 'none' }}>
-                      <input
-                        type="checkbox"
-                        checked={wsStatus === 'all'}
-                        onChange={() => setWsStatus(wsStatus === 'all' ? 'planned' : 'all')}
-                        style={{ cursor: 'pointer', width: '14px', height: '14px' }}
-                      />
-                      <span>{t('Hiện việc đã xong')}</span>
-                    </label>
-
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)', cursor: 'pointer', userSelect: 'none' }}>
-                      <input
-                        type="checkbox"
-                        checked={wsStatus === 'hidden'}
-                        onChange={() => setWsStatus(wsStatus === 'hidden' ? 'planned' : 'hidden')}
-                        style={{ cursor: 'pointer', width: '14px', height: '14px' }}
-                      />
-                      <span>{t('Hiện việc đã ẩn')}</span>
-                    </label>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                    type="button"
-                    className="btn outline sm"
-                    onClick={() => {
-                      setWsPriority('');
-                      setWsStatus('planned');
-                      setWsDatePreset('all');
-                      setWsStartDate('');
-                      setWsEndDate('');
-                      setWsTeamId('');
-                      setWsUserId('');
-                      setWsActivityType('task');
-                      setWsRelatedType('');
-                      setWsSearch('');
-                      toast.success(t('Đã reset toàn bộ bộ lọc'));
-                    }}
-                    style={{ fontSize: '0.75rem', padding: '6px 12px' }}
-                  >
-                    {t('Xóa bộ lọc')}
-                  </button>
-                </div>
-              </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        </>)}
-
-        {/* Task Grid */}
-        {isAdminOrManager && !wsTeamId && wsSubTab !== 'personal' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
-              {t('Vui lòng chọn một Nhóm để xem chi tiết công việc:')}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '1.25rem' }}>
-              {/* Card for "Tất cả các Nhóm" */}
-              <div
-                onClick={() => setWsTeamId('all_teams_bypass')}
-                style={{
-                  padding: '1.5rem',
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border-light)',
-                  borderRadius: 'var(--radius-lg)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  boxShadow: 'var(--shadow-sm)',
-                  transition: 'all var(--transition-fluid)',
-                  cursor: 'pointer',
-                  justifyContent: 'center',
-                  minHeight: '140px'
-                }}
-                className="hover-lift active-press"
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(189, 29, 45, 0.08)', borderRadius: '10px', color: 'var(--color-primary)', display: 'flex' }}>
-                    <Layers size={24} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)', margin: 0 }}>
-                      {t('Tất cả các Nhóm')}
-                    </h3>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                      {t('Xem toàn bộ công việc hệ thống')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Individual Team Cards */}
-              {teamsList.map(team => {
-                const teamMembers = users.filter(u => String(u.team_id) === String(team.id));
-                const leaderUser = users.find(u => Number(u.id) === Number(team.leader_id));
-                
-                return (
-                  <div
-                    key={team.id}
-                    onClick={() => setWsTeamId(String(team.id))}
-                    style={{
-                      padding: '1.25rem',
-                      background: 'var(--color-surface)',
-                      border: '1px solid var(--color-border-light)',
-                      borderRadius: '16px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.75rem',
-                      boxShadow: 'var(--shadow-sm)',
-                      transition: 'all 0.2s',
-                      cursor: 'pointer',
-                      minHeight: '150px',
-                      justifyContent: 'space-between'
-                    }}
-                    className="hover-lift active-press"
-                  >
-                    <div>
-                      {/* Header row: Team Name */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.3 }}>
-                          {team.name}
-                        </h3>
-                        {team.branch && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                            <Building2 size={12} style={{ flexShrink: 0 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.2 }}>
-                              {team.branch}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Leader details */}
-                      <div style={{ marginTop: '0.625rem', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        <span>Manager:</span>
-                        {leaderUser ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Avatar src={leaderUser.avatar_url || leaderUser.avatar} name={leaderUser.full_name || leaderUser.username || leaderUser.name} size={18} />
-                            <strong style={{ color: 'var(--color-text)' }}>{leaderUser.full_name || leaderUser.username || leaderUser.name}</strong>
-                          </div>
-                        ) : (
-                          <strong style={{ color: 'var(--color-text)' }}>{team.leader_name || t('Chưa gán')}</strong>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Footer row: Member Avatar Stack & Total Count */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.625rem', marginTop: '4px' }}>
-                      {/* Avatar Stack */}
-                      <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center' }}>
-                        {teamMembers.slice(0, 5).map((member, index) => (
-                          <div
-                            key={member.id}
-                            style={{
-                              marginLeft: index > 0 ? '-8px' : '0',
-                              zIndex: 10 - index,
-                              position: 'relative'
-                            }}
-                          >
-                            <Avatar
-                              src={member.avatar_url || member.avatar}
-                              name={member.full_name || member.username || member.name}
-                              size={24}
-                              style={{ border: '2px solid var(--color-surface)' }}
-                            />
-                          </div>
-                        ))}
-                        {teamMembers.length > 5 && (
-                          <div
-                            style={{
-                              width: 24,
-                              height: 24,
-                              borderRadius: '50%',
-                              background: 'var(--color-bg-light)',
-                              border: '2px solid var(--color-surface)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.65rem',
-                              fontWeight: 700,
-                              color: 'var(--color-text-muted)',
-                              marginLeft: '-8px',
-                              zIndex: 4,
-                              position: 'relative'
-                            }}
-                          >
-                            +{teamMembers.length - 5}
-                          </div>
-                        )}
-                        {teamMembers.length === 0 && (
-                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                            {t('Không có thành viên')}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Total Count */}
-                      {teamMembers.length > 0 && (
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                          {teamMembers.length} sales
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Back button when inside a team view */}
-            {((isAdminOrManager && wsTeamId && wsSubTab !== 'personal') && wsViewMode !== 'focus') && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '1.5rem', background: 'var(--color-surface)', padding: '1rem 1.25rem', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
-                <button
-                  onClick={() => {
-                    setWsTeamId('');
-                  }}
-                  style={{
-                    height: 38,
-                    borderRadius: '10px',
-                    border: '1px solid var(--color-border)',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-text-light)',
-                    fontWeight: 700,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: isMobile ? '0' : '8px',
-                    padding: isMobile ? '0 12px' : '0 16px',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                    boxShadow: 'var(--shadow-xs)',
-                    transition: 'all 0.2s',
-                    flexShrink: 0
-                  }}
-                  className="hover-lift"
-                >
-                  <ArrowLeft size={15} /> {!isMobile && t('Quay lại')}
-                </button>
-
-                {wsTeamId && (
-                  <>
-                    <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', flexShrink: 0 }} />
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {(() => {
-                        const targetTeam = teamsList.find(t => String(t.id) === wsTeamId);
-                        const teamName = wsTeamId === 'all_teams_bypass' ? t('Tất cả các Nhóm') : (targetTeam?.name || wsTeamId);
-                        const teamAvatar = targetTeam?.avatar_url || targetTeam?.avatar;
-                        return (
-                          <>
-                            {wsTeamId !== 'all_teams_bypass' && (
-                              <div style={{ 
-                                width: isMobile ? '30px' : '36px', 
-                                height: isMobile ? '30px' : '36px', 
-                                borderRadius: '10px', 
-                                overflow: 'hidden', 
-                                border: '1.5px solid var(--color-border-light)',
-                                boxShadow: 'var(--shadow-xs)',
-                                flexShrink: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: teamAvatar ? 'transparent' : 'var(--color-primary-light, rgba(189, 29, 45, 0.1))',
-                                color: 'var(--color-primary)'
-                              }}>
-                                {teamAvatar ? (
-                                  <img src={teamAvatar} alt={teamName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                ) : (
-                                  <Avatar name={teamName} size={isMobile ? 30 : 36} />
-                                )}
-                              </div>
-                            )}
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: isMobile ? '0.625rem' : '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('ĐANG XEM NHÓM')}</span>
-                                <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--color-primary)' }} />
-                                <span style={{ fontSize: isMobile ? '0.625rem' : '0.7rem', fontWeight: 700, color: 'var(--color-primary)' }}>{t('Nội bộ')}</span>
-                              </div>
-                              <h4 style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: '1px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? '160px' : 'none' }}>
-                                {teamName}
-                              </h4>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {wsViewMode !== 'focus' && loadingWsTasks ? (
-              wsViewMode === 'kanban' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
-                  {[1, 2, 3].map((col) => (
-                    <div key={col} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: '12px' }}>
-                      <CardSkeleton height={140} />
-                      <CardSkeleton height={140} />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                    <CardSkeleton key={i} height={150} />
-                  ))}
-                </div>
-              )
-            ) : wsViewMode !== 'focus' && filteredWsTasks.length === 0 ? (
-          <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)' }}>
-            <CheckSquare size={36} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
-            <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Không tìm thấy công việc nào phù hợp với bộ lọc.</p>
-          </div>
-        ) : wsViewMode === 'grid' ? (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
-            {paginatedWsTasks.map(task => {
-              const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
-              const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
-              
-              let dateBadgeColor = 'var(--color-text-muted)';
-              let dateBadgeBg = 'var(--color-bg)';
-              if (isOverdue) {
-                dateBadgeColor = 'var(--color-danger)';
-                dateBadgeBg = 'rgba(239, 68, 68, 0.08)';
-              } else if (isToday) {
-                dateBadgeColor = 'var(--color-warning)';
-                dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
-              }
-
-              const link = task.body && !task.body.startsWith('{"erp_task":') 
-                ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
-                : '';
-              
-              let description = '';
-              if (task.body) {
-                if (task.body.startsWith('{"erp_task":')) {
-                  try {
-                    const parsed = JSON.parse(task.body);
-                    description = parsed.erp_task?.description || '';
-                  } catch (e) {
-                    description = task.body;
-                  }
-                } else {
-                  description = task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
-                }
-              }
-              
-              const progressVal = task.progress || 0;
-
-              return (
-                <div 
-                  key={task.id} 
-                  style={{
-                    padding: isMobile ? '0.75rem 1rem' : '1rem 1.25rem',
-                    background: pinnedTaskIds.includes(Number(task.id)) 
-                      ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.03)' : 'rgba(239, 68, 68, 0.015)') 
-                      : 'var(--color-surface)',
-                    border: pinnedTaskIds.includes(Number(task.id))
-                      ? '1.5px solid var(--color-danger)'
-                      : (isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)'),
-                    borderRadius: 'var(--radius-lg)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: isMobile ? '0.5rem' : '0.75rem',
-                    boxShadow: pinnedTaskIds.includes(Number(task.id))
-                      ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)'
-                      : (isOverdue && task.status !== 'done' ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)' : 'var(--shadow-sm)'),
-                    transition: 'all var(--transition-fluid)',
-                    cursor: 'pointer',
-                    position: 'relative'
-                  }}
-                  className="hover-lift active-press"
-                  onClick={() => {
-                    const parsed = parseDescriptionAndChecklist(description);
-                    const parsedTask = {
-                      id: task.id,
-                      title: task.subject,
-                      done: task.status === 'done',
-                      priority: task.priority,
-                      due_date: task.due_date ? task.due_date.slice(0, 10) : '',
-                      link,
-                      description: parsed.pureDescription,
-                      user_id: task.user_id,
-                      user_name: task.user_name || 'Hệ thống',
-                      tags: task.tags || '',
-                      participant_ids: task.participant_ids || '',
-                      progress: task.progress || 0,
-                      require_approval: task.require_approval || 0,
-                      approver_id: task.approver_id,
-                      approval_status: task.approval_status,
-                      contact_id: task.contact_id,
-                      contact_name: task.contact_name,
-                      contact_avatar: task.contact_avatar,
-                      related_type: task.related_type,
-                      related_id: task.related_id,
-                      body: task.body,
-                      created_by: task.created_by,
-                      created_by_name: task.created_by_name,
-                      created_by_avatar: task.created_by_avatar
-                    };
-                    setChecklist(parsed.checklist);
-                    setSelectedTaskForDetails(parsedTask);
-                  }}
-                >
-                  {/* Top Tags & Priority */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {task.tags && task.tags.split(',').filter(Boolean).map((tag: string) => {
-                        return (
-                          <span 
-                            key={tag} 
-                            style={{ 
-                              fontSize: '0.65rem', 
-                              padding: '1px 6px', 
-                              borderRadius: '20px', 
-                              background: 'var(--color-bg)', 
-                              color: 'var(--color-text-light)', 
-                              fontWeight: 700 
-                            }}
-                          >
-                            #{tag.trim()}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                      {task.priority === 'high' && (
-                        <span style={{ fontSize: '0.625rem', fontWeight: 800, padding: '1px 6px', borderRadius: '20px', background: 'var(--color-danger-light)', color: 'var(--color-danger)', flexShrink: 0 }}>
-                          {t('Khẩn cấp')}
-                        </span>
-                      )}
-                      {(() => {
-                        const isPinned = pinnedTaskIds.includes(Number(task.id));
-                        return (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              togglePinTask(task.id);
-                            }}
-                            style={{
-                              border: 'none',
-                              background: isPinned ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-                              color: isPinned ? 'var(--color-danger)' : 'var(--color-text-light)',
-                              cursor: 'pointer',
-                              padding: '4px',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              transition: 'all 0.2s'
-                            }}
-                            title={isPinned ? t('Bỏ ghim công việc') : t('Ghim công việc')}
-                          >
-                            <Pin size={14} style={{ transform: isPinned ? 'rotate(0deg)' : 'rotate(45deg)', transition: 'transform 0.2s' }} />
-                          </button>
-                        );
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Task Image Preview */}
-                  {task.first_image_url && (
-                    <div style={{
-                      width: '100%',
-                      height: '120px',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      border: '1px solid var(--color-border-light)',
-                      background: 'var(--color-bg-alt)',
-                      marginBottom: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <img 
-                        src={task.first_image_url.startsWith('http') || task.first_image_url.startsWith('blob:') || task.first_image_url.startsWith('data:')
-                          ? task.first_image_url 
-                          : `${import.meta.env.VITE_API_URL || '/backend'}/${task.first_image_url}`} 
-                        alt="Task Preview" 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          (e.currentTarget as HTMLElement).parentElement!.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Title & Description */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <h3 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.3 }}>
-                      {task.subject}
-                    </h3>
-                    {description && (
-                      <p style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--color-text-muted)',
-                        margin: 0,
-                        lineHeight: 1.4,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {stripHtml(description)}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Progress Bar indicator */}
-                  <div style={{ marginTop: 'auto', paddingTop: '2px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ:</span>
-                      <span style={{ fontSize: '0.68rem', fontWeight: 800, color: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>{progressVal}%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '6px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
-                      <div 
-                        style={{ 
-                          width: `${progressVal}%`, 
-                          height: '100%', 
-                          background: progressVal === 100 
-                            ? 'var(--color-success)' 
-                            : 'linear-gradient(90deg, #BD1D2D, #F97316)', 
-                          borderRadius: '99px',
-                          transition: 'width 0.4s var(--transition-fluid)' 
-                        }} 
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ borderTop: '1px solid var(--color-border-light)', margin: '2px 0' }} />
-
-                  {/* Footer metadata */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      {task.due_date && (
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '3px 8px', borderRadius: '20px', color: dateBadgeColor, background: dateBadgeBg, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <Calendar size={11} /> {getDueDateLabel(task.due_date, task.status === 'done', t)}
-                          {isOverdue && task.status !== 'done' && <ShieldAlert size={10} style={{ marginLeft: 2 }} />}
-                        </span>
-                      )}
-                      
-                      {task.related_type === 'contact' && task.related_id && (
-                        <span
-                          style={{
-                            fontSize: '0.7rem', fontWeight: 700, padding: '3px 9px', borderRadius: '20px',
-                            color: 'var(--color-text, #334155)', background: 'var(--color-bg-subtle, rgba(0,0,0,0.03))', border: '1px solid var(--color-border-light, rgba(0,0,0,0.05))', display: 'inline-flex', alignItems: 'center', gap: '4px'
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenContactProfile(Number(task.related_id));
-                          }}
-                        >
-                          <Avatar name={formatVietnameseFullName(task.contact_name || t('Khách hàng'))} size={14} />
-                          {formatVietnameseFullName(task.contact_name || t('Khách hàng'))}
-                        </span>
-                      )}
-                    </div>
-
-                    {(() => {
-                      const assigneeUser = users.find((u: any) => String(u.id) === String(task.user_id));
-                      const approverUser = task.approver_id ? users.find((u: any) => String(u.id) === String(task.approver_id)) : null;
-                      const participantIds = task.participant_ids ? task.participant_ids.split(',').filter(Boolean) : [];
-                      const participantUsers = participantIds.map((id: string) => users.find((u: any) => String(u.id) === String(id))).filter(Boolean);
-
-                      return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => {
-                          if (participantUsers.length > 0) {
-                            e.stopPropagation();
-                            setSelectedTaskParticipants(participantUsers);
-                            setParticipantsModalOpen(true);
-                          }
-                        }}>
-                          {/* Assignee Avatar */}
-                          {assigneeUser && (
-                            <div title={`Chịu trách nhiệm: ${assigneeUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
-                              <Avatar src={assigneeUser.avatar_url || assigneeUser.avatar} name={assigneeUser.full_name} size={24} />
-                              <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-primary)', borderRadius: '50%', width: 10, height: 10, border: '1.5px solid var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
-                            </div>
-                          )}
-
-                          {/* Approver Avatar */}
-                          {approverUser && (
-                            <div title={`Người duyệt: ${approverUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
-                              <Avatar src={approverUser.avatar_url || approverUser.avatar} name={approverUser.full_name} size={24} />
-                              <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-warning)', borderRadius: '50%', width: 10, height: 10, border: '1.5px solid var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
-                            </div>
-                          )}
-
-                          {/* Overlapping Participant Avatars */}
-                          {participantUsers.length > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px', position: 'relative' }}>
-                              {participantUsers.slice(0, 3).map((pUser: any, pIdx: number) => (
-                                <div
-                                  key={pUser.id}
-                                  title={`Người liên quan: ${pUser.full_name}`}
-                                  style={{
-                                    marginLeft: pIdx > 0 ? '-8px' : '0px',
-                                    border: '1.5px solid var(--color-surface)',
-                                    borderRadius: '50%',
-                                    overflow: 'hidden',
-                                    zIndex: 10 - pIdx,
-                                    display: 'flex'
-                                  }}
-                                >
-                                  <Avatar src={pUser.avatar_url || pUser.avatar} name={pUser.full_name} size={22} />
-                                </div>
-                              ))}
-                              {participantUsers.length > 3 && (
-                                <div
-                                  style={{
-                                    marginLeft: '-8px',
-                                    width: '22px',
-                                    height: '22px',
-                                    borderRadius: '50%',
-                                    background: 'var(--color-border)',
-                                    color: 'var(--color-text-muted)',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 800,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    border: '1.5px solid var(--color-surface)',
-                                    zIndex: 5,
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  +{participantUsers.length - 3}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              );
-            })}
-            </div>
-            {filteredWsTasks.length > wsTasksPageSize && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                <Pagination
-                  total={filteredWsTasks.length}
-                  page={wsTasksPage}
-                  pageSize={wsTasksPageSize}
-                  onChange={setWsTasksPage}
-                />
-              </div>
-            )}
-          </>
-        ) : wsViewMode === 'kanban' ? (
-          /* Kanban View */
-          <>
-            {(() => {
-              const todoTasks = filteredWsTasks.filter(t => t.status !== 'done' && (!t.progress || t.progress === 0));
-              const inProgressTasks = filteredWsTasks.filter(t => t.status !== 'done' && t.progress > 0 && t.progress < 100);
-              const doneTasks = filteredWsTasks.filter(t => t.status === 'done' || t.progress === 100);
-
-              const renderKanbanColumn = (
-                colId: 'todo' | 'in_progress' | 'done',
-                title: string,
-                columnTasks: any[],
-                headerColor: string,
-                bgColor: string
-              ) => {
-                const isOver = activeOverCol === colId;
-                return (
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      if (activeOverCol !== colId) setActiveOverCol(colId);
-                    }}
-                    onDragLeave={() => setActiveOverCol(null)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setActiveOverCol(null);
-                      if (draggedTaskId !== null) {
-                        handleTaskDrop(draggedTaskId, colId);
-                      }
-                    }}
-                    style={{
-                      background: '#f8fafc',
-                      border: isOver ? '2px dashed var(--color-primary)' : '1px solid #e2e8f0',
-                      borderRadius: '16px',
-                      padding: '0.75rem',
-                      minHeight: '450px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.75rem',
-                      transition: 'all 0.2s',
-                      boxShadow: isOver ? '0 4px 12px rgba(189, 29, 45, 0.08)' : 'none',
-                      width: '100%'
-                    }}
-                  >
-                    {/* Column Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '0.375rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '0.25rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: headerColor }}></span>
-                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{title}</h4>
-                      </div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', background: bgColor, color: headerColor }}>
-                        {columnTasks.length}
-                      </span>
-                    </div>
-
-                    {/* Tasks List */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', flex: 1, overflowY: 'auto', maxHeight: '600px' }}>
-                      {columnTasks.slice(0, 30).map(task => {
-                        const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
-                        const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
-                        
-                        let dateBadgeColor = 'var(--color-text-muted)';
-                        let dateBadgeBg = 'var(--color-bg)';
-                        if (isOverdue) {
-                          dateBadgeColor = 'var(--color-danger)';
-                          dateBadgeBg = 'rgba(239, 68, 68, 0.08)';
-                        } else if (isToday) {
-                          dateBadgeColor = 'var(--color-warning)';
-                          dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
-                        }
-
-                        const link = task.body && !task.body.startsWith('{"erp_task":') 
-                          ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
-                          : '';
-                        
-                        let description = '';
-                        if (task.body) {
-                          if (task.body.startsWith('{"erp_task":')) {
-                            try {
-                              const parsed = JSON.parse(task.body);
-                              description = parsed.erp_task?.description || '';
-                            } catch (e) {
-                              description = task.body;
-                            }
-                          } else {
-                            description = task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
-                          }
-                        }
-                        
-                        const progressVal = task.progress || 0;
-
-                        return (
-                          <div
-                            key={task.id}
-                            draggable
-                            onDragStart={() => setDraggedTaskId(task.id)}
-                            onDragEnd={() => setDraggedTaskId(null)}
-                            onClick={() => {
-                              const parsed = parseDescriptionAndChecklist(description);
-                              const parsedTask = {
-                                id: task.id,
-                                title: task.subject,
-                                done: task.status === 'done',
-                                priority: task.priority,
-                                due_date: task.due_date ? task.due_date.slice(0, 10) : '',
-                                link,
-                                description: parsed.pureDescription,
-                                user_id: task.user_id,
-                                user_name: task.user_name || 'Hệ thống',
-                                tags: task.tags || '',
-                                participant_ids: task.participant_ids || '',
-                                progress: task.progress || 0,
-                                require_approval: task.require_approval || 0,
-                                approver_id: task.approver_id,
-                                approval_status: task.approval_status,
-                                contact_id: task.contact_id,
-                                contact_name: task.contact_name,
-                                contact_avatar: task.contact_avatar,
-                                related_type: task.related_type,
-                                related_id: task.related_id,
-                                body: task.body,
-                                created_by: task.created_by,
-                                created_by_name: task.created_by_name,
-                                created_by_avatar: task.created_by_avatar
-                              };
-                              setChecklist(parsed.checklist);
-                              setSelectedTaskForDetails(parsedTask);
-                            }}
-                            style={{
-                              background: pinnedTaskIds.includes(Number(task.id)) 
-                                ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.03)' : 'rgba(239, 68, 68, 0.015)') 
-                                : 'var(--color-surface)',
-                              border: pinnedTaskIds.includes(Number(task.id))
-                                ? '1.5px solid var(--color-danger)'
-                                : (isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)'),
-                              borderRadius: '12px',
-                              padding: '0.875rem',
-                              cursor: 'grab',
-                              opacity: task.status === 'done' ? 0.7 : 1,
-                              boxShadow: pinnedTaskIds.includes(Number(task.id))
-                                ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)'
-                                : 'var(--shadow-sm)',
-                              transition: 'all 0.2s',
-                              position: 'relative'
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = pinnedTaskIds.includes(Number(task.id))
-                                ? 'var(--color-danger)'
-                                : (isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-primary)');
-                              e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.borderColor = pinnedTaskIds.includes(Number(task.id))
-                                ? 'var(--color-danger)'
-                                : (isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-border-light)');
-                              e.currentTarget.style.boxShadow = pinnedTaskIds.includes(Number(task.id))
-                                ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)'
-                                : 'var(--shadow-sm)';
-                            }}
-                          >
-                            {/* Drag handle & header info */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', marginBottom: '4px' }}>
-                              <span className={`badge ${task.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.625rem', padding: '1px 5px' }}>
-                                {task.priority === 'high' ? 'Cao' : 'Trung bình'}
-                              </span>
-                              {(() => {
-                                const isPinned = pinnedTaskIds.includes(Number(task.id));
-                                return (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      togglePinTask(task.id);
-                                    }}
-                                    style={{
-                                      border: 'none',
-                                      background: isPinned ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-                                      color: isPinned ? 'var(--color-danger)' : 'var(--color-text-light)',
-                                      cursor: 'pointer',
-                                      padding: '4px',
-                                      borderRadius: '6px',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      transition: 'all 0.2s'
-                                    }}
-                                    title={isPinned ? t('Bỏ ghim công việc') : t('Ghim công việc')}
-                                  >
-                                    <Pin size={11} style={{ transform: isPinned ? 'rotate(0deg)' : 'rotate(45deg)', transition: 'transform 0.2s' }} />
-                                  </button>
-                                );
-                              })()}
-                            </div>
-
-                            {/* Task Image Preview */}
-                            {task.first_image_url && (
-                              <div style={{
-                                width: '100%',
-                                height: '100px',
-                                borderRadius: '6px',
-                                overflow: 'hidden',
-                                border: '1px solid var(--color-border-light)',
-                                background: 'var(--color-bg-alt)',
-                                marginBottom: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}>
-                                <img 
-                                  src={task.first_image_url.startsWith('http') || task.first_image_url.startsWith('blob:') || task.first_image_url.startsWith('data:')
-                                    ? task.first_image_url 
-                                    : `${import.meta.env.VITE_API_URL || '/backend'}/${task.first_image_url}`} 
-                                  alt="Task Preview" 
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                  onError={(e) => {
-                                    (e.currentTarget as HTMLElement).parentElement!.style.display = 'none';
-                                  }}
-                                />
-                              </div>
-                            )}
-
-                            {/* Task Title */}
-                            <p style={{ 
-                              fontSize: '0.8125rem', 
-                              fontWeight: 600, 
-                              color: 'var(--color-text)', 
-                              margin: '0 0 6px 0', 
-                              textDecoration: task.status === 'done' ? 'line-through' : 'none',
-                              lineHeight: '1.25'
-                            }}>
-                              {task.subject}
-                            </p>
-
-                            {/* Task Description */}
-                            {description && (
-                              <p style={{ 
-                                fontSize: '0.75rem', 
-                                color: 'var(--color-text-muted)', 
-                                margin: '0 0 6px 0',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                                lineHeight: '1.3'
-                              }}>
-                                {stripHtml(description)}
-                              </p>
-                            )}
-
-                            {/* Attachment Link */}
-                            {link && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '6px' }} onClick={e => e.stopPropagation()}>
-                                <Paperclip size={11} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                                <a 
-                                  href={link} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
-                                  style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 500, textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                >
-                                  {link.includes('uploads/') ? link.split('/').pop().replace(/^\d+_/, '') : link}
-                                </a>
-                              </div>
-                            )}
-
-                            {/* Related Entity Badge */}
-                            {task.related_type === 'contact' && task.related_id && (
-                              <div style={{ marginBottom: '6px' }} onClick={e => e.stopPropagation()}>
-                                <span
-                                  style={{
-                                    fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
-                                    color: 'var(--color-text, #334155)', background: 'var(--color-bg-subtle, rgba(0,0,0,0.03))', border: '1px solid var(--color-border-light, rgba(0,0,0,0.05))', display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                    cursor: 'pointer'
-                                  }}
-                                  onClick={() => handleOpenContactProfile(Number(task.related_id))}
-                                >
-                                  <Avatar name={formatVietnameseFullName(task.contact_name || t('Khách hàng'))} size={12} />
-                                  {formatVietnameseFullName(task.contact_name || t('Khách hàng'))}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Tags */}
-                            {task.tags && (
-                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                                {task.tags.split(',').filter(Boolean).map((tag: string) => (
-                                  <span 
-                                    key={tag} 
-                                    style={{ 
-                                      fontSize: '0.65rem', 
-                                      padding: '2px 8px', 
-                                      borderRadius: '20px', 
-                                      background: 'var(--color-bg)', 
-                                      color: 'var(--color-text-light)', 
-                                      fontWeight: 700 
-                                    }}
-                                  >
-                                    #{tag.trim()}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Progress Bar indicator */}
-                            <div style={{ marginTop: '0.375rem', paddingTop: '4px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ:</span>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>{progressVal}%</span>
-                              </div>
-                              <div style={{ width: '100%', height: '12px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
-                                <div style={{ width: `${progressVal}%`, height: '100%', background: progressVal === 100 ? 'var(--color-success)' : 'linear-gradient(90deg, #BD1D2D, #F97316)', borderRadius: '99px', transition: 'width 0.4s var(--transition-fluid)' }} />
-                              </div>
-                            </div>
-
-                            {/* Footer info (Due Date & Progress & Avatars) */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '0.5rem', paddingTop: '0.375rem', borderTop: '1px solid var(--color-border-light)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ 
-                                  fontSize: '0.7rem', 
-                                  color: isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '3px',
-                                  fontWeight: isOverdue && task.status !== 'done' ? 600 : 'normal'
-                                }}>
-                                  <Clock size={10} />
-                                  {getDueDateLabel(task.due_date, task.status === 'done', t)}
-                                </span>
-                                
-                                {colId === 'in_progress' && (
-                                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)' }}>
-                                    {progressVal}%
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Assignee & Participants Avatars */}
-                              {(() => {
-                                const assigneeUser = users.find((u: any) => String(u.id) === String(task.user_id));
-                                const approverUser = task.approver_id ? users.find((u: any) => String(u.id) === String(task.approver_id)) : null;
-                                const participantIds = task.participant_ids ? task.participant_ids.split(',').filter(Boolean) : [];
-                                const participantUsers = participantIds.map((id: string) => users.find((u: any) => String(u.id) === String(id))).filter(Boolean);
-
-                                if (!assigneeUser && !approverUser && participantUsers.length === 0) return null;
-
-                                return (
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }} onClick={(e) => {
-                                    if (participantUsers.length > 0) {
-                                      e.stopPropagation();
-                                      setSelectedTaskParticipants(participantUsers);
-                                      setParticipantsModalOpen(true);
-                                    }
-                                  }}>
-                                    {/* Assignee Avatar */}
-                                    {assigneeUser && (
-                                      <div title={`Chịu trách nhiệm: ${assigneeUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
-                                        <Avatar src={assigneeUser.avatar_url || assigneeUser.avatar} name={assigneeUser.full_name} size={22} />
-                                        <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-primary)', borderRadius: '50%', width: 8, height: 8, border: '1.5px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
-                                      </div>
-                                    )}
-
-                                    {/* Approver Avatar */}
-                                    {approverUser && (
-                                      <div title={`Người duyệt: ${approverUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
-                                        <Avatar src={approverUser.avatar_url || approverUser.avatar} name={approverUser.full_name} size={22} />
-                                        <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-warning)', borderRadius: '50%', width: 8, height: 8, border: '1.5px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
-                                      </div>
-                                    )}
-
-                                    {/* Overlapping Participant Avatars */}
-                                    {participantUsers.length > 0 && (
-                                      <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px', position: 'relative' }}>
-                                        {participantUsers.slice(0, 3).map((pUser: any, pIdx: number) => (
-                                          <div
-                                            key={pUser.id}
-                                            title={`Người liên quan: ${pUser.full_name}`}
-                                            style={{
-                                              marginLeft: pIdx > 0 ? '-6px' : '0px',
-                                              border: '1.5px solid white',
-                                              borderRadius: '50%',
-                                              overflow: 'hidden',
-                                              zIndex: 10 - pIdx,
-                                              display: 'flex'
-                                            }}
-                                          >
-                                            <Avatar src={pUser.avatar_url || pUser.avatar} name={pUser.full_name} size={20} />
-                                          </div>
-                                        ))}
-                                        {participantUsers.length > 3 && (
-                                          <div
-                                            style={{
-                                              marginLeft: '-6px',
-                                              width: '20px',
-                                              height: '20px',
-                                              borderRadius: '50%',
-                                              background: 'var(--color-border)',
-                                              color: 'var(--color-text-muted)',
-                                              fontSize: '0.6rem',
-                                              fontWeight: 800,
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              justifyContent: 'center',
-                                              border: '1.5px solid white',
-                                              zIndex: 5,
-                                              cursor: 'pointer'
-                                            }}
-                                          >
-                                            +{participantUsers.length - 3}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {columnTasks.length > 30 && (
-                        <div style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: '8px', border: '1px dashed var(--color-border-light)', margin: '0.5rem' }}>
-                          {t('Hiển thị 30 / {total} công việc. Hãy dùng tìm kiếm/bộ lọc để tìm các công việc khác.').replace('{total}', String(columnTasks.length))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              };
-
-              return (
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem', alignItems: 'start', width: '100%' }}>
-                  {renderKanbanColumn('todo', t('Cần làm'), todoTasks, 'var(--color-text-muted)', '#e2e8f0')}
-                  {renderKanbanColumn('in_progress', t('Đang làm'), inProgressTasks, 'var(--color-warning)', 'rgba(245, 158, 11, 0.12)')}
-                  {renderKanbanColumn('done', t('Đã xong'), doneTasks, 'var(--color-success)', 'rgba(16, 185, 129, 0.12)')}
-                </div>
-              );
-            })()}
-          </>
-        ) : (
-          /* Focus Mode (Fullscreen Zen Mode) */
-          <div style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border-light)',
-            borderRadius: '16px',
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : '360px minmax(0, 1fr)',
-            overflow: 'hidden',
-            height: isMobile ? 'auto' : 'calc(100vh - 120px)',
-            minHeight: '600px',
-            width: '100%'
-          }}>
-            {/* Left Column: Tasks List */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              borderRight: isMobile ? 'none' : '1px solid var(--color-border-light)',
-              height: '100%',
-              overflowY: 'auto'
-            }}>
-              <div style={{ 
-                padding: '1.25rem 1rem', 
-                borderBottom: '1px solid var(--color-border-light)', 
-                background: 'var(--color-surface)', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '8px' 
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button
-                      onClick={() => {
-                        setWsViewMode('grid');
-                        setSelectedTaskForDetails(null);
-                        setIsFocusSessionActive(false);
-                      }}
-                      style={{
-                        border: 'none',
-                        background: 'transparent',
-                        color: 'var(--color-text-light)',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '6px',
-                        transition: 'background 0.2s'
-                      }}
-                      className="hover-bg-light"
-                      title={t('Quay lại')}
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
-                      {t('CHẾ ĐỘ TẬP TRUNG')}
-                    </span>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setWsViewMode('grid');
-                      setSelectedTaskForDetails(null);
-                      setIsFocusSessionActive(false);
-                    }}
-                    style={{
-                      border: 'none',
-                      background: 'rgba(239, 68, 68, 0.08)',
-                      color: 'var(--color-danger)',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                    className="hover-lift"
-                  >
-                    <X size={12} />
-                    {t('Thoát')}
-                  </button>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                  <span>{t('DANH SÁCH CÔNG VIỆC')} ({filteredWsTasks.length})</span>
-                </div>
-              </div>
-
-              {/* Filter Ribbon Pills inside Focus Mode Left Panel */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                overflowX: 'auto',
-                padding: '8px 10px',
-                borderBottom: '1px solid var(--color-border-light)',
-                background: 'var(--color-bg-light)',
-                scrollbarWidth: 'none'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => { setWsDatePreset('all'); setWsStatus('planned'); setWsTaskFilter('all'); }}
-                  style={{
-                    padding: '4px 9px',
-                    borderRadius: '16px',
-                    border: wsDatePreset === 'all' && wsTaskFilter === 'all' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                    background: wsDatePreset === 'all' && wsTaskFilter === 'all' ? 'rgba(189, 29, 45, 0.08)' : 'var(--color-surface)',
-                    color: wsDatePreset === 'all' && wsTaskFilter === 'all' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}
-                >
-                  <span>{t('Tất cả')}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setWsDatePreset('overdue'); setWsStatus('planned'); setWsTaskFilter('all'); }}
-                  style={{
-                    padding: '4px 9px',
-                    borderRadius: '16px',
-                    border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border)',
-                    background: wsDatePreset === 'overdue' ? 'var(--color-danger-light)' : 'var(--color-surface)',
-                    color: 'var(--color-danger)',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}
-                >
-                  <Clock size={11} />
-                  <span>{t('Quá hạn')}</span>
-                  <span style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '0.65rem', fontWeight: 800 }}>
-                    {workspaceStats.overdue}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setWsDatePreset('today'); setWsStatus('planned'); setWsTaskFilter('all'); }}
-                  style={{
-                    padding: '4px 9px',
-                    borderRadius: '16px',
-                    border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border)',
-                    background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.1)' : 'var(--color-surface)',
-                    color: 'var(--color-warning)',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}
-                >
-                  <Calendar size={11} />
-                  <span>{t('Đến hạn')}</span>
-                  <span style={{ background: 'var(--color-warning)', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '0.65rem', fontWeight: 800 }}>
-                    {workspaceStats.dueToday}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setWsDatePreset('tomorrow'); setWsStatus('planned'); setWsTaskFilter('all'); }}
-                  style={{
-                    padding: '4px 9px',
-                    borderRadius: '16px',
-                    border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border)',
-                    background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.1)' : 'var(--color-surface)',
-                    color: 'var(--color-info)',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}
-                >
-                  <ArrowUpRight size={11} />
-                  <span>{t('Sắp đến hạn')}</span>
-                  <span style={{ background: 'var(--color-info)', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '0.65rem', fontWeight: 800 }}>
-                    {workspaceStats.upcoming}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setWsTaskFilter('approve_by_me'); setWsStatus('all'); setWsDatePreset('all'); }}
-                  style={{
-                    padding: '4px 9px',
-                    borderRadius: '16px',
-                    border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border)',
-                    background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.1)' : 'var(--color-surface)',
-                    color: '#8b5cf6',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}
-                >
-                  <UserCheck size={11} />
-                  <span>{t('Chờ tôi duyệt')}</span>
-                  <span style={{ background: '#8b5cf6', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '0.65rem', fontWeight: 800 }}>
-                    {workspaceStats.pendingApproval}
-                  </span>
-                </button>
-              </div>
-              {/* Gamification Progress Bar */}
-              {(filteredWsTasks.length > 0 || completedCallsCount > 0) && (
-                <div style={{ padding: '0.65rem 1rem 0.8rem', borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)' }}>
-                  {filteredWsTasks.length > 0 && (
-                    <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '4px' }}>
-                        <span>{t('Tiến độ công việc')}</span>
-                        <span>
-                          {filteredWsTasks.filter(t => t.status === 'done').length}/{filteredWsTasks.length} ({
-                            Math.round((filteredWsTasks.filter(t => t.status === 'done').length / filteredWsTasks.length) * 100)
-                          }%)
-                        </span>
-                      </div>
-                      <div style={{ width: '100%', height: '6px', background: 'var(--color-border-light)', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
-                        <div style={{
-                          width: `${(filteredWsTasks.filter(t => t.status === 'done').length / filteredWsTasks.length) * 100}%`,
-                          height: '100%',
-                          background: 'var(--color-success)',
-                          borderRadius: '3px',
-                          transition: 'width 0.4s ease-in-out'
-                        }} />
-                      </div>
-                    </>
-                  )}
-                  {/* Call Stats with dynamic preset label */}
-                  <div 
-                    onClick={handleOpenCallsModal}
-                    className="hover-lift"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '0.72rem',
-                      color: 'var(--color-text-muted)',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      background: 'rgba(16, 185, 129, 0.06)',
-                      padding: '5px 10px',
-                      borderRadius: '8px',
-                      marginTop: '2px',
-                      border: '1px solid rgba(16, 185, 129, 0.12)'
-                    }}
-                  >
-                    <Phone size={12} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
-                    <span>
-                      {t('Đã thực hiện:')} <strong style={{ color: 'var(--color-success)', fontSize: '0.8rem' }}>{completedCallsCount}</strong> {t('cuộc gọi')} {
-                        wsDatePreset === 'today' ? t('hôm nay') :
-                        wsDatePreset === 'yesterday' ? t('hôm qua') :
-                        wsDatePreset === 'week' ? t('tuần này') :
-                        wsDatePreset === '7_days' ? t('7 ngày qua') :
-                        wsDatePreset === '30_days' ? t('30 ngày qua') :
-                        wsDatePreset === 'this_month' ? t('tháng này') :
-                        wsDatePreset === 'last_month' ? t('tháng trước') :
-                        wsDatePreset === 'tomorrow' ? t('ngày mai') :
-                        wsDatePreset === 'overdue' ? t('quá hạn') :
-                        t('từ trước tới nay')
-                      }
-                    </span>
-                  </div>
-                </div>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', padding: '0.5rem', gap: '0.5rem' }}>
-                {filteredWsTasks.slice(0, 50).map(task => {
-                  const isSelected = selectedTaskForDetails?.id === task.id;
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => handleSelectTask(task)}
-                      style={{
-                        padding: '0.75rem 1rem',
-                        borderRadius: '10px',
-                        border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border-light)',
-                        background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px'
-                      }}
-                      className="hover-lift"
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{
-                          fontWeight: 700,
-                          fontSize: '0.85rem',
-                          color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '220px'
-                        }}>
-                          {task.subject}
-                        </span>
-                        {task.priority === 'high' && (
-                          <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '1px 4px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)' }}>
-                            {t('Gấp')}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                        <span>
-                          {task.due_date ? getDueDateLabel(task.due_date, task.status === 'done', t) : ''}
-                        </span>
-                        <span style={{ fontWeight: 600 }}>{task.progress || 0}%</span>
-                      </div>
-                    </div>
-                  );
-                })}
-                {filteredWsTasks.length > 50 && (
-                  <div style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: '8px', border: '1px dashed var(--color-border-light)', margin: '0.5rem' }}>
-                    {t('Hiển thị 50 / {total} công việc. Hãy dùng tìm kiếm/bộ lọc để tìm các công việc khác.').replace('{total}', String(filteredWsTasks.length))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Column: Task Detail Embed */}
-            <div 
-              className="focus-right-column"
-              style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1, overflow: 'hidden', minWidth: 0 }}
-            >
-              {selectedTaskForDetails ? (
-                <div style={{ height: '100%', overflowY: 'auto' }}>
-                  <Suspense fallback={null}>
-                    <WorkspaceTaskDrawer
-                      isOpen={true}
-                      onClose={() => setSelectedTaskForDetails(null)}
-                      task={selectedTaskForDetails}
-                      onUpdate={() => {
-                        fetchPortalTasks();
-                        fetchWorkspaceTasks();
-                        window.dispatchEvent(new CustomEvent('task-updated'));
-                      }}
-                      users={users}
-                      embedMode={true}
-                      onOpenContact={(contactId) => {
-                        handleOpenContactProfile(contactId);
-                      }}
-                    />
-                  </Suspense>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)', gap: '1rem', padding: '2rem', flex: 1 }}>
-                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>
-                    <CheckSquare size={32} />
-                  </div>
-                  <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <p style={{ fontWeight: 800, color: 'var(--color-text)', margin: 0, fontSize: '1rem' }}>
-                      {t('CHẾ ĐỘ TẬP TRUNG (FOCUS MODE)')}
-                    </p>
-                    <p style={{ fontSize: '0.8125rem', margin: '6px auto 0', maxWidth: '320px', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                      {t('Chọn một công việc ở cột bên trái để bắt đầu gọi điện và ghi chú thông tin khách hàng trực tiếp.')}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        </>
-        )}
-
-        {/* Task Details Modal moved to root level */}
-      </div>
+      <WorkspaceView
+        currentUser={currentUser || user}
+        user={user}
+        displayUser={displayUser}
+        isAdminOrManager={isAdminOrManager}
+        isTopAdmin={isTopAdmin}
+        isSaleUser={isSaleUser}
+        teamsList={teamsList}
+        users={users}
+        wsTasks={wsTasks}
+        filteredWsTasks={filteredWsTasks}
+        paginatedWsTasks={paginatedWsTasks}
+        loadingWsTasks={loadingWsTasks}
+        workspaceStats={workspaceStats}
+        wsViewMode={wsViewMode}
+        setWsViewMode={setWsViewMode}
+        wsSearch={wsSearch}
+        setWsSearch={setWsSearch}
+        isWsSearchFocused={isWsSearchFocused}
+        setIsWsSearchFocused={setIsWsSearchFocused}
+        wsPriority={wsPriority}
+        setWsPriority={setWsPriority}
+        wsStatus={wsStatus}
+        setWsStatus={setWsStatus}
+        showDoneTasks={showDoneTasks}
+        setShowDoneTasks={setShowDoneTasks}
+        adminViewFull={adminViewFull}
+        setAdminViewFull={setAdminViewFull}
+        wsDatePreset={wsDatePreset}
+        setWsDatePreset={setWsDatePreset}
+        wsStartDate={wsStartDate}
+        setWsStartDate={setWsStartDate}
+        wsEndDate={wsEndDate}
+        setWsEndDate={setWsEndDate}
+        wsTeamId={wsTeamId}
+        setWsTeamId={setWsTeamId}
+        wsUserId={wsUserId}
+        setWsUserId={setWsUserId}
+        wsActivityType={wsActivityType}
+        setWsActivityType={setWsActivityType}
+        wsRelatedType={wsRelatedType}
+        setWsRelatedType={setWsRelatedType}
+        wsSubTab={wsSubTab}
+        setWsSubTab={setWsSubTab}
+        wsTaskFilter={wsTaskFilter}
+        setWsTaskFilter={setWsTaskFilter}
+        showAdvancedFilters={showAdvancedFilters}
+        setShowAdvancedFilters={setShowAdvancedFilters}
+        completedCallsCount={completedCallsCount}
+        handleOpenCallsModal={handleOpenCallsModal}
+        hideWorkspaceAlerts={hideWorkspaceAlerts}
+        setHideWorkspaceAlerts={setHideWorkspaceAlerts}
+        uncontactedCount={uncontactedCount}
+        pendingCoopsCount={pendingCoopsCount}
+        pendingCoopSlips={pendingCoopSlips}
+        upcomingMeetingsList={upcomingMeetingsList}
+        handleStartFocusSession={handleStartFocusSession}
+        setShowUpcomingMeetingsModal={setShowUpcomingMeetingsModal}
+        setShowWorkspaceCustomizer={setShowWorkspaceCustomizer}
+        showWorkspaceCustomizer={showWorkspaceCustomizer}
+        setIsWorkspaceStatsModalOpen={setIsWorkspaceStatsModalOpen}
+        setShowWorkspaceHelpModal={setShowWorkspaceHelpModal}
+        wsBg={wsBg}
+        wsCols={wsCols}
+        wsOverlay={wsOverlay}
+        sensors={sensors}
+        customCollisionDetection={customCollisionDetection}
+        handleGridDragStart={handleGridDragStart}
+        handleGridDragEnd={handleGridDragEnd}
+        enrichedTaskGroups={enrichedTaskGroups}
+        computedGroupSummary={computedGroupSummary}
+        activeTaskGroupId={activeTaskGroupId}
+        setActiveTaskGroupId={setActiveTaskGroupId}
+        handleCreateTaskGroup={handleCreateTaskGroup}
+        handleUpdateTaskGroup={handleUpdateTaskGroup}
+        handleDeleteTaskGroup={handleDeleteTaskGroup}
+        handleTogglePinTaskGroup={handleTogglePinTaskGroup}
+        handleReorderTaskGroups={handleReorderTaskGroups}
+        handleDropTaskOnGroup={handleDropTaskOnGroup}
+        draggedTaskId={draggedTaskId}
+        setDraggedTaskId={setDraggedTaskId}
+        showCardCreateGroupModal={showCardCreateGroupModal}
+        setShowCardCreateGroupModal={setShowCardCreateGroupModal}
+        currentQuoteIdx={currentQuoteIdx}
+        handlePrevQuote={handlePrevQuote}
+        handleShuffleQuote={handleShuffleQuote}
+        handleNextQuote={handleNextQuote}
+        pinnedTaskIds={pinnedTaskIds}
+        togglePinTask={togglePinTask}
+        getDueDateLabel={getDueDateLabel}
+        parseDescriptionAndChecklist={parseDescriptionAndChecklist}
+        setChecklist={setChecklist}
+        setSelectedTaskForDetails={setSelectedTaskForDetails}
+        selectedTaskForDetails={selectedTaskForDetails}
+        handleOpenContactProfile={handleOpenContactProfile}
+        setSelectedTaskParticipants={setSelectedTaskParticipants}
+        setParticipantsModalOpen={setParticipantsModalOpen}
+        taskGroups={taskGroups}
+        handleAssignTaskGroup={handleAssignTaskGroup}
+        handleToggleTaskStatus={handleToggleTaskStatus}
+        completingTaskId={completingTaskId}
+        wsTasksPage={wsTasksPage}
+        setWsTasksPage={setWsTasksPage}
+        wsTasksPageSize={wsTasksPageSize}
+        activeOverCol={activeOverCol}
+        setActiveOverCol={setActiveOverCol}
+        handleTaskDrop={handleTaskDrop}
+        handleSelectTask={handleSelectTask}
+        setIsFocusSessionActive={setIsFocusSessionActive}
+        activeDragTask={activeDragTask}
+        SortableWorkspaceCard={SortableWorkspaceCard}
+        WorkspaceCardInner={WorkspaceCardInner}
+        WorkspaceTaskDrawer={WorkspaceTaskDrawer}
+        fetchPortalTasks={fetchPortalTasks}
+        fetchWorkspaceTasks={fetchWorkspaceTasks}
+        setShowTaskModal={setShowTaskModal}
+        isMobile={isMobile}
+        theme={theme}
+        t={t}
+        navigate={navigate}
+      />
     );
   };
 
-  const renderDashboardView = () => {
+    const renderDashboardView = () => {
     const getCurrentDateVi = () => {
       const days = [
         t('Chủ Nhật'),
@@ -12228,20 +10748,33 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Tình trạng hôn nhân')}</label>
-                      <CustomSelect
-                        options={[
-                          { value: '', label: `-- ${t('Chọn tình trạng')} --` },
-                          { value: 'single', label: t('Độc thân') },
-                          { value: 'married', label: t('Đã kết hôn') },
-                          { value: 'divorced', label: t('Đã ly hôn') },
-                          { value: 'other', label: t('Khác') }
-                        ]}
-                        value={editMaritalStatus}
-                        onChange={val => setEditMaritalStatus(String(val))}
-                        placeholder={t('Chọn tình trạng...')}
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Quê quán / Nguyên quán')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editHometown}
+                          onChange={(e) => setEditHometown(e.target.value)}
+                          placeholder={t('VD: Hà Nội')}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Tình trạng hôn nhân')}</label>
+                        <CustomSelect
+                          options={[
+                            { value: '', label: `-- ${t('Chọn tình trạng')} --` },
+                            { value: 'single', label: t('Độc thân') },
+                            { value: 'married', label: t('Đã kết hôn') },
+                            { value: 'divorced', label: t('Đã ly hôn') },
+                            { value: 'other', label: t('Khác') }
+                          ]}
+                          value={editMaritalStatus}
+                          onChange={val => setEditMaritalStatus(String(val))}
+                          placeholder={t('Chọn tình trạng...')}
+                        />
+                      </div>
                     </div>
 
                     <div className="form-group">
@@ -16276,7 +14809,50 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         )}
 
         {/* Scrollable View Area */}
-        <main className={embedMode ? "" : "no-scrollbar responsive-main portal-main-content"} style={embedMode ? { width: '100%' } : { flex: 1, padding: '2rem 3rem', width: '100%', overflowY: 'auto' }}>
+        {/* Workspace Fixed Background Layer */}
+        {activeTab === 'workspace' && wsBg && (
+          <div
+            className="workspace-fixed-bg-layer"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 0,
+              pointerEvents: 'none',
+              overflow: 'hidden'
+            }}
+          >
+            <AnimatePresence mode="sync">
+              <motion.div
+                key={wsBg}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.45, ease: 'easeInOut' }}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundImage: wsBg.startsWith('linear-gradient') || wsBg.startsWith('radial-gradient') ? wsBg : `url("${wsBg}")`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              />
+            </AnimatePresence>
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundColor: (wsOverlay ?? 0) > 0
+                  ? (theme === 'dark' ? `rgba(15, 23, 42, ${((wsOverlay ?? 0) / 100)})` : `rgba(255, 255, 255, ${((wsOverlay ?? 0) / 100) * 0.45})`)
+                  : 'transparent',
+                backdropFilter: (wsOverlay ?? 0) > 0 ? `blur(${Math.min(10, (wsOverlay ?? 0) / 5)}px)` : 'none'
+              }}
+            />
+          </div>
+        )}
+
+        {/* Scrollable View Area */}
+        <main className={embedMode ? "" : "no-scrollbar responsive-main portal-main-content"} style={embedMode ? { width: '100%' } : { flex: 1, padding: activeTab === 'workspace' ? 0 : '2rem 3rem', width: '100%', overflowY: 'auto', position: 'relative', zIndex: 1 }}>
           <div style={{ width: '100%' }}>
 
 
@@ -20065,6 +18641,57 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         </CustomModal>
       )}
+
+      {/* Workspace Customizer Modal */}
+      <WorkspaceCustomizerModal
+        isOpen={showWorkspaceCustomizer}
+        onClose={() => setShowWorkspaceCustomizer(false)}
+        currentBg={wsBg}
+        currentCols={wsCols}
+        currentOverlay={wsOverlay}
+        onSave={(bg, cols, overlay) => {
+          const uid = currentUser?.id || user?.id;
+          setWsBg(bg);
+          setWsCols(cols);
+          setWsOverlay(overlay);
+          if (uid) {
+            localStorage.setItem(`ws_custom_bg_${uid}`, bg);
+            localStorage.setItem(`ws_custom_cols_${uid}`, String(cols));
+            localStorage.setItem(`ws_custom_overlay_${uid}`, String(overlay));
+          }
+          fetchAPI('save_workspace_settings', {
+            method: 'POST',
+            body: JSON.stringify({ bg, cols, overlay })
+          }).catch(err => console.error('Lỗi lưu cài đặt bàn làm việc:', err));
+        }}
+        userId={currentUser?.id || user?.id}
+      />
+
+      {/* Workspace Task Stats Modal */}
+      <WorkspaceTaskStatsModal
+        isOpen={isWorkspaceStatsModalOpen}
+        onClose={() => setIsWorkspaceStatsModalOpen(false)}
+        tasks={wsTasks}
+        users={users}
+        currentUserId={currentUser?.id || user?.id}
+        currentUserRole={currentUser?.role || user?.role}
+        currentUserTeamId={(currentUser as any)?.team_id || (user as any)?.team_id}
+        teamsList={teamsList || allowedTeams || []}
+        onSelectTask={(t) => {
+          setIsWorkspaceStatsModalOpen(false);
+          handleSelectTask(t);
+        }}
+      />
+
+      {/* Task Complete Confirm Modal */}
+      <TaskCompleteConfirmModal
+        isOpen={!!taskToConfirmComplete}
+        onClose={() => setTaskToConfirmComplete(null)}
+        onConfirm={handleConfirmCompleteTask}
+        task={taskToConfirmComplete}
+        users={users}
+        isSubmitting={isConfirmingComplete}
+      />
     </div>
   );
 };

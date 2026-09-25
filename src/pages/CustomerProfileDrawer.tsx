@@ -1164,20 +1164,63 @@ const TimelineItem = React.memo<TimelineItemProps>(({
               )}
 
               {linkUrl && (
-                <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+                <div style={{ marginTop: '0.5rem' }} onClick={e => e.stopPropagation()}>
                   {/\.(jpg|jpeg|png|gif|webp)$/i.test(linkUrl) ? (
-                    <Camera size={14} style={{ color: '#10b981' }} />
+                    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '4px', maxWidth: '100%' }}>
+                      <a
+                        href={resolveAttachmentUrl(linkUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'block',
+                          maxWidth: '220px',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          border: '1px solid var(--color-border)',
+                          boxShadow: 'var(--shadow-sm)',
+                          background: 'var(--color-surface)',
+                          transition: 'transform 0.2s, box-shadow 0.2s'
+                        }}
+                        className="hover-lift"
+                        title="Click để xem ảnh gốc"
+                      >
+                        <img
+                          src={resolveAttachmentUrl(linkUrl)}
+                          alt="Ảnh đính kèm"
+                          style={{
+                            width: '100%',
+                            maxHeight: '160px',
+                            objectFit: 'cover',
+                            display: 'block'
+                          }}
+                          loading="lazy"
+                        />
+                      </a>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                        <Camera size={12} style={{ color: '#10b981' }} />
+                        <a
+                          href={resolveAttachmentUrl(linkUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'var(--color-text-muted)', textDecoration: 'underline', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        >
+                          {linkUrl.split('/').pop()}
+                        </a>
+                      </div>
+                    </div>
                   ) : (
-                    <FileText size={14} style={{ color: 'var(--color-primary)' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <FileText size={14} style={{ color: 'var(--color-primary)' }} />
+                      <a
+                        href={resolveAttachmentUrl(linkUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                      >
+                        {linkUrl.split('/').pop()}
+                      </a>
+                    </div>
                   )}
-                  <a
-                    href={resolveAttachmentUrl(linkUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
-                  >
-                    {linkUrl.split('/').pop()}
-                  </a>
                 </div>
               )}
             
@@ -12389,23 +12432,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   /* Note Attachment */
                   <div>
                     {noteAttachmentPreview && noteAttachmentFile ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                           {noteAttachmentFile.type.startsWith('image/') ? (
-                            <Camera size={18} style={{ color: '#10b981' }} />
+                            <img
+                              src={noteAttachmentPreview}
+                              alt="Note preview"
+                              style={{ width: '46px', height: '46px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--color-border)', flexShrink: 0 }}
+                            />
                           ) : (
-                            <FileText size={18} style={{ color: 'var(--color-primary)' }} />
+                            <FileText size={20} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
                           )}
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{noteAttachmentFile.name}</span>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{noteAttachmentFile.name}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{(noteAttachmentFile.size / 1024).toFixed(1)} KB</div>
+                          </div>
                         </div>
                         <button 
+                          type="button"
                           className="btn ghost text-danger sm" 
                           onClick={() => {
                             if (noteAttachmentPreview) { URL.revokeObjectURL(noteAttachmentPreview); }
                             setNoteAttachmentFile(null);
                             setNoteAttachmentPreview(null);
                           }} 
-                          style={{ padding: '6px' }}
+                          style={{ padding: '6px', flexShrink: 0 }}
+                          title="Xóa tệp đính kèm"
                         >
                           <Trash2 size={14} />
                         </button>

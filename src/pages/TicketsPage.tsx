@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save, MessageSquare } from 'lucide-react';
+import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save, MessageSquare, User } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import { TicketDrawer } from './TicketDrawer';
 const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
@@ -57,6 +57,13 @@ export const TicketsPage: React.FC = () => {
   const [isBugTicket, setIsBugTicket] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const formatSlaDate = (dateStr: any) => {
     if (!dateStr) return '—';
@@ -287,85 +294,147 @@ export const TicketsPage: React.FC = () => {
           <TableSkeleton rows={5} cols={6} />
         </div>
       ) : viewMode === 'list' ? (
-        <div className="card" style={{ overflow: 'visible' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Mã & Tiêu đề</th>
-                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Khách hàng</th>
-                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Phụ trách</th>
-                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Độ ưu tiên</th>
-                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Trạng thái</th>
-                <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>SLA (Hạn chót)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTickets.map(t => (
-                <motion.tr 
-                  key={t.id} 
-                  whileHover={{ backgroundColor: 'var(--color-bg)' }}
-                  onClick={() => setSelectedTicket(t)}
-                  style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer', transition: 'background-color 0.2s' }}
-                >
-                  <td style={{ padding: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <AlertCircle size={16} color={PRIORITIES.find(p => p.id === t.priority)?.color} style={{ marginTop: '2px' }} />
-                      <div>
-                        <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>{t.subject}</span>
-                          {Number(t.comment_count) > 0 && (
-                            <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                              <MessageSquare size={11} /> {t.comment_count}
-                            </span>
-                          )}
-                        </p>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                          #{t.id} • Tạo: {new Date(t.created_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}
-                          {t.last_comment_at && (
-                            <span style={{ marginLeft: '6px', color: 'var(--color-primary)' }}>
-                              • {t.last_comment_user_name ? `${t.last_comment_user_name}: ` : ''}mới nhắn {new Date(t.last_comment_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}
-                            </span>
-                          )}
-                        </p>
+        isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingBottom: '5rem' }}>
+            {filteredTickets.map(t => (
+              <div
+                key={t.id}
+                onClick={() => setSelectedTicket(t)}
+                style={{
+                  padding: '14px 16px',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1, minWidth: 0 }}>
+                    <AlertCircle size={18} color={PRIORITIES.find(p => p.id === t.priority)?.color} style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '0.925rem', lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span>{t.subject}</span>
+                        {Number(t.comment_count) > 0 && (
+                          <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                            <MessageSquare size={11} /> {t.comment_count}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '2px' }}>
+                        #{t.id} • Tạo: {new Date(t.created_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}
                       </div>
                     </div>
-                  </td>
-                  <td style={{ padding: '1rem', fontWeight: 600, fontSize: '0.875rem' }}>{t.customer_name}</td>
-                  <td style={{ padding: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Avatar name={t.assignee_name} src={t.assignee_avatar} size={24} />
-                      <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t.assignee_name || 'Chưa phân công'}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '1rem' }}>
-                    <span className="badge" style={{ background: PRIORITIES.find(p => p.id === t.priority)?.color + '20', color: PRIORITIES.find(p => p.id === t.priority)?.color }}>
-                      {PRIORITIES.find(p => p.id === t.priority)?.label}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem' }}>
-                    <span className="badge" style={{ background: TICKET_STATUSES.find(p => p.id === t.status)?.color + '20', color: TICKET_STATUSES.find(p => p.id === t.status)?.color }}>
-                      {TICKET_STATUSES.find(p => p.id === t.status)?.label}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: 600, color: isSlaOverdue(t.due_date) ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                    {formatSlaDate(t.due_date)}
-                  </td>
-                </motion.tr>
-              ))}
-               {filteredTickets.length === 0 && (
-                <tr className="empty-row">
-                  <td colSpan={6} style={{ padding: '2rem 1rem' }}>
-                    <EmptyCard
-                      icon={<LifeBuoy />}
-                      title="Không tìm thấy Ticket nào"
-                      description="Hệ thống không tìm thấy bất kỳ Ticket báo lỗi hoặc yêu cầu hỗ trợ nào khớp với bộ lọc hiện tại."
-                    />
-                  </td>
+                  </div>
+                  <span className="badge" style={{ background: TICKET_STATUSES.find(p => p.id === t.status)?.color + '20', color: TICKET_STATUSES.find(p => p.id === t.status)?.color, fontSize: '0.72rem', flexShrink: 0 }}>
+                    {TICKET_STATUSES.find(p => p.id === t.status)?.label}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', fontSize: '0.78rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)' }}>
+                    <User size={13} />
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{t.customer_name || 'Khách vãng lai'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Avatar name={t.assignee_name} src={t.assignee_avatar} size={20} />
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{t.assignee_name || 'Chưa gán'}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filteredTickets.length === 0 && (
+              <EmptyCard
+                icon={<LifeBuoy />}
+                title="Không tìm thấy Ticket nào"
+                description="Hệ thống không tìm thấy bất kỳ Ticket báo lỗi hoặc yêu cầu hỗ trợ nào khớp với bộ lọc hiện tại."
+              />
+            )}
+          </div>
+        ) : (
+          <div className="card table-wrap custom-scrollbar" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Mã & Tiêu đề</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Khách hàng</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Phụ trách</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Độ ưu tiên</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>Trạng thái</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>SLA (Hạn chót)</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredTickets.map(t => (
+                  <motion.tr 
+                    key={t.id} 
+                    whileHover={{ backgroundColor: 'var(--color-bg)' }}
+                    onClick={() => setSelectedTicket(t)}
+                    style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                  >
+                    <td style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <AlertCircle size={16} color={PRIORITIES.find(p => p.id === t.priority)?.color} style={{ marginTop: '2px' }} />
+                        <div>
+                          <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>{t.subject}</span>
+                            {Number(t.comment_count) > 0 && (
+                              <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                <MessageSquare size={11} /> {t.comment_count}
+                              </span>
+                            )}
+                          </p>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                            #{t.id} • Tạo: {new Date(t.created_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}
+                            {t.last_comment_at && (
+                              <span style={{ marginLeft: '6px', color: 'var(--color-primary)' }}>
+                                • {t.last_comment_user_name ? `${t.last_comment_user_name}: ` : ''}mới nhắn {new Date(t.last_comment_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '1rem', fontWeight: 600, fontSize: '0.875rem' }}>{t.customer_name}</td>
+                    <td style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Avatar name={t.assignee_name} src={t.assignee_avatar} size={24} />
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t.assignee_name || 'Chưa phân công'}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      <span className="badge" style={{ background: PRIORITIES.find(p => p.id === t.priority)?.color + '20', color: PRIORITIES.find(p => p.id === t.priority)?.color }}>
+                        {PRIORITIES.find(p => p.id === t.priority)?.label}
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      <span className="badge" style={{ background: TICKET_STATUSES.find(p => p.id === t.status)?.color + '20', color: TICKET_STATUSES.find(p => p.id === t.status)?.color }}>
+                        {TICKET_STATUSES.find(p => p.id === t.status)?.label}
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: 600, color: isSlaOverdue(t.due_date) ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                      {formatSlaDate(t.due_date)}
+                    </td>
+                  </motion.tr>
+                ))}
+                 {filteredTickets.length === 0 && (
+                  <tr className="empty-row">
+                    <td colSpan={6} style={{ padding: '2rem 1rem' }}>
+                      <EmptyCard
+                        icon={<LifeBuoy />}
+                        title="Không tìm thấy Ticket nào"
+                        description="Hệ thống không tìm thấy bất kỳ Ticket báo lỗi hoặc yêu cầu hỗ trợ nào khớp với bộ lọc hiện tại."
+                      />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )
       ) : (
         <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', minHeight: '600px' }}>
           {TICKET_STATUSES.map(col => {

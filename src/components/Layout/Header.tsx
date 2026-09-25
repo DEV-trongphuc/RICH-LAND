@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { CustomModal } from '../ui/CustomModal';
 import { NotificationSettingsModal } from '../ui/NotificationSettingsModal';
 import { fetchAPI } from '../../utils/api';
+import { playNotificationChime } from '../../utils/soundHelper';
+import { AppIcon } from '../common/AppIcons';
 import vnFlag from '../../assets/vn.svg';
 import usFlag from '../../assets/us.svg';
 import jpFlag from '../../assets/jp.svg';
@@ -264,6 +266,9 @@ export const Header = ({
           });
           
           if (newUnreadCount > 0 && hasNewUnread && latestNotif) {
+            // Play notification chime sound
+            playNotificationChime();
+
             // Trigger desktop notification
             if ('Notification' in window && Notification.permission === 'granted') {
               try {
@@ -1691,11 +1696,109 @@ export const Header = ({
               )
             : [];
 
-          const recentTargets = ['Dashboard', 'Bàn làm việc', 'Báo cáo', 'Khách hàng', 'Pipeline', 'Giỏ hàng', 'Kho Databank', 'Lịch biểu', 'Dự án'];
-          const recentItems = recentTargets
-            .map(name => allVisibleItems.find(item => item.name === name))
-            .filter(Boolean)
-            .slice(0, isMobile ? 9 : 7);
+          // Role-tailored priority items for Quick Navigation (9 for Mobile 3x3, 7 for PC 1x7)
+          const getRoleRecentTargets = (userRole: string) => {
+            if (userRole === 'sale' || userRole === 'sales') {
+              return [
+                'Bàn làm việc',
+                'Dashboard',
+                'Khách hàng',
+                'Giỏ hàng',
+                'Kho Databank',
+                'Dự án',
+                'Báo giá',
+                'Phiếu đặt cọc',
+                'Lịch trình',
+                'Chấm công',
+                'Ticket data lỗi',
+                'Ticket hỗ trợ'
+              ];
+            }
+            if (userRole === 'manager') {
+              return [
+                'Bàn làm việc',
+                'Dashboard',
+                'Báo cáo',
+                'Khách hàng',
+                'Giỏ hàng',
+                'Kho Databank',
+                'Dự án',
+                'Nhân viên kinh doanh',
+                'Quản lý chấm công',
+                'Đối soát công bằng',
+                'Phiếu đặt cọc',
+                'Lịch trình'
+              ];
+            }
+            if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'director') {
+              return [
+                'Bàn làm việc',
+                'Dashboard',
+                'Báo cáo',
+                'Khách hàng',
+                'Giỏ hàng',
+                'Kho Databank',
+                'Dự án',
+                'Quản lý tài khoản',
+                'Cài đặt hệ thống',
+                'Vòng phân bổ',
+                'AI Pre-screener',
+                'Lịch trình'
+              ];
+            }
+            if (userRole === 'assistant' || userRole === 'accountant') {
+              return [
+                'Bàn làm việc',
+                'Dashboard',
+                'Báo cáo',
+                'Hóa đơn',
+                'Chi phí',
+                'Phiếu đặt cọc',
+                'Báo giá',
+                'Giỏ hàng',
+                'Dự án',
+                'Khách hàng'
+              ];
+            }
+            return [
+              'Bàn làm việc',
+              'Dashboard',
+              'Báo cáo',
+              'Khách hàng',
+              'Giỏ hàng',
+              'Kho Databank',
+              'Dự án',
+              'Lịch trình',
+              'Tài liệu',
+              'Báo giá'
+            ];
+          };
+
+          const roleTargets = getRoleRecentTargets(role);
+          const maxCount = isMobile ? 9 : 7;
+          const matchedRecent: any[] = [];
+          const seenNames = new Set<string>();
+
+          for (const targetName of roleTargets) {
+            const found = allVisibleItems.find(item => item.name.toLowerCase() === targetName.toLowerCase());
+            if (found && !seenNames.has(found.name)) {
+              matchedRecent.push(found);
+              seenNames.add(found.name);
+              if (matchedRecent.length >= maxCount) break;
+            }
+          }
+
+          if (matchedRecent.length < maxCount) {
+            for (const item of allVisibleItems) {
+              if (!seenNames.has(item.name)) {
+                matchedRecent.push(item);
+                seenNames.add(item.name);
+                if (matchedRecent.length >= maxCount) break;
+              }
+            }
+          }
+
+          const recentItems = matchedRecent.slice(0, maxCount);
 
           return (
             <div style={{ paddingRight: '4px' }}>
@@ -1707,8 +1810,6 @@ export const Header = ({
                   {filteredItems.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px 24px' }}>
                       {filteredItems.map(item => {
-                        const IconComponent = item.icon;
-                        const colors = getItemColor(item.name);
                         const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
                         return (
                           <div
@@ -1722,29 +1823,29 @@ export const Header = ({
                               alignItems: 'center',
                               gap: '12px',
                               padding: '8px 12px',
-                              borderRadius: '8px',
+                              borderRadius: '12px',
                               cursor: 'pointer',
                               transition: 'all 0.2s ease-in-out',
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.03)';
+                              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)';
+                              e.currentTarget.style.transform = 'translateX(3px)';
                             }}
                             onMouseLeave={e => {
                               e.currentTarget.style.background = 'transparent';
+                              e.currentTarget.style.transform = 'translateX(0)';
                             }}
                           >
                             <div style={{
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '50%',
-                              background: colors.bg,
+                              width: '36px',
+                              height: '36px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               flexShrink: 0,
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                              filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.1))'
                             }}>
-                              <IconComponent size={16} color={colors.color} strokeWidth={2} />
+                              <AppIcon name={item.name} size={32} />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                               <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1774,12 +1875,10 @@ export const Header = ({
                       </span>
                       <div style={{
                         display: 'grid',
-                        gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))',
+                        gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(130px, 1fr))',
                         gap: isMobile ? '8px' : '16px'
                       }}>
                         {recentItems.map(item => {
-                          const colors = getItemColor(item.name);
-                          const Icon = item.icon;
                           return (
                             <div
                               key={item.name}
@@ -1792,38 +1891,39 @@ export const Header = ({
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: isMobile ? '6px' : '12px',
-                                padding: isMobile ? '12px 8px' : '20px 16px',
-                                background: 'var(--color-bg)',
+                                gap: isMobile ? '8px' : '12px',
+                                padding: isMobile ? '14px 8px' : '20px 14px',
+                                background: 'var(--color-surface)',
                                 border: '1px solid var(--color-border-light)',
-                                borderRadius: '18px',
+                                borderRadius: '20px',
                                 cursor: 'pointer',
                                 textAlign: 'center',
-                                boxShadow: 'var(--shadow-sm)',
-                                transition: 'all 0.2s ease-in-out'
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                                transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
                               }}
                               onMouseEnter={e => {
-                                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+                                e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+                                e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.08)';
                                 e.currentTarget.style.borderColor = 'var(--color-border)';
                               }}
                               onMouseLeave={e => {
-                                e.currentTarget.style.background = 'var(--color-bg)';
+                                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.04)';
                                 e.currentTarget.style.borderColor = 'var(--color-border-light)';
                               }}
                             >
                               <div style={{
-                                width: isMobile ? '40px' : '56px',
-                                height: isMobile ? '40px' : '56px',
-                                borderRadius: '16px',
-                                background: colors.bg,
+                                width: isMobile ? '48px' : '56px',
+                                height: isMobile ? '48px' : '56px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                                filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.12))',
+                                transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
                               }}>
-                                <Icon size={isMobile ? 20 : 28} color={colors.color} strokeWidth={2} />
+                                <AppIcon name={item.name} size={isMobile ? 48 : 56} />
                               </div>
-                              <span style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+                              <span style={{ fontSize: isMobile ? '0.75rem' : '0.825rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
                                 {t(item.name)}
                               </span>
                             </div>
@@ -1846,8 +1946,6 @@ export const Header = ({
 
                         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: isMobile ? '10px' : '12px 24px' }}>
                           {group.items.map(item => {
-                            const IconComponent = item.icon;
-                            const colors = getItemColor(item.name);
                             const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
                             return (
                               <div
@@ -1861,29 +1959,29 @@ export const Header = ({
                                   alignItems: 'center',
                                   gap: '12px',
                                   padding: isMobile ? '10px 12px' : '8px 12px',
-                                  borderRadius: '8px',
+                                  borderRadius: '12px',
                                   cursor: 'pointer',
                                   transition: 'all 0.2s ease-in-out',
                                 }}
                                 onMouseEnter={e => {
-                                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.03)';
+                                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)';
+                                  e.currentTarget.style.transform = 'translateX(3px)';
                                 }}
                                 onMouseLeave={e => {
                                   e.currentTarget.style.background = 'transparent';
+                                  e.currentTarget.style.transform = 'translateX(0)';
                                 }}
                               >
                                 <div style={{
                                   width: isMobile ? '34px' : '32px',
                                   height: isMobile ? '34px' : '32px',
-                                  borderRadius: '50%',
-                                  background: colors.bg,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   flexShrink: 0,
-                                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                                  filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.08))'
                                 }}>
-                                  <IconComponent size={isMobile ? 18 : 16} color={colors.color} strokeWidth={2} />
+                                  <AppIcon name={item.name} size={isMobile ? 32 : 30} />
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                                   <span style={{ fontSize: isMobile ? '0.92rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
