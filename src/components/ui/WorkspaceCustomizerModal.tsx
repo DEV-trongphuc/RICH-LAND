@@ -18,6 +18,13 @@ export interface WorkspaceCustomizerModalProps {
 
 export const PRESET_WALLPAPERS = [
   {
+    id: 'richland_black_red_logo',
+    name: 'RICH LAND Black Stealth & Red Logo (Mặc định)',
+    url: '/imgs/myerp_dark_brand_wallpaper.jpg',
+    preview: '/imgs/myerp_dark_brand_wallpaper.jpg',
+    tag: 'Tối giản'
+  },
+  {
     id: 'richland_brand',
     name: 'RICH LAND Luxury Dark Red (Độc quyền)',
     url: 'linear-gradient(135deg, #160608 0%, #2a0b10 40%, #110406 100%)',
