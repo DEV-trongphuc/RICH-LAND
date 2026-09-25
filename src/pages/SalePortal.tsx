@@ -35,7 +35,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 const WarRoomFlightDeck = lazy(() => import('../components/Dashboard/WarRoomFlightDeck').then(module => ({ default: module.WarRoomFlightDeck })));
-import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { DigitPinInput } from '../components/ui/DigitPinInput';
@@ -258,23 +257,21 @@ const GrabLeadOfferModal: React.FC<{
           <button
             onClick={handleClaimClick}
             disabled={submitting}
+            className={`btn ${submitting ? 'loading' : ''}`}
             style={{
               width: '100%', padding: '1rem', borderRadius: '12px', border: 'none',
               background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#ffffff',
-              fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer',
+              fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', cursor: submitting ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
               boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)', transition: 'all 0.2s',
-              animation: 'pulse 2s infinite'
-            }}
-            onMouseEnter={e => {
-              if (!submitting) e.currentTarget.style.transform = 'scale(1.02)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'none';
+              animation: submitting ? 'none' : 'pulse 2s infinite'
             }}
           >
             {submitting ? (
-              <span>{t("Đang nhận...")}</span>
+              <>
+                <Loader2 size={18} className="spin" />
+                <span>{t("Đang nhận...")}</span>
+              </>
             ) : (
               <>
                 <Zap size={18} style={{ fill: '#ffffff' }} />
@@ -394,6 +391,7 @@ const GrabLeadOfferWidget: React.FC<{
       <button
         onClick={handleClaimClick}
         disabled={submitting}
+        className={`btn ${submitting ? 'loading' : ''}`}
         style={{
           background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
           color: '#fff',
@@ -402,7 +400,7 @@ const GrabLeadOfferWidget: React.FC<{
           borderRadius: '10px',
           fontSize: '0.85rem',
           fontWeight: 800,
-          cursor: 'pointer',
+          cursor: submitting ? 'not-allowed' : 'pointer',
           boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
           transition: 'all 0.2s',
           display: 'inline-flex',
@@ -410,15 +408,18 @@ const GrabLeadOfferWidget: React.FC<{
           gap: '6px',
           marginLeft: 'auto'
         }}
-        onMouseEnter={e => {
-          if (!submitting) e.currentTarget.style.transform = 'translateY(-1px)';
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.transform = 'none';
-        }}
       >
-        <Zap size={14} style={{ fill: '#ffffff' }} />
-        <span>{submitting ? t("Đang nhận...") : t("TRANH NHẬN NGAY")}</span>
+        {submitting ? (
+          <>
+            <Loader2 size={14} className="spin" />
+            <span>{t("Đang nhận...")}</span>
+          </>
+        ) : (
+          <>
+            <Zap size={14} style={{ fill: '#ffffff' }} />
+            <span>{t("TRANH NHẬN NGAY")}</span>
+          </>
+        )}
       </button>
     </div>
   );

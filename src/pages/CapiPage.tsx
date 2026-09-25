@@ -240,11 +240,11 @@ export default function CapiPage() {
             <button
               type="submit"
               disabled={saving}
-              className="btn primary"
-              style={{ marginTop: '0.75rem', alignSelf: 'flex-start' }}
+              className={`btn primary ${saving ? 'loading' : ''}`}
+              style={{ marginTop: '0.75rem', alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              <Save size={16} />
-              {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
+              {saving ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
+              <span>{saving ? 'Đang lưu cấu hình...' : 'Lưu cấu hình'}</span>
             </button>
           </form>
         </div>

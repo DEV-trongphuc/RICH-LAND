@@ -26,21 +26,35 @@ export const GlobalConfirmModal: React.FC = () => {
 
   const [matchInput, setMatchInput] = React.useState('');
   const [promptInput, setPromptInput] = React.useState('');
-  const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    if (!isOpen) return;
 
-  React.useEffect(() => {
-    if (isOpen) {
-      setMatchInput('');
-      setPromptInput('');
-      setIsSubmitting(false);
+    setMatchInput('');
+    setPromptInput('');
+    setIsSubmitting(false);
+
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+
+    const mql = window.matchMedia('(max-width: 768px)');
+    const handleMql = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+
+    if (mql.addEventListener) {
+      mql.addEventListener('change', handleMql);
+    } else {
+      window.addEventListener('resize', checkMobile);
     }
+
+    return () => {
+      if (mql.removeEventListener) {
+        mql.removeEventListener('change', handleMql);
+      } else {
+        window.removeEventListener('resize', checkMobile);
+      }
+    };
   }, [isOpen]);
 
   const isLocked = !!(requireWordMatch && matchInput !== requireWordMatch) || !!(requirePromptInput && !promptInput.trim());
@@ -97,16 +111,18 @@ export const GlobalConfirmModal: React.FC = () => {
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
             zIndex: 9999999999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '1.5rem'
+            padding: '1.5rem',
+            contain: 'layout'
           }} 
           onClick={handleCancel}
         >
           <motion.div 
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            initial={{ opacity: 0, scale: 0.97, y: 6 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ type: "tween", ease: "easeOut", duration: 0.25 }}
+            exit={{ opacity: 0, scale: 0.97, y: 6 }}
+            transition={{ type: "spring", damping: 28, stiffness: 320, mass: 0.6 }}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: 'var(--color-surface)', width: '100%', maxWidth: '480px',
@@ -114,7 +130,11 @@ export const GlobalConfirmModal: React.FC = () => {
               boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.18), 0 8px 16px -8px rgba(0, 0, 0, 0.08)',
               border: '1px solid var(--color-border-light)',
               overflow: 'hidden', display: 'flex', flexDirection: 'column',
-              position: 'relative'
+              position: 'relative',
+              willChange: 'transform, opacity',
+              transform: 'translate3d(0, 0, 0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
             }}
           >
             {/* Close button top right */}
@@ -298,6 +318,7 @@ export const GlobalConfirmModal: React.FC = () => {
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
+                disabled={isSubmitting}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'var(--color-bg-hover)';
                   e.currentTarget.style.color = 'var(--color-text)';
@@ -313,6 +334,7 @@ export const GlobalConfirmModal: React.FC = () => {
             {extraText && (
               <button 
                 className="btn outline sm"
+                disabled={isSubmitting}
                 onClick={() => {
                   if (onExtra) onExtra();
                   closeConfirm();
@@ -331,7 +353,7 @@ export const GlobalConfirmModal: React.FC = () => {
               </button>
             )}
             <button 
-              className="btn sm"
+              className={`btn sm ${isSubmitting ? 'loading' : ''}`}
               onClick={handleConfirm}
               disabled={isLocked || isSubmitting}
               style={{ 

@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save, MessageSquare, User } from 'lucide-react';
+import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save, MessageSquare, User, Loader2 } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
-import { TicketDrawer } from './TicketDrawer';
+const TicketDrawer = lazy(() => import('./TicketDrawer').then(module => ({ default: module.TicketDrawer })));
 const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
@@ -505,7 +505,7 @@ export const TicketsPage: React.FC = () => {
                 <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>
                    {isBugTicket ? 'Báo cáo lỗi' : 'Tạo Ticket Hỗ trợ mới'}
                 </h3>
-                <button onClick={() => setShowCreateModal(false)} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
+                <button disabled={saving} onClick={() => setShowCreateModal(false)} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: saving ? 'not-allowed' : 'pointer' }}><X size={18} /></button>
               </div>
               <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
@@ -730,23 +730,34 @@ export const TicketsPage: React.FC = () => {
                 </div>
               </div>
               <div className="modal-footer" style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
-                <button className="btn outline" onClick={() => setShowCreateModal(false)}>Hủy bỏ</button>
-                <button className="btn primary" onClick={handleCreateTicket}><Save size={14} /> Tạo Ticket</button>
+                <button className="btn outline" disabled={saving} onClick={() => setShowCreateModal(false)}>Hủy bỏ</button>
+                <button 
+                  className={`btn primary ${saving ? 'loading' : ''}`} 
+                  onClick={handleCreateTicket} 
+                  disabled={saving}
+                >
+                  {saving ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
+                  {saving ? 'Đang tạo...' : 'Tạo Ticket'}
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
     , document.body)}
-      <TicketDrawer 
-        isOpen={!!selectedTicket} 
-        onClose={() => setSelectedTicket(null)} 
-        ticket={selectedTicket} 
-        onUpdate={handleUpdate}
-        contacts={contacts}
-        users={users}
-        onOpenContact={(contactData) => setSelectedContactForDrawer(contactData)}
-      />
+      {selectedTicket && (
+        <Suspense fallback={null}>
+          <TicketDrawer 
+            isOpen={!!selectedTicket} 
+            onClose={() => setSelectedTicket(null)} 
+            ticket={selectedTicket} 
+            onUpdate={handleUpdate}
+            contacts={contacts}
+            users={users}
+            onOpenContact={(contactData) => setSelectedContactForDrawer(contactData)}
+          />
+        </Suspense>
+      )}
       {selectedContactForDrawer && (
         <Suspense fallback={null}>
           <CustomerProfileDrawer

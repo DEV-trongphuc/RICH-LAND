@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { Pagination } from '../components/ui/Pagination';
 import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle, AlertTriangle, ShieldAlert, ChevronRight, ChevronLeft } from 'lucide-react';
@@ -6,9 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 import { useUIStore } from '../store/uiStore';
-import { CustomerProfileDrawer } from './CustomerProfileDrawer';
-import { CompanyDrawer } from './CompanyDrawer';
-import { DealDrawer } from './DealDrawer';
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
+const CompanyDrawer = lazy(() => import('./CompanyDrawer').then(module => ({ default: module.CompanyDrawer })));
+const DealDrawer = lazy(() => import('./DealDrawer').then(module => ({ default: module.DealDrawer })));
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
@@ -1576,31 +1576,37 @@ export const DealsPage: React.FC = () => {
       )}
 
       {showContactDrawer && (
-        <CustomerProfileDrawer 
-          isOpen={showContactDrawer}
-          onClose={() => setShowContactDrawer(false)}
-          contact={selectedContact}
-          onUpdate={(updated) => { updateItemLocally(updated); fetchData(); }}
-        />
+        <Suspense fallback={null}>
+          <CustomerProfileDrawer 
+            isOpen={showContactDrawer}
+            onClose={() => setShowContactDrawer(false)}
+            contact={selectedContact}
+            onUpdate={(updated) => { updateItemLocally(updated); fetchData(); }}
+          />
+        </Suspense>
       )}
 
       {showCompanyDrawer && (
-        <CompanyDrawer
-          isOpen={showCompanyDrawer}
-          onClose={() => setShowCompanyDrawer(false)}
-          entity={selectedCompany}
-          onSave={() => fetchData()}
-        />
+        <Suspense fallback={null}>
+          <CompanyDrawer
+            isOpen={showCompanyDrawer}
+            onClose={() => setShowCompanyDrawer(false)}
+            entity={selectedCompany}
+            onSave={() => fetchData()}
+          />
+        </Suspense>
       )}
 
       {showDealDrawer && (
-        <DealDrawer
-          isOpen={showDealDrawer}
-          onClose={() => setShowDealDrawer(false)}
-          deal={selectedDeal}
-          onSave={handleSaveDeal}
-          stages={stages}
-        />
+        <Suspense fallback={null}>
+          <DealDrawer
+            isOpen={showDealDrawer}
+            onClose={() => setShowDealDrawer(false)}
+            deal={selectedDeal}
+            onSave={handleSaveDeal}
+            stages={stages}
+          />
+        </Suspense>
       )}
 
       {/* Transition Modal */}

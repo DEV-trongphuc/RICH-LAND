@@ -36,34 +36,47 @@ export const TaskCompleteConfirmModal: React.FC<TaskCompleteConfirmModalProps> =
     }
   }, [isOpen, task?.id]);
 
-  // Parse task body safely & comprehensively
+  // Parse task body safely & comprehensively only when opened
   const parsedBody = useMemo(() => {
-    if (!task) return null;
+    if (!isOpen || !task) return null;
     const rawBody = task.body || task.description || '';
     return parseTaskBody(rawBody);
-  }, [task?.body, task?.description]);
-
-  if (!isOpen || !task) return null;
+  }, [isOpen, task?.body, task?.description]);
 
   // 1. Resolve Creator
-  const creatorUser = users.find((u: any) => String(u.id) === String(task.created_by || task.creator_id));
-  const creatorName = task.created_by_name || creatorUser?.full_name || creatorUser?.name || t('Người tạo việc');
-  const creatorAvatar = task.created_by_avatar || creatorUser?.avatar_url || creatorUser?.avatar;
+  const creatorUser = useMemo(() => {
+    if (!isOpen || !task) return null;
+    return users.find((u: any) => String(u.id) === String(task.created_by || task.creator_id));
+  }, [isOpen, task?.created_by, task?.creator_id, users]);
+
+  const creatorName = task?.created_by_name || creatorUser?.full_name || creatorUser?.name || t('Người tạo việc');
+  const creatorAvatar = task?.created_by_avatar || creatorUser?.avatar_url || creatorUser?.avatar;
 
   // 2. Resolve Main Assignee
-  const assigneeUser = users.find((u: any) => String(u.id) === String(task.user_id));
-  const assigneeName = assigneeUser?.full_name || assigneeUser?.name || task.user_name || t('Chưa phân công');
-  const assigneeAvatar = assigneeUser?.avatar_url || assigneeUser?.avatar || task.avatar_url;
+  const assigneeUser = useMemo(() => {
+    if (!isOpen || !task) return null;
+    return users.find((u: any) => String(u.id) === String(task.user_id));
+  }, [isOpen, task?.user_id, users]);
+
+  const assigneeName = assigneeUser?.full_name || assigneeUser?.name || task?.user_name || t('Chưa phân công');
+  const assigneeAvatar = assigneeUser?.avatar_url || assigneeUser?.avatar || task?.avatar_url;
 
   // 3. Resolve Participants / Related users
-  const rawPIds = String(task.participant_ids || '').split(',').map(s => s.trim()).filter(Boolean);
-  const participantUsers = rawPIds
-    .map(id => users.find((u: any) => String(u.id) === String(id)))
-    .filter(Boolean);
+  const rawPIds = useMemo(() => {
+    if (!isOpen || !task?.participant_ids) return [];
+    return String(task.participant_ids).split(',').map(s => s.trim()).filter(Boolean);
+  }, [isOpen, task?.participant_ids]);
+
+  const participantUsers = useMemo(() => {
+    if (!isOpen || rawPIds.length === 0) return [];
+    return rawPIds
+      .map(id => users.find((u: any) => String(u.id) === String(id)))
+      .filter(Boolean);
+  }, [isOpen, rawPIds, users]);
 
   // 4. Description, Links, and Checklist
   let cleanDesc = parsedBody?.pureDescription || parsedBody?.description || '';
-  if (!cleanDesc && typeof task.description === 'string' && !task.description.startsWith('{')) {
+  if (!cleanDesc && typeof task?.description === 'string' && !task.description.startsWith('{')) {
     cleanDesc = formatVietnameseDescription(task.description);
   }
 
@@ -84,66 +97,76 @@ export const TaskCompleteConfirmModal: React.FC<TaskCompleteConfirmModalProps> =
 
   // Priority metadata
   const priorityColor = 
-    task.priority === 'urgent' || task.priority === 'high' ? '#ef4444' :
-    task.priority === 'medium' ? '#f59e0b' : '#3b82f6';
+    task?.priority === 'urgent' || task?.priority === 'high' ? '#ef4444' :
+    task?.priority === 'medium' ? '#f59e0b' : '#3b82f6';
   const priorityBg = 
-    task.priority === 'urgent' || task.priority === 'high' ? 'rgba(239, 68, 68, 0.12)' :
-    task.priority === 'medium' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(59, 130, 246, 0.12)';
+    task?.priority === 'urgent' || task?.priority === 'high' ? 'rgba(239, 68, 68, 0.12)' :
+    task?.priority === 'medium' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(59, 130, 246, 0.12)';
   const priorityLabel = 
-    task.priority === 'urgent' ? t('Khẩn cấp') :
-    task.priority === 'high' ? t('Ưu tiên cao') :
-    task.priority === 'medium' ? t('Bình thường') : t('Thấp');
+    task?.priority === 'urgent' ? t('Khẩn cấp') :
+    task?.priority === 'high' ? t('Ưu tiên cao') :
+    task?.priority === 'medium' ? t('Bình thường') : t('Thấp');
 
   const modalNode = (
     <AnimatePresence>
-      <div 
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 99999999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '16px',
-          boxSizing: 'border-box'
-        }}
-      >
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
+      {isOpen && task && (
+        <div 
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.78)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            zIndex: 0
-          }}
-        />
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.93, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.93, y: 20 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 350 }}
-          style={{
-            position: 'relative',
-            width: '100%',
-            maxWidth: '560px',
-            maxHeight: '88vh',
-            background: 'var(--color-surface, #ffffff)',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            borderRadius: '24px',
-            boxShadow: '0 30px 75px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.12)',
-            overflow: 'hidden',
+            zIndex: 99999999,
             display: 'flex',
-            flexDirection: 'column',
-            zIndex: 1
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            boxSizing: 'border-box',
+            contain: 'layout'
           }}
-          onClick={e => e.stopPropagation()}
         >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.78)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              zIndex: 0,
+              willChange: 'opacity',
+              transform: 'translateZ(0)'
+            }}
+          />
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 350, mass: 0.6 }}
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '560px',
+              maxHeight: '88vh',
+              background: 'var(--color-surface, #ffffff)',
+              border: '1px solid var(--color-border, #e2e8f0)',
+              borderRadius: '24px',
+              boxShadow: '0 30px 75px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.12)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              zIndex: 1,
+              contain: 'layout',
+              willChange: 'transform, opacity',
+              transform: 'translate3d(0, 0, 0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
           {/* Header Section */}
           <div style={{
             padding: '22px 24px 16px',
@@ -599,6 +622,7 @@ export const TaskCompleteConfirmModal: React.FC<TaskCompleteConfirmModalProps> =
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 

@@ -1195,14 +1195,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
             gap: '12px',
             backgroundColor: 'var(--color-surface)'
           }}>
-            <button type="button" className="btn outline" onClick={onClose} style={{ minWidth: '100px' }}>
+            <button type="button" className="btn outline" disabled={isSaving} onClick={onClose} style={{ minWidth: '100px' }}>
               {t('Hủy')}
             </button>
             <button 
               type="submit" 
               form="account-detail-form" 
               disabled={isSaving} 
-              className="btn primary" 
+              className={`btn primary ${isSaving ? 'loading' : ''}`} 
               style={{ minWidth: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
               {isSaving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
@@ -1257,6 +1257,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
             {/* Close Button as "<" ChevronLeft on the Left */}
             <button 
+              disabled={isSaving}
               onClick={onClose}
               style={{
                 padding: '8px',
@@ -1293,7 +1294,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 type="submit"
                 form="account-detail-form"
                 disabled={isSaving}
-                className="btn primary sm"
+                className={`btn primary sm ${isSaving ? 'loading' : ''}`}
                 style={{
                   borderRadius: '8px',
                   display: 'flex',
@@ -4829,7 +4830,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 </button>
                 <button
                   type="button"
-                  className="btn danger sm"
+                  className={`btn danger sm ${isDeleting ? 'loading' : ''}`}
                   onClick={handleDeleteAccount}
                   disabled={isDeleting || deleteConfirmText !== 'DELETE' || (deleteCheckResult?.in_use && !replacementAdminId)}
                   style={{
@@ -4846,7 +4847,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   }}
                 >
                   {isDeleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
-                  {t('Xác nhận xóa')}
+                  {isDeleting ? t('Đang xóa...') : t('Xác nhận xóa')}
                 </button>
               </div>
             </motion.div>

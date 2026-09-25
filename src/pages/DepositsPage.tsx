@@ -1373,10 +1373,17 @@ export default function DepositsPage() {
             <button
               type="submit"
               disabled={isSaving}
-              className="btn primary w-full"
-              style={{ height: '38px', marginTop: '0.5rem', opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }}
+              className={`btn primary w-full ${isSaving ? 'loading' : ''}`}
+              style={{ height: '38px', marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
-              {isSaving ? 'Đang khởi tạo...' : 'Tạo phiếu đặt cọc'}
+              {isSaving ? (
+                <>
+                  <Loader2 size={16} className="spin" />
+                  <span>Đang khởi tạo...</span>
+                </>
+              ) : (
+                'Tạo phiếu đặt cọc'
+              )}
             </button>
           </form>
         </div>
@@ -1407,10 +1414,17 @@ export default function DepositsPage() {
           <button
             onClick={handleConfirmCancel}
             disabled={isSaving}
-            className="btn primary w-full"
-            style={{ height: '38px', backgroundColor: 'var(--color-danger)', border: 'none', opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }}
+            className={`btn primary w-full ${isSaving ? 'loading' : ''}`}
+            style={{ height: '38px', backgroundColor: 'var(--color-danger)', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
-            {isSaving ? 'Đang xử lý...' : 'Xác nhận bể cọc'}
+            {isSaving ? (
+              <>
+                <Loader2 size={16} className="spin" />
+                <span>Đang xử lý...</span>
+              </>
+            ) : (
+              'Xác nhận bể cọc'
+            )}
           </button>
         </div>
       </CustomModal>

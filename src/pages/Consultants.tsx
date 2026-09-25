@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
@@ -9,7 +9,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import api from '../api/axios';
-import { AccountDetailDrawer } from '../components/AccountDetailDrawer';
+const AccountDetailDrawer = lazy(() => import('../components/AccountDetailDrawer').then(module => ({ default: module.AccountDetailDrawer })));
 import { MentionInput } from '../components/ui/MentionInput';
 import styles from './EntityDrawer.module.css';
 import { compressToWebP } from '../utils/imageCompress';
@@ -2556,13 +2556,17 @@ const ConsultantsInner = () => {
       )}
       </div>
 
-      <AccountDetailDrawer
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        account={editingUser}
-        onSaveSuccess={fetchUsers}
-        readOnly={!isWriteAuthorized}
-      />
+      {modalOpen && (
+        <Suspense fallback={null}>
+          <AccountDetailDrawer
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            account={editingUser}
+            onSaveSuccess={fetchUsers}
+            readOnly={!isWriteAuthorized}
+          />
+        </Suspense>
+      )}
 
 
       {/* Inline style for modal animation */}

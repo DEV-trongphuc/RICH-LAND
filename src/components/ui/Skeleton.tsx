@@ -1,47 +1,73 @@
 import React, { useEffect, useState } from 'react';
 
-// ─── Simple hook for responsive skeletons ──────────────────────────────────
+// ─── High performance singleton hook for responsive skeletons ──────────────
+const listeners = new Set<(isMobile: boolean) => void>();
+let isMobileCache = typeof window !== 'undefined' ? window.innerWidth <= 768 : false;
+let mediaQueryInitialized = false;
+
+function initMediaQuery() {
+  if (mediaQueryInitialized || typeof window === 'undefined') return;
+  mediaQueryInitialized = true;
+  try {
+    const mql = window.matchMedia('(max-width: 768px)');
+    isMobileCache = mql.matches;
+    const handler = (e: MediaQueryListEvent) => {
+      isMobileCache = e.matches;
+      listeners.forEach(fn => fn(isMobileCache));
+    };
+    if (mql.addEventListener) {
+      mql.addEventListener('change', handler);
+    } else {
+      (mql as any).addListener(handler);
+    }
+  } catch {
+    // Fallback if matchMedia is unavailable
+  }
+}
+
 const useResponsive = () => {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    initMediaQuery();
+    return isMobileCache;
+  });
+
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    initMediaQuery();
+    listeners.add(setIsMobile);
+    return () => {
+      listeners.delete(setIsMobile);
+    };
   }, []);
+
   return isMobile;
 };
 
 // ─── Skeleton primitive ─────────────────────────────────────────────────────
-interface SkeletonProps {
+export interface SkeletonProps {
   width?: string | number;
   height?: string | number;
   borderRadius?: string | number;
+  className?: string;
   style?: React.CSSProperties;
 }
 
-export const Skeleton = ({ width = '100%', height = 16, borderRadius = 8, style }: SkeletonProps) => (
-  <>
-    <div
-      className="skeleton"
-      style={{
-        width,
-        height,
-        borderRadius,
-        background: 'linear-gradient(90deg, var(--skeleton-base, #e2e8f0) 25%, var(--skeleton-shine, #f1f5f9) 50%, var(--skeleton-base, #e2e8f0) 75%)',
-        backgroundSize: '200% 100%',
-        animation: 'skeletonShimmer 1.6s ease-in-out infinite',
-        flexShrink: 0,
-        ...style,
-      }}
-    />
-    <style>{`
-      @keyframes skeletonShimmer {
-        0%   { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-      }
-    `}</style>
-  </>
+export const Skeleton: React.FC<SkeletonProps> = ({ 
+  width = '100%', 
+  height = 16, 
+  borderRadius = 8, 
+  className = '',
+  style 
+}) => (
+  <div
+    className={`skeleton ${className}`.trim()}
+    style={{
+      width,
+      height,
+      borderRadius,
+      flexShrink: 0,
+      ...style,
+    }}
+  />
 );
 
 // ─── KPI card skeleton ───────────────────────────────────────────────────────

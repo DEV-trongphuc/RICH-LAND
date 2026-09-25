@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Plus, Search, Building2, X, Loader2, Pencil, Trash2, Globe, Phone, Mail, MapPin, Users, LayoutGrid, List, Filter, RefreshCw, Download, DollarSign, Briefcase, MoreHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
-import { CompanyDrawer } from './CompanyDrawer';
+const CompanyDrawer = lazy(() => import('./CompanyDrawer').then(module => ({ default: module.CompanyDrawer })));
 import { useAuth } from '../contexts/AuthContext';
 import { Pagination } from '../components/ui/Pagination';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
@@ -577,12 +577,16 @@ export const CompaniesPage: React.FC = () => {
       )}
 
       {/* Company Drawer */}
-      <CompanyDrawer
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        entity={editItem}
-        onSave={handleSaveCompany}
-      />
+      {showModal && (
+        <Suspense fallback={null}>
+          <CompanyDrawer
+            isOpen={showModal}
+            onClose={() => setShowModal(false)}
+            entity={editItem}
+            onSave={handleSaveCompany}
+          />
+        </Suspense>
+      )}
       
       {/* Import Export Modal */}
       <ImportExportModal 

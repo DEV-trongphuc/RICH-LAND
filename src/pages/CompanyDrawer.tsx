@@ -476,6 +476,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 <button
                   disabled={isSaving}
                   onClick={handleSave}
+                  className={isSaving ? 'loading' : ''}
                   style={{
                     padding: '6px 12px',
                     borderRadius: '10px',
@@ -490,10 +491,10 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     borderColor: 'var(--color-primary)',
                     color: 'white',
                     border: 'none',
-                    cursor: 'pointer'
+                    cursor: isSaving ? 'wait' : 'pointer'
                   }}
                 >
-                  <Save size={18} />
+                  {isSaving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
                 </button>
               </div>
             ) : (
@@ -575,7 +576,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     {formData?.status === 'active' ? 'Hoạt động' : formData?.status === 'inactive' ? 'Ngừng' : 'Tiềm năng'}
                   </span>
                   <button 
-                    className="btn primary sm" 
+                    className={`btn primary sm ${isSaving ? 'loading' : ''}`} 
                     disabled={isSaving}
                     style={{ 
                       background: 'var(--color-primary)', 
@@ -588,9 +589,10 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     }}
                     onClick={handleSave}
                   >
+                    {isSaving ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
                     {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
                   </button>
-                  <button className={styles.closeBtn} onClick={handleClose} style={{ marginLeft: '4px' }}><X size={20} /></button>
+                  <button className={styles.closeBtn} disabled={isSaving} onClick={handleClose} style={{ marginLeft: '4px' }}><X size={20} /></button>
                 </div>
               </div>
             )}

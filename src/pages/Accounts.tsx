@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera, RotateCcw, Loader2, AlertTriangle } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -7,7 +7,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
-import { AccountDetailDrawer } from '../components/AccountDetailDrawer';
+const AccountDetailDrawer = lazy(() => import('../components/AccountDetailDrawer').then(module => ({ default: module.AccountDetailDrawer })));
 import { compressToWebP } from '../utils/imageCompress';
 import toast from 'react-hot-toast';
 import { useUIStore } from '../store/uiStore';
@@ -1949,12 +1949,16 @@ const AccountsInner = () => {
         </div>
       )}
 
-      <AccountDetailDrawer 
-        isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)} 
-        account={editingAccount} 
-        onSaveSuccess={fetchAccounts} 
-      />
+      {modalOpen && (
+        <Suspense fallback={null}>
+          <AccountDetailDrawer 
+            isOpen={modalOpen} 
+            onClose={() => setModalOpen(false)} 
+            account={editingAccount} 
+            onSaveSuccess={fetchAccounts} 
+          />
+        </Suspense>
+      )}
 
       <ConfirmModal 
         isOpen={confirmOpen} 

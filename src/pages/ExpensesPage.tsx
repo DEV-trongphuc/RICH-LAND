@@ -947,7 +947,7 @@ export const ExpensesPage: React.FC = () => {
 
               <div className="modal-footer" style={{ padding: '1.5rem 2rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderBottomLeftRadius: 'var(--radius-2xl)', borderBottomRightRadius: 'var(--radius-2xl)' }}>
                 <button className="btn secondary" onClick={() => setShowModal(false)} disabled={saving}>Hủy</button>
-                <button className="btn primary" onClick={handleSave} disabled={saving} style={{ minWidth: 140 }}>
+                <button className={`btn primary ${saving ? 'loading' : ''}`} onClick={handleSave} disabled={saving} style={{ minWidth: 140 }}>
                   {saving ? <Loader2 size={16} className="spin" /> : <CheckCircle2 size={16} />}
                   {saving ? 'Đang lưu...' : (editItem ? 'Cập nhật' : 'Gửi phê duyệt')}
                 </button>

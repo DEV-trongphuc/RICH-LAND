@@ -21,27 +21,38 @@ export const QRCodeCallModal: React.FC = () => {
             style={{
               position: 'fixed', inset: 0, zIndex: 1000030,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '2rem'
+              padding: '2rem',
+              contain: 'layout'
             }}
           >
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
               onClick={closeCall}
               style={{
                 position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(4px)', zIndex: -1
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+                zIndex: -1,
+                willChange: 'opacity',
+                transform: 'translateZ(0)'
               }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.97, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              exit={{ opacity: 0, scale: 0.97, y: 8 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320, mass: 0.6 }}
               style={{
                 width: '100%', maxWidth: 400, background: 'var(--color-surface)',
                 borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-2xl)',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                willChange: 'transform, opacity',
+                transform: 'translate3d(0, 0, 0)',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden'
               }}
             >
               <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

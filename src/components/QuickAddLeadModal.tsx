@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { RefreshCw, Upload, Trash2, Lightbulb, Download } from 'lucide-react';
+import { RefreshCw, Upload, Trash2, Lightbulb, Download, Loader2 } from 'lucide-react';
 import { CustomModal } from './ui/CustomModal';
 import { CustomSelect } from './ui/CustomSelect';
 import { Avatar } from './ui/Avatar';
@@ -1242,8 +1242,10 @@ export const QuickAddLeadModal = () => {
       title={t("Thêm Mới Khách Hàng")}
       width={activeTab === 'bulk' && bulkParsedLeads.length > 0 ? "800px" : "650px"}
     >
-      {/* Tabs */}
-      {!isSale && (
+      {isOpen && (
+        <>
+          {/* Tabs */}
+          {!isSale && (
         <div style={{
           display: 'flex',
           background: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
@@ -1918,16 +1920,31 @@ export const QuickAddLeadModal = () => {
 
       </div>
       <div style={{ padding: '1rem', background: theme === 'dark' ? 'var(--color-surface)' : '#f8fafc', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', position: 'sticky', bottom: '-1.5rem', margin: '0 -1.5rem -1.5rem -1.5rem', zIndex: 10 }}>
-        <button className="btn outline" onClick={() => setIsOpen(false)}>{t('Hủy')}</button>
+        <button 
+          className="btn outline" 
+          onClick={() => setIsOpen(false)}
+          disabled={isSubmittingManual}
+        >
+          {t('Hủy')}
+        </button>
         <button
-          className="btn primary"
+          className={`btn primary ${isSubmittingManual ? 'loading' : ''}`}
           onClick={handleManualSubmit}
           disabled={isSubmittingManual || (activeTab === 'single' ? (!manualData.phone && !manualData.email) : bulkParsedLeads.length === 0)}
-          style={{ background: 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)', border: 'none' }}
+          style={{ background: 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
         >
-          {isSubmittingManual ? t('Đang lưu...') : (activeTab === 'single' ? t('Lưu & Giao Data') : t('Import và Giao ') + bulkParsedLeads.length + t(' Data'))}
+          {isSubmittingManual ? (
+            <>
+              <Loader2 size={16} className="spin" />
+              <span>{t('Đang lưu...')}</span>
+            </>
+          ) : (
+            activeTab === 'single' ? t('Lưu & Giao Data') : t('Import và Giao ') + bulkParsedLeads.length + t(' Data')
+          )}
         </button>
       </div>
+        </>
+      )}
     </CustomModal>
   );
 };

@@ -718,7 +718,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
           </div>
 
           <div className="modal-footer" style={{ padding: '0.75rem 2rem', background: 'var(--color-bg)', borderTop: 'none', borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
-             <button className="btn ghost font-bold text-muted" onClick={onClose}>
+             <button className="btn ghost font-bold text-muted" disabled={loading} onClick={onClose}>
                {isViewerProp ? 'Đóng' : 'Hủy bỏ'}
              </button>
              {isViewerProp ? (
@@ -733,12 +733,12 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                )
              ) : (
                <button 
-                 className="btn primary" 
+                 className={`btn primary ${loading ? 'loading' : ''}`} 
                  style={{ minWidth: '220px', boxShadow: isViewer ? 'none' : '0 10px 20px -5px rgba(163, 20, 34, 0.4)', background: isViewer ? 'var(--color-border)' : 'var(--color-primary)', color: isViewer ? 'var(--color-text-muted)' : 'white' }}
                  onClick={handleSave}
                  disabled={loading || isViewer}
                >
-                 {loading ? <Loader2 className="animate-spin" /> : (isViewer ? 'Bạn không có quyền chỉnh sửa' : (quote ? 'Cập nhật thay đổi' : 'Xác nhận & Lưu báo giá'))}
+                 {loading ? <Loader2 size={16} className="spin" /> : (isViewer ? 'Bạn không có quyền chỉnh sửa' : (quote ? 'Cập nhật thay đổi' : 'Xác nhận & Lưu báo giá'))}
                </button>
              )}
           </div>

@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Sidebar, SIDEBAR_GROUPS } from './Sidebar';
 import { Header } from './Header';
-import { QuickAddLeadModal } from '../QuickAddLeadModal';
+const QuickAddLeadModal = lazy(() => import('../QuickAddLeadModal').then(module => ({ default: module.QuickAddLeadModal })));
 import { ProfileModal } from '../ProfileModal';
 import { CustomModal } from '../ui/CustomModal';
-import { SmartCheckInModal } from '../ui/SmartCheckInModal';
+const SmartCheckInModal = lazy(() => import('../ui/SmartCheckInModal').then(module => ({ default: module.SmartCheckInModal })));
 import { CustomSelect } from '../ui/CustomSelect';
 import { Avatar } from '../ui/Avatar';
 import { AIChatbot } from '../ui/AIChatbot';
@@ -912,7 +912,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </main>
       </div>
       <AlertToast />
-      <QuickAddLeadModal />
+      <Suspense fallback={null}>
+        <QuickAddLeadModal />
+      </Suspense>
 
       {/* Workspace Sticky Pomodoro Timer - on Bàn làm việc (/workspace, /portal, /) */}
       {(location.pathname === '/workspace' || location.pathname === '/portal' || location.pathname === '/' || location.pathname.includes('workspace')) && (
@@ -2272,17 +2274,19 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Global AI Smart Check-in Modal */}
       {checkInModalOpen && (
-        <SmartCheckInModal
-          isOpen={checkInModalOpen}
-          onClose={() => setCheckInModalOpen(false)}
-          todayCheckIn={todayCheckIn}
-          consultantProfile={consultantProfile}
-          user={user}
-          onCheckInSuccess={() => {
-            loadCheckInStatus();
-            window.dispatchEvent(new CustomEvent('checkin-status-changed'));
-          }}
-        />
+        <Suspense fallback={null}>
+          <SmartCheckInModal
+            isOpen={checkInModalOpen}
+            onClose={() => setCheckInModalOpen(false)}
+            todayCheckIn={todayCheckIn}
+            consultantProfile={consultantProfile}
+            user={user}
+            onCheckInSuccess={() => {
+              loadCheckInStatus();
+              window.dispatchEvent(new CustomEvent('checkin-status-changed'));
+            }}
+          />
+        </Suspense>
       )}
 
       {isTelegramModalOpen && (

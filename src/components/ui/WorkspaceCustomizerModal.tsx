@@ -301,8 +301,10 @@ export const WorkspaceCustomizerModal: React.FC<WorkspaceCustomizerModalProps> =
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    preloadWorkspaceWallpapers();
-  }, []);
+    if (isOpen) {
+      preloadWorkspaceWallpapers();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -409,15 +411,18 @@ export const WorkspaceCustomizerModal: React.FC<WorkspaceCustomizerModalProps> =
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px'
+        padding: '16px',
+        contain: 'layout paint',
+        willChange: 'opacity',
+        transform: 'translateZ(0)'
       }}
       onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        transition={{ duration: 0.2 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 350, mass: 0.6 }}
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
@@ -429,7 +434,12 @@ export const WorkspaceCustomizerModal: React.FC<WorkspaceCustomizerModalProps> =
           border: '1px solid var(--color-border)',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          contain: 'layout',
+          willChange: 'transform, opacity',
+          transform: 'translate3d(0, 0, 0)',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden'
         }}
       >
         {/* Header */}

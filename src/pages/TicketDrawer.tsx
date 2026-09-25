@@ -775,14 +775,14 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               style={{ width: '100%', resize: 'none', marginBottom: '1.25rem' }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button className="btn outline sm" onClick={() => { setShowRejectModal(false); setRejectReason(''); }}>Hủy bỏ</button>
+              <button className="btn outline sm" disabled={isSubmitting} onClick={() => { setShowRejectModal(false); setRejectReason(''); }}>Hủy bỏ</button>
               <button 
-                className="btn danger sm" 
+                className={`btn danger sm ${isSubmitting ? 'loading' : ''}`} 
                 onClick={handleRejectTicket} 
                 disabled={isSubmitting || !rejectReason.trim()}
               >
                 {isSubmitting ? <Loader2 size={14} className="spin" /> : <XCircle size={14} />}
-                Xác nhận Từ chối
+                {isSubmitting ? 'Đang từ chối...' : 'Xác nhận Từ chối'}
               </button>
             </div>
           </div>

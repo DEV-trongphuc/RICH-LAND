@@ -4,6 +4,15 @@
 
 if (!function_exists('runRecurringTasksCron')) {
     function runRecurringTasksCron($conn) {
+        $lockFile = sys_get_temp_dir() . '/cron_recurring_tasks_' . md5(__DIR__) . '.lock';
+        $lockFp = @fopen($lockFile, 'w');
+        if ($lockFp && !flock($lockFp, LOCK_EX | LOCK_NB)) {
+            $msg = "[" . date('Y-m-d H:i:s') . "] Another instance of cron_recurring_tasks.php is already running. Exiting.\n";
+            if (function_exists('logSync')) { logSync($msg); } else { echo $msg; }
+            fclose($lockFp);
+            return;
+        }
+
         if (function_exists('logSync')) {
             logSync("Starting recurring tasks processing...");
         } else {
@@ -251,6 +260,11 @@ if (!function_exists('runRecurringTasksCron')) {
                     $stmtUpdateParent->close();
                 }
             }
+        }
+
+        if (isset($lockFp) && is_resource($lockFp)) {
+            flock($lockFp, LOCK_UN);
+            fclose($lockFp);
         }
     }
 }

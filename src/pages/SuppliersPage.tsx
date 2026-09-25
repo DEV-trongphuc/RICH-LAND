@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Truck, Plus, Search, MoreHorizontal, Mail, Phone, MapPin, 
   Trash2, Pencil, ExternalLink, Filter, Download, User, Hash,
-  ArrowUpRight, Building2, X, Layers
+  ArrowUpRight, Building2, X, Layers, Loader2
 } from 'lucide-react';
 import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
@@ -551,10 +551,11 @@ export const SuppliersPage: React.FC = () => {
                       <button 
                         type="button" 
                         onClick={handleSubmit} 
-                        className="btn primary sm" 
+                        className={`btn primary sm ${isSaving ? 'loading' : ''}`} 
                         disabled={isSaving}
-                        style={{ height: '32px', fontSize: '0.8rem', padding: '0 14px', borderRadius: '8px' }}
+                        style={{ height: '32px', fontSize: '0.8rem', padding: '0 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}
                       >
+                        {isSaving ? <Loader2 size={14} className="spin" /> : null}
                         {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
                       </button>
                     ) : (
@@ -569,7 +570,7 @@ export const SuppliersPage: React.FC = () => {
                         </button>
                       )
                     )}
-                    <button className={styles.closeBtn} onClick={() => setShowModal(false)}><X size={20} /></button>
+                    <button className={styles.closeBtn} disabled={isSaving} onClick={() => setShowModal(false)}><X size={20} /></button>
                   </div>
                 </div>
 

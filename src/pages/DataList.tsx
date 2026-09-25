@@ -1,7 +1,7 @@
 import { useState, useEffect, Fragment, useMemo } from 'react';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap, Loader2 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -426,6 +426,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const currentPage = Number(searchParams.get('page') || '1');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [sysSettings, setSysSettings] = useState<any>(null);
   useEffect(() => {
     fetchAPI('get_settings').then(res => {
@@ -1264,12 +1265,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const ITEMS_PER_PAGE = 50;
 
   // BUG-05 fix: Implement CSV export using Backend Stream to prevent browser/server OOM
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    setIsExporting(true);
     if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
       toast.loading(t('Đang chuẩn bị dữ liệu xuất CSV (Demo)...'), { id: 'export' });
       try {
         if (leads.length === 0) {
           toast.error(t('Không có dữ liệu để xuất!'), { id: 'export' });
+          setIsExporting(false);
           return;
         }
 
@@ -1328,6 +1331,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       } catch (err) {
         toast.error(t('Có lỗi xảy ra khi xuất dữ liệu'), { id: 'export' });
       }
+      setIsExporting(false);
       return;
     }
 
@@ -1347,6 +1351,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       toast.success(t('Đang tải xuống file CSV...'), { id: 'export' });
     } catch (err) {
       toast.error(t('Có lỗi xảy ra khi xuất dữ liệu'), { id: 'export' });
+    } finally {
+      setTimeout(() => setIsExporting(false), 1000);
     }
   };
 
@@ -1800,6 +1806,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
             {/* Compact Export CSV Button */}
             <button
               type="button"
+              disabled={isExporting}
               onClick={handleExportCSV}
               style={{
                 display: 'flex',
@@ -1812,13 +1819,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 color: 'var(--color-primary)',
                 fontSize: '0.78rem',
                 fontWeight: 700,
-                cursor: 'pointer',
+                cursor: isExporting ? 'wait' : 'pointer',
                 transition: 'all 0.2s',
                 height: '28px'
               }}
-              className="btn-export-csv-compact"
+              className={`btn-export-csv-compact ${isExporting ? 'loading' : ''}`}
             >
-              <Download size={13} /> <span>{t('Xuất')}<span className="hide-on-mobile"> CSV</span></span>
+              {isExporting ? <Loader2 size={13} className="spin" /> : <Download size={13} />} <span>{isExporting ? t('Đang xuất...') : t('Xuất')}<span className="hide-on-mobile"> CSV</span></span>
             </button>
 
             {/* Separator line for mobile filter toggle */}

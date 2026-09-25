@@ -8,6 +8,15 @@ require_once __DIR__ . '/NotificationService.php';
 require_once __DIR__ . '/mailer.php';
 
 function runCooperationSlipsCron($conn = null, $pdo = null): int {
+    // Prevent concurrent execution
+    $lockFile = sys_get_temp_dir() . '/cron_coop_' . md5(__DIR__) . '.lock';
+    $lockFp = @fopen($lockFile, 'w');
+    if ($lockFp && !flock($lockFp, LOCK_EX | LOCK_NB)) {
+        echo "[" . date('Y-m-d H:i:s') . "] [COOPERATION_CRON] Another instance of cron_cooperation_slips.php is already running. Exiting.\n";
+        fclose($lockFp);
+        return 0;
+    }
+
     if (!$pdo) {
         if (isset($GLOBALS['pdo']) && $GLOBALS['pdo'] instanceof PDO) {
             $pdo = $GLOBALS['pdo'];
@@ -172,6 +181,10 @@ function runCooperationSlipsCron($conn = null, $pdo = null): int {
     }
 
     echo "[" . date('Y-m-d H:i:s') . "] [COOPERATION_CRON] Hoàn tất. Đã xử lý: $countProcessed phiếu treo.\n";
+    if (isset($lockFp) && is_resource($lockFp)) {
+        flock($lockFp, LOCK_UN);
+        fclose($lockFp);
+    }
     return $countProcessed;
 }
 

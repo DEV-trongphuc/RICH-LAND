@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -36,23 +36,35 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   modalClassName,
   centeredOnMobile = false
 }) => {
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen]);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
 
-  const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+  // Prevent body scroll and handle mobile resize only when modal is active
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    if (!isOpen) return;
+
+    document.body.style.overflow = 'hidden';
+
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+
+    const mql = window.matchMedia('(max-width: 768px)');
+    const handleMql = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    
+    if (mql.addEventListener) {
+      mql.addEventListener('change', handleMql);
+    } else {
+      window.addEventListener('resize', checkMobile);
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+      if (mql.removeEventListener) {
+        mql.removeEventListener('change', handleMql);
+      } else {
+        window.removeEventListener('resize', checkMobile);
+      }
+    };
+  }, [isOpen]);
 
   const resolvedWidth = React.useMemo(() => {
     const formatDimension = (val: string | number) => {
@@ -66,25 +78,27 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     return '800px';
   }, [width, maxWidth]);
 
-  const motionProps = (isMobile && !centeredOnMobile) ? {
+  const isBottomSheet = isMobile && !centeredOnMobile;
+
+  const motionProps = isBottomSheet ? {
     initial: { y: '100%', opacity: 1 },
     animate: { y: 0, opacity: 1 },
     exit: { y: '100%', opacity: 0 },
-    transition: { type: 'spring' as const, damping: 28, stiffness: 240, mass: 0.8 }
+    transition: { type: 'spring' as const, damping: 30, stiffness: 320, mass: 0.7 }
   } : {
-    initial: { opacity: 0, scale: 0.96, y: 8 },
+    initial: { opacity: 0, scale: 0.97, y: 6 },
     animate: { opacity: 1, scale: 1, y: 0 },
-    exit: { opacity: 0, scale: 0.96, y: 8 },
-    transition: { type: 'spring' as const, damping: 26, stiffness: 220 }
+    exit: { opacity: 0, scale: 0.97, y: 6 },
+    transition: { type: 'spring' as const, damping: 28, stiffness: 320, mass: 0.6 }
   };
 
-  const dragProps = (isMobile && !centeredOnMobile) ? {
+  const dragProps = isBottomSheet ? {
     drag: 'y' as const,
     dragDirectionLock: true,
     dragConstraints: { top: 0 },
     dragElastic: { top: 0.05, bottom: 0.65 },
-    onDragEnd: (event: any, info: any) => {
-      if (info.offset.y > 120 || info.velocity.y > 400) {
+    onDragEnd: (_event: any, info: any) => {
+      if (info.offset.y > 100 || info.velocity.y > 350) {
         onClose();
       }
     }
@@ -105,7 +119,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
             <div
               className={modalClass}
-              style={{ width: (isMobile && !centeredOnMobile) ? '100vw' : '100%', maxWidth: (isMobile && !centeredOnMobile) ? '100vw' : resolvedWidth }}
+              style={{ width: isBottomSheet ? '100vw' : '100%', maxWidth: isBottomSheet ? '100vw' : resolvedWidth }}
             >
               <div className={styles.dragHandle} />
               {title && (
@@ -114,7 +128,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {headerAction}
                     {showCloseIcon && (
-                      <button className={styles.closeBtn} onClick={onClose}>
+                      <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
                         <X size={20} />
                       </button>
                     )}
@@ -122,7 +136,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                 </div>
               )}
               {!title && showCloseIcon && (
-                <button className={`${styles.closeBtn} ${styles.floatingClose}`} onClick={onClose}>
+                <button className={`${styles.closeBtn} ${styles.floatingClose}`} onClick={onClose} aria-label="Close">
                   <X size={20} />
                 </button>
               )}
@@ -139,12 +153,13 @@ export const CustomModal: React.FC<CustomModalProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
               onClick={onClose}
             />
 
             <motion.div
               className={modalClass}
-              style={{ width: (isMobile && !centeredOnMobile) ? '100vw' : '100%', maxWidth: (isMobile && !centeredOnMobile) ? '100vw' : resolvedWidth }}
+              style={{ width: isBottomSheet ? '100vw' : '100%', maxWidth: isBottomSheet ? '100vw' : resolvedWidth }}
               {...motionProps}
               {...dragProps}
             >
@@ -155,7 +170,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {headerAction}
                     {showCloseIcon && (
-                      <button className={styles.closeBtn} onClick={onClose}>
+                      <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
                         <X size={20} />
                       </button>
                     )}
@@ -163,7 +178,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
                 </div>
               )}
               {!title && showCloseIcon && (
-                <button className={`${styles.closeBtn} ${styles.floatingClose}`} onClick={onClose}>
+                <button className={`${styles.closeBtn} ${styles.floatingClose}`} onClick={onClose} aria-label="Close">
                   <X size={20} />
                 </button>
               )}
@@ -180,3 +195,4 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
   return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 };
+

@@ -40,7 +40,7 @@ export const WorkspaceTaskStatsModal: React.FC<WorkspaceTaskStatsModalProps> = (
   const isPersonalOnly = !isDirectorOrAdmin && !isManager;
 
   const allowedUserIds = useMemo(() => {
-    if (isDirectorOrAdmin) return null;
+    if (!isOpen || isDirectorOrAdmin) return null;
 
     if (isManager) {
       const uid = Number(currentUserId);
@@ -65,9 +65,10 @@ export const WorkspaceTaskStatsModal: React.FC<WorkspaceTaskStatsModalProps> = (
     }
 
     return new Set([String(currentUserId)]);
-  }, [isDirectorOrAdmin, isManager, teamsList, currentUserId, currentUserTeamId, users]);
+  }, [isOpen, isDirectorOrAdmin, isManager, teamsList, currentUserId, currentUserTeamId, users]);
 
   const scopedTasks = useMemo(() => {
+    if (!isOpen) return [];
     if (isDirectorOrAdmin) return tasks;
 
     const uidStr = String(currentUserId);
@@ -96,7 +97,7 @@ export const WorkspaceTaskStatsModal: React.FC<WorkspaceTaskStatsModalProps> = (
 
       return false;
     });
-  }, [tasks, isDirectorOrAdmin, isPersonalOnly, isManager, allowedUserIds, currentUserId, currentUserTeamId]);
+  }, [isOpen, tasks, isDirectorOrAdmin, isPersonalOnly, isManager, allowedUserIds, currentUserId, currentUserTeamId]);
 
   const [datePreset, setDatePreset] = useState<DatePreset>('this_month');
   const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
@@ -186,6 +187,7 @@ export const WorkspaceTaskStatsModal: React.FC<WorkspaceTaskStatsModalProps> = (
   }, [datePreset, customStartDate, customEndDate]);
 
   const filteredTasks = useMemo(() => {
+    if (!isOpen) return [];
     return scopedTasks.filter(task => {
       if (dateBounds.start || dateBounds.end) {
         const taskDateStr = task.due_date || task.created_at;
@@ -220,9 +222,25 @@ export const WorkspaceTaskStatsModal: React.FC<WorkspaceTaskStatsModalProps> = (
 
       return true;
     });
-  }, [scopedTasks, dateBounds, selectedCategory, selectedAssignee, searchKeyword]);
+  }, [isOpen, scopedTasks, dateBounds, selectedCategory, selectedAssignee, searchKeyword]);
 
   const stats = useMemo(() => {
+    if (!isOpen) {
+      return {
+        total: 0,
+        done: 0,
+        inProgress: 0,
+        notStarted: 0,
+        overdue: 0,
+        dueToday: 0,
+        pendingApproval: 0,
+        completionRate: 0,
+        urgent: 0,
+        normal: 0,
+        low: 0,
+        userLeaderboard: []
+      };
+    }
     const total = filteredTasks.length;
     let done = 0;
     let inProgress = 0;
@@ -362,7 +380,10 @@ export const WorkspaceTaskStatsModal: React.FC<WorkspaceTaskStatsModalProps> = (
         alignItems: 'center',
         justifyContent: 'center',
         padding: '16px',
-        animation: 'fadeIn 0.2s ease-out'
+        animation: 'fadeIn 0.2s ease-out',
+        contain: 'layout paint',
+        willChange: 'opacity',
+        transform: 'translateZ(0)'
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -381,7 +402,12 @@ export const WorkspaceTaskStatsModal: React.FC<WorkspaceTaskStatsModalProps> = (
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          contain: 'layout',
+          willChange: 'transform, opacity',
+          transform: 'translate3d(0, 0, 0)',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden'
         }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -12,6 +12,7 @@ import { getDefaultDateFilter } from './utils/api';
 import { GlobalConfirmModal } from './components/ui/GlobalConfirmModal';
 import { QRCodeCallModal } from './components/ui/QRCodeCallModal';
 import { ProfileModal } from './components/ProfileModal';
+import { LoadingModal } from './components/ui/LoadingModal';
 import { hasModuleApprovalAccess } from './utils/approvalPermissions';
 
 
@@ -538,6 +539,7 @@ export default function App() {
             <GlobalConfirmModal />
             <QRCodeCallModal />
             <ProfileModal />
+            <LoadingModal />
           </UploadProgressProvider>
         </AuthProvider>
 

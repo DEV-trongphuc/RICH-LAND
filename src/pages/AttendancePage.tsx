@@ -12,7 +12,7 @@ import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
 const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 import api from '../api/axios';
-import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw, Moon, MapPin, CheckSquare, Users } from 'lucide-react';
+import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw, Moon, MapPin, CheckSquare, Users, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useUIStore } from '../store/uiStore';
@@ -1233,11 +1233,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   type="button"
                                   onClick={() => handleApproveRegistration(row.id, row.shift_type)}
                                   disabled={actioningRegId === row.id}
-                                  className="btn success sm icon-only"
+                                  className={`btn success sm icon-only ${actioningRegId === row.id ? 'loading' : ''}`}
                                   title={t('Phê duyệt')}
                                   style={{ width: 28, height: 28, padding: 0, borderRadius: '6px' }}
                                 >
-                                  <Check size={14} />
+                                  {actioningRegId === row.id ? <Loader2 size={13} className="spin" /> : <Check size={14} />}
                                 </button>
                                 <button
                                   type="button"
@@ -1249,11 +1249,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                     });
                                   }}
                                   disabled={actioningRegId === row.id}
-                                  className="btn danger sm icon-only"
+                                  className={`btn danger sm icon-only ${actioningRegId === row.id ? 'loading' : ''}`}
                                   title={t('Từ chối')}
                                   style={{ width: 28, height: 28, padding: 0, borderRadius: '6px' }}
                                 >
-                                  <X size={14} />
+                                  {actioningRegId === row.id ? <Loader2 size={13} className="spin" /> : <X size={14} />}
                                 </button>
                               </>
                             ) : (
@@ -1267,11 +1267,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   });
                                 }}
                                 disabled={actioningRegId === row.id}
-                                className="btn outline sm danger icon-only"
+                                className={`btn outline sm danger icon-only ${actioningRegId === row.id ? 'loading' : ''}`}
                                 title={t('Huỷ phê duyệt')}
                                 style={{ width: 28, height: 28, padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)' }}
                               >
-                                <X size={14} />
+                                {actioningRegId === row.id ? <Loader2 size={13} className="spin" /> : <X size={14} />}
                               </button>
                             )}
                           </div>

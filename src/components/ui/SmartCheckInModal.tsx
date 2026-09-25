@@ -948,7 +948,7 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: '0.5rem', marginBottom: '0.5rem', width: '100%' }}>
                 <button
                   type="button"
-                  className="btn primary"
+                  className={`btn primary ${submitting || addressLoading ? 'loading' : ''}`}
                   disabled={submitting || addressLoading}
                   onClick={() => {
                     if (isLate && !checkInReason.trim()) {

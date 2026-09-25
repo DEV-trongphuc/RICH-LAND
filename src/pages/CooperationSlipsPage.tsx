@@ -2541,10 +2541,17 @@ export default function CooperationSlipsPage() {
                   }
                 }}
                 disabled={isSigning}
-                className="btn primary w-full"
-                style={{ height: '48px', fontSize: '1rem', fontWeight: 800, opacity: isSigning ? 0.7 : 1, cursor: isSigning ? 'not-allowed' : 'pointer', background: '#BD1D2D', borderColor: '#BD1D2D', borderRadius: '10px', boxShadow: '0 4px 14px rgba(189, 29, 45, 0.3)' }}
+                className={`btn primary w-full ${isSigning ? 'loading' : ''}`}
+                style={{ height: '48px', fontSize: '1rem', fontWeight: 800, cursor: isSigning ? 'not-allowed' : 'pointer', background: '#BD1D2D', borderColor: '#BD1D2D', borderRadius: '10px', boxShadow: '0 4px 14px rgba(189, 29, 45, 0.3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                {isSigning ? 'Đang xử lý chữ ký số...' : 'Tôi đồng ý và Ký xác nhận'}
+                {isSigning ? (
+                  <>
+                    <Loader2 size={18} className="spin" />
+                    <span>Đang xử lý chữ ký số...</span>
+                  </>
+                ) : (
+                  'Tôi đồng ý và Ký xác nhận'
+                )}
               </button>
             </div>
           </div>
@@ -2812,13 +2819,13 @@ export default function CooperationSlipsPage() {
                     setIsApproving(false);
                   }
                 }} 
-                className="btn"
-                style={{ flex: 2, height: '48px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, background: '#10b981', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)' }}
+                className={`btn ${isApproving ? 'loading' : ''}`}
+                style={{ flex: 2, height: '48px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, background: '#10b981', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: isApproving ? 'not-allowed' : 'pointer', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)' }}
                 disabled={isApproving}
               >
                 {isApproving ? (
                   <>
-                    <Loader2 size={18} className="animate-spin" />
+                    <Loader2 size={18} className="spin" />
                     Đang xử lý...
                   </>
                 ) : (
@@ -3065,12 +3072,19 @@ export default function CooperationSlipsPage() {
                 Hủy
               </button>
               <button 
-                className="btn primary" 
+                className={`btn primary ${isSubmittingReq ? 'loading' : ''}`} 
                 onClick={handleConfirmRequestAdjustment} 
                 disabled={isSubmittingReq} 
-                style={{ background: 'var(--color-primary)', color: 'white', border: 'none', height: '42px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 700, padding: '0 20px', boxShadow: '0 4px 10px rgba(163, 20, 34, 0.15)' }}
+                style={{ background: 'var(--color-primary)', color: 'white', border: 'none', height: '42px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 700, padding: '0 20px', boxShadow: '0 4px 10px rgba(163, 20, 34, 0.15)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                {isSubmittingReq ? 'Đang gửi...' : 'Gửi yêu cầu'}
+                {isSubmittingReq ? (
+                  <>
+                    <Loader2 size={16} className="spin" />
+                    <span>Đang gửi...</span>
+                  </>
+                ) : (
+                  'Gửi yêu cầu'
+                )}
               </button>
             </div>
           </div>
@@ -3197,20 +3211,22 @@ export default function CooperationSlipsPage() {
                 Hủy
               </button>
               <button
-                className="btn danger"
+                className={`btn danger ${isHandlingRequest ? 'loading' : ''}`}
                 onClick={() => handleResolveRequest('reject')}
                 disabled={isHandlingRequest}
-                style={{ background: 'var(--color-danger)', color: 'white', border: 'none' }}
+                style={{ background: 'var(--color-danger)', color: 'white', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                {isHandlingRequest ? 'Đang xử lý...' : 'Từ chối'}
+                {isHandlingRequest ? <Loader2 size={15} className="spin" /> : null}
+                <span>{isHandlingRequest ? 'Đang xử lý...' : 'Từ chối'}</span>
               </button>
               <button
-                className="btn primary"
+                className={`btn primary ${isHandlingRequest ? 'loading' : ''}`}
                 onClick={handleApproveAdjustmentRequest}
                 disabled={isHandlingRequest}
-                style={{ background: '#10b981', color: 'white', border: 'none' }}
+                style={{ background: '#10b981', color: 'white', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                Duyệt yêu cầu
+                {isHandlingRequest ? <Loader2 size={15} className="spin" /> : <Check size={16} />}
+                <span>{isHandlingRequest ? 'Đang duyệt...' : 'Duyệt yêu cầu'}</span>
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
+import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp, LogOut, Loader2 } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
@@ -196,7 +196,9 @@ export const ProfileModal = () => {
       title={t("Thông tin Tài khoản")}
       width="760px"
     >
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', gap: '0.75rem', padding: '0 1rem', overflowX: 'auto', scrollbarWidth: 'none' }}>
+      {isOpen && (
+        <>
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', gap: '0.75rem', padding: '0 1rem', overflowX: 'auto', scrollbarWidth: 'none' }}>
         <button
           onClick={() => setActiveTab('profile')}
           style={{
@@ -350,8 +352,23 @@ export const ProfileModal = () => {
                   {t('Mở trang chi tiết')} →
                 </button>
                 
-                <button type="submit" className="btn primary" style={{ height: '38px', padding: '0 14px', fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap' }} disabled={loading}>
-                  {loading ? t('Đang xử lý...') : <><Save size={14} style={{ marginRight: 4 }} /> {t('Cập nhật Thông tin')}</>}
+                <button 
+                  type="submit" 
+                  className={`btn primary ${loading ? 'loading' : ''}`} 
+                  style={{ height: '38px', padding: '0 14px', fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }} 
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={14} className="spin" />
+                      <span>{t('Đang xử lý...')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      <span>{t('Cập nhật Thông tin')}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -416,8 +433,23 @@ export const ProfileModal = () => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button type="submit" className="btn primary" disabled={loading} style={{ background: '#10b981' }}>
-                {loading ? t('Đang xử lý...') : <><Save size={18} /> {t('Đổi Mật Khẩu')}</>}
+              <button 
+                type="submit" 
+                className={`btn primary ${loading ? 'loading' : ''}`} 
+                disabled={loading} 
+                style={{ background: '#10b981', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={16} className="spin" />
+                    <span>{t('Đang xử lý...')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={18} />
+                    <span>{t('Đổi Mật Khẩu')}</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
@@ -655,6 +687,8 @@ export const ProfileModal = () => {
           </div>
         )}
       </div>
+        </>
+      )}
     </CustomModal>
   );
 };

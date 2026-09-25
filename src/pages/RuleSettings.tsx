@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail, Info, Layers, Cpu, SlidersHorizontal } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail, Info, Layers, Cpu, SlidersHorizontal, Loader2 } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
@@ -1214,10 +1214,23 @@ const RuleSettingsInner = () => {
             />
           </div>
           <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
-            <button type="button" className="btn outline" onClick={() => setIsModalOpen(false)}>{isReadOnly ? t("Đóng") : t("Hủy bỏ")}</button>
+            <button type="button" className="btn outline" onClick={() => setIsModalOpen(false)} disabled={isSaving}>{isReadOnly ? t("Đóng") : t("Hủy bỏ")}</button>
             {!isReadOnly && (
-              <button type="button" onClick={handleSaveRule} className="btn primary" disabled={isSaving}>
-                {isSaving ? t('Đang lưu...') : (editingRule ? t('Cập nhật') : t('Thêm mới'))}
+              <button 
+                type="button" 
+                onClick={handleSaveRule} 
+                className={`btn primary ${isSaving ? 'loading' : ''}`} 
+                disabled={isSaving}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 size={16} className="spin" />
+                    <span>{t('Đang lưu...')}</span>
+                  </>
+                ) : (
+                  editingRule ? t('Cập nhật') : t('Thêm mới')
+                )}
               </button>
             )}
           </div>

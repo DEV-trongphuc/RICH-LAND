@@ -998,17 +998,67 @@ ul {
   transform: translateY(-0.5px);
 }
 
+/* Button Disabled & Interactive States */
 button:disabled,
-.btn:disabled {
-  opacity: 0.55 !important;
+.btn:disabled,
+.btn.disabled,
+[disabled] {
+  opacity: 0.52 !important;
   cursor: not-allowed !important;
   pointer-events: none !important;
   transform: none !important;
+  box-shadow: none !important;
+  filter: grayscale(15%);
 }
 
+/* Button Loading & Async Waiting States */
+.btn.loading,
+.btn-loading,
+.btn.is-loading {
+  position: relative;
+  pointer-events: none !important;
+  cursor: wait !important;
+  opacity: 0.88;
+  overflow: hidden;
+}
 
-.btn .spin {
-  animation: spin 1s linear infinite;
+.btn.loading::after,
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  background-size: 200% 100%;
+  animation: btnShimmerWave 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .btn.loading::after,
+[data-theme="dark"] .btn-loading::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  background-size: 200% 100%;
+}
+
+.btn .spin,
+.spin {
+  animation: spin 0.85s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+  display: inline-block;
+}
+
+@keyframes btnShimmerWave {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Badge */
@@ -6058,7 +6108,39 @@ a,
   color: var(--color-text) !important;
 }
 
+/* ===================================================
+   MAX PERFORMANCE SKELETON & MODAL ANIMATION UTILITIES
+   =================================================== */
+.skeleton {
+  background: linear-gradient(90deg, var(--skeleton-base, #e2e8f0) 25%, var(--skeleton-shine, #f1f5f9) 50%, var(--skeleton-base, #e2e8f0) 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.6s ease-in-out infinite;
+  will-change: background-position;
+  transform: translateZ(0);
+}
 
+[data-theme="dark"] .skeleton {
+  --skeleton-base: rgba(255, 255, 255, 0.06);
+  --skeleton-shine: rgba(255, 255, 255, 0.12);
+}
 
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 
+@keyframes progressSlide {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
 
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 0.3; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+@keyframes modalSpring {
+  0% { transform: scale(0.92) translateY(12px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
