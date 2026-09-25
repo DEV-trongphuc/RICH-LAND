@@ -1,6 +1,33 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import fs from 'fs'
+import path from 'path'
+
+const buildVersion = Date.now().toString();
+
+function versionManifestPlugin() {
+  return {
+    name: 'version-manifest-plugin',
+    buildStart() {
+      const payload = JSON.stringify({
+        version: buildVersion,
+        buildTime: new Date().toISOString()
+      }, null, 2);
+      
+      const publicDir = path.resolve(__dirname, 'public');
+      if (!fs.existsSync(publicDir)) {
+        fs.mkdirSync(publicDir, { recursive: true });
+      }
+      fs.writeFileSync(path.resolve(publicDir, 'version.json'), payload, 'utf-8');
+      
+      const backendDir = path.resolve(__dirname, 'backend');
+      if (fs.existsSync(backendDir)) {
+        fs.writeFileSync(path.resolve(backendDir, 'version.json'), payload, 'utf-8');
+      }
+    }
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -8,7 +35,11 @@ export default defineConfig(({ mode }) => {
   const targetUrl = env.VITE_API_URL || 'https://crm.richland.city/backend';
   
   return {
+    define: {
+      __APP_VERSION__: JSON.stringify(buildVersion),
+    },
     plugins: [
+      versionManifestPlugin(),
       react(),
       tailwindcss(),
     ],

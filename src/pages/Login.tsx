@@ -63,7 +63,8 @@ export const Login = () => {
       const json = await res.json();
       if (json.success) {
         login(json.token, json.user);
-        navigate('/');
+        const isSale = json.user?.role === 'sale' || json.user?.role === 'sales';
+        navigate(isSale ? '/workspace' : '/');
       } else {
         setError(t(json.message) || t('Đăng nhập Google thất bại'));
       }
@@ -131,7 +132,7 @@ export const Login = () => {
         else if (email.includes('tuan')) { cId = 4; name = 'Minh Tuấn'; cEmail = 'minhtuan@richland.net'; }
 
         login(`demo_token_sale_${cId}`, { id: cId, username: cEmail.split('@')[0], email: cEmail, name: name, role: 'sale', consultant_id: cId });
-        navigate('/');
+        navigate('/workspace');
       } else {
         login('demo_token_12345', { id: 1, username: (email || 'admin@richland.net').split('@')[0], email: email || 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
         navigate('/');
@@ -171,7 +172,8 @@ export const Login = () => {
           setShow2FAModal(true);
         } else {
           login(res.data.access_token, res.data.user);
-          navigate('/');
+          const isSale = res.data.user?.role === 'sale' || res.data.user?.role === 'sales';
+          navigate(isSale ? '/workspace' : '/');
         }
       } else {
         const errorMsg = t(res?.message) || t('Email hoặc mật khẩu không đúng. Vui lòng thử lại.');
@@ -206,7 +208,8 @@ export const Login = () => {
       if (res.success && res.data) {
         login(res.data.access_token, res.data.user);
         setShow2FAModal(false);
-        navigate('/');
+        const isSale = res.data.user?.role === 'sale' || res.data.user?.role === 'sales';
+        navigate(isSale ? '/workspace' : '/');
       } else {
         toast.error(res.message || 'Mã xác thực không chính xác');
       }

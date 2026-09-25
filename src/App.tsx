@@ -13,7 +13,9 @@ import { GlobalConfirmModal } from './components/ui/GlobalConfirmModal';
 import { QRCodeCallModal } from './components/ui/QRCodeCallModal';
 import { ProfileModal } from './components/ProfileModal';
 import { LoadingModal } from './components/ui/LoadingModal';
+import { AutoUpdateChecker } from './components/AutoUpdateChecker';
 import { hasModuleApprovalAccess } from './utils/approvalPermissions';
+import './utils/toastEnhancer';
 
 
 // Lazy load all pages for Code Splitting
@@ -140,6 +142,10 @@ const AppTabs = () => {
       return <Navigate to="/workspace" replace />;
     }
     return <Navigate to="/" replace />;
+  } else if (currentPath === '/reports-crm') {
+    if (['sale', 'sales', 'viewer'].includes(user?.role || '')) {
+      return <Navigate to="/workspace" replace />;
+    }
   } else if (isAdminPath) {
     if (currentPath === '/settings') {
       if (!['admin', 'superadmin', 'super_admin'].includes(user?.role || '')) {
@@ -154,7 +160,7 @@ const AppTabs = () => {
     switch (currentPath) {
       case '/':
         return ((user?.role as any) === 'sale' || (user?.role as any) === 'sales') 
-          ? <SalePortal embedMode={true} activeTabProp="dashboard" key="dashboard" /> 
+          ? <Navigate to="/workspace" replace /> 
           : <Dashboard key="dashboard" />;
       case '/workspace':
         return <SalePortal embedMode={true} activeTabProp="workspace" key="workspace" />;
@@ -540,6 +546,7 @@ export default function App() {
             <QRCodeCallModal />
             <ProfileModal />
             <LoadingModal />
+            <AutoUpdateChecker />
           </UploadProgressProvider>
         </AuthProvider>
 

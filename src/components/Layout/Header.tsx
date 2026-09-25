@@ -8,7 +8,7 @@ import { toast } from 'react-hot-toast';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { SIDEBAR_GROUPS } from './Sidebar';
 import { Avatar } from '../ui/Avatar';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { CustomModal } from '../ui/CustomModal';
 import { NotificationSettingsModal } from '../ui/NotificationSettingsModal';
 import { fetchAPI } from '../../utils/api';
@@ -40,13 +40,15 @@ export const Header = ({
   onMenuClick, 
   version,
   pendingInboxCount,
-  onUnifiedInboxClick
+  onUnifiedInboxClick,
+  isWorkspace
 }: { 
   onActivityFeedClick: () => void; 
   onMenuClick?: () => void; 
   version?: string;
   pendingInboxCount?: number;
   onUnifiedInboxClick?: () => void;
+  isWorkspace?: boolean;
 }) => {
   const isDemo = localStorage.getItem('RICH LAND_DEMO_MODE') === 'true';
   const { user, logout } = useAuth();
@@ -55,6 +57,8 @@ export const Header = ({
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isWs = isWorkspace ?? (location.pathname === '/workspace' || location.pathname === '/portal');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
 
@@ -847,9 +851,20 @@ export const Header = ({
 
   return (
     <header style={{
+      position: 'relative',
       height: 66,
-      background: 'var(--color-surface)',
-      borderBottom: '1px solid var(--color-border)',
+      background: isWs 
+        ? 'linear-gradient(180deg, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.42) 100%)'
+        : 'var(--color-surface)',
+      backdropFilter: isWs ? 'blur(24px) saturate(180%) contrast(110%)' : 'none',
+      WebkitBackdropFilter: isWs ? 'blur(24px) saturate(180%) contrast(110%)' : 'none',
+      borderBottom: isWs 
+        ? '1px solid rgba(255, 255, 255, 0.14)'
+        : '1px solid var(--color-border)',
+      boxShadow: isWs 
+        ? '0 8px 32px 0 rgba(0, 0, 0, 0.3)' 
+        : 'none',
+      transition: 'background 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -890,22 +905,23 @@ export const Header = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--color-text-muted)',
+            color: isWs ? '#ffffff' : 'var(--color-text-muted)',
             borderRadius: 8,
             border: 'none',
             background: 'none',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            outline: 'none'
+            outline: 'none',
+            filter: isWs ? 'drop-shadow(0 1px 3px rgba(0,0,0,0.7))' : 'none'
           }}
           className="responsive-hide-mobile"
           title={t("Menu điều hướng nhanh")}
           onMouseEnter={e => {
-            e.currentTarget.style.color = 'var(--color-primary)';
-            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.background = isWs ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.03)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.color = 'var(--color-text-muted)';
+            e.currentTarget.style.color = isWs ? '#ffffff' : 'var(--color-text-muted)';
             e.currentTarget.style.background = 'none';
           }}
          >
@@ -919,28 +935,40 @@ export const Header = ({
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            background: 'var(--color-bg)',
-            border: '1px solid var(--color-border)',
+            background: isWs
+              ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.06) 100%)'
+              : 'var(--color-bg)',
+            border: isWs
+              ? '1px solid rgba(255, 255, 255, 0.28)'
+              : '1px solid var(--color-border)',
             borderRadius: 9999,
             padding: '0.4rem 0.875rem',
-            color: 'var(--color-text-light)',
+            color: isWs ? '#ffffff' : 'var(--color-text-light)',
             fontSize: '0.875rem',
             cursor: 'pointer',
-            transition: 'border-color 0.2s',
+            transition: 'all 0.2s ease',
             width: 320,
-            maxWidth: '100%'
+            maxWidth: '100%',
+            backdropFilter: isWs ? 'blur(10px)' : 'none',
+            WebkitBackdropFilter: isWs ? 'blur(10px)' : 'none',
+            boxShadow: isWs ? '0 2px 10px rgba(0, 0, 0, 0.25)' : 'none',
+            textShadow: isWs ? '0 1px 3px rgba(0, 0, 0, 0.8)' : 'none'
           }} 
           className="responsive-search-box responsive-hide-mobile"
         >
-          <Search size={16} />
-          <span className="responsive-hide-mobile">{t("Tìm kiếm toàn hệ thống...")}</span>
+          <Search size={16} style={{ color: isWs ? '#ffffff' : 'currentColor', filter: isWs ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))' : 'none' }} />
+          <span className="responsive-hide-mobile" style={{ color: isWs ? '#ffffff' : 'inherit', textShadow: isWs ? '0 1px 3px rgba(0, 0, 0, 0.8)' : 'none', fontWeight: isWs ? 500 : 400 }}>
+            {t("Tìm kiếm toàn hệ thống...")}
+          </span>
           <span className="responsive-hide-mobile" style={{
             marginLeft: 'auto',
             display: 'flex',
             alignItems: 'center',
             gap: 2,
-            background: 'var(--color-border)',
-            color: 'var(--color-text-muted)',
+            background: isWs ? 'rgba(255, 255, 255, 0.18)' : 'var(--color-border)',
+            border: isWs ? '1px solid rgba(255, 255, 255, 0.25)' : 'none',
+            color: isWs ? '#ffffff' : 'var(--color-text-muted)',
+            textShadow: isWs ? '0 1px 2px rgba(0, 0, 0, 0.8)' : 'none',
             padding: '1px 6px',
             borderRadius: 4,
             fontSize: '0.7rem'
@@ -958,22 +986,23 @@ export const Header = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--color-text-muted)',
+            color: isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-muted)',
             borderRadius: 8,
             border: 'none',
             background: 'none',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            outline: 'none'
+            outline: 'none',
+            filter: isWs ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : 'none'
           }}
           className="responsive-hide-mobile"
           title={t("Bảng phím tắt điều hướng nhanh (?)")}
           onMouseEnter={e => {
-            e.currentTarget.style.color = 'var(--color-primary)';
-            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+            e.currentTarget.style.color = isWs ? '#ffffff' : 'var(--color-primary)';
+            e.currentTarget.style.background = isWs ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.color = 'var(--color-text-muted)';
+            e.currentTarget.style.color = isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-muted)';
             e.currentTarget.style.background = 'none';
           }}
          >
@@ -1025,23 +1054,24 @@ export const Header = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--color-text-light)',
+              color: isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-light)',
               borderRadius: 8,
               border: 'none',
               background: 'none',
               cursor: 'pointer',
               transition: 'all 0.2s',
               position: 'relative',
-              outline: 'none'
+              outline: 'none',
+              filter: isWs ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : 'none'
             }}
             title={t("Bản tin hoạt động hệ thống")}
             onMouseEnter={e => {
-              e.currentTarget.style.background = 'var(--color-bg)';
-              e.currentTarget.style.color = 'var(--color-primary)';
+              e.currentTarget.style.background = isWs ? 'rgba(255,255,255,0.1)' : 'var(--color-bg)';
+              e.currentTarget.style.color = isWs ? '#ffffff' : 'var(--color-primary)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'none';
-              e.currentTarget.style.color = 'var(--color-text-light)';
+              e.currentTarget.style.color = isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-light)';
             }}
           >
             <Activity size={20} />
@@ -1053,7 +1083,7 @@ export const Header = ({
               height: 8,
               borderRadius: '50%',
               background: '#10b981',
-              boxShadow: '0 0 0 2px var(--color-surface)',
+              boxShadow: isWs ? '0 0 0 2px rgba(0, 0, 0, 0.5)' : '0 0 0 2px var(--color-surface)',
               animation: 'pulse 2s infinite'
             }} />
           </button>
@@ -1069,25 +1099,26 @@ export const Header = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: pendingInboxCount > 0 ? '#ef4444' : 'var(--color-text-light)',
+              color: pendingInboxCount > 0 ? '#ef4444' : (isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-light)'),
               borderRadius: 8,
               border: 'none',
               background: 'none',
               cursor: 'pointer',
               transition: 'all 0.2s',
               position: 'relative',
-              outline: 'none'
+              outline: 'none',
+              filter: isWs ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : 'none'
             }}
             title={t("Các vấn đề cần xử lý")}
             onMouseEnter={e => {
-              e.currentTarget.style.background = 'var(--color-bg)';
+              e.currentTarget.style.background = isWs ? 'rgba(255,255,255,0.1)' : 'var(--color-bg)';
               if (pendingInboxCount === 0) {
-                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.color = isWs ? '#ffffff' : 'var(--color-primary)';
               }
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'none';
-              e.currentTarget.style.color = pendingInboxCount > 0 ? '#ef4444' : 'var(--color-text-light)';
+              e.currentTarget.style.color = pendingInboxCount > 0 ? '#ef4444' : (isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-light)');
             }}
           >
             <ShieldAlert size={20} className={pendingInboxCount > 0 ? "animate-pulse" : ""} style={{ color: pendingInboxCount > 0 ? '#ef4444' : 'inherit' }} />
@@ -1107,7 +1138,7 @@ export const Header = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: '0 4px',
-                boxShadow: '0 0 0 2px var(--color-surface)',
+                boxShadow: isWs ? '0 0 0 1.5px rgba(0, 0, 0, 0.5)' : '0 0 0 2px var(--color-surface)',
                 lineHeight: 1
               }}>
                 {pendingInboxCount}
@@ -1125,23 +1156,24 @@ export const Header = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--color-text-light)',
+            color: isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-light)',
             borderRadius: 8,
             border: 'none',
             background: 'none',
             cursor: 'pointer',
             transition: 'all 0.2s',
             position: 'relative',
-            outline: 'none'
+            outline: 'none',
+            filter: isWs ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : 'none'
           }}
           title={t("Thông báo")}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'var(--color-bg)';
-            e.currentTarget.style.color = 'var(--color-primary)';
+            e.currentTarget.style.background = isWs ? 'rgba(255,255,255,0.1)' : 'var(--color-bg)';
+            e.currentTarget.style.color = isWs ? '#ffffff' : 'var(--color-primary)';
           }}
           onMouseLeave={e => {
             e.currentTarget.style.background = 'none';
-            e.currentTarget.style.color = 'var(--color-text-light)';
+            e.currentTarget.style.color = isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-light)';
           }}
         >
           <Bell size={20} />
@@ -1161,7 +1193,7 @@ export const Header = ({
               alignItems: 'center',
               justifyContent: 'center',
               padding: '0 4px',
-              boxShadow: '0 0 0 2px var(--color-surface)',
+              boxShadow: isWs ? '0 0 0 1.5px rgba(0, 0, 0, 0.5)' : '0 0 0 2px var(--color-surface)',
               lineHeight: 1
             }}>
               {unreadCount > 99 ? '99+' : unreadCount}
@@ -1178,22 +1210,23 @@ export const Header = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--color-text-light)',
+            color: isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-light)',
             borderRadius: 8,
             border: 'none',
             background: 'none',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            outline: 'none'
+            outline: 'none',
+            filter: isWs ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : 'none'
           }}
           title={theme === 'light' ? t("Chuyển sang giao diện tối") : t("Chuyển sang giao diện sáng")}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'var(--color-bg)';
-            e.currentTarget.style.color = 'var(--color-primary)';
+            e.currentTarget.style.background = isWs ? 'rgba(255,255,255,0.1)' : 'var(--color-bg)';
+            e.currentTarget.style.color = isWs ? '#ffffff' : 'var(--color-primary)';
           }}
           onMouseLeave={e => {
             e.currentTarget.style.background = 'none';
-            e.currentTarget.style.color = 'var(--color-text-light)';
+            e.currentTarget.style.color = isWs ? 'rgba(255, 255, 255, 0.85)' : 'var(--color-text-light)';
           }}
         >
           {theme === 'light' ? <Moon size={20} /> : <Sun size={20} style={{ color: '#fbbf24' }} />}
@@ -1327,7 +1360,7 @@ export const Header = ({
           onMouseLeave={() => setIsProfileMenuOpen(false)}
           style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
-          <div style={{ width: '1px', height: '24px', background: 'var(--color-border)' }} />
+          <div style={{ width: '1px', height: '24px', background: isWs ? 'rgba(255, 255, 255, 0.2)' : 'var(--color-border)' }} />
           <div 
             onClick={handleProfileClick}
             style={{
@@ -1338,13 +1371,13 @@ export const Header = ({
               padding: '4px 8px',
               borderRadius: '6px',
               transition: 'background 0.2s',
-              background: isProfileMenuOpen ? 'var(--color-bg)' : 'transparent'
+              background: isProfileMenuOpen ? (isWs ? 'rgba(255, 255, 255, 0.15)' : 'var(--color-bg)') : 'transparent'
             }}
           >
             <Avatar src={user?.avatar} name={user?.name} size={32} />
             <div className="responsive-hide-mobile" style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{user?.name || 'User'}</span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: isWs ? '#ffffff' : 'var(--color-text)', textShadow: isWs ? '0 1px 3px rgba(0, 0, 0, 0.7)' : 'none' }}>{user?.name || 'User'}</span>
+              <span style={{ fontSize: '0.7rem', color: isWs ? 'rgba(255, 255, 255, 0.75)' : 'var(--color-text-light)', textShadow: isWs ? '0 1px 2px rgba(0, 0, 0, 0.5)' : 'none' }}>
                 {(() => {
                   const u = user as any;
                   const jt = u?.job_title || u?.erp_profile?.job_title;

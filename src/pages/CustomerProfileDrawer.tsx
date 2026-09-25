@@ -80,7 +80,7 @@ export function parseWebhookData(note: string | null | undefined): ParsedWebhook
   return { parsed, cleanNote, measurementData };
 }
 import { compressToWebP } from '../utils/imageCompress';
-import { TicketDrawer } from './TicketDrawer';
+const TicketDrawer = lazy(() => import('./TicketDrawer').then(module => ({ default: module.TicketDrawer })));
 const WorkspaceTaskDrawer = lazy(() => import('./WorkspaceTaskDrawer').then(module => ({ default: module.WorkspaceTaskDrawer })));
 import { Skeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 import { EmptyCard } from '../components/ui/EmptyCard';
@@ -13586,21 +13586,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           fetchData();
         }}
       />
-      <TicketDrawer
-        isOpen={!!selectedTicketDetail}
-        onClose={() => setSelectedTicketDetail(null)}
-        ticket={selectedTicketDetail}
-        onUpdate={async (updated) => {
-          try {
-            await api.put(`/tickets/${updated.id}`, updated);
-            setDrawerTickets(prev => prev.map(t => t.id === updated.id ? updated : t));
-          } catch (e: any) {
-            addToast(e.response?.data?.message || 'Không thể cập nhật Ticket', 'error');
-          }
-        }}
-        contacts={contacts}
-        users={users}
-      />
+      {selectedTicketDetail && (
+        <Suspense fallback={null}>
+          <TicketDrawer
+            isOpen={!!selectedTicketDetail}
+            onClose={() => setSelectedTicketDetail(null)}
+            ticket={selectedTicketDetail}
+            onUpdate={async (updated) => {
+              try {
+                await api.put(`/tickets/${updated.id}`, updated);
+                setDrawerTickets(prev => prev.map(t => t.id === updated.id ? updated : t));
+              } catch (e: any) {
+                addToast(e.response?.data?.message || 'Không thể cập nhật Ticket', 'error');
+              }
+            }}
+            contacts={contacts}
+            users={users}
+          />
+        </Suspense>
+      )}
 
       {/* Signature Modal */}
       {isSignModalOpen && coopSlip && createPortal(
@@ -15565,7 +15569,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             </button>
             <button
               type="button"
-              className="btn danger sm"
+              className={`btn danger sm ${isSubmittingNotLead ? 'loading' : ''}`}
               disabled={isSubmittingNotLead}
               onClick={async () => {
                 setIsSubmittingNotLead(true);
@@ -15587,7 +15591,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               }}
               style={{ height: '32px', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <ShieldAlert size={14} />
+              {isSubmittingNotLead ? <Loader2 size={14} className="spin" /> : <ShieldAlert size={14} />}
               {isSubmittingNotLead ? 'Đang gửi...' : 'Xác nhận báo cáo Not Lead'}
             </button>
           </div>

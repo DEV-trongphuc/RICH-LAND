@@ -86,13 +86,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   const visibleGroups = SIDEBAR_GROUPS.map(group => {
     let items = [...group.items];
-    if (group.title === 'TỔNG QUAN' && user?.role === 'sale') {
-      items = [
-        { name: 'Tổng quan', href: '/', icon: Home, end: true },
-        { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' },
-        { name: 'Kho Databank', href: '/databank', icon: Database, hideForRoles: ['viewer'] }
-      ];
-    }
     const filteredItems = items.filter((item: any) => {
       const role = user?.role as string;
       const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
@@ -841,76 +834,91 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           onMobileClose={() => setIsMobileSidebarOpen(false)}
         />
       )}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
-        <Header 
-          onActivityFeedClick={() => setIsActivityFeedOpen(true)}
-          onMenuClick={() => setIsMobileSidebarOpen(true)}
-          version={backendVersion}
-          pendingInboxCount={pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount + pendingExpensesCount}
-          onUnifiedInboxClick={() => setIsUnifiedInboxOpen(true)}
-        />
+      {(() => {
+        const isWorkspaceRoute = location.pathname === '/workspace' || location.pathname === '/portal';
+        return (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
+            <Header 
+              onActivityFeedClick={() => setIsActivityFeedOpen(true)}
+              onMenuClick={() => setIsMobileSidebarOpen(true)}
+              version={backendVersion}
+              pendingInboxCount={pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount + pendingExpensesCount}
+              onUnifiedInboxClick={() => setIsUnifiedInboxOpen(true)}
+              isWorkspace={isWorkspaceRoute}
+            />
 
-        {user && consultantProfile && !consultantProfile.telegram_chat_id && !dismissTelegramReminder && (
-          <div style={{
-            background: 'linear-gradient(90deg, #0088cc 0%, #00a8ff 100%)',
-            color: '#fff',
-            padding: '8px 1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-            boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
-            zIndex: 30
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', padding: 1 }} />
-              <span>
-                Bạn chưa liên kết tài khoản với <b>Telegram Bot</b> để nhận các thông báo, cảnh báo quan trọng từ hệ thống. 
-                <span 
-                  style={{ 
-                    display: isMobile ? 'block' : 'inline-block',
-                    marginLeft: isMobile ? 0 : 8,
-                    marginTop: isMobile ? '4px' : 0,
-                    textDecoration: 'underline', 
-                    cursor: 'pointer', 
-                    fontWeight: 700, 
-                    color: '#fff' 
-                  }} 
-                  onClick={() => setIsTelegramModalOpen(true)}
-                >
-                  Liên kết ngay →
-                </span>
-              </span>
-            </div>
-            <button 
-              onClick={() => {
-                setDismissTelegramReminder(true);
-                sessionStorage.setItem('dismiss_telegram_reminder', '1');
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
+            {user && consultantProfile && !consultantProfile.telegram_chat_id && !dismissTelegramReminder && (
+              <div style={{
+                background: 'linear-gradient(90deg, #0088cc 0%, #00a8ff 100%)',
                 color: '#fff',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                padding: '0 5px',
-                lineHeight: 1
+                padding: '8px 1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                zIndex: 30
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', padding: 1 }} />
+                  <span>
+                    Bạn chưa liên kết tài khoản với <b>Telegram Bot</b> để nhận các thông báo, cảnh báo quan trọng từ hệ thống. 
+                    <span 
+                      style={{ 
+                        display: isMobile ? 'block' : 'inline-block',
+                        marginLeft: isMobile ? 0 : 8,
+                        marginTop: isMobile ? '4px' : 0,
+                        textDecoration: 'underline', 
+                        cursor: 'pointer', 
+                        fontWeight: 700, 
+                        color: '#fff' 
+                      }} 
+                      onClick={() => setIsTelegramModalOpen(true)}
+                    >
+                      Liên kết ngay →
+                    </span>
+                  </span>
+                </div>
+                <button 
+                  onClick={() => {
+                    setDismissTelegramReminder(true);
+                    sessionStorage.setItem('dismiss_telegram_reminder', '1');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    padding: '0 5px',
+                    lineHeight: 1
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+
+            <main 
+              className={`responsive-main ${isWorkspaceRoute ? 'workspace-full-bleed' : ''}`} 
+              style={{ 
+                flex: 1, 
+                overflow: 'auto', 
+                padding: isWorkspaceRoute ? 0 : (isMobile ? '0.875rem 0.875rem 100px 0.875rem' : '1.25rem 1.75rem'), 
+                position: 'relative', 
+                zIndex: 10 
               }}
             >
-              ✕
-            </button>
+              <div style={{ width: '100%', minHeight: isWorkspaceRoute ? '100%' : undefined }}>
+                {children}
+              </div>
+            </main>
           </div>
-        )}
-
-
-        <main className="responsive-main" style={{ flex: 1, overflow: 'auto', padding: isMobile ? '0.875rem 0.875rem 100px 0.875rem' : '1.25rem 1.75rem', position: 'relative', zIndex: 10 }}>
-          <div style={{ width: '100%' }}>
-            {children}
-          </div>
-        </main>
-      </div>
+        );
+      })()}
       <AlertToast />
       <Suspense fallback={null}>
         <QuickAddLeadModal />
