@@ -209,6 +209,31 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     ...users.map((u: any) => ({ value: String(u.id), label: u.full_name || u.username, avatar: u.avatar || u.avatar_url }))
   ];
 
+  const handleCreateTask = () => {
+    setSelectedTaskForDetails({
+      id: 'new',
+      subject: '',
+      priority: 'medium',
+      due_date: null,
+      description: '',
+      link: '',
+      user_id: String(user?.id || ''),
+      progress: 0,
+      require_approval: 0,
+      approver_id: '',
+      tags: wsSubTab === 'personal' ? 'personal_task' : '',
+      internal_type: wsSubTab === 'team' ? 'task' : '',
+      scope: wsSubTab === 'team' ? 'team' : '',
+      participant_ids: '',
+      related_contact_ids: [],
+      checklist: [],
+      project_id: '',
+      campaign_id: '',
+      team_id: '',
+      campaign_target: ''
+    });
+  };
+
   return (
     <div 
       className="workspace-custom-wrapper"
@@ -549,30 +574,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                     border: wsBg ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid var(--color-primary, #BD1D2D)',
                     boxShadow: wsBg ? '0 4px 16px rgba(189, 29, 45, 0.5), 0 2px 8px rgba(0,0,0,0.3)' : '0 2px 6px rgba(189, 29, 45, 0.2)'
                   }}
-                  onClick={() => {
-                    setSelectedTaskForDetails({
-                      id: 'new',
-                      subject: '',
-                      priority: 'medium',
-                      due_date: null,
-                      description: '',
-                      link: '',
-                      user_id: String(user?.id || ''),
-                      progress: 0,
-                      require_approval: 0,
-                      approver_id: '',
-                      tags: wsSubTab === 'personal' ? 'personal_task' : '',
-                      internal_type: wsSubTab === 'team' ? 'task' : '',
-                      scope: wsSubTab === 'team' ? 'team' : '',
-                      participant_ids: '',
-                      related_contact_ids: [],
-                      checklist: [],
-                      project_id: '',
-                      campaign_id: '',
-                      team_id: '',
-                      campaign_target: ''
-                    });
-                  }}
+                  onClick={handleCreateTask}
                 >
                   <Plus size={14} /> <span>{isMobile ? t('Tạo việc') : t('Tạo công việc')}</span>
                 </button>
@@ -2313,7 +2315,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setShowTaskModal(true)}
+                  onClick={handleCreateTask}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',

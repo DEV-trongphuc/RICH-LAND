@@ -193,7 +193,7 @@ const AGO_DAYS = (d: string) => d ? Math.floor((Date.now()-new Date(d).getTime()
 
 export const ContactsPage: React.FC = () => {
   const { user } = useAuth();
-  const isSale = user?.role === 'sale';
+  const isSale = (user?.role as string) === 'sale' || (user?.role as string) === 'sales' || (user?.role as string) === 'telesale';
   const navigate = useNavigate();
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [uncontactedCount, setUncontactedCount] = useState(() => {
@@ -2027,6 +2027,34 @@ export const ContactsPage: React.FC = () => {
               )}
             </button>
 
+            {/* Mobile Add Contact Button ("+ Thêm data") */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
+              style={{
+                height: '36px',
+                padding: '0 9px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+                border: 'none',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #BD1D2D 0%, #9e1824 50%, #660f17 100%)',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                flexShrink: 0,
+                outline: 'none',
+                boxShadow: '0 2px 8px rgba(189, 29, 45, 0.3)',
+                whiteSpace: 'nowrap'
+              }}
+              title={isSale ? "Thêm data cá nhân" : "Thêm data nhanh"}
+            >
+              <Plus size={14} />
+              <span>{isSale ? "Thêm data" : "Thêm data"}</span>
+            </button>
+
             {/* More Actions Trigger (...) */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <button 
@@ -2084,6 +2112,33 @@ export const ContactsPage: React.FC = () => {
                         gap: '2px'
                       }}
                     >
+                      {/* Mobile Quick Add Contact Item in Dropdown */}
+                      <button
+                        onClick={() => {
+                          setShowMobileActions(false);
+                          window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: 'none',
+                          background: 'rgba(189, 29, 45, 0.08)',
+                          color: 'var(--color-primary, #BD1D2D)',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          textAlign: 'left',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Plus size={14} />
+                        <span>{isSale ? "Thêm data cá nhân" : "Thêm data nhanh"}</span>
+                      </button>
+
+                      <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '2px 0' }} />
                       {/* Advanced Filter Toggle (opens drawer directly on advanced tab) */}
                       <button
                         onClick={() => {
@@ -2302,6 +2357,34 @@ export const ContactsPage: React.FC = () => {
                     {activeFiltersCount}
                   </span>
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
+                style={{
+                  height: '38px',
+                  padding: '0 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #BD1D2D 0%, #9e1824 50%, #660f17 100%)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(189, 29, 45, 0.25)',
+                  outline: 'none',
+                  whiteSpace: 'nowrap'
+                }}
+                title={isSale ? "Thêm data cá nhân" : "Thêm data nhanh"}
+              >
+                <Plus size={16} />
+                <span>{isSale ? "Thêm data cá nhân" : "Thêm data nhanh"}</span>
               </button>
             </div>
  
@@ -3172,9 +3255,33 @@ export const ContactsPage: React.FC = () => {
                 </tbody>
               </table>
               {total === 0 && (
-                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                  <Users size={40} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
-                  <p style={{ fontWeight: 600 }}>Không tìm thấy liên hệ nào</p>
+                <div style={{ padding: isMobile ? '2.5rem 1rem' : '3rem', textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                  <Users size={40} style={{ opacity: 0.4 }} />
+                  <p style={{ fontWeight: 600, margin: 0 }}>Không tìm thấy liên hệ nào</p>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 16px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, #BD1D2D 0%, #9e1824 50%, #660f17 100%)',
+                      color: '#ffffff',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 10px rgba(189, 29, 45, 0.35)',
+                      transition: 'transform 0.15s ease'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                  >
+                    <Plus size={14} />
+                    <span>{isSale ? "Thêm data cá nhân" : "Thêm data nhanh"}</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -3413,9 +3520,33 @@ export const ContactsPage: React.FC = () => {
                 })}
               </div>
               {total === 0 && (
-                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                  <Users size={40} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
-                  <p style={{ fontWeight: 600 }}>Không tìm thấy liên hệ nào</p>
+                <div style={{ padding: isMobile ? '2.5rem 1rem' : '3rem', textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                  <Users size={40} style={{ opacity: 0.4 }} />
+                  <p style={{ fontWeight: 600, margin: 0 }}>Không tìm thấy liên hệ nào</p>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 16px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, #BD1D2D 0%, #9e1824 50%, #660f17 100%)',
+                      color: '#ffffff',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 10px rgba(189, 29, 45, 0.35)',
+                      transition: 'transform 0.15s ease'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                  >
+                    <Plus size={14} />
+                    <span>{isSale ? "Thêm data cá nhân" : "Thêm data nhanh"}</span>
+                  </button>
                 </div>
               )}
             </div>
