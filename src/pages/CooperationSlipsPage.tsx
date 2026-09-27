@@ -231,6 +231,7 @@ const CooperationSlipDiscussionSection: React.FC<{ slipId: number }> = ({ slipId
 interface CooperationSlip {
   id: number;
   contact_id: number;
+  owner_id?: number;
   deposit_slip_id: number;
   version: number;
   total_percentage: number;

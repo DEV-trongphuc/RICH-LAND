@@ -44,7 +44,7 @@
     transform: translateX(0);
   }
 
-  .mobile-menu-btn {
+  .mobile-menu-btn, .portal-mobile-add-btn {
     display: flex !important;
   }
 

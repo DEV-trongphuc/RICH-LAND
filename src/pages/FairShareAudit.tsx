@@ -3,7 +3,8 @@ import { withRouterFreezer } from '../components/RouterFreezer';
 import {
   Scale, Users, AlertTriangle, BarChart2, Info,
   TrendingUp, Sparkles, CheckCircle, Layers,
-  RotateCcw, Settings, Copy, ChevronDown, ChevronUp
+  RotateCcw, Settings, Copy, ChevronDown, ChevronUp,
+  Clock, UserCheck, RefreshCw, Check
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -46,6 +47,39 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copyReportText, setCopyReportText] = useState('');
+
+  // Tab State: 'fair_share' | 'grab_history' (Item 21)
+  const [activeMainTab, setActiveMainTab] = useState<'fair_share' | 'grab_history'>(() => {
+    return searchParams.get('tab') === 'grab_history' ? 'grab_history' : 'fair_share';
+  });
+  const [grabAuditData, setGrabAuditData] = useState<any>(null);
+  const [grabLoading, setGrabLoading] = useState(false);
+  const [grabPage, setGrabPage] = useState(1);
+  const [grabStatusFilter, setGrabStatusFilter] = useState<'all' | 'success' | 'expired' | 'pending'>('all');
+
+  const fetchGrabAudit = async (page = 1) => {
+    setGrabLoading(true);
+    try {
+      const url = `get_grab_lead_audit&page=${page}&limit=15&round_id=${roundFilter || ''}&status=${grabStatusFilter}&date=${encodeURIComponent(dateFilter)}`;
+      const res = await fetchAPI(url);
+      if (res && res.success) {
+        setGrabAuditData(res.data);
+        setGrabPage(page);
+      } else {
+        toast.error(res?.message || t("Lỗi tải lịch sử giật lead"));
+      }
+    } catch (e: any) {
+      console.error('Error fetching grab audit:', e);
+    } finally {
+      setGrabLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeMainTab === 'grab_history' && isActive) {
+      fetchGrabAudit(1);
+    }
+  }, [activeMainTab, dateFilter, roundFilter, grabStatusFilter, isActive]);
 
   // Compensation Details Modal State
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -982,8 +1016,85 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
         </div>
       </div>
 
-      {/* Live Simulation Control Panel */}
-      {isSimulating && (
+      {/* Navigation Tabs (Mục 21) */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: '1.25rem',
+        borderBottom: '2px solid var(--color-border)',
+        paddingBottom: '2px'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('fair_share')}
+          style={{
+            padding: '10px 18px',
+            borderRadius: '10px 10px 0 0',
+            border: 'none',
+            borderBottom: activeMainTab === 'fair_share' ? '3px solid var(--color-primary)' : '3px solid transparent',
+            background: activeMainTab === 'fair_share' ? 'rgba(189, 29, 45, 0.08)' : 'transparent',
+            color: activeMainTab === 'fair_share' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            fontWeight: activeMainTab === 'fair_share' ? 800 : 600,
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s',
+            marginBottom: '-2px'
+          }}
+        >
+          <Scale size={18} />
+          <span>{t("Đối soát phân bổ (Gini & Round-Robin)")}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveMainTab('grab_history');
+            if (!grabAuditData) {
+              fetchGrabAudit(1);
+            }
+          }}
+          style={{
+            padding: '10px 18px',
+            borderRadius: '10px 10px 0 0',
+            border: 'none',
+            borderBottom: activeMainTab === 'grab_history' ? '3px solid var(--color-primary)' : '3px solid transparent',
+            background: activeMainTab === 'grab_history' ? 'rgba(189, 29, 45, 0.08)' : 'transparent',
+            color: activeMainTab === 'grab_history' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            fontWeight: activeMainTab === 'grab_history' ? 800 : 600,
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s',
+            marginBottom: '-2px'
+          }}
+        >
+          <Sparkles size={18} />
+          <span>{t("Lịch sử Giật Lead")}</span>
+          {grabAuditData?.summary?.total_waves !== undefined && (
+            <span style={{
+              background: activeMainTab === 'grab_history' ? 'var(--color-primary)' : 'var(--color-border)',
+              color: activeMainTab === 'grab_history' ? 'white' : 'var(--color-text)',
+              fontSize: '0.7rem',
+              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: '12px'
+            }}>
+              {grabAuditData.summary.total_waves}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeMainTab === 'fair_share' ? (
+        <>
+          {/* Live Simulation Control Panel */}
+          {isSimulating && (
         <div style={{
           background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.06) 0%, rgba(163, 20, 34, 0.1) 100%)',
           border: '1px solid var(--color-primary)',
@@ -1774,6 +1885,378 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
           )}
         </div>
       </div>
+        </>
+      ) : (
+        /* Tab 2: Lịch sử Giật Lead (Mục 21) */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Header Info Banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(189, 29, 45, 0.1) 100%)',
+            border: '1px solid var(--color-primary-light)',
+            borderLeft: '4px solid var(--color-primary)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '1.25rem 1.5rem',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '1rem'
+          }}>
+            <div style={{
+              background: 'var(--color-card, #fff)',
+              width: 40,
+              height: 40,
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '50%',
+              boxShadow: 'var(--shadow-sm)',
+              color: 'var(--color-primary)'
+            }}>
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)', marginBottom: 4 }}>
+                {t("Đối soát Lịch sử Giật Lead (Grab Waves)")}
+              </h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
+                {t("Theo dõi từng đợt phát tín hiệu tranh nhận khách hàng: danh sách TVV được gửi tin nhắn Telegram & popup Web, tốc độ phản hồi tính bằng giây của TVV giật thành công, và các đợt bị trôi do hết hạn.")}
+              </p>
+            </div>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderRadius: '12px' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Layers size={22} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t("Tổng Đợt Phát Tín Hiệu")}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                  {grabLoading && !grabAuditData ? '...' : (grabAuditData?.summary?.total_waves ?? 0)}
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderRadius: '12px' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircle size={22} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t("Giật Thành Công")}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981' }}>
+                  {grabLoading && !grabAuditData ? '...' : (grabAuditData?.summary?.total_success ?? 0)}
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderRadius: '12px' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '10px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertTriangle size={22} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t("Hết Hạn / Trôi")}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ef4444' }}>
+                  {grabLoading && !grabAuditData ? '...' : (grabAuditData?.summary?.total_expired ?? 0)}
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderRadius: '12px' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '10px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Clock size={22} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t("Tốc Độ Giật Trung Bình")}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f59e0b' }}>
+                  {grabLoading && !grabAuditData ? '...' : ((grabAuditData?.summary?.avg_response_seconds ?? 0) + 's')}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub Filters & Table Card */}
+          <div className="card" style={{ padding: '1.25rem', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+              {/* Status Filter Buttons */}
+              <div style={{ display: 'flex', gap: '6px', background: 'var(--color-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                {[
+                  { key: 'all', label: t('Tất cả') },
+                  { key: 'success', label: t('Thành công') },
+                  { key: 'expired', label: t('Hết hạn') },
+                  { key: 'pending', label: t('Đang chờ') }
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setGrabStatusFilter(tab.key as any)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      fontSize: '0.75rem',
+                      fontWeight: grabStatusFilter === tab.key ? 700 : 500,
+                      background: grabStatusFilter === tab.key ? 'var(--color-surface)' : 'transparent',
+                      color: grabStatusFilter === tab.key ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: grabStatusFilter === tab.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Refresh */}
+              <button
+                type="button"
+                onClick={() => fetchGrabAudit(grabPage)}
+                disabled={grabLoading}
+                className="btn outline"
+                style={{ height: '36px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}
+              >
+                <RefreshCw size={14} className={grabLoading ? 'spin' : ''} />
+                <span>{t("Làm mới")}</span>
+              </button>
+            </div>
+
+            {/* Grab Waves Table */}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-bg)', borderBottom: '2px solid var(--color-border)' }}>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t("Thời gian")}</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t("Tên khách")}</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t("Vòng giật")}</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t("Danh sách Sale phát tín hiệu")}</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t("Sale giật thành công")}</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'center' }}>{t("Thời gian phản hồi")}</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'center' }}>{t("Trạng thái")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grabLoading && (!grabAuditData?.items || grabAuditData.items.length === 0) ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        <RefreshCw size={24} className="spin" style={{ margin: '0 auto 8px auto', display: 'block' }} />
+                        {t("Đang tải dữ liệu giật lead...")}
+                      </td>
+                    </tr>
+                  ) : !grabAuditData?.items || grabAuditData.items.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        {t("Chưa có lịch sử giật lead nào trong khoảng thời gian này.")}
+                      </td>
+                    </tr>
+                  ) : (
+                    grabAuditData.items.map((row: any, idx: number) => {
+                      const consultantsList = (row.consultants_summary || '')
+                        .split(';')
+                        .filter(Boolean)
+                        .map((part: string) => {
+                          const [id, name, status] = part.split(':');
+                          return { id, name, status };
+                        });
+
+                      return (
+                        <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                          {/* Time */}
+                          <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                              {new Date(row.offered_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                              {new Date(row.offered_at).toLocaleDateString('vi-VN')}
+                            </div>
+                          </td>
+
+                          {/* Customer */}
+                          <td style={{ padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{row.lead_name}</div>
+                            {row.lead_phone && (
+                              <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>
+                                {row.lead_phone}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Round */}
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              background: 'rgba(189, 29, 45, 0.08)',
+                              color: 'var(--color-primary)',
+                              border: '1px solid rgba(189, 29, 45, 0.2)'
+                            }}>
+                              {row.round_name}
+                            </span>
+                          </td>
+
+                          {/* Signaled Sales List */}
+                          <td style={{ padding: '10px 12px', maxWidth: '320px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                              {consultantsList.map((c: any, cIdx: number) => {
+                                const isWinner = c.status === 'accepted';
+                                return (
+                                  <span
+                                    key={cIdx}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                      padding: '2px 6px',
+                                      borderRadius: '4px',
+                                      fontSize: '0.6875rem',
+                                      fontWeight: isWinner ? 700 : 500,
+                                      background: isWinner ? 'rgba(16, 185, 129, 0.15)' : 'var(--color-bg)',
+                                      color: isWinner ? '#065f46' : 'var(--color-text-muted)',
+                                      border: isWinner ? '1px solid #10b981' : '1px solid var(--color-border-light)'
+                                    }}
+                                    title={`${c.name} (${c.status})`}
+                                  >
+                                    {isWinner && <Check size={10} color="#10b981" />}
+                                    {c.name}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </td>
+
+                          {/* Winner */}
+                          <td style={{ padding: '10px 12px' }}>
+                            {row.winner_name ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Avatar name={row.winner_name} size={22} />
+                                <span style={{ fontWeight: 700, color: '#10b981' }}>{row.winner_name}</span>
+                              </div>
+                            ) : row.wave_status === 'pending' ? (
+                              <span style={{ color: '#f59e0b', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                {t("Đang đếm ngược...")}
+                              </span>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                {t("Không ai nhận")}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Response Time (seconds) */}
+                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                            {row.response_time_seconds !== null ? (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                background: row.response_time_seconds <= 10 
+                                  ? 'rgba(16, 185, 129, 0.15)' 
+                                  : row.response_time_seconds <= 30 
+                                  ? 'rgba(245, 158, 11, 0.15)' 
+                                  : 'rgba(100, 116, 139, 0.15)',
+                                color: row.response_time_seconds <= 10 
+                                  ? '#10b981' 
+                                  : row.response_time_seconds <= 30 
+                                  ? '#d97706' 
+                                  : 'var(--color-text-muted)'
+                              }}>
+                                <Clock size={11} />
+                                {row.response_time_seconds}s
+                              </span>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                            {row.wave_status === 'success' ? (
+                              <span style={{
+                                display: 'inline-flex',
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                color: '#10b981'
+                              }}>
+                                {t("Thành công")}
+                              </span>
+                            ) : row.wave_status === 'pending' ? (
+                              <span style={{
+                                display: 'inline-flex',
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                background: 'rgba(245, 158, 11, 0.1)',
+                                color: '#f59e0b'
+                              }}>
+                                {t("Đang chờ")}
+                              </span>
+                            ) : (
+                              <span style={{
+                                display: 'inline-flex',
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                color: '#ef4444'
+                              }}>
+                                {t("Hết hạn")}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {grabAuditData?.pagination && grabAuditData.pagination.totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border-light)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  {t("Hiển thị trang {page} / {totalPages} (Tổng {total} đợt giật)")
+                    .replace('{page}', String(grabAuditData.pagination.page))
+                    .replace('{totalPages}', String(grabAuditData.pagination.totalPages))
+                    .replace('{total}', String(grabAuditData.pagination.total))}
+                </span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    disabled={grabAuditData.pagination.page <= 1 || grabLoading}
+                    onClick={() => fetchGrabAudit(grabAuditData.pagination.page - 1)}
+                    className="btn outline"
+                    style={{ height: '32px', padding: '0 10px', fontSize: '0.75rem' }}
+                  >
+                    {t("Trang trước")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={grabAuditData.pagination.page >= grabAuditData.pagination.totalPages || grabLoading}
+                    onClick={() => fetchGrabAudit(grabAuditData.pagination.page + 1)}
+                    className="btn outline"
+                    style={{ height: '32px', padding: '0 10px', fontSize: '0.75rem' }}
+                  >
+                    {t("Trang sau")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Custom Date Modal (from Dashboard.tsx) */}
       <CustomModal

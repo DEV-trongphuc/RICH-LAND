@@ -2032,27 +2032,28 @@ export const ContactsPage: React.FC = () => {
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
               style={{
-                height: '36px',
-                padding: '0 9px',
+                height: '42px',
+                padding: '0 12px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '5px',
                 cursor: 'pointer',
                 border: 'none',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, #BD1D2D 0%, #9e1824 50%, #660f17 100%)',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #e63946 0%, #BD1D2D 50%, #8a0f1b 100%)',
                 color: '#ffffff',
                 fontWeight: 700,
-                fontSize: '0.75rem',
+                fontSize: '0.8125rem',
                 flexShrink: 0,
                 outline: 'none',
-                boxShadow: '0 2px 8px rgba(189, 29, 45, 0.3)',
-                whiteSpace: 'nowrap'
+                boxShadow: '0 3px 12px rgba(189, 29, 45, 0.4)',
+                whiteSpace: 'nowrap',
+                touchAction: 'manipulation'
               }}
               title={isSale ? "Thêm data cá nhân" : "Thêm data nhanh"}
             >
-              <Plus size={14} />
-              <span>{isSale ? "Thêm data" : "Thêm data"}</span>
+              <Plus size={16} strokeWidth={2.5} />
+              <span>+ Thêm data</span>
             </button>
 
             {/* More Actions Trigger (...) */}

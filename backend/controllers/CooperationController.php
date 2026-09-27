@@ -120,7 +120,7 @@ class CooperationController {
         $tid = $auth['tenant_id'];
 
         $sql = "
-            SELECT cs.*, c.first_name, c.last_name, c.phone, c.expected_revenue, 
+            SELECT cs.*, c.owner_id, c.first_name, c.last_name, c.phone, c.expected_revenue, 
                    (SELECT COALESCE(SUM(total),0) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL) as actual_revenue,
                    dep.unit_code, proj.name as project_name, dep.expected_commission
             FROM cooperation_slips cs
@@ -1338,6 +1338,53 @@ class CooperationController {
 
         $stmt->execute($params);
         $suggestions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Include all helpers from quyen_truy_cap, past cooperation slips, and collaborator_ids (kể cả nhân sự bị thu hồi)
+        $extraUserIds = [];
+
+        $stmtQ = $this->db->prepare("SELECT DISTINCT user_id FROM quyen_truy_cap WHERE contact_id = ?");
+        $stmtQ->execute([$contactId]);
+        foreach ($stmtQ->fetchAll(PDO::FETCH_COLUMN) as $uid) {
+            $uInt = (int)$uid;
+            if ($uInt > 0 && $uInt !== $ownerId) $extraUserIds[$uInt] = true;
+        }
+
+        $stmtPastSlips = $this->db->prepare("SELECT shares_json FROM cooperation_slips WHERE contact_id = ?");
+        $stmtPastSlips->execute([$contactId]);
+        while ($slipRow = $stmtPastSlips->fetch(PDO::FETCH_ASSOC)) {
+            if (!empty($slipRow['shares_json'])) {
+                $dShares = json_decode($slipRow['shares_json'], true);
+                if (is_array($dShares)) {
+                    foreach (array_keys($dShares) as $sUid) {
+                        $sUidInt = (int)$sUid;
+                        if ($sUidInt > 0 && $sUidInt !== $ownerId) {
+                            $extraUserIds[$sUidInt] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        $stmtCollab = $this->db->prepare("SELECT collaborator_ids FROM contacts WHERE id = ?");
+        $stmtCollab->execute([$contactId]);
+        $cRowCollab = $stmtCollab->fetch(PDO::FETCH_ASSOC);
+        if (!empty($cRowCollab['collaborator_ids'])) {
+            $cIds = array_filter(array_map('intval', explode(',', $cRowCollab['collaborator_ids'])));
+            foreach ($cIds as $cid) {
+                if ($cid > 0 && $cid !== $ownerId) $extraUserIds[$cid] = true;
+            }
+        }
+
+        if (!empty($extraUserIds)) {
+            $existingFoundIds = array_map(function($x) { return (int)$x['id']; }, $suggestions);
+            $missingIds = array_diff(array_keys($extraUserIds), $existingFoundIds);
+            if (!empty($missingIds)) {
+                $inClause = implode(',', $missingIds);
+                $stmtExtra = $this->db->query("SELECT id, full_name, email, avatar_url FROM users WHERE id IN ($inClause)");
+                $extraUsers = $stmtExtra->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                $suggestions = array_merge($suggestions, $extraUsers);
+            }
+        }
 
         // Normalize full_name and avatar_url
         foreach ($suggestions as &$s) {

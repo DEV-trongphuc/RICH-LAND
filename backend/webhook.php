@@ -1050,9 +1050,11 @@ try {
         if ($roundType === 'grab') {
             // Fetch active consultants of this round
             $cStmt = $conn->prepare("
-                SELECT c.id, c.name, c.email, c.work_start_time, c.work_end_time, c.work_schedule
+                SELECT c.id, c.name, c.email, c.work_start_time, c.work_end_time, c.work_schedule,
+                       COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id
                 FROM round_consultants rc 
                 JOIN consultants c ON rc.consultant_id = c.id 
+                LEFT JOIN users u ON (c.email = u.email OR c.id = u.id)
                 WHERE rc.round_id = ? 
                   AND rc.is_active = 1 
                   AND c.status = 'active'
@@ -1172,15 +1174,21 @@ try {
         $updL->execute();
         $updL->close();
 
-        // Create offers
-        $offerStmt = $conn->prepare("
-            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
-            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
-        ");
+        // Item 18: Gửi tin Telegram trước cho Sale (chờ tối đa 3s phản hồi), sau đó mới tạo lead_offers để mở popup Web
         $competingNames = [];
         foreach ($eligibleConsultants as $c) {
             $competingNames[] = $c['name'] ?? 'TVV';
         }
+        require_once __DIR__ . '/telegram_bot.php';
+        if (function_exists('sendBatchGrabTelegramSync')) {
+            sendBatchGrabTelegramSync($conn, $leadId, $eligibleConsultants, $targetRoundId, $grabCountdownSeconds, $competingNames);
+        }
+
+        // Create offers (Popup Web hiển thị sau khi Telegram đã phát xong)
+        $offerStmt = $conn->prepare("
+            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
+            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+        ");
         foreach ($eligibleConsultants as $c) {
             $offerStmt->bind_param("iiii", $leadId, $c['id'], $targetRoundId, $grabCountdownSeconds);
             $offerStmt->execute();

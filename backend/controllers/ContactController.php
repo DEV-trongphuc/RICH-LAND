@@ -405,9 +405,14 @@ class ContactController {
             require_once __DIR__ . '/../webhook_logic.php';
             $phone = normalizePhone($phone);
             
-            $check = $this->db->prepare("SELECT id, source, created_at, pipeline_status FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND deleted_at IS NULL LIMIT 1");
+            $check = $this->db->prepare("SELECT id, source, created_at, pipeline_status FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
             $check->execute([$auth['tenant_id'], $phone, $phone]);
             $existing = $check->fetch();
+            if (!$existing) {
+                $checkL = $this->db->prepare("SELECT id, source, created_at, status as pipeline_status FROM leads WHERE phone=? ORDER BY id DESC LIMIT 1");
+                $checkL->execute([$phone]);
+                $existing = $checkL->fetch();
+            }
             if ($existing) {
                 $newSource = $b['source'] ?? 'other';
                 $isPersonal = in_array($newSource, ['ca_nhan', 'gioi_thieu'], true);
@@ -416,9 +421,14 @@ class ContactController {
                 $existingCreatedTime = strtotime($existing['created_at']);
                 $isActiveAndRecent = ($existing['pipeline_status'] !== 'rejected' && (time() - $existingCreatedTime) <= ($washingDays * 24 * 3600));
 
+                $existingSource = strtolower($existing['source'] ?? '');
+                $isOldSourceMkt = !in_array($existingSource, ['ca_nhan', 'gioi_thieu', 'databank', 'kho_data'], true);
+
                 if ($isPersonal && $isActiveAndRecent) {
                     $duplicateFlag = 1;
                     $duplicateWithId = (int)$existing['id'];
+                    $oldMktSource = $existing['source'] ?? 'Marketing';
+                    $isRuaNguonMkt = $isOldSourceMkt;
                 } else {
                     respond(422, null, "Số điện thoại '$phone' đã tồn tại trong hệ thống. Vui lòng kiểm tra lại.", false);
                 }
@@ -494,17 +504,19 @@ class ContactController {
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DUPLICATE_FLAG', 'contact', $id, json_encode(['duplicate_with' => $duplicateWithId, 'phone' => $phone]));
 
-            // Send notification to managers & admins
+            // Send notification to managers, admins & marketing (Chống rửa nguồn - Mục 14)
             $stmtAdmins = $this->db->prepare("
                 SELECT id FROM users 
-                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'director')
+                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'director', 'mkt', 'marketing')
             ");
             $stmtAdmins->execute([$auth['tenant_id']]);
             $admins = $stmtAdmins->fetchAll(PDO::FETCH_COLUMN);
 
             if (!empty($admins)) {
-                $title = "Cảnh báo trùng số (Nghi ngờ rửa nguồn)";
-                $body = "Sale " . ($auth['full_name'] ?? 'Nhân viên') . " đã nhập tay khách hàng trùng SĐT với lead MKT đang hoạt động (Contact ID: " . $duplicateWithId . ")";
+                $isMktWarn = !empty($isRuaNguonMkt);
+                $title = $isMktWarn ? "Cảnh báo rửa nguồn data Marketing" : "Cảnh báo trùng số khách hàng";
+                $srcText = !empty($oldMktSource) ? $oldMktSource : 'Marketing';
+                $body = "Sale " . ($auth['full_name'] ?? 'Nhân viên') . " đã nhập tay khách hàng trùng SĐT ($phone) trước đó là nguồn " . ($isMktWarn ? "Marketing ($srcText)" : $srcText) . " trong vòng 30 ngày.";
                 $type = "warning";
                 $link = "/contacts?id=" . $id;
 
@@ -1686,19 +1698,57 @@ class ContactController {
 
         $ownerId = (int)$contact['owner_id'];
 
-        // Get list of unique users in quyen_truy_cap for this contact
-        // including active and revoked helpers
-        $stmt = $this->db->prepare("
-            SELECT DISTINCT q.user_id, u.full_name, u.username, u.role
-            FROM quyen_truy_cap q
-            JOIN users u ON q.user_id = u.id
-            WHERE q.contact_id = ? AND q.user_id != ?
-        ");
-        $stmt->execute([$contactId, $ownerId]);
-        $helpers = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $helperUserIds = [];
+
+        // 1. From quyen_truy_cap (kể cả nhân sự từng được cấp quyền)
+        $stmtQ = $this->db->prepare("SELECT DISTINCT user_id FROM quyen_truy_cap WHERE contact_id = ?");
+        $stmtQ->execute([$contactId]);
+        foreach ($stmtQ->fetchAll(PDO::FETCH_COLUMN) as $uid) {
+            $uInt = (int)$uid;
+            if ($uInt > 0 && $uInt !== $ownerId) {
+                $helperUserIds[$uInt] = true;
+            }
+        }
+
+        // 2. From contacts.collaborator_ids
+        $stmtCollab = $this->db->prepare("SELECT collaborator_ids FROM contacts WHERE id = ?");
+        $stmtCollab->execute([$contactId]);
+        $collabRow = $stmtCollab->fetch(PDO::FETCH_ASSOC);
+        if (!empty($collabRow['collaborator_ids'])) {
+            $cIds = array_filter(array_map('intval', explode(',', $collabRow['collaborator_ids'])));
+            foreach ($cIds as $cid) {
+                if ($cid > 0 && $cid !== $ownerId) {
+                    $helperUserIds[$cid] = true;
+                }
+            }
+        }
+
+        // 3. From cooperation_slips (Người từng có tên trong phiếu hợp tác / bị thu hồi quyền nhưng vẫn có công)
+        $stmtSlips = $this->db->prepare("SELECT shares_json FROM cooperation_slips WHERE contact_id = ?");
+        $stmtSlips->execute([$contactId]);
+        while ($slipRow = $stmtSlips->fetch(PDO::FETCH_ASSOC)) {
+            if (!empty($slipRow['shares_json'])) {
+                $decodedShares = json_decode($slipRow['shares_json'], true);
+                if (is_array($decodedShares)) {
+                    foreach (array_keys($decodedShares) as $sUid) {
+                        $sUidInt = (int)$sUid;
+                        if ($sUidInt > 0 && $sUidInt !== $ownerId) {
+                            $helperUserIds[$sUidInt] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        $helpers = [];
+        if (!empty($helperUserIds)) {
+            $inClause = implode(',', array_keys($helperUserIds));
+            $stmtUsers = $this->db->query("SELECT id as user_id, full_name, username, role, avatar FROM users WHERE id IN ($inClause)");
+            $helpers = $stmtUsers->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
 
         // Always include the owner at the top of the collaborators list
-        $stmtOwner = $this->db->prepare("SELECT id, full_name, username, role FROM users WHERE id = ?");
+        $stmtOwner = $this->db->prepare("SELECT id, full_name, username, role, avatar FROM users WHERE id = ?");
         $stmtOwner->execute([$ownerId]);
         $owner = $stmtOwner->fetch(PDO::FETCH_ASSOC);
 

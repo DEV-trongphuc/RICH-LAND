@@ -120,7 +120,19 @@ export const QuickAddLeadModal = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   const [consultants, setConsultants] = useState<{ id: number; name: string; status: string; avatar?: string; vacation_mode?: number }[]>([]);
-  const [manualData, setManualData] = useState({ name: '', phone: '', email: '', source: '', type: '', note: '' });
+  const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [manualData, setManualData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    source: '',
+    type: '',
+    note: '',
+    lead_phan_loai: '',
+    project_id: '',
+    facebook_link: '',
+    link_video_ads: ''
+  });
   const [quickInput, setQuickInput] = useState('');
   const [previewCons, setPreviewCons] = useState<any>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -155,6 +167,8 @@ export const QuickAddLeadModal = () => {
     let source = '';
     let type = '';
     let note = '';
+    let detectedFbUrl = '';
+    let detectedDataUrl = '';
     const extraNotes: string[] = [];
 
     const extractPhone = (text: string): string => {
@@ -401,14 +415,15 @@ export const QuickAddLeadModal = () => {
       });
       note = getDeduplicatedNotes(extraNotes);
 
-      setManualData({
-        name: name || manualData.name,
-        phone: phone || manualData.phone,
-        email: email || manualData.email,
-        source: source || manualData.source,
-        type: type || manualData.type,
-        note: note || manualData.note,
-      });
+      setManualData(prev => ({
+        ...prev,
+        name: name || prev.name,
+        phone: phone || prev.phone,
+        email: email || prev.email,
+        source: source || prev.source,
+        type: type || prev.type,
+        note: note || prev.note,
+      }));
       return;
     }
 
@@ -479,14 +494,15 @@ export const QuickAddLeadModal = () => {
 
           note = getDeduplicatedNotes(extraNotes);
 
-          setManualData({
-            name: name.trim() || manualData.name,
-            phone: beautifyPhone(phone) || manualData.phone,
-            email: email.trim() || manualData.email,
-            source: source.trim() || manualData.source,
-            type: type.trim() || manualData.type,
-            note: note.trim() || manualData.note,
-          });
+          setManualData(prev => ({
+            ...prev,
+            name: name.trim() || prev.name,
+            phone: beautifyPhone(phone) || prev.phone,
+            email: email.trim() || prev.email,
+            source: source.trim() || prev.source,
+            type: type.trim() || prev.type,
+            note: note.trim() || prev.note,
+          }));
           return;
         }
 
@@ -558,14 +574,15 @@ export const QuickAddLeadModal = () => {
           note = getDeduplicatedNotes(extraNotes);
         }
 
-        setManualData({
-          name: name || manualData.name,
-          phone: phone || manualData.phone,
-          email: email || manualData.email,
-          source: source || manualData.source,
-          type: type || manualData.type,
-          note: note || manualData.note,
-        });
+        setManualData(prev => ({
+          ...prev,
+          name: name || prev.name,
+          phone: phone || prev.phone,
+          email: email || prev.email,
+          source: source || prev.source,
+          type: type || prev.type,
+          note: note || prev.note,
+        }));
         return;
       }
     }
@@ -610,14 +627,15 @@ export const QuickAddLeadModal = () => {
       }
       note = getDeduplicatedNotes(extraNotes);
 
-      setManualData({
-        name: name || manualData.name,
-        phone: phone || manualData.phone,
-        email: email || manualData.email,
-        source: source || manualData.source,
-        type: type || manualData.type,
-        note: note || manualData.note,
-      });
+      setManualData(prev => ({
+        ...prev,
+        name: name || prev.name,
+        phone: phone || prev.phone,
+        email: email || prev.email,
+        source: source || prev.source,
+        type: type || prev.type,
+        note: note || prev.note,
+      }));
       return;
     }
 
@@ -657,14 +675,15 @@ export const QuickAddLeadModal = () => {
       });
       note = getDeduplicatedNotes(extraNotes);
 
-      setManualData({
-        name: name || manualData.name,
-        phone: phone || manualData.phone,
-        email: email || manualData.email,
-        source: source || manualData.source,
-        type: type || manualData.type,
-        note: note || manualData.note,
-      });
+      setManualData(prev => ({
+        ...prev,
+        name: name || prev.name,
+        phone: phone || prev.phone,
+        email: email || prev.email,
+        source: source || prev.source,
+        type: type || prev.type,
+        note: note || prev.note,
+      }));
       return;
     }
 
@@ -870,8 +889,11 @@ export const QuickAddLeadModal = () => {
       if (urls) {
         urls.forEach(u => {
           extraNotes.push(u);
-          if (u.toLowerCase().includes('facebook.com') && !source) {
-            source = 'Facebook';
+          if (u.toLowerCase().includes('facebook.com') || u.toLowerCase().includes('fb.com')) {
+            if (!detectedFbUrl) detectedFbUrl = u;
+            if (!source) source = 'Facebook';
+          } else {
+            if (!detectedDataUrl) detectedDataUrl = u;
           }
         });
       }
@@ -920,14 +942,17 @@ export const QuickAddLeadModal = () => {
       }
     }
 
-    setManualData({
-      name: name.trim() || manualData.name,
-      phone: beautifyPhone(phone) || manualData.phone,
-      email: email.trim() || manualData.email,
-      source: source.trim() || manualData.source,
-      type: type.trim() || manualData.type,
-      note: note.trim() || manualData.note,
-    });
+    setManualData(prev => ({
+      ...prev,
+      name: name.trim() || prev.name,
+      phone: beautifyPhone(phone) || prev.phone,
+      email: email.trim() || prev.email,
+      source: source.trim() || prev.source,
+      type: type.trim() || prev.type,
+      note: note.trim() || prev.note,
+      ...(detectedFbUrl ? { facebook_link: detectedFbUrl } : {}),
+      ...(detectedDataUrl ? { link_video_ads: detectedDataUrl } : {})
+    }));
   };
 
   // Load consultants list
@@ -954,6 +979,19 @@ export const QuickAddLeadModal = () => {
     }
   };
 
+  // Load projects list for project_id select
+  const fetchProjects = async () => {
+    try {
+      const res = await fetchAPI('projects?limit=1000');
+      if (res && res.success) {
+        const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        setProjectsList(list);
+      }
+    } catch (e: any) {
+      console.error('Error fetching projects in QuickAddLeadModal:', e.message);
+    }
+  };
+
   const handleSelectSource = (src: string) => {
     setManualData(prev => ({ ...prev, source: src }));
     setShowSourceSuggestions(false);
@@ -963,6 +1001,7 @@ export const QuickAddLeadModal = () => {
     if (isOpen) {
       fetchConsultants();
       fetchSources();
+      fetchProjects();
     }
   }, [isOpen]);
 
@@ -1182,7 +1221,18 @@ export const QuickAddLeadModal = () => {
         if (json.success) {
           toast.success(json.message || t('Thêm thành công!'));
           setIsOpen(false);
-          setManualData({ name: '', phone: '', email: '', source: '', type: '', note: '' });
+          setManualData({
+            name: '',
+            phone: '',
+            email: '',
+            source: '',
+            type: '',
+            note: '',
+            lead_phan_loai: '',
+            project_id: '',
+            facebook_link: '',
+            link_video_ads: ''
+          });
           setQuickInput('');
           setPreviewCons(null);
           setOverrideConsId('');
@@ -1642,6 +1692,59 @@ export const QuickAddLeadModal = () => {
               <div>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Loại (Type)')}</label>
                 <input className="form-input" placeholder={t("VD: Mua nhà")} value={manualData.type} onChange={e => setManualData({ ...manualData, type: e.target.value })} />
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Phân loại Lead')}</label>
+                <CustomSelect
+                  options={[
+                    { value: '', label: t('-- Chọn phân loại (Không bắt buộc) --') },
+                    { value: 'Khách Nét', label: '🔥 ' + t('Khách Nét') },
+                    { value: 'Khách Tiềm Năng', label: '⭐ ' + t('Khách Tiềm Năng') },
+                    { value: 'Khách Lạnh', label: '❄️ ' + t('Khách Lạnh') },
+                    { value: 'Khách Spam', label: '⚠️ ' + t('Khách Spam') },
+                    { value: 'Khách Rác', label: '🗑️ ' + t('Khách Rác') },
+                  ]}
+                  value={manualData.lead_phan_loai || ''}
+                  onChange={val => setManualData({ ...manualData, lead_phan_loai: val.toString() })}
+                  width="100%"
+                />
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Dự án nguồn')}</label>
+                <CustomSelect
+                  options={[
+                    { value: '', label: t('-- Chọn dự án nguồn (Không bắt buộc) --') },
+                    ...projectsList.map((p: any) => ({
+                      value: p.id.toString(),
+                      label: p.name || p.title || `Dự án #${p.id}`
+                    }))
+                  ]}
+                  value={manualData.project_id ? manualData.project_id.toString() : ''}
+                  onChange={val => setManualData({ ...manualData, project_id: val.toString() })}
+                  width="100%"
+                />
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Link Facebook')}</label>
+                <input 
+                  className="form-input" 
+                  placeholder={t("VD: https://facebook.com/...")} 
+                  value={manualData.facebook_link || ''} 
+                  onChange={e => setManualData({ ...manualData, facebook_link: e.target.value })} 
+                />
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Link Chứa Data / Video Ads')}</label>
+                <input 
+                  className="form-input" 
+                  placeholder={t("VD: https://...")} 
+                  value={manualData.link_video_ads || ''} 
+                  onChange={e => setManualData({ ...manualData, link_video_ads: e.target.value })} 
+                />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Ghi chú')}</label>

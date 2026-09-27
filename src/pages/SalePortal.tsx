@@ -14413,6 +14413,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <Menu size={20} />
             </button>
 
+            {/* Mobile Quick Add Lead Button - Thumb Friendly */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
+              className="portal-mobile-add-btn"
+              style={{
+                display: 'none',
+                alignItems: 'center',
+                gap: '5px',
+                height: '38px',
+                padding: '0 10px',
+                cursor: 'pointer',
+                border: 'none',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #e63946 0%, #BD1D2D 50%, #8a0f1b 100%)',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                flexShrink: 0,
+                outline: 'none',
+                boxShadow: '0 2px 8px rgba(189, 29, 45, 0.35)',
+                whiteSpace: 'nowrap',
+                touchAction: 'manipulation'
+              }}
+              title={t('Thêm data nhanh')}
+            >
+              <Plus size={16} strokeWidth={2.5} />
+              <span>+ Thêm data</span>
+            </button>
+
             <div>
               <h1 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, letterSpacing: '0.5px', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>RICH LAND PORTAL</span>

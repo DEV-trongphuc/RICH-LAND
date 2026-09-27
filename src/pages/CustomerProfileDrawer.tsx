@@ -2719,7 +2719,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     try {
       const res = await fetchAPI(`cooperation-slips/suggestions?contact_id=${contact.id}`);
       if (res.success) {
-        setSuggestedSales(res.data || []);
+        const list = res.data || [];
+        setSuggestedSales(list);
+        // Tự động kéo nhân sự hỗ trợ, từng hợp tác (kể cả người bị thu hồi quyền) vào bảng hoa hồng
+        const helperIds = list.map((s: any) => String(s.id)).filter((id: string) => Boolean(id) && id !== String(contact?.owner_id || formData?.owner_id));
+        if (helperIds.length > 0) {
+          setSelectedCollaborators(prev => Array.from(new Set([...prev, ...helperIds])).slice(0, 2));
+        }
       }
     } catch (e) {
       console.error("Error fetching suggestions:", e);

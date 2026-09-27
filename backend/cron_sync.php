@@ -1694,42 +1694,9 @@ if (!function_exists('recallExpiredGrabLeads')) {
                 $attempts = $attRes ? (int)$attRes->fetch_assoc()['cnt'] : 0;
                 
                 if (($attempts + 1) >= $maxAttempts) {
-                    $fallbackToDatabank = isset($row['grab_fallback_to_databank']) ? (int)$row['grab_fallback_to_databank'] : 0;
-                    
-                    if ($fallbackToDatabank === 1) {
-                        $phone = $row['lead_phone'];
-                        $email = $row['lead_email'];
-                        $name = $row['lead_name'];
-                        
-                        $personId = null;
-                        if (!empty($phone)) {
-                            $pCheck = $conn->query("SELECT id FROM persons WHERE phone = '" . $conn->real_escape_string($phone) . "' LIMIT 1");
-                            if ($pCheck && $pCheck->num_rows > 0) {
-                                $personId = (int)$pCheck->fetch_assoc()['id'];
-                                $conn->query("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = $personId");
-                            }
-                        }
-                        
-                        if (!$personId && !empty($email)) {
-                            $pCheck = $conn->query("SELECT id FROM persons WHERE email = '" . $conn->real_escape_string($email) . "' LIMIT 1");
-                            if ($pCheck && $pCheck->num_rows > 0) {
-                                $personId = (int)$pCheck->fetch_assoc()['id'];
-                                $conn->query("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = $personId");
-                            }
-                        }
-                        
-                        if (!$personId) {
-                            $conn->query("INSERT INTO persons (phone, email, full_name, is_public, released_to_kho_at, deleted_from_databank) VALUES ('" . $conn->real_escape_string($phone) . "', '" . $conn->real_escape_string($email) . "', '" . $conn->real_escape_string($name) . "', 1, NOW(), 0)");
-                            $personId = (int)$conn->insert_id;
-                        }
-                        
-                        $conn->query("UPDATE leads SET person_id = $personId, assigned_to = NULL, is_accepted = 0, status = 'unassigned', last_interaction_date = NOW() WHERE id = $leadId");
-                        logDistribution($conn, $leadId, null, $roundId, 'unassigned', "Hết lượt tranh nhận ($attempts lần). Tự động đẩy vào Kho Databank.", false);
-                    } else {
-                        // Fallback to Admin (pending_approval)
-                        $conn->query("UPDATE leads SET status = 'pending_approval', assigned_to = NULL, is_accepted = 0, last_interaction_date = NOW() WHERE id = $leadId");
-                        logDistribution($conn, $leadId, null, $roundId, 'pending_approval', "Hết lượt tranh nhận ($attempts lần). Chuyển về hàng chờ Admin phân bổ lại.", false);
-                    }
+                    // Item 19: Hết toàn bộ số lần thử cho phép -> Tạm giữ pending_approval để Admin duyệt và chia lại đúng vòng giật này
+                    $conn->query("UPDATE leads SET status = 'pending_approval', assigned_to = NULL, is_accepted = 0, last_interaction_date = NOW() WHERE id = $leadId");
+                    logDistribution($conn, $leadId, null, $roundId, 'pending_approval', "Hết số lần tranh nhận cho phép (" . ($attempts + 1) . " lần). Tạm giữ pending_approval chờ Admin phê duyệt để chia lại vòng này.", false);
                 } else {
                     // Redistribute!
                     // Log the expired recall
@@ -1738,9 +1705,11 @@ if (!function_exists('recallExpiredGrabLeads')) {
                     // We trigger redistribution
                     $eligible = [];
                     $cRes = $conn->query("
-                        SELECT c.id, c.name, c.email
+                        SELECT c.id, c.name, c.email,
+                               COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id
                         FROM round_consultants rc 
                         JOIN consultants c ON rc.consultant_id = c.id 
+                        LEFT JOIN users u ON (c.email = u.email OR c.id = u.id)
                         WHERE rc.round_id = $roundId AND rc.is_active = 1 AND c.status = 'active' AND c.vacation_mode = 0
                     ");
                     
@@ -1789,6 +1758,12 @@ if (!function_exists('recallExpiredGrabLeads')) {
                         $competingNames = [];
                         foreach ($eligible as $c) {
                             $competingNames[] = $c['name'] ?? 'TVV';
+                        }
+                        
+                        // Item 18: Gửi tin Telegram trước cho Sale (chờ tối đa 3s phản hồi), sau đó mới tạo lead_offers để mở popup Web
+                        require_once __DIR__ . '/telegram_bot.php';
+                        if (function_exists('sendBatchGrabTelegramSync')) {
+                            sendBatchGrabTelegramSync($conn, $leadId, $eligible, $roundId, $countdownSec, $competingNames);
                         }
                         
                         foreach ($eligible as $c) {

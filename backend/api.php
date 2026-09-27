@@ -593,7 +593,7 @@ if (!in_array($action, $publicActions)) {
         'get_settings', 'get_sale_portal_data', 'get_sse_updates', 'get_sale_lead_timeline', 
         'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 
         'get_lead_notification_status', 'get_reports', 'get_support_tickets_count', 'get_rounds', 
-        'get_fair_share_stats', 'get_consultant_compensation_details', 
+        'get_fair_share_stats', 'get_consultant_compensation_details', 'get_grab_lead_audit', 
         'upload_avatar', 'update_consultant_self_profile', 'consultant-profile', 
         'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 
         'projects', 'campaigns', 'marketing-campaigns', 'files', 'cloud-files', 'file-categories', 
@@ -936,6 +936,10 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $source = trim($leadData['source'] ?? '');
     $type = trim($leadData['type'] ?? '');
     $note = trim($leadData['note'] ?? '');
+    $lead_phan_loai = !empty($leadData['lead_phan_loai']) ? trim($leadData['lead_phan_loai']) : null;
+    $project_id = !empty($leadData['project_id']) ? (int)$leadData['project_id'] : null;
+    $facebook_link = !empty($leadData['facebook_link']) ? trim($leadData['facebook_link']) : null;
+    $link_video_ads = !empty($leadData['link_video_ads']) ? trim($leadData['link_video_ads']) : null;
 
     $managerBehaviorMode = $decodedUser['manager_behavior_mode'] ?? 'combined';
     $canSelfAssign = ($decodedUser['role'] === 'sale') || ($decodedUser['role'] === 'manager' && $managerBehaviorMode === 'sale');
@@ -979,6 +983,15 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                 $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
             } else {
                 $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+            }
+
+            if ($leadId) {
+                $updExtra = $conn->prepare("UPDATE leads SET lead_phan_loai = ?, project_id = ?, facebook_link = ?, link_video_ads = ? WHERE id = ?");
+                if ($updExtra) {
+                    $updExtra->bind_param("sissi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $leadId);
+                    $updExtra->execute();
+                    $updExtra->close();
+                }
             }
 
             // Ensure Person exists and is set to public (databank)
@@ -1317,9 +1330,11 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                 if ($roundType === 'grab' && !$consultantId) {
                     // Fetch active consultants of this round
                     $cStmt = $conn->prepare("
-                        SELECT c.id, c.name, c.email, c.work_start_time, c.work_end_time, c.work_schedule
+                        SELECT c.id, c.name, c.email, c.work_start_time, c.work_end_time, c.work_schedule,
+                               COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id
                         FROM round_consultants rc 
                         JOIN consultants c ON rc.consultant_id = c.id 
+                        LEFT JOIN users u ON (c.email = u.email OR c.id = u.id)
                         WHERE rc.round_id = ? 
                           AND rc.is_active = 1 
                           AND c.status = 'active'
@@ -1541,7 +1556,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         $whStmt->close();
                     }
 
-                    // Rule 1.9: Nhập tay (khách cá nhân/giới thiệu) trùng SĐT với lead MKT đang active trong 30 ngày -> flag
+                    // Rule 1.9: Nhập tay (khách cá nhân/giới thiệu) trùng SĐT với lead MKT đang active trong 30 ngày -> flag (Mục 14)
                     $isMktDuplicate = false;
                     $daysSinceMkt = 0;
                     $oldMktSource = '';
@@ -1570,6 +1585,33 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                                 }
                             }
                         }
+
+                        // Also check contacts table
+                        if (!$isMktDuplicate) {
+                            $checkCtMkt = $conn->prepare("
+                                SELECT id, source, created_at 
+                                FROM contacts 
+                                WHERE phone = ? OR (email = ? AND email != '') 
+                                ORDER BY created_at DESC LIMIT 1
+                            ");
+                            if ($checkCtMkt) {
+                                $checkCtMkt->bind_param("ss", $phone, $email);
+                                $checkCtMkt->execute();
+                                $ctRes = $checkCtMkt->get_result()->fetch_assoc();
+                                $checkCtMkt->close();
+                                if ($ctRes) {
+                                    $oldMktSource = $ctRes['source'];
+                                    $mktSources = ['facebook', 'google', 'google_lp', 'website', 'mkt_webhook', 'capi', 'campaign'];
+                                    if (in_array($oldMktSource, $mktSources)) {
+                                        $createdTime = strtotime($ctRes['created_at']);
+                                        $daysSinceMkt = (time() - $createdTime) / (24 * 3600);
+                                        if ($daysSinceMkt <= 30) {
+                                            $isMktDuplicate = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     if ($isMktDuplicate) {
@@ -1580,6 +1622,21 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         $leadId = updateLead($conn, $phone, $email, $consultantId, $source, $type, $note, null, null, $name);
                     } else {
                         $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
+                    }
+
+                    if ($leadId) {
+                        $updExtra = $conn->prepare("UPDATE leads SET lead_phan_loai = ?, project_id = ?, facebook_link = ?, link_video_ads = ? WHERE id = ?");
+                        if ($updExtra) {
+                            $updExtra->bind_param("sissi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $leadId);
+                            $updExtra->execute();
+                            $updExtra->close();
+                        }
+                        $updCtExtra = $conn->prepare("UPDATE contacts SET project_id = COALESCE(?, project_id), facebook_link = COALESCE(?, facebook_link), link_video_ads = COALESCE(?, link_video_ads), lead_phan_loai = COALESCE(?, lead_phan_loai) WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR phone = ?");
+                        if ($updCtExtra) {
+                            $updCtExtra->bind_param("isssis", $project_id, $facebook_link, $link_video_ads, $lead_phan_loai, $leadId, $phone);
+                            $updCtExtra->execute();
+                            $updCtExtra->close();
+                        }
                     }
 
                     if ($assignedRoundId && $leadId) {
@@ -1597,15 +1654,21 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         $updL->execute();
                         $updL->close();
 
-                        // Create offers
-                        $offerStmt = $conn->prepare("
-                            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
-                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
-                        ");
+                        // Item 18: Gửi tin Telegram trước cho Sale (chờ tối đa 3s phản hồi), sau đó mới tạo lead_offers để mở popup Web
                         $competingNames = [];
                         foreach ($eligibleConsultants as $c) {
                             $competingNames[] = $c['name'] ?? 'TVV';
                         }
+                        require_once __DIR__ . '/telegram_bot.php';
+                        if (function_exists('sendBatchGrabTelegramSync')) {
+                            sendBatchGrabTelegramSync($conn, $leadId, $eligibleConsultants, $assignedRoundId, $grabCountdownSeconds, $competingNames);
+                        }
+
+                        // Create offers (Popup Web xuất hiện sau khi Telegram đã gửi xong)
+                        $offerStmt = $conn->prepare("
+                            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
+                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+                        ");
                         foreach ($eligibleConsultants as $c) {
                             $offerStmt->bind_param("iiii", $leadId, $c['id'], $assignedRoundId, $grabCountdownSeconds);
                             $offerStmt->execute();
@@ -1645,7 +1708,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                     $conn->commit();
                     $inTransaction = false;
 
-                    // Log flag and notify admin if it is an MKT duplicate
+                    // Log flag and notify admin/marketing if it is an MKT duplicate (Mục 14)
                     if ($isMktDuplicate) {
                         logAdminAction($conn, $decodedUser['id'] ?? 1, 'MANUAL_LEAD_DUPLICATE_FLAG', [
                             'lead_id' => $leadId,
@@ -1655,6 +1718,28 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                             'old_source' => $oldMktSource,
                             'days_since' => round($daysSinceMkt)
                         ]);
+
+                        // Send in-app notification (chuông nội bộ) to Admin & Marketing (Mục 14)
+                        try {
+                            $admNotifRes = $conn->query("SELECT id FROM users WHERE tenant_id = 1 AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'director', 'mkt', 'marketing')");
+                            if ($admNotifRes) {
+                                $notifTitle = "Cảnh báo rửa nguồn data Marketing";
+                                $notifBody = "Sale " . ($decodedUser['name'] ?? 'Nhân viên') . " đã nhập tay khách hàng trùng SĐT ($phone) trước đó là nguồn Marketing ($oldMktSource) cách đây " . round($daysSinceMkt) . " ngày.";
+                                $notifLink = "/contacts?search=" . urlencode($phone);
+                                $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'warning', ?)");
+                                if ($insNotif) {
+                                    while ($uAdm = $admNotifRes->fetch_assoc()) {
+                                        if ((int)$uAdm['id'] !== (int)($decodedUser['id'] ?? 0)) {
+                                            $insNotif->bind_param("isss", $uAdm['id'], $notifTitle, $notifBody, $notifLink);
+                                            $insNotif->execute();
+                                        }
+                                    }
+                                    $insNotif->close();
+                                }
+                            }
+                        } catch (Exception $notifEx) {
+                            error_log("Error creating in-app notifications for MKT duplicate: " . $notifEx->getMessage());
+                        }
 
                         try {
                             $admRes = $conn->query("SELECT id, name, zalo_chat_id FROM accounts WHERE role IN ('admin', 'superadmin', 'manager') AND is_active = 1 AND tenant_id = 1");
@@ -10207,16 +10292,35 @@ switch ($action) {
             }
             $updLead->execute();
 
-            if (!$no_compensation) {
-                // Mark distribution_logs as error - chỉ áp dụng cho lượt đang hoạt động gần nhất
-                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'grabbed', 'compensation') ORDER BY id DESC LIMIT 1");
+            // Check round type (Mục 20: Vòng giật reset cooldown ngay nhưng không bù lượt; vòng xoay round robin mới bù lượt)
+            $isGrabRound = false;
+            $rTypeCheck = $conn->prepare("SELECT round_type FROM distribution_rounds WHERE id = ?");
+            if ($rTypeCheck) {
+                $rTypeCheck->bind_param("i", $report['round_id']);
+                $rTypeCheck->execute();
+                $rTypeRow = $rTypeCheck->get_result()->fetch_assoc();
+                $rTypeCheck->close();
+                if (($rTypeRow['round_type'] ?? '') === 'grab') {
+                    $isGrabRound = true;
+                }
+            }
+
+            // Always mark distribution_logs as error so grab cooldown is reset immediately (Mục 20)
+            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'grabbed', 'compensation') ORDER BY id DESC LIMIT 1");
+            if ($updLog) {
                 $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
                 $updLog->execute();
+                $updLog->close();
+            }
 
-                // 4. Increment compensation_count for the consultant in that round
+            // 4. Increment compensation_count ONLY for round robin (Item 20: Vòng giật không tính lượt bù, chỉ Round Robin mới tính lượt bù)
+            if (!$no_compensation && !$isGrabRound) {
                 $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id=? AND consultant_id=?");
-                $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
-                $updComp->execute();
+                if ($updComp) {
+                    $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
+                    $updComp->execute();
+                    $updComp->close();
+                }
             }
 
             // 5. Create reminder distribution log if new consultant selected
@@ -11590,8 +11694,87 @@ switch ($action) {
                 $lead['note'] .= $noteAppend;
             }
 
-            // Run Round Robin assignment
-            if ($isDuplicate) {
+            // Check round type (Mục 19.1: Tạm giữ pending_approval sau đó chia lại đúng cái vòng giật đó khi approve)
+            $roundType = 'round_robin';
+            $grabCountdownSeconds = 300;
+            $grabCooldownSeconds = 3600;
+            if ($targetRoundId > 0) {
+                $rCheck = $conn->prepare("SELECT round_type, grab_countdown_seconds, grab_cooldown_seconds FROM distribution_rounds WHERE id = ?");
+                if ($rCheck) {
+                    $rCheck->bind_param("i", $targetRoundId);
+                    $rCheck->execute();
+                    $rRow = $rCheck->get_result()->fetch_assoc();
+                    $rCheck->close();
+                    if (!empty($rRow['round_type'])) {
+                        $roundType = $rRow['round_type'];
+                        $grabCountdownSeconds = (int)($rRow['grab_countdown_seconds'] ?? 300);
+                        $grabCooldownSeconds = (int)($rRow['grab_cooldown_seconds'] ?? 3600);
+                    }
+                }
+            }
+
+            $isGrabApproval = ($roundType === 'grab' && $targetRoundId > 0 && !$isDuplicate);
+
+            if ($isGrabApproval) {
+                // Phân bổ lại đúng vòng giật (Mục 19.1)
+                $status = 'pending_claim';
+                $assignedConsultantId = null;
+                $message = 'Admin phê duyệt phát lại tranh nhận vào vòng giật.' . $dupSuffix;
+
+                // Lấy danh sách TVV trong vòng giật
+                $eligibleConsultants = [];
+                $cStmt = $conn->prepare("
+                    SELECT c.id, c.name, c.email, c.work_start_time, c.work_end_time, c.work_schedule,
+                           COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id
+                    FROM round_consultants rc 
+                    JOIN consultants c ON rc.consultant_id = c.id 
+                    LEFT JOIN users u ON (c.email = u.email OR c.id = u.id)
+                    WHERE rc.round_id = ? 
+                      AND rc.is_active = 1 
+                      AND c.status = 'active'
+                      AND c.vacation_mode = 0
+                ");
+                if ($cStmt) {
+                    $cStmt->bind_param("i", $targetRoundId);
+                    $cStmt->execute();
+                    $activeConsultants = $cStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $cStmt->close();
+
+                    foreach ($activeConsultants as $c) {
+                        if (checkConsultantGates($conn, $c['id'], $lead, true) === true) {
+                            $eligibleConsultants[] = $c;
+                        }
+                    }
+                }
+
+                // Xóa các offer cũ đã hết hạn
+                $conn->query("DELETE FROM lead_offers WHERE lead_id = $lead_id");
+                // Xóa log hết hạn cũ để reset số lần thử
+                $conn->query("DELETE FROM distribution_logs WHERE lead_id = $lead_id AND status = 'expired'");
+
+                // Gửi tin Telegram trước cho Sale (timeout 3s), sau đó mới tạo lead_offers để mở popup Web (Mục 18)
+                if (!empty($eligibleConsultants)) {
+                    $competingNames = [];
+                    foreach ($eligibleConsultants as $c) {
+                        $competingNames[] = $c['name'] ?? 'TVV';
+                    }
+                    require_once __DIR__ . '/telegram_bot.php';
+                    if (function_exists('sendBatchGrabTelegramSync')) {
+                        sendBatchGrabTelegramSync($conn, $lead_id, $eligibleConsultants, $targetRoundId, $grabCountdownSeconds, $competingNames);
+                    }
+
+                    $offerStmt = $conn->prepare("
+                        INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
+                        VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+                    ");
+                    foreach ($eligibleConsultants as $c) {
+                        $offerStmt->bind_param("iiii", $lead_id, $c['id'], $targetRoundId, $grabCountdownSeconds);
+                        $offerStmt->execute();
+                        sendGrabOfferNotification($conn, $lead_id, $c['id'], $targetRoundId, $grabCountdownSeconds, $competingNames);
+                    }
+                    $offerStmt->close();
+                }
+            } else if ($isDuplicate) {
                 // Skip Round-Robin, keep duplicate owner
             } else if ($targetRoundId > 0) {
                 $assignResult = getNextConsultantInRound($conn, $targetRoundId);
@@ -11666,8 +11849,10 @@ switch ($action) {
             $note = $lead['note'] . $adminNote;
 
             // 2. Update Lead Table
-            $updLead = $conn->prepare("UPDATE leads SET status = 'active', assigned_to = ?, note = ?, last_interaction_date = NOW(), target_round_id = ?, ai_screener_status = 'passed' WHERE id = ?");
-            $updLead->bind_param("isii", $assignedConsultantId, $note, $targetRoundId, $lead_id);
+            $newLeadStatus = $isGrabApproval ? 'pending_claim' : 'active';
+            $newIsAccepted = $isGrabApproval ? 0 : 1;
+            $updLead = $conn->prepare("UPDATE leads SET status = ?, assigned_to = ?, note = ?, last_interaction_date = NOW(), target_round_id = ?, ai_screener_status = 'passed', is_accepted = ? WHERE id = ?");
+            $updLead->bind_param("sisiii", $newLeadStatus, $assignedConsultantId, $note, $targetRoundId, $newIsAccepted, $lead_id);
             $updLead->execute();
             $updLead->close();
 
@@ -16408,6 +16593,199 @@ switch ($action) {
                 'sources' => $sources,
                 'lastAssignedId' => $lastAssignedId,
                 'consultants' => array_values($consultants)
+            ]
+        ]);
+        break;
+
+    case 'get_grab_lead_audit':
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = min(100, max(5, (int)($_GET['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+        $roundId = isset($_GET['round_id']) && $_GET['round_id'] !== '' ? (int)$_GET['round_id'] : 0;
+        $status = $_GET['status'] ?? 'all';
+        $date = $_GET['date'] ?? '';
+
+        $where = ["1=1"];
+        $params = [];
+        $types = "";
+
+        if ($roundId > 0) {
+            $where[] = "lo.round_id = ?";
+            $params[] = $roundId;
+            $types .= "i";
+        }
+
+        // Parse date filter
+        if (!empty($date)) {
+            if ($date === 'Hôm nay') {
+                $where[] = "lo.offered_at >= CURDATE() AND lo.offered_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+            } else if ($date === 'Hôm qua') {
+                $where[] = "lo.offered_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND lo.offered_at < CURDATE()";
+            } else if ($date === 'Tuần này') {
+                $where[] = "lo.offered_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND lo.offered_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+            } else if ($date === 'Tuần trước') {
+                $where[] = "lo.offered_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND lo.offered_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+            } else if ($date === '7 ngày qua') {
+                $where[] = "lo.offered_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+            } else if ($date === '30 ngày qua') {
+                $where[] = "lo.offered_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            } else if ($date === 'Tháng này') {
+                $where[] = "lo.offered_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND lo.offered_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+            } else if ($date === 'Tháng trước') {
+                $where[] = "lo.offered_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND lo.offered_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+            } else if (preg_match('/^(\d{4}-\d{2}-\d{2})\s*(?:đến|đên|den|to|-)\s*(\d{4}-\d{2}-\d{2})$/ui', $date, $matches)) {
+                $where[] = "lo.offered_at >= ? AND lo.offered_at <= ?";
+                $params[] = $matches[1] . ' 00:00:00';
+                $params[] = $matches[2] . ' 23:59:59';
+                $types .= "ss";
+            }
+        }
+
+        $having = "";
+        if ($status === 'success') {
+            $having = "HAVING wave_status = 'success'";
+        } else if ($status === 'expired') {
+            $having = "HAVING wave_status = 'expired'";
+        } else if ($status === 'pending') {
+            $having = "HAVING wave_status = 'pending'";
+        }
+
+        $whereClause = implode(" AND ", $where);
+
+        // Get total count of waves
+        $countSql = "
+            SELECT COUNT(*) as total_waves FROM (
+                SELECT 
+                    lo.lead_id, lo.round_id, lo.offered_at,
+                    CASE 
+                        WHEN SUM(CASE WHEN lo.status = 'accepted' THEN 1 ELSE 0 END) > 0 THEN 'success'
+                        WHEN SUM(CASE WHEN lo.status = 'pending' AND lo.expires_at > NOW() THEN 1 ELSE 0 END) > 0 THEN 'pending'
+                        ELSE 'expired'
+                    END as wave_status
+                FROM lead_offers lo
+                WHERE $whereClause
+                GROUP BY lo.lead_id, lo.round_id, lo.offered_at
+                $having
+            ) sub
+        ";
+        $stmtCnt = $conn->prepare($countSql);
+        if ($types && !empty($params)) {
+            $stmtCnt->bind_param($types, ...$params);
+        }
+        $stmtCnt->execute();
+        $totalWaves = (int)($stmtCnt->get_result()->fetch_assoc()['total_waves'] ?? 0);
+        $stmtCnt->close();
+
+        // Summary metrics
+        $sumSql = "
+            SELECT 
+                COUNT(*) as total_count,
+                SUM(CASE WHEN wave_status = 'success' THEN 1 ELSE 0 END) as success_count,
+                SUM(CASE WHEN wave_status = 'expired' THEN 1 ELSE 0 END) as expired_count,
+                SUM(CASE WHEN wave_status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+                AVG(CASE WHEN wave_status = 'success' THEN response_time_seconds ELSE NULL END) as avg_response_seconds
+            FROM (
+                SELECT 
+                    lo.lead_id, lo.round_id, lo.offered_at,
+                    MAX(CASE WHEN lo.status = 'accepted' THEN TIMESTAMPDIFF(SECOND, lo.offered_at, lo.responded_at) ELSE NULL END) as response_time_seconds,
+                    CASE 
+                        WHEN SUM(CASE WHEN lo.status = 'accepted' THEN 1 ELSE 0 END) > 0 THEN 'success'
+                        WHEN SUM(CASE WHEN lo.status = 'pending' AND lo.expires_at > NOW() THEN 1 ELSE 0 END) > 0 THEN 'pending'
+                        ELSE 'expired'
+                    END as wave_status
+                FROM lead_offers lo
+                WHERE $whereClause
+                GROUP BY lo.lead_id, lo.round_id, lo.offered_at
+            ) sub
+        ";
+        $stmtSum = $conn->prepare($sumSql);
+        if ($types && !empty($params)) {
+            $stmtSum->bind_param($types, ...$params);
+        }
+        $stmtSum->execute();
+        $summaryRow = $stmtSum->get_result()->fetch_assoc();
+        $stmtSum->close();
+
+        // Main data query
+        $mainSql = "
+            SELECT 
+                lo.lead_id,
+                lo.round_id,
+                lo.offered_at,
+                MAX(lo.expires_at) as expires_at,
+                l.name as lead_name,
+                l.phone as lead_phone,
+                dr.round_name,
+                COUNT(lo.id) as total_signaled,
+                GROUP_CONCAT(CONCAT(lo.user_id, ':', COALESCE(u.full_name, c.name, 'TVV'), ':', lo.status) SEPARATOR ';') as consultants_summary,
+                MAX(CASE WHEN lo.status = 'accepted' THEN lo.user_id ELSE NULL END) as winner_id,
+                MAX(CASE WHEN lo.status = 'accepted' THEN COALESCE(u.full_name, c.name, 'TVV') ELSE NULL END) as winner_name,
+                MAX(CASE WHEN lo.status = 'accepted' THEN lo.responded_at ELSE NULL END) as winner_responded_at,
+                MAX(CASE WHEN lo.status = 'accepted' THEN TIMESTAMPDIFF(SECOND, lo.offered_at, lo.responded_at) ELSE NULL END) as response_time_seconds,
+                CASE 
+                    WHEN SUM(CASE WHEN lo.status = 'accepted' THEN 1 ELSE 0 END) > 0 THEN 'success'
+                    WHEN SUM(CASE WHEN lo.status = 'pending' AND lo.expires_at > NOW() THEN 1 ELSE 0 END) > 0 THEN 'pending'
+                    ELSE 'expired'
+                END as wave_status
+            FROM lead_offers lo
+            LEFT JOIN leads l ON lo.lead_id = l.id
+            LEFT JOIN distribution_rounds dr ON lo.round_id = dr.id
+            LEFT JOIN users u ON lo.user_id = u.id
+            LEFT JOIN consultants c ON (lo.user_id = c.id OR u.email = c.email)
+            WHERE $whereClause
+            GROUP BY lo.lead_id, lo.round_id, lo.offered_at
+            $having
+            ORDER BY lo.offered_at DESC
+            LIMIT ? OFFSET ?
+        ";
+
+        $typesWithLimit = $types . "ii";
+        $paramsWithLimit = array_merge($params, [$limit, $offset]);
+        $stmtMain = $conn->prepare($mainSql);
+        if ($typesWithLimit) {
+            $stmtMain->bind_param($typesWithLimit, ...$paramsWithLimit);
+        }
+        $stmtMain->execute();
+        $resMain = $stmtMain->get_result();
+        $items = [];
+        while ($row = $resMain->fetch_assoc()) {
+            $rawPhone = $row['lead_phone'] ?? '';
+            $items[] = [
+                'lead_id' => (int)$row['lead_id'],
+                'round_id' => (int)$row['round_id'],
+                'round_name' => $row['round_name'] ?? 'Vòng Tranh Nhận',
+                'lead_name' => $row['lead_name'] ?? 'Khách hàng',
+                'lead_phone' => $rawPhone,
+                'offered_at' => $row['offered_at'],
+                'expires_at' => $row['expires_at'],
+                'total_signaled' => (int)$row['total_signaled'],
+                'consultants_summary' => $row['consultants_summary'],
+                'winner_id' => $row['winner_id'] ? (int)$row['winner_id'] : null,
+                'winner_name' => $row['winner_name'],
+                'winner_responded_at' => $row['winner_responded_at'],
+                'response_time_seconds' => $row['response_time_seconds'] !== null ? (int)$row['response_time_seconds'] : null,
+                'wave_status' => $row['wave_status']
+            ];
+        }
+        $stmtMain->close();
+
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'items' => $items,
+                'pagination' => [
+                    'total' => $totalWaves,
+                    'page' => $page,
+                    'limit' => $limit,
+                    'totalPages' => ceil($totalWaves / $limit)
+                ],
+                'summary' => [
+                    'total_waves' => (int)($summaryRow['total_count'] ?? 0),
+                    'total_success' => (int)($summaryRow['success_count'] ?? 0),
+                    'total_expired' => (int)($summaryRow['expired_count'] ?? 0),
+                    'total_pending' => (int)($summaryRow['pending_count'] ?? 0),
+                    'avg_response_seconds' => round((float)($summaryRow['avg_response_seconds'] ?? 0), 1)
+                ]
             ]
         ]);
         break;

@@ -3,6 +3,9 @@
 
 require_once __DIR__ . '/db_connect.php';
 
+/** @var \mysqli|\PDO|null $conn */
+global $conn;
+
 if (!function_exists('maskPhone')) {
     function maskPhone($phone) {
         if (empty($phone)) return '';
@@ -91,13 +94,17 @@ function sendTelegramMessage($botToken, $chatId, $text, $syncOrLeadId = true, $l
 
         if ($conn instanceof PDO) {
             $stmt = $conn->prepare("INSERT INTO telegram_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
-            $result = $stmt->execute([$botToken, $chatId, $text, $lId]);
-            if ($leadId > 0) {
-                $stmtLead = $conn->prepare("UPDATE leads SET telegram_notify_status = 'pending' WHERE id = ?");
-                $stmtLead->execute([$leadId]);
+            if ($stmt) {
+                $result = $stmt->execute([$botToken, $chatId, $text, $lId]);
+                if ($leadId > 0) {
+                    $stmtLead = $conn->prepare("UPDATE leads SET telegram_notify_status = 'pending' WHERE id = ?");
+                    if ($stmtLead) {
+                        $stmtLead->execute([$leadId]);
+                    }
+                }
+                return $result;
             }
-            return $result;
-        } else {
+        } elseif ($conn instanceof mysqli) {
             $stmt = $conn->prepare("INSERT INTO telegram_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
             if ($stmt) {
                 $stmt->bind_param("sssi", $botToken, $chatId, $text, $lId);
@@ -183,13 +190,20 @@ function sendTelegramMessage($botToken, $chatId, $text, $syncOrLeadId = true, $l
     $newStatus = $isSent ? 'sent' : 'failed';
     $errorMessage = $isSent ? null : ("HTTP Code: " . $httpCode . ", Response: " . ($response ?: 'NO RESPONSE'));
 
-    if ($leadId > 0) {
+    if ($leadId > 0 && $conn) {
         $sentAtExpr = $isSent ? ", telegram_notify_sent_at = NOW(), last_interaction_date = NOW()" : "";
-        $stmtLead = $conn->prepare("UPDATE leads SET telegram_notify_status = ? $sentAtExpr WHERE id = ?");
-        if ($stmtLead) {
-            $stmtLead->bind_param("si", $newStatus, $leadId);
-            $stmtLead->execute();
-            $stmtLead->close();
+        if ($conn instanceof PDO) {
+            $stmtLead = $conn->prepare("UPDATE leads SET telegram_notify_status = ? $sentAtExpr WHERE id = ?");
+            if ($stmtLead) {
+                $stmtLead->execute([$newStatus, $leadId]);
+            }
+        } elseif ($conn instanceof mysqli) {
+            $stmtLead = $conn->prepare("UPDATE leads SET telegram_notify_status = ? $sentAtExpr WHERE id = ?");
+            if ($stmtLead) {
+                $stmtLead->bind_param("si", $newStatus, $leadId);
+                $stmtLead->execute();
+                $stmtLead->close();
+            }
         }
     }
 
@@ -469,3 +483,125 @@ function sendTelegramReleaseSummaryMessageToSale($consultantId, $consultantName,
 
     return sendTelegramMessage($botToken, $chatId, $text, $sync);
 }
+
+/**
+ * Gửi tin nhắn thông báo giật lead đồng thời (parallel) qua Telegram cho nhiều Sale với timeout 3s
+ * Trả về sau khi Telegram đã phản hồi (hoặc timeout 3s) để sau đó hệ thống mới mở popup web CRM (Mục 18).
+ *
+ * @param mysqli|PDO $conn
+ * @param int $leadId
+ * @param array $consultants Mảng các TVV đủ điều kiện
+ * @param int $roundId
+ * @param int $countdownSec
+ * @param array $competingNames
+ * @return bool
+ */
+function sendBatchGrabTelegramSync($conn, $leadId, array $consultants, $roundId, $countdownSec, array $competingNames = [])
+{
+    if (empty($consultants)) {
+        return true;
+    }
+
+    $botToken = get_system_setting($conn, 'telegram_bot_token');
+    if (empty($botToken)) {
+        return true;
+    }
+
+    // Lấy tên vòng
+    $roundName = 'Vòng Tranh Nhận';
+    try {
+        if ($conn instanceof mysqli) {
+            $rStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+            if ($rStmt) {
+                $rStmt->bind_param("i", $roundId);
+                $rStmt->execute();
+                $rRes = $rStmt->get_result()->fetch_assoc();
+                if (!empty($rRes['round_name'])) $roundName = $rRes['round_name'];
+                $rStmt->close();
+            }
+        } elseif ($conn instanceof PDO) {
+            $rStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+            $rStmt->execute([$roundId]);
+            $rRes = $rStmt->fetch(PDO::FETCH_ASSOC);
+            if (!empty($rRes['round_name'])) $roundName = $rRes['round_name'];
+        }
+    } catch (\Throwable $e) {}
+
+    $roundTitle = mb_strtoupper($roundName, 'UTF-8');
+    $mins = ceil($countdownSec / 60);
+
+    $competingTextTele = "";
+    if (!empty($competingNames)) {
+        $competingTextTele = "\n👥 <b>Số lượng TVV cùng tranh nhận:</b> " . count($competingNames) . "\n";
+    }
+
+    $mh = curl_multi_init();
+    $curlHandles = [];
+    $url = "https://api.telegram.org/bot" . $botToken . "/sendMessage";
+
+    foreach ($consultants as $c) {
+        $chatId = $c['telegram_chat_id'] ?? '';
+        // Ai chưa linked tele thì bỏ qua, không chặn luồng (Mục 18)
+        if (empty($chatId) || strtolower(trim($chatId)) === 'chưa liên kết') {
+            continue;
+        }
+
+        $saleName = $c['name'] ?? $c['full_name'] ?? 'Bạn';
+        $teleMsg = "⚡ <b>[ TRANH NHẬN DATA NHANH - " . htmlspecialchars($roundTitle) . " ]</b> ⚡\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "Chào <b>" . htmlspecialchars($saleName) . "</b>,\n\n"
+            . "Hệ thống vừa phát tín hiệu tranh nhận khách hàng mới thuộc vòng: <b>" . htmlspecialchars($roundName) . "</b>.\n"
+            . "⏰ Thời gian đếm ngược: <b>" . $mins . " phút</b>.\n"
+            . $competingTextTele
+            . "\n👉 <i>Vui lòng đăng nhập CRM và mở trang Bàn làm việc để TRANH NHẬN NGAY!</i>";
+
+        $payload = json_encode([
+            "chat_id" => $chatId,
+            "text" => $teleMsg,
+            "parse_mode" => "HTML"
+        ], JSON_UNESCAPED_UNICODE);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Timeout tối đa 3s per Mục 18
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+        curl_multi_add_handle($mh, $ch);
+        $curlHandles[] = ['ch' => $ch, 'user_id' => $c['id'], 'chat_id' => $chatId];
+    }
+
+    if (!empty($curlHandles)) {
+        $active = null;
+        $startTime = microtime(true);
+        do {
+            $mrc = curl_multi_exec($mh, $active);
+            if ($active > 0) {
+                curl_multi_select($mh, 0.05);
+            }
+            if ((microtime(true) - $startTime) >= 3.0) {
+                break;
+            }
+        } while ($active > 0 && $mrc == CURLM_OK);
+
+        foreach ($curlHandles as $h) {
+            $ch = $h['ch'];
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $resp = curl_multi_getcontent($ch);
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+
+            $isSent = ($httpCode === 200);
+            if (function_exists('log_communication')) {
+                log_communication($conn ?? $GLOBALS['pdo'] ?? null, $leadId, 'telegram', $h['chat_id'], $isSent ? 'sent' : 'failed', $isSent ? null : ("HTTP: $httpCode"));
+            }
+        }
+    }
+    curl_multi_close($mh);
+    return true;
+}
+

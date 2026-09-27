@@ -239,6 +239,22 @@ class DepositController {
                 $validHelpers = array_values(array_unique(array_merge($validHelpers, $cIds)));
             }
 
+            // Also retrieve past shareholders from cooperation_slips (even if revoked)
+            $stmtPastSlips = $this->db->prepare("SELECT shares_json FROM cooperation_slips WHERE contact_id = ?");
+            $stmtPastSlips->execute([$contactId]);
+            while ($pSlip = $stmtPastSlips->fetch(PDO::FETCH_ASSOC)) {
+                if (!empty($pSlip['shares_json'])) {
+                    $dShares = json_decode($pSlip['shares_json'], true);
+                    if (is_array($dShares)) {
+                        foreach (array_keys($dShares) as $sUid) {
+                            $sUidInt = (int)$sUid;
+                            if ($sUidInt > 0) $validHelpers[] = $sUidInt;
+                        }
+                    }
+                }
+            }
+            $validHelpers = array_values(array_unique($validHelpers));
+
             // Extract custom shares and request collaborators passed from frontend
             $customShares = [];
             if (!empty($b['shares']) && (is_array($b['shares']) || is_object($b['shares']))) {
