@@ -3947,8 +3947,8 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
 
     // 3. Ensure CRM Contact if assigned and accepted
     if ($assigned_to > 0 && $is_accepted === 1) {
-        $projectId = null;
-        if (!empty($lead['target_round_id'])) {
+        $projectId = !empty($lead['project_id']) ? (int)$lead['project_id'] : null;
+        if (!$projectId && !empty($lead['target_round_id'])) {
             $stmtRProj = $conn->prepare("SELECT project_id FROM distribution_rounds WHERE id = ? AND project_id IS NOT NULL LIMIT 1");
             if ($stmtRProj) {
                 $stmtRProj->bind_param("i", $lead['target_round_id']);
@@ -4101,6 +4101,11 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             $hasOwnerContact = true;
         }
 
+        $loaiLead = !empty($lead['loai_lead']) ? $lead['loai_lead'] : (!empty($lead['type']) ? $lead['type'] : null);
+        $leadPhanLoai = !empty($lead['lead_phan_loai']) ? $lead['lead_phan_loai'] : null;
+        $facebookLink = !empty($lead['facebook_link']) ? $lead['facebook_link'] : null;
+        $linkVideoAds = !empty($lead['link_video_ads']) ? $lead['link_video_ads'] : null;
+
         if (!empty($existingContacts)) {
             // Update existing active contacts with latest info
             $stmtUpContact = $conn->prepare("
@@ -4110,17 +4115,27 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     email = IF(? != '' AND (email = '' OR email IS NULL), ?, email),
                     phone = IF(? != '' AND (phone = '' OR phone IS NULL), ?, phone),
                     notes = IF(? != '' AND IFNULL(notes, '') NOT LIKE CONCAT('%', ?, '%'), CONCAT(IFNULL(notes, ''), IF(notes IS NULL OR notes = '', '', '\n'), ?), notes),
-                    customer_type = IF(? != '' AND (customer_type = '' OR customer_type IS NULL), ?, customer_type)
+                    customer_type = IF(? != '' AND (customer_type = '' OR customer_type IS NULL), ?, customer_type),
+                    loai_lead = COALESCE(?, loai_lead),
+                    lead_phan_loai = COALESCE(?, lead_phan_loai),
+                    project_id = COALESCE(?, project_id),
+                    facebook_link = COALESCE(?, facebook_link),
+                    link_video_ads = COALESCE(?, link_video_ads)
                 WHERE person_id = ? AND deleted_at IS NULL
             ");
             if ($stmtUpContact) {
-                $stmtUpContact->bind_param("sssssssssssssi", 
+                $stmtUpContact->bind_param("sssssssssssssssssi", 
                     $firstName, $firstName, 
                     $lastName, $lastName, 
                     $email, $email, 
                     $phone, $phone, 
                     $note, $note, $note,
                     $type, $type, 
+                    $loaiLead,
+                    $leadPhanLoai,
+                    $projectId,
+                    $facebookLink,
+                    $linkVideoAds,
                     $person_id
                 );
                 $stmtUpContact->execute();
@@ -4166,41 +4181,40 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             $platform = $lead['platform'] ?? null;
             $formName = $lead['form_name'] ?? null;
             $zaloPhone = $lead['zalo_phone'] ?? null;
-            $facebookLink = $lead['facebook_link'] ?? null;
 
             $stmtContact = $conn->prepare("
                 INSERT INTO contacts (
                     tenant_id, person_id, project_id, owner_id, created_by, 
                     first_name, last_name, email, phone, source, 
                     status, pipeline_status, stage_id, security_expires_at, notes, 
-                    customer_type, temperature, suggested_temperature, phone2, gender, 
+                    customer_type, loai_lead, lead_phan_loai, temperature, suggested_temperature, phone2, gender, 
                     dob, citizen_id, district, company, tax_code, 
                     budget, demand_type, property_type, bedroom_count, preferred_location, 
                     utm_campaign, utm_medium, utm_content, utm_term, platform, 
-                    form_name, zalo_phone, facebook_link
+                    form_name, zalo_phone, facebook_link, link_video_ads
                 ) VALUES (
                     1, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
                     'lead', ?, ?, ?, ?, 
+                    ?, ?, ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
-                    ?, ?, ?, ?, ?, 
-                    ?, ?, ?
+                    ?, ?, ?, ?
                 )
             ");
             if ($stmtContact) {
                 $createdBy = 1;
                 $stmtContact->bind_param(
-                    "iiiissssssissssssssssssdssssssssssss",
+                    "iiiissssssisssssssssssssdssssssssssss",
                     $person_id, $projectId, $ownerUserId, $createdBy,
                     $firstName, $lastName, $email, $phone, $source,
                     $triggerStatus, $stageId, $secExpiresTime, $note,
-                    $type, $initTemp, $initTemp, $phone2, $gender,
+                    $type, $loaiLead, $leadPhanLoai, $initTemp, $initTemp, $phone2, $gender,
                     $dob, $citizenId, $district, $company, $taxCode,
                     $budget, $demandType, $propertyType, $bedroomCount, $preferredLocation,
                     $utmCampaign, $utmMedium, $utmContent, $utmTerm, $platform,
-                    $formName, $zaloPhone, $facebookLink
+                    $formName, $zaloPhone, $facebookLink, $linkVideoAds
                 );
                 $stmtContact->execute();
                 $stmtContact->close();

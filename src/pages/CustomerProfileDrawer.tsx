@@ -7564,7 +7564,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </span>
                               </div>
                               {(() => {
-                                const rawLoai = contact?.loai_lead || webhookData.parsed['loai_lead'] || formData.loai_lead || '';
+                                const rawLoai = contact?.loai_lead || webhookData.parsed['loai_lead'] || formData.loai_lead || contact?.customer_type || formData.customer_type || '';
                                 const loaiMap: Record<string, string> = {
                                   lead_form: 'Lead Form',
                                   message: 'Tin nhắn (Inbox)',

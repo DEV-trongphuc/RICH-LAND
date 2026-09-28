@@ -1625,15 +1625,15 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                     }
 
                     if ($leadId) {
-                        $updExtra = $conn->prepare("UPDATE leads SET lead_phan_loai = ?, project_id = ?, facebook_link = ?, link_video_ads = ? WHERE id = ?");
+                        $updExtra = $conn->prepare("UPDATE leads SET lead_phan_loai = ?, project_id = ?, facebook_link = ?, link_video_ads = ?, loai_lead = ? WHERE id = ?");
                         if ($updExtra) {
-                            $updExtra->bind_param("sissi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $leadId);
+                            $updExtra->bind_param("sisssi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $type, $leadId);
                             $updExtra->execute();
                             $updExtra->close();
                         }
-                        $updCtExtra = $conn->prepare("UPDATE contacts SET project_id = COALESCE(?, project_id), facebook_link = COALESCE(?, facebook_link), link_video_ads = COALESCE(?, link_video_ads), lead_phan_loai = COALESCE(?, lead_phan_loai) WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR phone = ?");
+                        $updCtExtra = $conn->prepare("UPDATE contacts SET project_id = COALESCE(?, project_id), facebook_link = COALESCE(?, facebook_link), link_video_ads = COALESCE(?, link_video_ads), lead_phan_loai = COALESCE(?, lead_phan_loai), loai_lead = COALESCE(?, loai_lead), customer_type = COALESCE(?, customer_type) WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR phone = ?");
                         if ($updCtExtra) {
-                            $updCtExtra->bind_param("isssis", $project_id, $facebook_link, $link_video_ads, $lead_phan_loai, $leadId, $phone);
+                            $updCtExtra->bind_param("isssssis", $project_id, $facebook_link, $link_video_ads, $lead_phan_loai, $type, $type, $leadId, $phone);
                             $updCtExtra->execute();
                             $updCtExtra->close();
                         }
@@ -1683,12 +1683,19 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                     }
 
                     if ($override_consultant_id && $leadId > 0) {
-                        $updAccepted = $conn->prepare("UPDATE leads SET is_accepted = 1 WHERE id = ?");
+                        $updAccepted = $conn->prepare("UPDATE leads SET is_accepted = 1, accepted_at = NOW() WHERE id = ?");
                         $updAccepted->bind_param("i", $leadId);
                         $updAccepted->execute();
                         $updAccepted->close();
                         
                         ensurePersonAndContact($conn, $leadId);
+
+                        $updCtPost = $conn->prepare("UPDATE contacts SET project_id = COALESCE(?, project_id), facebook_link = COALESCE(?, facebook_link), link_video_ads = COALESCE(?, link_video_ads), lead_phan_loai = COALESCE(?, lead_phan_loai), loai_lead = COALESCE(?, loai_lead), customer_type = COALESCE(?, customer_type) WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR phone = ?");
+                        if ($updCtPost) {
+                            $updCtPost->bind_param("isssssis", $project_id, $facebook_link, $link_video_ads, $lead_phan_loai, $type, $type, $leadId, $phone);
+                            $updCtPost->execute();
+                            $updCtPost->close();
+                        }
                     }
                     if ($aiScreenerResult) {
                         $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
@@ -2819,6 +2826,15 @@ switch ($action) {
         while ($row = $resLeads->fetch_assoc()) {
             $row['takers'] = [];
             $row['lead_recall_minutes'] = get_lead_recall_minutes($conn, $row['last_interaction_date'], $row['lead_recall_minutes']);
+
+            // Hết hạn rồi thì vứt, không trả về cho Sale nữa
+            if ((int)$row['is_accepted'] === 0 && (int)$row['lead_recall_minutes'] > 0 && !empty($row['last_interaction_date'])) {
+                $elapsedSeconds = time() - strtotime($row['last_interaction_date']);
+                if ($elapsedSeconds >= ((int)$row['lead_recall_minutes'] * 60)) {
+                    continue;
+                }
+            }
+
             $leads[] = $row;
             $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
             if ($personId > 0) {
@@ -6741,6 +6757,26 @@ switch ($action) {
                 if ((int)$resChk['assigned_to'] !== $sale_id) {
                     $conn->rollback();
                     echo json_encode(['success' => false, 'message' => 'Khách hàng này hiện không được phân bổ cho bạn hoặc đã được chuyển giao']);
+                    break;
+                }
+            }
+
+            // Khóa cứng tuyệt đối: Kiểm tra thời hạn ưu tiên tiếp nhận lead
+            $lastInteraction = $resChk['last_interaction_date'];
+            $connRecall = (int)($resChk['connection_recall_minutes'] ?? 0);
+            $leadRecallMins = get_lead_recall_minutes($conn, $lastInteraction, $connRecall);
+            if ($leadRecallMins > 0 && !empty($lastInteraction)) {
+                $elapsedSeconds = time() - strtotime($lastInteraction);
+                if ($elapsedSeconds > ($leadRecallMins * 60 + 5)) {
+                    require_once __DIR__ . '/cron_sync.php';
+                    if (function_exists('recallInactiveLeads')) {
+                        recallInactiveLeads($conn);
+                    }
+                    $conn->rollback();
+                    echo json_encode([
+                        'success' => false, 
+                        'message' => "Không thể tiếp nhận (Lead đã quá hạn ưu tiên {$leadRecallMins} phút và đã bị hệ thống thu hồi)"
+                    ]);
                     break;
                 }
             }

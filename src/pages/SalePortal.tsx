@@ -2988,14 +2988,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const elapsedMs = now - targetDate;
       const remainingMs = limitMs - elapsedMs;
       return { lead, remainingMs, leadRecallMins, limitMs };
-    });
+    }).filter(item => item.remainingMs > 0);
 
     if (activeOffers.length === 0) return null;
-    activeOffers.sort((a, b) => {
-      if (a.remainingMs > 0 && b.remainingMs <= 0) return -1;
-      if (a.remainingMs <= 0 && b.remainingMs > 0) return 1;
-      return a.remainingMs - b.remainingMs;
-    });
+    activeOffers.sort((a, b) => a.remainingMs - b.remainingMs);
     return activeOffers[0];
   }, [data.leads, effectiveRole, now, dismissedLeadIds, sysSettings]);
 
@@ -3003,13 +2999,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!['sale', 'sales', 'manager'].includes(String(effectiveRole).toLowerCase())) return [];
     return (data.leads || []).filter((l: any) => {
       if (Number(l.is_accepted)) return false;
+      if (dismissedLeadIds.includes(Number(l.lead_id || l.id))) return false;
       const status = String(l.status || l.distribution_status || '').toLowerCase();
       if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
         return false;
       }
+      // Hết hạn rồi thì vứt, không hiển thị ở bàn làm việc hay badge
+      const leadRecallMins = Number(l.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
+      const limitMs = leadRecallMins * 60 * 1000;
+      const targetDate = parseServerDate(l.received_at || l.last_assigned_at || l.last_interaction_date).getTime();
+      const elapsedMs = now - targetDate;
+      if (limitMs > 0 && targetDate > 0 && elapsedMs >= limitMs) {
+        return false;
+      }
       return true;
     });
-  }, [data.leads, effectiveRole]);
+  }, [data.leads, effectiveRole, dismissedLeadIds, sysSettings, now]);
 
   useEffect(() => {
     const intervalMs = activeIncomingOffer ? 100 : 10000;

@@ -29,6 +29,16 @@ import { TaskGroupSection, TaskGroupBadge, type TaskGroup, type TaskGroupsSummar
 import { WORKSPACE_INSPIRATIONAL_QUOTES } from '../../data/inspirationalQuotes';
 import { parseTaskBody, extractCleanCardDescription, isTaskEffectivelyDone, getTaskEffectiveProgress } from '../../utils/taskBodyParser';
 
+const parseServerDate = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  const trimmed = dateStr.trim();
+  if (trimmed.includes('T') || trimmed.includes('+') || trimmed.includes('Z')) {
+    return new Date(trimmed);
+  }
+  const isoStr = trimmed.replace(' ', 'T') + '+07:00';
+  return new Date(isoStr);
+};
+
 export interface WorkspaceViewProps {
   currentUser: any;
   user: any;
@@ -709,182 +719,151 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             )}
           </div>
 
-          {/* Pending Leads Acceptance Banner */}
-          {pendingLeadsToAccept && pendingLeadsToAccept.length > 0 && isSaleUser && (
-            <div
-              style={{
-                background: wsBg ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.3) 0%, rgba(153, 27, 27, 0.2) 100%)' : '#fef2f2',
-                border: '1.5px solid #ef4444',
-                borderRadius: '14px',
-                padding: isMobile ? '12px 14px' : '14px 20px',
-                marginBottom: '0.75rem',
-                backdropFilter: wsBg ? 'blur(16px)' : 'none',
-                WebkitBackdropFilter: wsBg ? 'blur(16px)' : 'none',
-                boxShadow: wsBg ? '0 8px 32px rgba(220, 38, 38, 0.25)' : '0 4px 12px rgba(220, 38, 38, 0.1)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-            >
-              {/* Header row */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: '#ef4444',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 0 12px rgba(239, 68, 68, 0.6)',
-                    animation: 'pulse 1.5s infinite'
-                  }}>
-                    <AlertCircle size={18} />
-                  </div>
-                  <div>
-                    <h3 style={{
-                      margin: 0,
-                      fontSize: isMobile ? '0.95rem' : '1.05rem',
-                      fontWeight: 800,
-                      color: wsBg ? '#ffffff' : '#991b1b',
-                      textShadow: wsBg ? '0 1px 4px rgba(0,0,0,0.8)' : 'none'
-                    }}>
-                      {t('BẠN CÓ')} {pendingLeadsToAccept.length} {t('KHÁCH HÀNG MỚI ĐƯỢC PHÂN BỔ CẦN TIẾP NHẬN!')}
-                    </h3>
-                    <p style={{
-                      margin: '2px 0 0 0',
-                      fontSize: '0.8rem',
-                      color: wsBg ? '#fecaca' : '#b91c1c',
-                      textShadow: wsBg ? '0 1px 2px rgba(0,0,0,0.6)' : 'none'
-                    }}>
-                      {t('Vui lòng bấm "Tiếp nhận ngay" trước khi hết thời gian và bị hệ thống thu hồi.')}
-                    </p>
-                  </div>
-                </div>
+          {/* Pending Leads Section (Card nhận data Bàn làm việc chuẩn ngày 25/9) */}
+          {(() => {
+            if (!isSaleUser) return null;
+            const validPending = (pendingLeadsToAccept || []).filter((lead: any) => {
+              const leadRecallMins = Number(lead.lead_recall_minutes) || 2;
+              const limitMs = leadRecallMins * 60 * 1000;
+              const targetDate = parseServerDate(lead.received_at || lead.last_assigned_at || lead.last_interaction_date).getTime();
+              const isOverdue = limitMs > 0 && targetDate > 0 && (Date.now() - targetDate) >= limitMs;
+              return !isOverdue;
+            });
+            if (validPending.length === 0) return null;
 
-                {onOpenOfferModal && activeIncomingOffer && (
-                  <button
-                    onClick={onOpenOfferModal}
-                    className="btn sm"
-                    style={{
-                      background: wsBg ? 'rgba(255, 255, 255, 0.2)' : 'rgba(239, 68, 68, 0.1)',
-                      border: '1px solid #ef4444',
-                      color: wsBg ? '#ffffff' : '#b91c1c',
-                      borderRadius: '8px',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      height: '30px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Clock size={12} style={{ marginRight: 4 }} />
-                    {t('Mở popup đếm ngược')}
-                  </button>
-                )}
-              </div>
-
-              {/* Lead Cards List */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
-                gap: '10px'
-              }}>
-                {pendingLeadsToAccept.map((lead: any) => {
-                  const leadId = Number(lead.lead_id || lead.id);
-                  const isCurrentOffer = activeIncomingOffer && Number(activeIncomingOffer.lead.lead_id || activeIncomingOffer.lead.id) === leadId;
-                  const isOvertime = isCurrentOffer && activeIncomingOffer.remainingMs <= 0;
-
-                  return (
-                    <div
-                      key={lead.log_id || leadId}
+            return (
+              <div 
+                style={{
+                  background: wsBg ? 'linear-gradient(135deg, rgba(163, 20, 34, 0.25) 0%, rgba(163, 20, 34, 0.45) 100%)' : 'linear-gradient(135deg, rgba(163, 20, 34, 0.03) 0%, rgba(163, 20, 34, 0.08) 100%)',
+                  border: '1px solid rgba(163, 20, 34, 0.25)',
+                  borderRadius: '16px',
+                  padding: '1.25rem',
+                  marginBottom: '1rem',
+                  backdropFilter: wsBg ? 'blur(16px)' : 'none',
+                  WebkitBackdropFilter: wsBg ? 'blur(16px)' : 'none',
+                  boxShadow: wsBg ? '0 8px 32px rgba(220, 38, 38, 0.25)' : 'var(--shadow-sm)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: wsBg ? '#ffffff' : 'var(--color-primary, #bd1d2d)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <span style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: '#ef4444',
+                      display: 'inline-block',
+                      boxShadow: '0 0 8px #ef4444'
+                    }} />
+                    {t('DATA MỚI ĐANG CHỜ TIẾP NHẬN')} ({validPending.length})
+                  </h3>
+                  {onOpenOfferModal && activeIncomingOffer && (
+                    <button
+                      onClick={onOpenOfferModal}
+                      className="btn sm"
                       style={{
-                        background: wsBg ? 'rgba(15, 23, 42, 0.65)' : '#ffffff',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
-                        borderRadius: '10px',
-                        padding: '12px 14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+                        background: wsBg ? 'rgba(255, 255, 255, 0.15)' : 'rgba(189, 29, 45, 0.08)',
+                        border: '1px solid rgba(189, 29, 45, 0.3)',
+                        color: wsBg ? '#ffffff' : 'var(--color-primary, #bd1d2d)',
+                        borderRadius: '8px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        height: '30px',
+                        cursor: 'pointer'
                       }}
                     >
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <span style={{
-                            fontWeight: 800,
-                            fontSize: '0.95rem',
-                            color: wsBg ? '#ffffff' : '#1e293b',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {lead.lead_name || lead.name || t('Khách hàng mới')}
-                          </span>
-                          {lead.source && (
-                            <span style={{
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              fontSize: '0.65rem',
-                              fontWeight: 700,
-                              background: wsBg ? 'rgba(255,255,255,0.1)' : '#f1f5f9',
-                              color: wsBg ? '#cbd5e1' : '#475569'
-                            }}>
-                              {lead.source}
-                            </span>
-                          )}
-                        </div>
+                      <Clock size={12} style={{ marginRight: 4 }} />
+                      {t('Mở popup đếm ngược')}
+                    </button>
+                  )}
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                  {validPending.map((lead: any) => {
+                    const leadId = Number(lead.lead_id || lead.id);
+                    const leadRecallMins = Number(lead.lead_recall_minutes) || 2;
+                    const limitMs = leadRecallMins * 60 * 1000;
+                    const targetDate = parseServerDate(lead.received_at || lead.last_assigned_at || lead.last_interaction_date).getTime();
+                    const remainingMs = Math.max(0, limitMs - (Date.now() - targetDate));
+                    const totalSecs = Math.floor(remainingMs / 1000);
+                    const mins = Math.floor(totalSecs / 60);
+                    const secs = totalSecs % 60;
+                    const timeFormatted = `${mins}:${String(secs).padStart(2, '0')}`;
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.78rem', color: wsBg ? '#cbd5e1' : '#64748b' }}>
-                          {lead.phone && <span>{lead.phone}</span>}
-                          {lead.received_at && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                              <Clock size={11} /> {new Date(lead.received_at.replace(/-/g, '/')).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          )}
-                        </div>
-
-                        {isOvertime && (
-                          <div style={{ marginTop: '4px', fontSize: '0.72rem', color: '#ef4444', fontWeight: 700 }}>
-                            ⚠️ {t('Đã hết giờ ưu tiên - Sắp bị thu hồi!')}
-                          </div>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => handleAcceptLead?.(leadId)}
-                        className="btn danger"
+                    return (
+                      <div 
+                        key={lead.log_id || leadId} 
                         style={{
-                          height: '36px',
-                          padding: '0 16px',
-                          borderRadius: '8px',
-                          fontSize: '0.85rem',
-                          fontWeight: 800,
-                          background: '#BD1D2D',
-                          color: '#fff',
-                          border: 'none',
-                          boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px'
+                          background: wsBg ? 'rgba(15, 23, 42, 0.75)' : 'var(--color-surface, #ffffff)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '12px',
+                          padding: '1rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem',
+                          boxShadow: 'var(--shadow-sm)',
+                          position: 'relative'
                         }}
                       >
-                        <UserCheck size={15} />
-                        <span>{t('Tiếp nhận ngay')}</span>
-                      </button>
-                    </div>
-                  );
-                })}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: wsBg ? '#ffffff' : 'var(--color-text)' }}>
+                              {lead.lead_name || lead.name || t('Khách hàng mới')}
+                            </span>
+                          </div>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: wsBg ? '#cbd5e1' : 'var(--color-text-light)', fontWeight: 600 }}>
+                            SĐT: {lead.phone || '—'}
+                          </p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 0 0' }}>
+                            {lead.round_name && (
+                              <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#ffe3e8', color: '#8a0f1b', fontWeight: 700 }}>
+                                {lead.round_name}
+                              </span>
+                            )}
+                            {lead.source && (
+                              <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: wsBg ? 'rgba(255,255,255,0.1)' : '#f1f5f9', color: wsBg ? '#cbd5e1' : '#475569', fontWeight: 600 }}>
+                                {lead.source}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.5rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.68rem', color: wsBg ? '#94a3b8' : 'var(--color-text-muted)' }}>
+                              {t('Chia lúc:')} {lead.received_at ? new Date(lead.received_at.replace(/-/g, '/')).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: '2px' }}>
+                              <Clock size={12} /> {timeFormatted}
+                            </span>
+                          </div>
+
+                          <button 
+                            onClick={() => handleAcceptLead?.(leadId)} 
+                            className="btn primary sm hover-lift"
+                            style={{
+                              height: '32px',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              padding: '0 14px',
+                              background: '#bd1d2d',
+                              color: '#fff',
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              border: 'none',
+                              boxShadow: '0 2px 8px rgba(189, 29, 45, 0.3)'
+                            }}
+                          >
+                            {t('Tiếp nhận')}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Unified Alert & Suggestion Center */}
           {(() => {

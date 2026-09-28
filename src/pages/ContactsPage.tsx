@@ -216,6 +216,13 @@ export const ContactsPage: React.FC = () => {
               if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
                 return false;
               }
+              // Hết hạn rồi thì vứt, không hiển thị banner
+              const leadRecallMins = Number(l.lead_recall_minutes) || 2;
+              const limitMs = leadRecallMins * 60 * 1000;
+              const targetDate = new Date((l.received_at || l.last_assigned_at || l.last_interaction_date || '').replace(/-/g, '/')).getTime();
+              if (limitMs > 0 && targetDate > 0 && (Date.now() - targetDate) >= limitMs) {
+                return false;
+              }
               return true;
             });
             setPendingLeadsCount(unaccepted.length);
