@@ -4124,7 +4124,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                 WHERE person_id = ? AND deleted_at IS NULL
             ");
             if ($stmtUpContact) {
-                $stmtUpContact->bind_param("sssssssssssssssssi", 
+                $stmtUpContact->bind_param("sssssssssssssssissi", 
                     $firstName, $firstName, 
                     $lastName, $lastName, 
                     $email, $email, 
@@ -4206,7 +4206,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             if ($stmtContact) {
                 $createdBy = 1;
                 $stmtContact->bind_param(
-                    "iiiissssssisssssssssssssdssssssssssss",
+                    "iiiissssssissssssssssssssdsssssssssssss",
                     $person_id, $projectId, $ownerUserId, $createdBy,
                     $firstName, $lastName, $email, $phone, $source,
                     $triggerStatus, $stageId, $secExpiresTime, $note,

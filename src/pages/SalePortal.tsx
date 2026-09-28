@@ -18030,9 +18030,25 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 textAlign: 'left'
               }}>
                 <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
-                  {activeIncomingOffer.lead.round_name || t('Khách hàng mới')}
+                  {activeIncomingOffer.lead.lead_name || activeIncomingOffer.lead.name || t('Khách hàng mới')}
                 </h4>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                  {t('SĐT:')} <strong style={{ color: 'var(--color-text)', fontFamily: 'monospace' }}>{activeIncomingOffer.lead.phone || '—'}</strong>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  {activeIncomingOffer.lead.round_name && (
+                    <span style={{
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      background: '#ffe3e8',
+                      color: '#8a0f1b',
+                      border: '1px solid rgba(189, 29, 45, 0.2)'
+                    }}>
+                      {activeIncomingOffer.lead.round_name}
+                    </span>
+                  )}
                   <span style={{
                     padding: '3px 8px',
                     borderRadius: '6px',
@@ -18044,6 +18060,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   }}>
                     {activeIncomingOffer.lead.source ? `${t('Nguồn:')} ${activeIncomingOffer.lead.source}` : t('Nguồn: Chưa cấu hình')}
                   </span>
+                  {activeIncomingOffer.lead.type && (
+                    <span style={{
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      background: 'rgba(59, 130, 246, 0.08)',
+                      color: '#2563eb',
+                      border: '1px solid rgba(59, 130, 246, 0.2)'
+                    }}>
+                      {activeIncomingOffer.lead.type}
+                    </span>
+                  )}
                 </div>
                 
                 {/* Bottom metadata row: Warning on left, Assigned Time on right */}
