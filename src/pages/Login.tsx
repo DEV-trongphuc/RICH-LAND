@@ -421,7 +421,7 @@ export const Login = () => {
                       setEmail(e.target.value);
                       if (error) setError('');
                     }}
-                    placeholder={t("hethong@richland.city hoặc hethong")}
+                    placeholder={t("Tên đăng nhập")}
                     autoComplete="username"
                     required
                   />
@@ -436,7 +436,7 @@ export const Login = () => {
                     className="input-field input-field-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t("Nhập mật khẩu")}
+                    placeholder={t("Mật khẩu")}
                     autoComplete="current-password"
                     required
                   />
@@ -599,7 +599,7 @@ export const Login = () => {
                     className="form-input"
                     value={forgotEmail}
                     onChange={e => setForgotEmail(e.target.value)}
-                    placeholder={t("hethong@richland.city hoặc hethong")}
+                    placeholder={t("Tên đăng nhập hoặc email")}
                     required
                   />
                 </div>
