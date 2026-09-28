@@ -24,6 +24,7 @@ import api from '../api/axios';
 import { fetchAPI } from '../utils/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 const PAGE_SIZE = 10;
 
@@ -200,27 +201,69 @@ export const ContactsPage: React.FC = () => {
     return Number(sessionStorage.getItem('sale-uncontacted-count')) || 0;
   });
   const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
+  const [pendingLeadsList, setPendingLeadsList] = useState<any[]>([]);
+  const [acceptingPending, setAcceptingPending] = useState(false);
   const [initialMetadataLoaded, setInitialMetadataLoaded] = useState(false);
 
   useEffect(() => {
     if (isSale) {
-      fetchAPI('get_sale_portal_data').then(res => {
-        if (res && res.success && Array.isArray(res.leads)) {
-          const count = res.leads.filter((l: any) => {
-            if (Number(l.is_accepted)) return false;
-            const status = String(l.status || l.distribution_status || '').toLowerCase();
-            if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
-              return false;
-            }
-            return true;
-          }).length;
-          setPendingLeadsCount(count);
-        }
-      }).catch((err) => {
-        console.error("Error loading pending leads banner:", err);
-      });
+      const loadPending = () => {
+        fetchAPI('get_sale_portal_data').then(res => {
+          if (res && res.success && Array.isArray(res.leads)) {
+            const unaccepted = res.leads.filter((l: any) => {
+              if (Number(l.is_accepted)) return false;
+              const status = String(l.status || l.distribution_status || '').toLowerCase();
+              if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
+                return false;
+              }
+              return true;
+            });
+            setPendingLeadsCount(unaccepted.length);
+            setPendingLeadsList(unaccepted);
+          }
+        }).catch((err) => {
+          console.error("Error loading pending leads banner:", err);
+        });
+      };
+
+      loadPending();
+      window.addEventListener('lead-accepted', loadPending);
+      return () => {
+        window.removeEventListener('lead-accepted', loadPending);
+      };
     }
   }, [isSale]);
+
+  const handleDirectAcceptLeads = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (pendingLeadsList.length === 0) return;
+    setAcceptingPending(true);
+    try {
+      let acceptedAny = false;
+      for (const pl of pendingLeadsList) {
+        const res = await fetchAPI('accept_lead', {
+          method: 'POST',
+          body: JSON.stringify({ lead_id: pl.lead_id || pl.id })
+        });
+        if (res && res.success) {
+          acceptedAny = true;
+        }
+      }
+      if (acceptedAny) {
+        toast.success('Tiếp nhận khách hàng thành công!');
+        setPendingLeadsCount(0);
+        setPendingLeadsList([]);
+        window.dispatchEvent(new CustomEvent('lead-accepted'));
+        fetchData();
+      } else {
+        toast.error('Không thể tiếp nhận (có thể đã hết hạn hoặc được phân bổ lại)');
+      }
+    } catch (err: any) {
+      toast.error('Lỗi tiếp nhận: ' + err.message);
+    } finally {
+      setAcceptingPending(false);
+    }
+  };
 
   useEffect(() => {
     const handleUncontactedCountChanged = (e: Event) => {
@@ -1897,13 +1940,42 @@ export const ContactsPage: React.FC = () => {
                 Bạn có {pendingLeadsCount} khách hàng mới chưa tiếp nhận!
               </p>
               <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#b91c1c' }}>
-                Vui lòng vào Bàn làm việc để bấm "Tiếp nhận" ngay trước khi hết giờ và bị hệ thống thu hồi.
+                Vui lòng bấm "Tiếp nhận ngay" hoặc vào Bàn làm việc để tiếp nhận trước khi hệ thống thu hồi.
               </p>
             </div>
           </div>
-          <button className="btn danger sm" style={{ height: 32, borderRadius: 8, fontSize: '0.8rem', padding: '0 12px' }}>
-            Đi tới Bàn làm việc
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={handleDirectAcceptLeads}
+              disabled={acceptingPending}
+              className="btn success sm"
+              style={{
+                height: 32,
+                borderRadius: 8,
+                fontSize: '0.8rem',
+                padding: '0 14px',
+                fontWeight: 700,
+                background: '#16a34a',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(22, 163, 74, 0.3)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <UserCheck size={14} />
+              <span>{acceptingPending ? 'Đang tiếp nhận...' : 'Tiếp nhận ngay'}</span>
+            </button>
+            <button
+              onClick={() => navigate('/workspace')}
+              className="btn danger sm"
+              style={{ height: 32, borderRadius: 8, fontSize: '0.8rem', padding: '0 12px' }}
+            >
+              Đi tới Bàn làm việc
+            </button>
+          </div>
         </div>
       )}
 

@@ -3055,6 +3055,50 @@ function releaseExpiredLeadsToKho($conn) {
                         $upd->execute();
                         $upd->close();
                     }
+
+                    // Delete notes records for all contacts of this person
+                    $stmtDelNotes = $conn->prepare("
+                        DELETE FROM notes 
+                        WHERE entity_type = 'contact' 
+                          AND entity_id IN (SELECT id FROM contacts WHERE person_id = ?)
+                    ");
+                    $stmtDelNotes->bind_param("i", $personId);
+                    $stmtDelNotes->execute();
+                    $stmtDelNotes->close();
+
+                    // Delete activities records for all contacts of this person
+                    $stmtDelActs = $conn->prepare("
+                        DELETE FROM activities 
+                        WHERE related_type = 'contact' 
+                          AND related_id IN (SELECT id FROM contacts WHERE person_id = ?)
+                    ");
+                    $stmtDelActs->bind_param("i", $personId);
+                    $stmtDelActs->execute();
+                    $stmtDelActs->close();
+
+                    // Clear notes for all contacts of this person (just in case)
+                    $updAllNotes = $conn->prepare("UPDATE contacts SET notes = NULL WHERE person_id = ?");
+                    $updAllNotes->bind_param("i", $personId);
+                    $updAllNotes->execute();
+                    $updAllNotes->close();
+
+                    // Clear assignment on leads table
+                    $updLeads = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'unassigned', last_assigned_at = NULL WHERE person_id = ?");
+                    $updLeads->bind_param("i", $personId);
+                    $updLeads->execute();
+                    $updLeads->close();
+                    
+                    $stmtL = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+                    $stmtL->bind_param("i", $personId);
+                    $stmtL->execute();
+                    $lRow = $stmtL->get_result()->fetch_assoc();
+                    $stmtL->close();
+                    $leadId = $lRow ? (int)$lRow['id'] : null;
+                    
+                    if ($leadId !== null && $leadId > 0) {
+                        logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Hết hạn bảo mật, tự động đưa ra Kho chung', false);
+                    }
+                    logSync("Released Person ID $personId to Kho chung.");
                 } else {
                     // Slots available but some sales are still working, just set is_public = 1
                     $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
@@ -3062,50 +3106,6 @@ function releaseExpiredLeadsToKho($conn) {
                     $upd->execute();
                     $upd->close();
                 }
-
-                // Delete notes records for all contacts of this person
-                $stmtDelNotes = $conn->prepare("
-                    DELETE FROM notes 
-                    WHERE entity_type = 'contact' 
-                      AND entity_id IN (SELECT id FROM contacts WHERE person_id = ?)
-                ");
-                $stmtDelNotes->bind_param("i", $personId);
-                $stmtDelNotes->execute();
-                $stmtDelNotes->close();
-
-                // Delete activities records for all contacts of this person
-                $stmtDelActs = $conn->prepare("
-                    DELETE FROM activities 
-                    WHERE related_type = 'contact' 
-                      AND related_id IN (SELECT id FROM contacts WHERE person_id = ?)
-                ");
-                $stmtDelActs->bind_param("i", $personId);
-                $stmtDelActs->execute();
-                $stmtDelActs->close();
-
-                // Clear notes for all contacts of this person (just in case)
-                $updAllNotes = $conn->prepare("UPDATE contacts SET notes = NULL WHERE person_id = ?");
-                $updAllNotes->bind_param("i", $personId);
-                $updAllNotes->execute();
-                $updAllNotes->close();
-
-                // Clear assignment on leads table
-                $updLeads = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'unassigned', last_assigned_at = NULL WHERE person_id = ?");
-                $updLeads->bind_param("i", $personId);
-                $updLeads->execute();
-                $updLeads->close();
-                
-                $stmtL = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
-                $stmtL->bind_param("i", $personId);
-                $stmtL->execute();
-                $lRow = $stmtL->get_result()->fetch_assoc();
-                $stmtL->close();
-                $leadId = $lRow ? (int)$lRow['id'] : null;
-                
-                if ($leadId !== null && $leadId > 0) {
-                    logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Hết hạn bảo mật, tự động đưa ra Kho chung', false);
-                }
-                logSync("Released Person ID $personId to Kho chung.");
             }
 
             $conn->commit();
@@ -3288,10 +3288,10 @@ function assignParallelLeads($conn) {
             $secondContactId = $stmtIns->insert_id;
             $stmtIns->close();
 
-            // Insert matching lead record to satisfy foreign key constraint on distribution_logs.lead_id
-            $stmtLead = $conn->prepare("INSERT IGNORE INTO leads (id, person_id, phone, email, name, source, status) VALUES (?, ?, NULL, ?, ?, ?, 'assigned')");
+            // Insert matching lead record with assigned_to set to second sale
+            $stmtLead = $conn->prepare("INSERT INTO leads (id, person_id, phone, email, name, source, status, assigned_to, is_accepted, last_assigned_at, last_interaction_date) VALUES (?, ?, ?, ?, ?, ?, 'assigned', ?, 0, NOW(), NOW()) ON DUPLICATE KEY UPDATE assigned_to = VALUES(assigned_to), last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0");
             $leadName = trim($row['first_name'] . ' ' . $row['last_name']);
-            $stmtLead->bind_param("issss", $secondContactId, $personId, $row['email'], $leadName, $row['source']);
+            $stmtLead->bind_param("iisssssi", $secondContactId, $personId, $row['phone'], $row['email'], $leadName, $row['source'], $secondSaleId);
             $stmtLead->execute();
             $stmtLead->close();
             

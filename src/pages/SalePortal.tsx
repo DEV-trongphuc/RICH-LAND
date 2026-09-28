@@ -2988,12 +2988,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const elapsedMs = now - targetDate;
       const remainingMs = limitMs - elapsedMs;
       return { lead, remainingMs, leadRecallMins, limitMs };
-    }).filter(item => item.remainingMs > 0);
+    });
 
     if (activeOffers.length === 0) return null;
-    activeOffers.sort((a, b) => a.remainingMs - b.remainingMs);
+    activeOffers.sort((a, b) => {
+      if (a.remainingMs > 0 && b.remainingMs <= 0) return -1;
+      if (a.remainingMs <= 0 && b.remainingMs > 0) return 1;
+      return a.remainingMs - b.remainingMs;
+    });
     return activeOffers[0];
   }, [data.leads, effectiveRole, now, dismissedLeadIds, sysSettings]);
+
+  const pendingLeadsToAccept = useMemo(() => {
+    if (!['sale', 'sales', 'manager'].includes(String(effectiveRole).toLowerCase())) return [];
+    return (data.leads || []).filter((l: any) => {
+      if (Number(l.is_accepted)) return false;
+      const status = String(l.status || l.distribution_status || '').toLowerCase();
+      if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
+        return false;
+      }
+      return true;
+    });
+  }, [data.leads, effectiveRole]);
 
   useEffect(() => {
     const intervalMs = activeIncomingOffer ? 100 : 10000;
@@ -5151,6 +5167,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       });
       if (json.success) {
         toast.success(t('Tiếp nhận lead thành công!'));
+        window.dispatchEvent(new CustomEvent('lead-accepted', { detail: { leadId } }));
         loadPortalData();
       } else {
         toast.error(json.message || t('Lỗi tiếp nhận lead'));
@@ -6429,6 +6446,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         fetchPortalTasks={fetchPortalTasks}
         fetchWorkspaceTasks={fetchWorkspaceTasks}
         setShowTaskModal={setShowTaskModal}
+        pendingLeadsToAccept={pendingLeadsToAccept}
+        handleAcceptLead={handleAcceptLead}
+        activeIncomingOffer={activeIncomingOffer}
+        onOpenOfferModal={() => setHideOfferModal(false)}
         isMobile={isMobile}
         theme={theme}
         t={t}
@@ -17989,7 +18010,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     })()}
                   </span>
                   <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>
-                    {t('Còn lại')}
+                    {activeIncomingOffer.remainingMs <= 0 ? t('Quá hạn ưu tiên') : t('Còn lại')}
                   </span>
                 </div>
               </div>
@@ -18041,7 +18062,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     margin: 0
                   }}>
                     <AlertTriangle size={12} style={{ animation: 'pulse 1s infinite' }} /> 
-                    {t('Sẽ bị thu hồi khi hết giờ!')}
+                    {activeIncomingOffer.remainingMs <= 0 ? t('Sắp bị thu hồi! Bấm nhận ngay') : t('Sẽ bị thu hồi khi hết giờ!')}
                   </p>
                   
                   <span style={{

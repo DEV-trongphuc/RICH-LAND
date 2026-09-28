@@ -152,6 +152,10 @@ export interface WorkspaceViewProps {
   fetchPortalTasks: () => void;
   fetchWorkspaceTasks: () => void;
   setShowTaskModal: (val: boolean) => void;
+  pendingLeadsToAccept?: any[];
+  handleAcceptLead?: (leadId: number) => void;
+  activeIncomingOffer?: any;
+  onOpenOfferModal?: () => void;
   isMobile: boolean;
   theme: string;
   t: (key: string) => string;
@@ -196,6 +200,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     handleTaskDrop, handleSelectTask, setIsFocusSessionActive, activeDragTask,
     SortableWorkspaceCard, WorkspaceCardInner, WorkspaceTaskDrawer,
     fetchPortalTasks, fetchWorkspaceTasks, setShowTaskModal,
+    pendingLeadsToAccept = [], handleAcceptLead, activeIncomingOffer, onOpenOfferModal,
     isMobile, theme, t, navigate
   } = props;
 
@@ -703,6 +708,183 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
               )
             )}
           </div>
+
+          {/* Pending Leads Acceptance Banner */}
+          {pendingLeadsToAccept && pendingLeadsToAccept.length > 0 && isSaleUser && (
+            <div
+              style={{
+                background: wsBg ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.3) 0%, rgba(153, 27, 27, 0.2) 100%)' : '#fef2f2',
+                border: '1.5px solid #ef4444',
+                borderRadius: '14px',
+                padding: isMobile ? '12px 14px' : '14px 20px',
+                marginBottom: '0.75rem',
+                backdropFilter: wsBg ? 'blur(16px)' : 'none',
+                WebkitBackdropFilter: wsBg ? 'blur(16px)' : 'none',
+                boxShadow: wsBg ? '0 8px 32px rgba(220, 38, 38, 0.25)' : '0 4px 12px rgba(220, 38, 38, 0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Header row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: '#ef4444',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 0 12px rgba(239, 68, 68, 0.6)',
+                    animation: 'pulse 1.5s infinite'
+                  }}>
+                    <AlertCircle size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{
+                      margin: 0,
+                      fontSize: isMobile ? '0.95rem' : '1.05rem',
+                      fontWeight: 800,
+                      color: wsBg ? '#ffffff' : '#991b1b',
+                      textShadow: wsBg ? '0 1px 4px rgba(0,0,0,0.8)' : 'none'
+                    }}>
+                      {t('BẠN CÓ')} {pendingLeadsToAccept.length} {t('KHÁCH HÀNG MỚI ĐƯỢC PHÂN BỔ CẦN TIẾP NHẬN!')}
+                    </h3>
+                    <p style={{
+                      margin: '2px 0 0 0',
+                      fontSize: '0.8rem',
+                      color: wsBg ? '#fecaca' : '#b91c1c',
+                      textShadow: wsBg ? '0 1px 2px rgba(0,0,0,0.6)' : 'none'
+                    }}>
+                      {t('Vui lòng bấm "Tiếp nhận ngay" trước khi hết thời gian và bị hệ thống thu hồi.')}
+                    </p>
+                  </div>
+                </div>
+
+                {onOpenOfferModal && activeIncomingOffer && (
+                  <button
+                    onClick={onOpenOfferModal}
+                    className="btn sm"
+                    style={{
+                      background: wsBg ? 'rgba(255, 255, 255, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid #ef4444',
+                      color: wsBg ? '#ffffff' : '#b91c1c',
+                      borderRadius: '8px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      height: '30px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Clock size={12} style={{ marginRight: 4 }} />
+                    {t('Mở popup đếm ngược')}
+                  </button>
+                )}
+              </div>
+
+              {/* Lead Cards List */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))',
+                gap: '10px'
+              }}>
+                {pendingLeadsToAccept.map((lead: any) => {
+                  const leadId = Number(lead.lead_id || lead.id);
+                  const isCurrentOffer = activeIncomingOffer && Number(activeIncomingOffer.lead.lead_id || activeIncomingOffer.lead.id) === leadId;
+                  const isOvertime = isCurrentOffer && activeIncomingOffer.remainingMs <= 0;
+
+                  return (
+                    <div
+                      key={lead.log_id || leadId}
+                      style={{
+                        background: wsBg ? 'rgba(15, 23, 42, 0.65)' : '#ffffff',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        borderRadius: '10px',
+                        padding: '12px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <span style={{
+                            fontWeight: 800,
+                            fontSize: '0.95rem',
+                            color: wsBg ? '#ffffff' : '#1e293b',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {lead.lead_name || lead.name || t('Khách hàng mới')}
+                          </span>
+                          {lead.source && (
+                            <span style={{
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              background: wsBg ? 'rgba(255,255,255,0.1)' : '#f1f5f9',
+                              color: wsBg ? '#cbd5e1' : '#475569'
+                            }}>
+                              {lead.source}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.78rem', color: wsBg ? '#cbd5e1' : '#64748b' }}>
+                          {lead.phone && <span>{lead.phone}</span>}
+                          {lead.received_at && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <Clock size={11} /> {new Date(lead.received_at.replace(/-/g, '/')).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+
+                        {isOvertime && (
+                          <div style={{ marginTop: '4px', fontSize: '0.72rem', color: '#ef4444', fontWeight: 700 }}>
+                            ⚠️ {t('Đã hết giờ ưu tiên - Sắp bị thu hồi!')}
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleAcceptLead?.(leadId)}
+                        className="btn danger"
+                        style={{
+                          height: '36px',
+                          padding: '0 16px',
+                          borderRadius: '8px',
+                          fontSize: '0.85rem',
+                          fontWeight: 800,
+                          background: '#BD1D2D',
+                          color: '#fff',
+                          border: 'none',
+                          boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <UserCheck size={15} />
+                        <span>{t('Tiếp nhận ngay')}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Unified Alert & Suggestion Center */}
           {(() => {

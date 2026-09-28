@@ -2753,8 +2753,7 @@ switch ($action) {
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN consultants cons ON dl.assigned_to = cons.id
-            LEFT JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.id AND c.deleted_at IS NULL
-            WHERE $whereClause AND (l.is_accepted = 0 OR $dateConditionDl)
+            WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent')) OR (l.is_accepted = 1 AND $dateConditionDl) )
         ";
         $totalCount = 0;
         $stmtCount = $conn->prepare($sqlCount);
@@ -2804,7 +2803,7 @@ switch ($action) {
                     GROUP BY lead_id, consultant_id
                 ) dr2 ON dr1.id = dr2.max_dr_id
             ) dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
-            WHERE $whereClause AND (l.is_accepted = 0 OR $dateConditionDl)
+            WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent')) OR (l.is_accepted = 1 AND $dateConditionDl) )
             ORDER BY dl.received_at DESC
             $limitStr
         ";
