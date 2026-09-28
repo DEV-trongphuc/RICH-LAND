@@ -83,7 +83,7 @@ const AppTabs = () => {
 
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi', '/ai-training'];
-  const userPaths = ['/', '/workspace', '/data', '/calendar', '/databank', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/support-tickets', '/attendance', '/fair-share', '/account'];
+  const userPaths = ['/', '/dashboard', '/workspace', '/data', '/calendar', '/databank', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/support-tickets', '/attendance', '/fair-share', '/account'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
@@ -162,6 +162,8 @@ const AppTabs = () => {
         return ((user?.role as any) === 'sale' || (user?.role as any) === 'sales') 
           ? <Navigate to="/workspace" replace /> 
           : <Dashboard key="dashboard" />;
+      case '/dashboard':
+        return <Dashboard key="dashboard" />;
       case '/workspace':
         return <SalePortal embedMode={true} activeTabProp="workspace" key="workspace" />;
       case '/account':

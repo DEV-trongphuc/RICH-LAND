@@ -2093,6 +2093,10 @@ switch ($action) {
             }
         }
 
+        if (empty($wsSettings['bg'])) {
+            $wsSettings['bg'] = '/imgs/myerp_dark_brand_wallpaper.jpg';
+        }
+
         echo json_encode(['success' => true, 'data' => $wsSettings]);
         break;
 

@@ -1551,7 +1551,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         } catch (_) {}
       };
 
-      const savedBg = localStorage.getItem(`ws_custom_bg_${uid}`) || '';
+      const rawSavedBg = localStorage.getItem(`ws_custom_bg_${uid}`);
+      const savedBg = (rawSavedBg && rawSavedBg !== '') ? rawSavedBg : '/imgs/myerp_dark_brand_wallpaper.jpg';
       const savedCols = localStorage.getItem(`ws_custom_cols_${uid}`);
       const savedOverlay = localStorage.getItem(`ws_custom_overlay_${uid}`);
 
@@ -1565,7 +1566,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       fetchAPI('get_workspace_settings').then(res => {
         if (res && res.success && res.data) {
           const { bg, cols, overlay, task_order } = res.data;
-          const finalBg = bg || '';
+          const finalBg = (bg && bg !== '') ? bg : '/imgs/myerp_dark_brand_wallpaper.jpg';
           const finalCols = (cols !== undefined && cols >= 2 && cols <= 6) ? cols : 4;
 
           setWsBg(finalBg);

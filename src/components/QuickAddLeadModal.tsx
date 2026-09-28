@@ -1616,7 +1616,7 @@ export const QuickAddLeadModal = () => {
                 <input className="form-input" placeholder="VD: email@gmail.com" value={manualData.email} onChange={e => setManualData({ ...manualData, email: e.target.value })} />
               </div>
               {isSale ? (
-                <div>
+                <div style={{ position: 'relative', zIndex: 30 }}>
                   <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn (Source)')}</label>
                   <CustomSelect
                     options={[
@@ -1625,10 +1625,11 @@ export const QuickAddLeadModal = () => {
                     ]}
                     value={manualData.source || 'ca_nhan'}
                     onChange={val => setManualData({ ...manualData, source: val })}
+                    width="100%"
                   />
                 </div>
               ) : (
-                <div ref={sourceRef} style={{ position: 'relative', zIndex: showSourceSuggestions ? 50 : 1 }}>
+                <div ref={sourceRef} style={{ position: 'relative', zIndex: showSourceSuggestions ? 50 : 25 }}>
                   <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn (Source)')}</label>
                   <input
                     className="form-input"
@@ -1694,7 +1695,7 @@ export const QuickAddLeadModal = () => {
                 <input className="form-input" placeholder={t("VD: Mua nhà")} value={manualData.type} onChange={e => setManualData({ ...manualData, type: e.target.value })} />
               </div>
 
-              <div>
+              <div style={{ position: 'relative', zIndex: 20 }}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Phân loại Lead')}</label>
                 <CustomSelect
                   options={[
@@ -1711,7 +1712,7 @@ export const QuickAddLeadModal = () => {
                 />
               </div>
 
-              <div>
+              <div style={{ position: 'relative', zIndex: 15 }}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Dự án nguồn')}</label>
                 <CustomSelect
                   options={[

@@ -345,7 +345,11 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   };
 
   return (
-    <div className={styles.wrapper} ref={containerRef} style={{ width, maxWidth: '100%' }}>
+    <div 
+      className={`${styles.wrapper} ${isOpen ? styles.open : ''}`} 
+      ref={containerRef} 
+      style={{ width, maxWidth: '100%', zIndex: isOpen ? 100 : undefined }}
+    >
       {label && <label className={styles.label}>{t(label)}</label>}
       <div
         className={`${styles.trigger} ${isOpen ? styles.open : ''}`}
