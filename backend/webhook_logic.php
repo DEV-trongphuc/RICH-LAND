@@ -729,11 +729,21 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
 }
 
 /**
+ * Xóa cache cấu hình quy tắc và vòng phân bổ trong bộ nhớ tĩnh
+ */
+function clearRoutingRulesCache()
+{
+    evaluateRules(null, null, null, null, null, 'sheets', null, true);
+}
+
+/**
  * Kiểm tra xem một Vòng phân bổ có đang hoạt động (active) tại thời điểm kiểm tra hay không.
  * Hỗ trợ:
  * 1. Bật/tắt thủ công (is_active = 1)
- * 2. Lịch các ngày trong tuần (active_days: 1..7 tương ứng T2..CN)
- * 3. Khung giờ trong ngày (start <= end và ca đêm start > end qua nửa đêm)
+ * 2. Lịch các ngày trong tuần (active_days: 1..7 tương ứng T2..CN theo ISO-8601)
+ * 3. Khung giờ trong ngày (ca ngày start <= end và ca đêm start > end vắt qua nửa đêm)
+ * 4. Tự động chuẩn hóa định dạng giờ (ví dụ: '8:00' -> '08:00') để so sánh chuẩn xác tuyệt đối
+ * 5. Tính toán chính xác Ngày vận hành (Operational Day) cho ca đêm vắt qua nửa đêm
  */
 function isRoundCurrentlyActive($roundRow, $currentTime = null)
 {
@@ -749,46 +759,105 @@ function isRoundCurrentlyActive($roundRow, $currentTime = null)
         return true;
     }
 
-    // 3. Kiểm tra ngày trong tuần (1 = Thứ 2, 7 = Chủ Nhật theo ISO-8601 của date('N'))
-    $currentDay = (int)date('N');
-    $activeDays = trim((string)($roundRow['active_days'] ?? '1,2,3,4,5,6,7'));
-    if (!empty($activeDays)) {
-        $allowedDays = array_map('intval', explode(',', $activeDays));
-        if (!in_array($currentDay, $allowedDays, true)) {
-            return false; // Hôm nay không nằm trong ngày phân bổ của vòng
+    $normalizeTime = function ($val, $default = '00:00') {
+        $val = trim((string)$val);
+        if (empty($val)) return $default;
+        if (preg_match('/^(\d{1,2}):(\d{2})/', $val, $m)) {
+            return sprintf('%02d:%02d', (int)$m[1], (int)$m[2]);
+        }
+        return $default;
+    };
+
+    // 3. Phân tích thời gian kiểm tra ($currentTime có thể là null, timestamp, 'Y-m-d H:i:s', hoặc 'H:i')
+    $nowTs = time();
+    $timeStr = '';
+    if ($currentTime === null) {
+        $timeStr = date('H:i', $nowTs);
+    } elseif (is_numeric($currentTime)) {
+        $nowTs = (int)$currentTime;
+        $timeStr = date('H:i', $nowTs);
+    } else {
+        $rawStr = trim((string)$currentTime);
+        // Nếu chuỗi chứa ngày tháng (có dấu gạch ngang, chéo hoặc tên ngày) -> parse thành timestamp đầy đủ
+        if (preg_match('/[\-\/]|(today|yesterday|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i', $rawStr)) {
+            $parsed = strtotime($rawStr);
+            if ($parsed !== false) {
+                $nowTs = $parsed;
+                $timeStr = date('H:i', $nowTs);
+            }
+        }
+        if (empty($timeStr)) {
+            $timeStr = $normalizeTime($rawStr, date('H:i', $nowTs));
         }
     }
 
-    // 4. Kiểm tra khung giờ
-    $start = trim((string)($roundRow['active_time_start'] ?? '00:00'));
-    $end = trim((string)($roundRow['active_time_end'] ?? '23:59'));
-
-    $timeStr = $currentTime ?: date('H:i');
-    if (preg_match('/^(\d{2}:\d{2})/', $timeStr, $m)) {
-        $timeStr = $m[1];
+    if (empty($timeStr)) {
+        $timeStr = date('H:i', $nowTs);
     }
 
-    if (empty($start)) $start = '00:00';
-    if (empty($end)) $end = '23:59';
+    $start = $normalizeTime($roundRow['active_time_start'] ?? '', '00:00');
+    $end = $normalizeTime($roundRow['active_time_end'] ?? '', '23:59');
+
+    // 4. Xác định xem thời điểm kiểm tra có nằm trong khung giờ không & ca này thuộc về ngày vận hành nào
+    $todayDay = (int)date('N', $nowTs);
+    $yesterdayDay = (int)date('N', strtotime('-1 day', $nowTs));
+
+    $isTimeInWindow = false;
+    $operationalDay = $todayDay;
 
     if ($start === $end || ($start === '00:00' && ($end === '23:59' || $end === '24:00'))) {
-        return true;
-    }
-
-    if ($start < $end) {
+        $isTimeInWindow = true;
+        $operationalDay = $todayDay;
+    } elseif ($start < $end) {
         // Khung giờ bình thường trong ngày (ví dụ: 08:00 đến 18:00)
-        return ($timeStr >= $start && $timeStr <= $end);
+        $isTimeInWindow = ($timeStr >= $start && $timeStr <= $end);
+        $operationalDay = $todayDay;
     } else {
         // Khung giờ ca đêm vắt qua nửa đêm (ví dụ: 22:00 đến 06:00 sáng hôm sau)
-        return ($timeStr >= $start || $timeStr <= $end);
+        if ($timeStr >= $start) {
+            $isTimeInWindow = true;
+            $operationalDay = $todayDay; // Bắt đầu trước nửa đêm, thuộc ca của ngày hôm nay
+        } elseif ($timeStr <= $end) {
+            $isTimeInWindow = true;
+            $operationalDay = $yesterdayDay; // Nửa đêm rạng sáng thuộc về ca của ngày hôm trước
+        }
     }
+
+    if (!$isTimeInWindow) {
+        return false;
+    }
+
+    // 5. Kiểm tra ngày vận hành có nằm trong các ngày active không (1 = T2 ... 7 = CN)
+    $activeDays = !empty(trim((string)($roundRow['active_days'] ?? ''))) ? trim((string)$roundRow['active_days']) : '1,2,3,4,5,6,7';
+    $allowedDays = array_map('intval', explode(',', $activeDays));
+    if (!in_array($operationalDay, $allowedDays, true)) {
+        return false;
+    }
+
+    return true;
 }
 
-function evaluateRules($conn, $data, $source, $type, $connId = null, $connectionType = 'sheets', $currentTime = null)
+function evaluateRules($conn, $data, $source, $type, $connId = null, $connectionType = 'sheets', $currentTime = null, $forceRefreshCache = false)
 {
     static $rulesCache = null;
-    if ($rulesCache === null) {
+    static $rulesCacheTime = 0;
+    static $roundsActiveMap = null;
+    static $roundsActiveMapTime = 0;
+
+    if ($forceRefreshCache) {
+        $rulesCache = null;
+        $rulesCacheTime = 0;
+        $roundsActiveMap = null;
+        $roundsActiveMapTime = 0;
+        if ($conn === null) {
+            return null;
+        }
+    }
+
+    // Nạp danh sách Rules theo Priority tăng dần (Tự làm mới mỗi 15s để tối ưu hiệu năng cron sync)
+    if ($rulesCache === null || (time() - $rulesCacheTime) > 15) {
         $rulesCache = [];
+        $rulesCacheTime = time();
         $result = $conn->query("SELECT id, target_round_id, condition_column, condition_operator, condition_value, conditions_json, logical_operator, connection_id, priority FROM routing_rules ORDER BY priority ASC");
         if ($result) {
             while ($row = $result->fetch_assoc()) {
@@ -797,12 +866,15 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
         }
     }
 
-    // Nạp map trạng thái và lịch trình của các vòng phân bổ
-    $roundsActiveMap = [];
-    $roundRes = $conn->query("SELECT id, round_name, is_active, is_schedule_active, active_time_start, active_time_end, active_days FROM distribution_rounds");
-    if ($roundRes) {
-        while ($rRow = $roundRes->fetch_assoc()) {
-            $roundsActiveMap[(int)$rRow['id']] = $rRow;
+    // Nạp map trạng thái và lịch trình của các vòng phân bổ (Tự làm mới mỗi 15s)
+    if ($roundsActiveMap === null || (time() - $roundsActiveMapTime) > 15) {
+        $roundsActiveMap = [];
+        $roundsActiveMapTime = time();
+        $roundRes = $conn->query("SELECT id, round_name, is_active, is_schedule_active, active_time_start, active_time_end, active_days FROM distribution_rounds");
+        if ($roundRes) {
+            while ($rRow = $roundRes->fetch_assoc()) {
+                $roundsActiveMap[(int)$rRow['id']] = $rRow;
+            }
         }
     }
 

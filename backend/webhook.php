@@ -582,13 +582,13 @@ if (!$targetRoundId) {
     } else {
         $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
         if ($fbRoundId > 0) {
-            $chkFb = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
+            $chkFb = $conn->prepare("SELECT is_active, is_schedule_active, active_time_start, active_time_end, active_days, round_name FROM distribution_rounds WHERE id = ?");
             if ($chkFb) {
                 $chkFb->bind_param("i", $fbRoundId);
                 $chkFb->execute();
                 $chkFbRes = $chkFb->get_result()->fetch_assoc();
                 $chkFb->close();
-                if ($chkFbRes && (int)$chkFbRes['is_active'] === 1) {
+                if ($chkFbRes && isRoundCurrentlyActive($chkFbRes)) {
                     $targetRoundId = $fbRoundId;
                     $isFallbackRound = true;
                     $message = !empty($inactiveRoundName)

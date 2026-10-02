@@ -2210,7 +2210,7 @@ foreach ($connections as $connItem) {
                         $fbRoundId = (int)($fbSettings['fallback_round_id'] ?? 0);
                         if ($fbRoundId > 0) {
                             $chkFbRes = $roundsCache[$fbRoundId] ?? null;
-                            if ($chkFbRes && (int)$chkFbRes['is_active'] === 1) {
+                            if ($chkFbRes && isRoundCurrentlyActive($chkFbRes)) {
                                 $targetRoundId = $fbRoundId;
                                 $isFallbackRound = true;
                                 $cronMessage = !empty($inactiveRoundName)

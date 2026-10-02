@@ -62,6 +62,7 @@ require_once 'db_connect.php';
 /** @var mysqli $conn */
 require_once 'permission_matrix_helper.php';
 require_once __DIR__ . '/utils/rag_helpers.php';
+require_once __DIR__ . '/webhook_logic.php';
 
 // Safe CORS origin matching
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -1049,7 +1050,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                 $chkRound->execute();
                 $chkRes = $chkRound->get_result()->fetch_assoc();
                 $chkRound->close();
-                if (!$chkRes || !isRoundCurrentlyActive($chkRes)) {
+                if (!$chkRes || (function_exists('isRoundCurrentlyActive') ? !isRoundCurrentlyActive($chkRes) : (int)($chkRes['is_active'] ?? 0) !== 1)) {
                     $assignedRoundId = null;
                 }
             }
@@ -1085,13 +1086,13 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
         } else {
             $fbRoundId = (int) ($fbSettings['fallback_round_id'] ?? 0);
             if ($fbRoundId > 0) {
-                $chkFb = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
+                $chkFb = $conn->prepare("SELECT is_active, is_schedule_active, active_time_start, active_time_end, active_days FROM distribution_rounds WHERE id = ?");
                 if ($chkFb) {
                     $chkFb->bind_param("i", $fbRoundId);
                     $chkFb->execute();
                     $chkFbRes = $chkFb->get_result()->fetch_assoc();
                     $chkFb->close();
-                    if ($chkFbRes && (int) $chkFbRes['is_active'] === 1) {
+                    if ($chkFbRes && (function_exists('isRoundCurrentlyActive') ? isRoundCurrentlyActive($chkFbRes) : (int)($chkFbRes['is_active'] ?? 0) === 1)) {
                         $assignedRoundId = $fbRoundId;
                         $isFallback = true;
                     }
@@ -7531,6 +7532,7 @@ switch ($action) {
         break;
 
     case 'get_rounds':
+        require_once __DIR__ . '/webhook_logic.php';
         $isManager = (isset($decodedUser['role']) && $decodedUser['role'] === 'manager');
         $isDirector = (isset($decodedUser['role']) && $decodedUser['role'] === 'director');
         $isProjManager = false;
@@ -7595,7 +7597,7 @@ switch ($action) {
             $row['active_time_start'] = $row['active_time_start'] ?: '08:00';
             $row['active_time_end'] = $row['active_time_end'] ?: '18:00';
             $row['active_days'] = $row['active_days'] ?: '1,2,3,4,5,6,7';
-            $row['is_currently_active'] = isRoundCurrentlyActive($row);
+            $row['is_currently_active'] = function_exists('isRoundCurrentlyActive') ? isRoundCurrentlyActive($row) : ((int)$row['is_active'] === 1);
             $row['is_fallback'] = ((int) $row['id'] === $fbRoundId);
             $cIds = $row['consultant_ids'] ? explode(',', $row['consultant_ids']) : [];
             $cNames = $row['consultants'] ? explode(',', $row['consultants']) : [];
@@ -7818,8 +7820,10 @@ switch ($action) {
             $grab_max_attempts = isset($input['grab_max_attempts']) && $input['grab_max_attempts'] !== '' ? (int)$input['grab_max_attempts'] : null;
 
             $is_schedule_active = isset($input['is_schedule_active']) ? (int)$input['is_schedule_active'] : 0;
-            $active_time_start = !empty($input['active_time_start']) ? substr(trim($input['active_time_start']), 0, 5) : '08:00';
-            $active_time_end = !empty($input['active_time_end']) ? substr(trim($input['active_time_end']), 0, 5) : '18:00';
+            $rawStart = trim((string)($input['active_time_start'] ?? '08:00'));
+            $rawEnd = trim((string)($input['active_time_end'] ?? '18:00'));
+            $active_time_start = preg_match('/^(\d{1,2}):(\d{2})/', $rawStart, $m) ? sprintf('%02d:%02d', (int)$m[1], (int)$m[2]) : '08:00';
+            $active_time_end = preg_match('/^(\d{1,2}):(\d{2})/', $rawEnd, $m) ? sprintf('%02d:%02d', (int)$m[1], (int)$m[2]) : '18:00';
             $active_days = !empty($input['active_days']) ? trim($input['active_days']) : '1,2,3,4,5,6,7';
 
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
@@ -7956,8 +7960,10 @@ switch ($action) {
             $grab_max_attempts = isset($input['grab_max_attempts']) && $input['grab_max_attempts'] !== '' ? (int)$input['grab_max_attempts'] : null;
 
             $is_schedule_active = isset($input['is_schedule_active']) ? (int)$input['is_schedule_active'] : 0;
-            $active_time_start = !empty($input['active_time_start']) ? substr(trim($input['active_time_start']), 0, 5) : '08:00';
-            $active_time_end = !empty($input['active_time_end']) ? substr(trim($input['active_time_end']), 0, 5) : '18:00';
+            $rawStart = trim((string)($input['active_time_start'] ?? '08:00'));
+            $rawEnd = trim((string)($input['active_time_end'] ?? '18:00'));
+            $active_time_start = preg_match('/^(\d{1,2}):(\d{2})/', $rawStart, $m) ? sprintf('%02d:%02d', (int)$m[1], (int)$m[2]) : '08:00';
+            $active_time_end = preg_match('/^(\d{1,2}):(\d{2})/', $rawEnd, $m) ? sprintf('%02d:%02d', (int)$m[1], (int)$m[2]) : '18:00';
             $active_days = !empty($input['active_days']) ? trim($input['active_days']) : '1,2,3,4,5,6,7';
 
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
@@ -8699,6 +8705,7 @@ switch ($action) {
         break;
 
     case 'get_rules':
+        require_once __DIR__ . '/webhook_logic.php';
         $res = $conn->query("SELECT rr.*, r.round_name, r.is_active as round_is_active, r.is_schedule_active, r.active_time_start, r.active_time_end, r.active_days 
                                FROM routing_rules rr 
                                LEFT JOIN distribution_rounds r ON rr.target_round_id = r.id 
@@ -8709,13 +8716,13 @@ switch ($action) {
             $row['active_time_start'] = $row['active_time_start'] ?: '08:00';
             $row['active_time_end'] = $row['active_time_end'] ?: '18:00';
             $row['active_days'] = $row['active_days'] ?: '1,2,3,4,5,6,7';
-            $row['is_round_currently_active'] = isRoundCurrentlyActive([
+            $row['is_round_currently_active'] = function_exists('isRoundCurrentlyActive') ? isRoundCurrentlyActive([
                 'is_active' => $row['round_is_active'],
                 'is_schedule_active' => $row['is_schedule_active'],
                 'active_time_start' => $row['active_time_start'],
                 'active_time_end' => $row['active_time_end'],
                 'active_days' => $row['active_days']
-            ]);
+            ]) : ((int)($row['round_is_active'] ?? 0) === 1);
             $data[] = $row;
         }
         echo json_encode(['success' => true, 'data' => $data]);

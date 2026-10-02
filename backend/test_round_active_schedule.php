@@ -86,6 +86,36 @@ $mockOtherDayOnly = [
 ];
 assertTest("Vòng cấu hình không bao gồm thứ hôm nay -> inactive", isRoundCurrentlyActive($mockOtherDayOnly) === false);
 
+// Case 6: Ca đêm vắt qua nửa đêm (22:00 - 06:00) theo Ngày vận hành (Operational Day) T2-T6 ('1,2,3,4,5')
+$mockNightShiftWeekdays = [
+    'is_active' => 1,
+    'is_schedule_active' => 1,
+    'active_time_start' => '22:00',
+    'active_time_end' => '06:00',
+    'active_days' => '1,2,3,4,5'
+];
+// Giả lập Thứ 7 ngày 03/10/2026 02:30 sáng (thuộc ca đêm Thứ 6 ngày 02/10) -> active
+assertTest("Ca đêm T2-T6: Rạng sáng Thứ 7 (02:30) thuộc ca đêm Thứ 6 -> active", isRoundCurrentlyActive($mockNightShiftWeekdays, '2026-10-03 02:30:00') === true);
+// Giả lập Thứ 7 ngày 03/10/2026 22:30 tối (tối Thứ 7 không có ca đêm) -> inactive
+assertTest("Ca đêm T2-T6: Tối Thứ 7 (22:30) ngoài lịch làm việc -> inactive", isRoundCurrentlyActive($mockNightShiftWeekdays, '2026-10-03 22:30:00') === false);
+// Giả lập Chủ Nhật ngày 04/10/2026 02:30 sáng (tối Thứ 7 không trực) -> inactive
+assertTest("Ca đêm T2-T6: Rạng sáng Chủ Nhật (02:30) không có ca trước đó -> inactive", isRoundCurrentlyActive($mockNightShiftWeekdays, '2026-10-04 02:30:00') === false);
+// Giả lập Thứ 2 ngày 05/10/2026 02:30 sáng (tối Chủ Nhật không trực) -> inactive
+assertTest("Ca đêm T2-T6: Rạng sáng Thứ 2 (02:30) thuộc tối Chủ Nhật không trực -> inactive", isRoundCurrentlyActive($mockNightShiftWeekdays, '2026-10-05 02:30:00') === false);
+// Giả lập Thứ 2 ngày 05/10/2026 22:30 tối (bắt đầu tuần mới) -> active
+assertTest("Ca đêm T2-T6: Tối Thứ 2 (22:30) bắt đầu ca Thứ 2 -> active", isRoundCurrentlyActive($mockNightShiftWeekdays, '2026-10-05 22:30:00') === true);
+
+// Case 7: Chuẩn hóa định dạng giờ không có số 0 ở đầu (ví dụ: '8:00' đến '18:00')
+$mockNonPadded = [
+    'is_active' => 1,
+    'is_schedule_active' => 1,
+    'active_time_start' => '8:00',
+    'active_time_end' => '18:00',
+    'active_days' => '1,2,3,4,5,6,7'
+];
+assertTest("Chuẩn hóa giờ: 8:00 - 18:00 tại '9:00' -> active", isRoundCurrentlyActive($mockNonPadded, '9:00') === true);
+assertTest("Chuẩn hóa giờ: 8:00 - 18:00 tại '7:59' -> inactive", isRoundCurrentlyActive($mockNonPadded, '7:59') === false);
+
 // --- 3. KIỂM THỬ TÍCH HỢP evaluateRules VỚI CƠ CHẾ CASCADE PRIORITY ---
 echo "\n--- [PHẦN 3: INTEGRATION TEST evaluateRules & PRIORITY CASCADE] ---\n";
 
@@ -109,37 +139,40 @@ try {
 
     assertTest("Đã tạo 2 vòng kiểm thử DB (Round Day #{$testRoundDayId}, Round Night #{$testRoundNightId})", $testRoundDayId > 0 && $testRoundNightId > 0);
 
-    // 3.3 Tạo 2 Routing Rules:
-    // Rule 1: Priority = 100, trỏ vào Vòng Ca Ngày
-    // Rule 2: Priority = 200, trỏ vào Vòng Ca Đêm
+    // 3.3 Tạo 2 Routing Rules với mức Priority ưu tiên cao nhất (âm nhỏ hơn toàn bộ rule đang có)
+    // Rule 1: Priority = -200, trỏ vào Vòng Ca Ngày
+    // Rule 2: Priority = -100, trỏ vào Vòng Ca Đêm
     $testCampaignKey = 'TEST_CAMPAIGN_' . time();
     $condJson = json_encode([
         ['conditions' => [['col' => 'campaign', 'op' => 'equals', 'val' => $testCampaignKey]]]
     ]);
 
-    $stmtRule1 = $conn->prepare("INSERT INTO routing_rules (target_round_id, condition_column, condition_operator, condition_value, conditions_json, priority) VALUES (?, 'campaign', 'equals', ?, ?, 100)");
+    $stmtRule1 = $conn->prepare("INSERT INTO routing_rules (target_round_id, condition_column, condition_operator, condition_value, conditions_json, priority) VALUES (?, 'campaign', 'equals', ?, ?, -200)");
     $stmtRule1->bind_param("iss", $testRoundDayId, $testCampaignKey, $condJson);
     $stmtRule1->execute();
     $testRuleDayId = $conn->insert_id;
     $stmtRule1->close();
 
-    $stmtRule2 = $conn->prepare("INSERT INTO routing_rules (target_round_id, condition_column, condition_operator, condition_value, conditions_json, priority) VALUES (?, 'campaign', 'equals', ?, ?, 200)");
+    $stmtRule2 = $conn->prepare("INSERT INTO routing_rules (target_round_id, condition_column, condition_operator, condition_value, conditions_json, priority) VALUES (?, 'campaign', 'equals', ?, ?, -100)");
     $stmtRule2->bind_param("iss", $testRoundNightId, $testCampaignKey, $condJson);
     $stmtRule2->execute();
     $testRuleNightId = $conn->insert_id;
     $stmtRule2->close();
 
-    assertTest("Đã tạo 2 routing rules (Rule #{$testRuleDayId} Priority 100 -> Round Day, Rule #{$testRuleNightId} Priority 200 -> Round Night)", $testRuleDayId > 0 && $testRuleNightId > 0);
+    assertTest("Đã tạo 2 routing rules (Rule #{$testRuleDayId} Priority -200 -> Round Day, Rule #{$testRuleNightId} Priority -100 -> Round Night)", $testRuleDayId > 0 && $testRuleNightId > 0);
+
+    // Làm mới cache rules và rounds
+    clearRoutingRulesCache();
 
     // 3.4 Giả lập dữ liệu Lead đổ về
     $mockLeadData = [
         'name' => 'Nguyễn Test',
-        'phone' => '0988776655',
+        'phone' => '', // Để trống phone để tránh rơi vào các rule catch-all toàn hệ thống khi 2 vòng test tắt
         'campaign' => $testCampaignKey
     ];
 
     // TEST CASE A: Lead về lúc 10:00 sáng
-    // Rule 1 (Priority 100) khớp điều kiện VÀ Vòng Ca Ngày đang active -> CHỌN RULE 1
+    // Rule 1 (Priority -200) khớp điều kiện VÀ Vòng Ca Ngày đang active -> CHỌN RULE 1
     $evalDay = evaluateRules($conn, $mockLeadData, 'facebook', '', null, 'sheets', '10:00');
     assertTest("Thời điểm 10:00 (ban ngày): Trúng Rule 1 (Round Day #{$testRoundDayId})", 
         is_array($evalDay) && (int)$evalDay['target_round_id'] === (int)$testRoundDayId,
@@ -147,8 +180,8 @@ try {
     );
 
     // TEST CASE B: Lead về lúc 21:00 tối
-    // Rule 1 (Priority 100) khớp điều kiện NHƯNG Vòng Ca Ngày hết giờ (18:00)
-    // -> Hệ thống PHẢI TỰ ĐỘNG BỎ QUA Rule 1 và NHƯỜNG QUYỀN cho Rule 2 (Priority 200)
+    // Rule 1 (Priority -200) khớp điều kiện NHƯNG Vòng Ca Ngày hết giờ (18:00)
+    // -> Hệ thống PHẢI TỰ ĐỘNG BỎ QUA Rule 1 và NHƯỜNG QUYỀN cho Rule 2 (Priority -100)
     // -> Rule 2 Vòng Ca Đêm đang active (18:00 - 08:00) -> CHỌN RULE 2
     $evalNight = evaluateRules($conn, $mockLeadData, 'facebook', '', null, 'sheets', '21:00');
     assertTest("Thời điểm 21:00 (ban đêm): Rule 1 hết giờ -> Tự động trôi xuống Rule 2 (Round Night #{$testRoundNightId})", 
@@ -158,6 +191,7 @@ try {
 
     // TEST CASE C: Khi cả 2 Vòng đều bị tắt thủ công
     $conn->query("UPDATE distribution_rounds SET is_active = 0 WHERE id IN ($testRoundDayId, $testRoundNightId)");
+    clearRoutingRulesCache();
     $evalBothOff = evaluateRules($conn, $mockLeadData, 'facebook', '', null, 'sheets', '10:00');
     assertTest("Khi cả 2 vòng đều không active: evaluateRules trả về null để rơi vào Fallback",
         $evalBothOff === null,
@@ -173,6 +207,7 @@ try {
     if ($testRuleNightId) $conn->query("DELETE FROM routing_rules WHERE id = $testRuleNightId");
     if ($testRoundDayId) $conn->query("DELETE FROM distribution_rounds WHERE id = $testRoundDayId");
     if ($testRoundNightId) $conn->query("DELETE FROM distribution_rounds WHERE id = $testRoundNightId");
+    clearRoutingRulesCache();
     echo "🧹 Đã dọn dẹp sạch sẽ dữ liệu test.\n";
 }
 
