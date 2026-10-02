@@ -1405,39 +1405,6 @@ export const QuickAddLeadModal = () => {
         
         {activeTab === 'single' ? (
           <>
-            <div style={{
-              marginBottom: '1.25rem',
-              padding: '12px 14px',
-              background: theme === 'dark' ? 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(237, 216, 252, 0.05) 100%)' : 'linear-gradient(135deg, #fff5f6 0%, #edd8fc 100%)',
-              borderRadius: '12px',
-              border: theme === 'dark' ? '1px dashed rgba(189, 29, 45, 0.4)' : '1px dashed #e63946',
-              boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(192, 132, 252, 0.08)'
-            }}>
-              <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: '#a31422', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px', letterSpacing: '0.5px' }}>
-                AI VIP PROMAX ULTRA
-              </label>
-              <textarea
-                className="form-textarea"
-                rows={3}
-                style={{
-                  resize: 'none',
-                  fontSize: '0.8125rem',
-                  lineHeight: 1.4,
-                  background: theme === 'dark' ? 'var(--color-bg)' : 'white',
-                  border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #ddd6fe',
-                  borderRadius: '8px',
-                  padding: '8px 10px',
-                  width: '100%',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  color: theme === 'dark' ? 'var(--color-text)' : 'inherit',
-                  minHeight: '80px'
-                }}
-                placeholder={t("Ví dụ: Trần Văn Hiền - 0364200518 - tìm hiểu liên thông - FB_Ads")}
-                value={quickInput}
-                onChange={handleQuickInputChange}
-              />
-            </div>
 
             {!isSale && distributionMode === 'auto_round' && (
               <div className="quick-add-preview-box" style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '1rem', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginBottom: '1.25rem' }}>

@@ -18388,7 +18388,7 @@ switch ($action) {
         }
 
         // Fetch all rules from routing_rules
-        $rulesRes = $conn->query("SELECT rr.*, r.round_name FROM routing_rules rr LEFT JOIN distribution_rounds r ON rr.target_round_id = r.id ORDER BY rr.priority ASC");
+        $rulesRes = $conn->query("SELECT rr.*, r.round_name, r.is_active, r.is_schedule_active, r.active_time_start, r.active_time_end, r.active_days FROM routing_rules rr LEFT JOIN distribution_rounds r ON rr.target_round_id = r.id ORDER BY rr.priority ASC");
         $rules = [];
         if ($rulesRes) {
             while ($rRow = $rulesRes->fetch_assoc()) {
@@ -18549,6 +18549,31 @@ switch ($action) {
             }
 
             if ($isMatch) {
+                // KIỂM TRA QUAN TRỌNG: Vòng đích có đang active tại thời điểm này không?
+                $targetRoundRow = [
+                    'id' => $rule['target_round_id'],
+                    'round_name' => $rule['round_name'],
+                    'is_active' => $rule['is_active'],
+                    'is_schedule_active' => $rule['is_schedule_active'],
+                    'active_time_start' => $rule['active_time_start'],
+                    'active_time_end' => $rule['active_time_end'],
+                    'active_days' => $rule['active_days'] ?? null,
+                ];
+
+                if (function_exists('isRoundCurrentlyActive') && !isRoundCurrentlyActive($targetRoundRow)) {
+                    $scheduleDesc = ((int)($rule['is_schedule_active'] ?? 0) === 1) 
+                        ? ($rule['active_time_start'] . ' - ' . $rule['active_time_end']) 
+                        : 'Đang tạm dừng';
+                    $trace[] = [
+                        'rule_id' => $rule['id'],
+                        'description' => $ruleDesc,
+                        'status' => 'skipped',
+                        'reason' => "Khớp điều kiện nhưng Vòng '" . ($rule['round_name'] ?? '') . "' hiện đang Ngoài ca trực ($scheduleDesc). Nhường quyền ưu tiên cho quy tắc tiếp theo.",
+                        'conditions' => $conditionsDetail
+                    ];
+                    continue;
+                }
+
                 $assignedRoundId = (int) $rule['target_round_id'];
                 $matchedRule = $rule;
                 $trace[] = [
