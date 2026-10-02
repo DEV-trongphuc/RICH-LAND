@@ -138,28 +138,28 @@ class CapiHelper {
             $basePath = preg_replace('#/(api.php|index.php|backend).*$#i', '', $requestUri);
             $eventSourceUrl = $protocol . "://" . $host . rtrim($basePath, '/');
 
+            $eventItem = [
+                'event_name' => $eventName,
+                'event_time' => time(),
+                'event_source_url' => $eventSourceUrl,
+                'action_source' => 'website',
+                'user_data' => [
+                    'ph' => !empty($phone) ? [self::normalizeAndHash($phone, false)] : [],
+                    'em' => !empty($email) ? [self::normalizeAndHash($email, true)] : [],
+                    'fn' => !empty($firstName) ? [self::normalizeAndHash($firstName, true)] : [],
+                    'ln' => !empty($lastName) ? [self::normalizeAndHash($lastName, true)] : [],
+                    'client_ip_address' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                    'client_user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Mozilla/5.0'
+                ],
+                'custom_data' => [
+                    'value' => $value,
+                    'currency' => $currency
+                ],
+                'event_id' => 'capi_' . ($contactId ?: 'raw') . '_' . time() . '_' . rand(1000, 9999)
+            ];
+
             $payload = [
-                'data' => [
-                    [
-                        'event_name' => $eventName,
-                        'event_time' => time(),
-                        'event_source_url' => $eventSourceUrl,
-                        'action_source' => 'system',
-                        'user_data' => [
-                            'ph' => !empty($phone) ? [self::normalizeAndHash($phone, false)] : [],
-                            'em' => !empty($email) ? [self::normalizeAndHash($email, true)] : [],
-                            'fn' => !empty($firstName) ? [self::normalizeAndHash($firstName, true)] : [],
-                            'ln' => !empty($lastName) ? [self::normalizeAndHash($lastName, true)] : [],
-                            'client_ip_address' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-                            'client_user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Mozilla/5.0'
-                        ],
-                        'custom_data' => [
-                            'value' => $value,
-                            'currency' => $currency
-                        ],
-                        'event_id' => 'capi_' . ($contactId ?: 'raw') . '_' . time() . '_' . rand(1000, 9999)
-                    ]
-                ]
+                'data' => [$eventItem]
             ];
 
             $payloadJson = json_encode($payload);
@@ -181,8 +181,8 @@ class CapiHelper {
                 curl_setopt($ch, CURLOPT_HTTPHEADER, [
                     'Content-Type: application/json'
                 ]);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
                 
                 $response = curl_exec($ch);
                 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
