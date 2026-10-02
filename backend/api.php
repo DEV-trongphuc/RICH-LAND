@@ -638,7 +638,7 @@ if (!in_array($action, $publicActions)) {
     // We allow any authenticated user (all roles) to query these endpoints.
     if (in_array($action, [
         'get_settings', 'get_unique_sources', 'get_calendar_stats', 
-        'get_calendar_day_details', 'get_consultant_leaves', 'upload_avatar',
+        'get_calendar_day_details', 'get_consultant_leaves', 'add_consultant_leave', 'delete_consultant_leave', 'upload_avatar',
         'get_night_shift_status', 'register_night_shift',
         'get_weekend_shift_status', 'register_weekend_shift',
         'get_holiday_shift_status', 'register_holiday_shift',
@@ -5517,9 +5517,9 @@ switch ($action) {
         $startDate = trim($input['start_date'] ?? '');
         $endDate = trim($input['end_date'] ?? '');
 
-        $isSale = $decodedUser['role'] === 'sale';
-        $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
-        $isManager = ($decodedUser['role'] === 'manager');
+        $isSale = in_array($decodedUser['role'] ?? '', ['sale', 'sales'], true);
+        $isAdmin = in_array($decodedUser['role'] ?? '', ['admin', 'superadmin', 'super_admin'], true);
+        $isManager = ($decodedUser['role'] ?? '') === 'manager';
         
         $targetConsultantId = null;
         if ($isSale) {
@@ -5632,9 +5632,9 @@ switch ($action) {
             break;
         }
 
-        $isSale = $decodedUser['role'] === 'sale';
-        $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
-        $isManager = ($decodedUser['role'] === 'manager');
+        $isSale = in_array($decodedUser['role'] ?? '', ['sale', 'sales'], true);
+        $isAdmin = in_array($decodedUser['role'] ?? '', ['admin', 'superadmin', 'super_admin'], true);
+        $isManager = ($decodedUser['role'] ?? '') === 'manager';
 
         // First find the consultant_id and dates of this leave to authorize, notify and recalculate
         $stmt = $conn->prepare("SELECT consultant_id, start_date, end_date FROM consultant_leaves WHERE id = ?");

@@ -108,4 +108,25 @@ foreach ($roles as $r) {
     assertTest("[{$r}] Quyen De xuat Not Lead (Sale/Manager/Director)", $canProposeNotLead === in_array($r, ['sale', 'manager', 'director', 'admin', 'superadmin'], true));
 }
 
+// ----------------------------------------------------
+// 3. KIEM THU QUYEN DANG KY & HUY NGHI PHEP (CONSULTANT LEAVE RBAC)
+// ----------------------------------------------------
+echo "\n--- 3. KIEM THU QUYEN DANG KY & HUY NGHI PHEP (LEAVE RBAC) ---\n";
+require_once __DIR__ . '/permission_matrix_helper.php';
+
+list($modDel, $actDel) = getActionModuleAndType('delete_consultant_leave');
+assertTest("delete_consultant_leave phan loai vao attendance module", $modDel === 'attendance');
+assertTest("delete_consultant_leave phan loai vao action write (khong phai leads delete)", $actDel === 'write');
+
+list($modAdd, $actAdd) = getActionModuleAndType('add_consultant_leave');
+assertTest("add_consultant_leave phan loai vao attendance module", $modAdd === 'attendance');
+assertTest("add_consultant_leave phan loai vao action write", $actAdd === 'write');
+
+$scopeSale = getModulePermissionScope(['role' => 'sale'], $modDel, $actDel);
+assertTest("Sale co quyen thao tac phep cua chinh minh (own scope)", $scopeSale === 'own');
+
+$scopeManager = getModulePermissionScope(['role' => 'manager'], $modDel, $actDel);
+assertTest("Manager co quyen thao tac phep cua team (team scope)", $scopeManager === 'team');
+
 printTestSummary();
+

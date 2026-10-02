@@ -54,6 +54,20 @@ if (!function_exists('getModulePermissionScope')) {
 
 if (!function_exists('getActionModuleAndType')) {
     function getActionModuleAndType($action) {
+        if (in_array($action, [
+            'get_consultant_leaves', 'add_consultant_leave', 'delete_consultant_leave',
+            'get_night_shift_status', 'register_night_shift',
+            'get_weekend_shift_status', 'register_weekend_shift',
+            'get_holiday_shift_status', 'register_holiday_shift',
+            'register_weekly_shifts', 'toggle_consultant_vacation'
+        ], true)) {
+            $isRead = in_array($action, [
+                'get_consultant_leaves', 'get_night_shift_status',
+                'get_weekend_shift_status', 'get_holiday_shift_status'
+            ], true);
+            return ['attendance', $isRead ? 'read' : 'write'];
+        }
+
         $writeActions = [
             'upload_avatar', 'save_settings', 'add_account', 'edit_account', 
             'delete_account', 'add_consultant', 'edit_consultant', 'delete_consultant',
@@ -64,7 +78,7 @@ if (!function_exists('getActionModuleAndType')) {
             'delete_mapping', 'approve_report', 'reject_report', 'compensate_approved_no_comp',
             'reassign_lead', 'force_sync', 'save_ticket_settings', 'unlink_zalo',
             'test_email', 'block_lead', 'rollback_admin_action', 'update_lead_fields',
-            'send_lead_reminder', 'register_night_shift', 'add_consultant_leave', 'delete_consultant_leave'
+            'send_lead_reminder'
         ];
         
         $actionType = in_array($action, $writeActions) ? 'write' : 'read';
