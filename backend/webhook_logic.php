@@ -728,16 +728,81 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
     return false;
 }
 
-function evaluateRules($conn, $data, $source, $type, $connId = null, $connectionType = 'sheets')
+/**
+ * Kiểm tra xem một Vòng phân bổ có đang hoạt động (active) tại thời điểm kiểm tra hay không.
+ * Hỗ trợ:
+ * 1. Bật/tắt thủ công (is_active = 1)
+ * 2. Lịch các ngày trong tuần (active_days: 1..7 tương ứng T2..CN)
+ * 3. Khung giờ trong ngày (start <= end và ca đêm start > end qua nửa đêm)
+ */
+function isRoundCurrentlyActive($roundRow, $currentTime = null)
+{
+    if (!$roundRow) return false;
+
+    // 1. Kiểm tra trạng thái chung của Vòng
+    if ((int)($roundRow['is_active'] ?? 0) !== 1) {
+        return false;
+    }
+
+    // 2. Nếu không bật giới hạn khung giờ -> luôn active khi is_active = 1
+    if (empty($roundRow['is_schedule_active'])) {
+        return true;
+    }
+
+    // 3. Kiểm tra ngày trong tuần (1 = Thứ 2, 7 = Chủ Nhật theo ISO-8601 của date('N'))
+    $currentDay = (int)date('N');
+    $activeDays = trim((string)($roundRow['active_days'] ?? '1,2,3,4,5,6,7'));
+    if (!empty($activeDays)) {
+        $allowedDays = array_map('intval', explode(',', $activeDays));
+        if (!in_array($currentDay, $allowedDays, true)) {
+            return false; // Hôm nay không nằm trong ngày phân bổ của vòng
+        }
+    }
+
+    // 4. Kiểm tra khung giờ
+    $start = trim((string)($roundRow['active_time_start'] ?? '00:00'));
+    $end = trim((string)($roundRow['active_time_end'] ?? '23:59'));
+
+    $timeStr = $currentTime ?: date('H:i');
+    if (preg_match('/^(\d{2}:\d{2})/', $timeStr, $m)) {
+        $timeStr = $m[1];
+    }
+
+    if (empty($start)) $start = '00:00';
+    if (empty($end)) $end = '23:59';
+
+    if ($start === $end || ($start === '00:00' && ($end === '23:59' || $end === '24:00'))) {
+        return true;
+    }
+
+    if ($start < $end) {
+        // Khung giờ bình thường trong ngày (ví dụ: 08:00 đến 18:00)
+        return ($timeStr >= $start && $timeStr <= $end);
+    } else {
+        // Khung giờ ca đêm vắt qua nửa đêm (ví dụ: 22:00 đến 06:00 sáng hôm sau)
+        return ($timeStr >= $start || $timeStr <= $end);
+    }
+}
+
+function evaluateRules($conn, $data, $source, $type, $connId = null, $connectionType = 'sheets', $currentTime = null)
 {
     static $rulesCache = null;
     if ($rulesCache === null) {
         $rulesCache = [];
-        $result = $conn->query("SELECT target_round_id, condition_column, condition_operator, condition_value, conditions_json, logical_operator, connection_id FROM routing_rules ORDER BY priority ASC");
+        $result = $conn->query("SELECT id, target_round_id, condition_column, condition_operator, condition_value, conditions_json, logical_operator, connection_id, priority FROM routing_rules ORDER BY priority ASC");
         if ($result) {
             while ($row = $result->fetch_assoc()) {
                 $rulesCache[] = $row;
             }
+        }
+    }
+
+    // Nạp map trạng thái và lịch trình của các vòng phân bổ
+    $roundsActiveMap = [];
+    $roundRes = $conn->query("SELECT id, round_name, is_active, is_schedule_active, active_time_start, active_time_end, active_days FROM distribution_rounds");
+    if ($roundRes) {
+        while ($rRow = $roundRes->fetch_assoc()) {
+            $roundsActiveMap[(int)$rRow['id']] = $rRow;
         }
     }
 
@@ -823,6 +888,16 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
         }
 
         if ($isMatch) {
+            $targetRoundId = (int)($row['target_round_id'] ?? 0);
+            $targetRound = $roundsActiveMap[$targetRoundId] ?? null;
+
+            // KIỂM TRA QUAN TRỌNG: Vòng đích có đang active tại thời điểm này không?
+            if (!$targetRound || !isRoundCurrentlyActive($targetRound, $currentTime)) {
+                // Vòng này không tồn tại hoặc đang ngoài khung giờ hoạt động!
+                // Nhường quyền ưu tiên: TIẾP TỤC DUYỆT CÁC RULE KẾ TIẾP THEO PRIORITY
+                continue;
+            }
+
             $inject = [];
             if ($matchedBranch && !empty($matchedBranch['inject'])) {
                 $injectObj = $matchedBranch['inject'];
@@ -843,7 +918,8 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
             }
             return [
                 'target_round_id' => $row['target_round_id'],
-                'inject' => $inject
+                'inject' => $inject,
+                'rule_id' => $row['id'] ?? null
             ];
         }
     }
@@ -985,20 +1061,24 @@ if (!function_exists('isConsultantOnNormalCooldown')) {
 function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [])
 {
     // 1. Get round info with FOR UPDATE lock
-    $stmt = $conn->prepare("SELECT last_assigned_consultant_id, round_type FROM distribution_rounds WHERE id = ? AND is_active = 1 FOR UPDATE");
+    $stmt = $conn->prepare("SELECT last_assigned_consultant_id, round_type, is_active, is_schedule_active, active_time_start, active_time_end, active_days FROM distribution_rounds WHERE id = ? FOR UPDATE");
     $stmt->bind_param("i", $roundId);
     $stmt->execute();
     $res = $stmt->get_result();
 
     if ($res->num_rows === 0) {
         $stmt->close();
-        return null; // Round not found or inactive
+        return null; // Round not found
     }
 
     $roundInfo = $res->fetch_assoc();
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $roundType = $roundInfo['round_type'] ?? 'round_robin';
     $stmt->close();
+
+    if (!isRoundCurrentlyActive($roundInfo)) {
+        return null; // Round is inactive or outside active schedule!
+    }
 
     $isRoundRobin = ($roundType === 'round_robin');
     $normalCooldownSec = 0;
@@ -1908,19 +1988,23 @@ function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $messag
 function simulateNextConsultantInRound($conn, $roundId, $lead = null)
 {
     // 1. Get round info without FOR UPDATE
-    $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? AND is_active = 1");
+    $stmt = $conn->prepare("SELECT last_assigned_consultant_id, is_active, is_schedule_active, active_time_start, active_time_end, active_days FROM distribution_rounds WHERE id = ?");
     $stmt->bind_param("i", $roundId);
     $stmt->execute();
     $res = $stmt->get_result();
 
     if ($res->num_rows === 0) {
         $stmt->close();
-        return null; // Round not found or inactive
+        return null; // Round not found
     }
 
     $roundInfo = $res->fetch_assoc();
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
     $stmt->close();
+
+    if (!isRoundCurrentlyActive($roundInfo)) {
+        return null; // Round is inactive or outside active schedule!
+    }
 
     // Get absolute last assigned consultant for this round from distribution_logs to prevent back-to-back leads
     $absoluteLastAssignedId = null;

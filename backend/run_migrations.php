@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 197;
+$targetVersion = 198;
 $currentVersion = 186;
 
 // Query current DB version
@@ -498,8 +498,19 @@ try {
         $logMsg("Đã tạo bảng webhook_logs.", "success");
     }
 
-    // 10. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '197') ON DUPLICATE KEY UPDATE setting_value = '197'");
+    // 10. Distribution Rounds Active Schedule columns
+    $chkDRSchedule = $conn->query("SHOW COLUMNS FROM `distribution_rounds` LIKE 'is_schedule_active'");
+    if (!$chkDRSchedule || $chkDRSchedule->num_rows == 0) {
+        $conn->query("ALTER TABLE `distribution_rounds` 
+            ADD COLUMN `is_schedule_active` TINYINT(1) DEFAULT 0 AFTER `is_active`,
+            ADD COLUMN `active_time_start` VARCHAR(5) DEFAULT '08:00' AFTER `is_schedule_active`,
+            ADD COLUMN `active_time_end` VARCHAR(5) DEFAULT '18:00' AFTER `active_time_start`,
+            ADD COLUMN `active_days` VARCHAR(50) DEFAULT '1,2,3,4,5,6,7' AFTER `active_time_end`");
+        $logMsg("Đã bổ sung cấu hình khung giờ hoạt động vào distribution_rounds.", "success");
+    }
+
+    // 11. Update DB version in system_settings
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '198') ON DUPLICATE KEY UPDATE setting_value = '198'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

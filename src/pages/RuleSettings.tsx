@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail, Info, Layers, Cpu, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail, Info, Layers, Cpu, SlidersHorizontal, Loader2, Clock } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
@@ -219,17 +219,38 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
               background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.05), rgba(163, 20, 34, 0.15))',
               border: '1px solid var(--color-primary)',
               color: 'var(--color-primary)',
-              padding: '8px 16px',
-              borderRadius: 50,
+              padding: '6px 14px',
+              borderRadius: 16,
               fontWeight: 600,
-              fontSize: '0.875rem',
+              fontSize: '0.85rem',
               display: 'flex', alignItems: 'center', gap: 10,
-              boxShadow: '0 2px 8px rgba(163, 20, 34, 0.15)'
+              boxShadow: '0 2px 8px rgba(163, 20, 34, 0.1)'
             }}>
-              <div style={{ background: 'var(--color-primary)', padding: 6, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <MapPin size={16} />
+              <div style={{ background: 'var(--color-primary)', padding: 6, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <MapPin size={15} />
               </div>
-              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rule.round_name || t("Vòng ID: {id}").replace('{id}', String(rule.target_round_id))}</span>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {rule.round_name || t("Vòng ID: {id}").replace('{id}', String(rule.target_round_id))}
+                </span>
+                {rule.is_schedule_active ? (
+                  <span style={{ 
+                    fontSize: '0.675rem', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: 4, 
+                    marginTop: 1,
+                    color: rule.is_round_currently_active ? '#059669' : '#d97706',
+                    fontWeight: 600 
+                  }}>
+                    <Clock size={10} /> {rule.active_time_start} - {rule.active_time_end} ({rule.is_round_currently_active ? t("Đang active") : t("Ngoài ca")})
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 1, fontWeight: 500 }}>
+                    <Clock size={10} /> 24/7
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

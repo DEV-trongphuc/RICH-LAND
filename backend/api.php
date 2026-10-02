@@ -1043,13 +1043,13 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
         }
 
         if ($assignedRoundId) {
-            $chkRound = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
+            $chkRound = $conn->prepare("SELECT is_active, is_schedule_active, active_time_start, active_time_end, active_days FROM distribution_rounds WHERE id = ?");
             if ($chkRound) {
                 $chkRound->bind_param("i", $assignedRoundId);
                 $chkRound->execute();
                 $chkRes = $chkRound->get_result()->fetch_assoc();
                 $chkRound->close();
-                if (!$chkRes || (int) $chkRes['is_active'] !== 1) {
+                if (!$chkRes || !isRoundCurrentlyActive($chkRes)) {
                     $assignedRoundId = null;
                 }
             }
@@ -7591,6 +7591,11 @@ switch ($action) {
         $roundIds = [];
         while ($row = $res->fetch_assoc()) {
             $row['is_active'] = (int) $row['is_active'];
+            $row['is_schedule_active'] = (int) ($row['is_schedule_active'] ?? 0);
+            $row['active_time_start'] = $row['active_time_start'] ?: '08:00';
+            $row['active_time_end'] = $row['active_time_end'] ?: '18:00';
+            $row['active_days'] = $row['active_days'] ?: '1,2,3,4,5,6,7';
+            $row['is_currently_active'] = isRoundCurrentlyActive($row);
             $row['is_fallback'] = ((int) $row['id'] === $fbRoundId);
             $cIds = $row['consultant_ids'] ? explode(',', $row['consultant_ids']) : [];
             $cNames = $row['consultants'] ? explode(',', $row['consultants']) : [];
@@ -7812,9 +7817,14 @@ switch ($action) {
             $grab_fallback_to_databank = isset($input['grab_fallback_to_databank']) ? (int)$input['grab_fallback_to_databank'] : 0;
             $grab_max_attempts = isset($input['grab_max_attempts']) && $input['grab_max_attempts'] !== '' ? (int)$input['grab_max_attempts'] : null;
 
+            $is_schedule_active = isset($input['is_schedule_active']) ? (int)$input['is_schedule_active'] : 0;
+            $active_time_start = !empty($input['active_time_start']) ? substr(trim($input['active_time_start']), 0, 5) : '08:00';
+            $active_time_end = !empty($input['active_time_end']) ? substr(trim($input['active_time_end']), 0, 5) : '18:00';
+            $active_days = !empty($input['active_days']) ? trim($input['active_days']) : '1,2,3,4,5,6,7';
+
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
-            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id, project_id, round_type, grab_countdown_seconds, grab_cooldown_seconds, grab_fallback_to_databank, grab_max_attempts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sisiisiiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts);
+            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, is_schedule_active, active_time_start, active_time_end, active_days, cc_emails, last_assigned_consultant_id, project_id, round_type, grab_countdown_seconds, grab_cooldown_seconds, grab_fallback_to_databank, grab_max_attempts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("siissssiisiiii", $name, $status, $is_schedule_active, $active_time_start, $active_time_end, $active_days, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts);
             $stmt->execute();
             $roundId = $conn->insert_id;
             $stmt->close();
@@ -7945,13 +7955,18 @@ switch ($action) {
             $grab_fallback_to_databank = isset($input['grab_fallback_to_databank']) ? (int)$input['grab_fallback_to_databank'] : 0;
             $grab_max_attempts = isset($input['grab_max_attempts']) && $input['grab_max_attempts'] !== '' ? (int)$input['grab_max_attempts'] : null;
 
+            $is_schedule_active = isset($input['is_schedule_active']) ? (int)$input['is_schedule_active'] : 0;
+            $active_time_start = !empty($input['active_time_start']) ? substr(trim($input['active_time_start']), 0, 5) : '08:00';
+            $active_time_end = !empty($input['active_time_end']) ? substr(trim($input['active_time_end']), 0, 5) : '18:00';
+            $active_days = !empty($input['active_days']) ? trim($input['active_days']) : '1,2,3,4,5,6,7';
+
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
             if ($starting_consultant_id) {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=?, grab_max_attempts=? WHERE id=?");
-                $stmt->bind_param("sisiisiiiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, is_schedule_active=?, active_time_start=?, active_time_end=?, active_days=?, cc_emails=?, last_assigned_consultant_id=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=?, grab_max_attempts=? WHERE id=?");
+                $stmt->bind_param("siissssiisiiiii", $name, $status, $is_schedule_active, $active_time_start, $active_time_end, $active_days, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=?, grab_max_attempts=? WHERE id=?");
-                $stmt->bind_param("sisisiiiii", $name, $status, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, is_schedule_active=?, active_time_start=?, active_time_end=?, active_days=?, cc_emails=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=?, grab_max_attempts=? WHERE id=?");
+                $stmt->bind_param("siisssssisiiiii", $name, $status, $is_schedule_active, $active_time_start, $active_time_end, $active_days, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
             }
             $stmt->execute();
             $stmt->close();
@@ -8684,13 +8699,25 @@ switch ($action) {
         break;
 
     case 'get_rules':
-        $res = $conn->query("SELECT rr.*, r.round_name 
+        $res = $conn->query("SELECT rr.*, r.round_name, r.is_active as round_is_active, r.is_schedule_active, r.active_time_start, r.active_time_end, r.active_days 
                                FROM routing_rules rr 
                                LEFT JOIN distribution_rounds r ON rr.target_round_id = r.id 
                                ORDER BY rr.priority ASC");
         $data = [];
-        while ($row = $res->fetch_assoc())
+        while ($row = $res->fetch_assoc()) {
+            $row['is_schedule_active'] = (int)($row['is_schedule_active'] ?? 0);
+            $row['active_time_start'] = $row['active_time_start'] ?: '08:00';
+            $row['active_time_end'] = $row['active_time_end'] ?: '18:00';
+            $row['active_days'] = $row['active_days'] ?: '1,2,3,4,5,6,7';
+            $row['is_round_currently_active'] = isRoundCurrentlyActive([
+                'is_active' => $row['round_is_active'],
+                'is_schedule_active' => $row['is_schedule_active'],
+                'active_time_start' => $row['active_time_start'],
+                'active_time_end' => $row['active_time_end'],
+                'active_days' => $row['active_days']
+            ]);
             $data[] = $row;
+        }
         echo json_encode(['success' => true, 'data' => $data]);
         break;
 

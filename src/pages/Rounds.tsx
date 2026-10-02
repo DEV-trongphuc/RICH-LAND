@@ -151,7 +151,11 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     grab_countdown_minutes: 5,
     grab_cooldown_hours: 1,
     grab_fallback_to_databank: 0,
-    grab_max_attempts: '' as number | string
+    grab_max_attempts: '' as number | string,
+    is_schedule_active: 0,
+    active_time_start: '08:00',
+    active_time_end: '18:00',
+    active_days: '1,2,3,4,5,6,7'
   });
 
   const [systemMaxAttempts, setSystemMaxAttempts] = useState<number>(2);
@@ -350,7 +354,12 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const openAddModal = () => {
     setEditingRound(null);
     setScopeType('none');
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null, campaign_id: null, round_type: 'round_robin', grab_countdown_minutes: 5, grab_cooldown_hours: 1, grab_fallback_to_databank: 0, grab_max_attempts: '' });
+    setFormData({ 
+      round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, 
+      ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null, campaign_id: null, 
+      round_type: 'round_robin', grab_countdown_minutes: 5, grab_cooldown_hours: 1, grab_fallback_to_databank: 0, grab_max_attempts: '',
+      is_schedule_active: 0, active_time_start: '08:00', active_time_end: '18:00', active_days: '1,2,3,4,5,6,7'
+    });
     setSelectedAdmins([]);
     setEnableExternalCc(false);
     setExternalCcEmails('');
@@ -422,7 +431,11 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
       grab_countdown_minutes: r.grab_countdown_seconds ? Math.round(Number(r.grab_countdown_seconds) / 60) : 5,
       grab_cooldown_hours: r.grab_cooldown_seconds ? (Number(r.grab_cooldown_seconds) / 3600) : 1,
       grab_fallback_to_databank: r.grab_fallback_to_databank ? Number(r.grab_fallback_to_databank) : 0,
-      grab_max_attempts: r.grab_max_attempts !== null && r.grab_max_attempts !== undefined ? String(r.grab_max_attempts) : ''
+      grab_max_attempts: r.grab_max_attempts !== null && r.grab_max_attempts !== undefined ? String(r.grab_max_attempts) : '',
+      is_schedule_active: r.is_schedule_active ? Number(r.is_schedule_active) : 0,
+      active_time_start: r.active_time_start || '08:00',
+      active_time_end: r.active_time_end || '18:00',
+      active_days: r.active_days || '1,2,3,4,5,6,7'
     });
 
     // Parse cc_emails into selected admins and external emails
@@ -1016,7 +1029,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                             </span>
                           )}
                         </h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
                           <span 
                             className={`pulse-dot ${Number(r.is_active) === 1 ? 'active' : 'inactive'}`} 
                             style={{ width: 6, height: 6, display: 'inline-block' }} 
@@ -1024,6 +1037,28 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                             {Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')}
                           </span>
+                          {Number(r.is_active) === 1 && (
+                            r.is_schedule_active ? (
+                              <span style={{ 
+                                fontSize: '0.675rem', 
+                                padding: '1px 6px', 
+                                borderRadius: 4, 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: 4, 
+                                background: r.is_currently_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.12)', 
+                                color: r.is_currently_active ? '#059669' : '#d97706', 
+                                fontWeight: 600,
+                                border: r.is_currently_active ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(245, 158, 11, 0.25)'
+                              }}>
+                                <Clock size={10} /> {r.active_time_start} - {r.active_time_end} ({r.is_currently_active ? t("Trong ca") : t("Ngoài ca")})
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500 }}>
+                                <Clock size={10} /> 24/7
+                              </span>
+                            )
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1282,7 +1317,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       </span>
                     )}
                   </h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                     <span 
                       className={`pulse-dot ${Number(r.is_active) === 1 ? 'active' : 'inactive'}`} 
                       style={{ width: 8, height: 8, display: 'inline-block' }} 
@@ -1290,6 +1325,28 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                       {Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')}
                     </span>
+                    {Number(r.is_active) === 1 && (
+                      r.is_schedule_active ? (
+                        <span style={{ 
+                          fontSize: '0.675rem', 
+                          padding: '1px 6px', 
+                          borderRadius: 4, 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: 4, 
+                          background: r.is_currently_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.12)', 
+                          color: r.is_currently_active ? '#059669' : '#d97706', 
+                          fontWeight: 600,
+                          border: r.is_currently_active ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(245, 158, 11, 0.25)'
+                        }}>
+                          <Clock size={10} /> {r.active_time_start} - {r.active_time_end} ({r.is_currently_active ? t("Trong ca") : t("Ngoài ca")})
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500 }}>
+                          <Clock size={10} /> 24/7
+                        </span>
+                      )
+                    )}
                   </div>
                 </div>
 
@@ -1661,6 +1718,166 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                             </div>
                           </div>
                         )}
+
+                        {/* Khung giờ hoạt động (Active Hours) */}
+                        <div className="form-group" style={{ 
+                          background: 'var(--color-bg)', 
+                          padding: '12px 14px', 
+                          borderRadius: '12px', 
+                          border: '1px solid var(--color-border-light)' 
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0, fontWeight: 700 }}>
+                              <Clock size={16} color="var(--color-primary)" />
+                              {t("Giới hạn khung giờ hoạt động (Active Hours)")}
+                            </label>
+                            <ToggleSwitch
+                              checked={formData.is_schedule_active === 1}
+                              onChange={(checked) => setFormData({ ...formData, is_schedule_active: checked ? 1 : 0 })}
+                            />
+                          </div>
+                          <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: formData.is_schedule_active === 1 ? '0.75rem' : 0 }}>
+                            {formData.is_schedule_active === 1
+                              ? t("Vòng chỉ phân bổ lead trong khung giờ đã cài. Ngoài khung giờ này, quy tắc định tuyến sẽ tự động nhường quyền ưu tiên cho các quy tắc kế tiếp.")
+                              : t("Vòng đang hoạt động liên tục 24/7 theo trạng thái bật/tắt chung.")}
+                          </p>
+
+                          {formData.is_schedule_active === 1 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', animation: 'fadeIn 0.2s ease-out', marginTop: 8 }}>
+                              {/* 2 ô chọn giờ */}
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', display: 'block', marginBottom: 4 }}>
+                                    {t("Giờ bắt đầu")}
+                                  </label>
+                                  <input
+                                    type="time"
+                                    className="form-input"
+                                    value={formData.active_time_start}
+                                    onChange={e => setFormData({ ...formData, active_time_start: e.target.value })}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', display: 'block', marginBottom: 4 }}>
+                                    {t("Giờ kết thúc")}
+                                  </label>
+                                  <input
+                                    type="time"
+                                    className="form-input"
+                                    value={formData.active_time_end}
+                                    onChange={e => setFormData({ ...formData, active_time_end: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Helper giải thích ca ngày / ca đêm */}
+                              <div style={{ 
+                                padding: '6px 10px', 
+                                borderRadius: '8px', 
+                                fontSize: '0.725rem', 
+                                background: 'var(--color-surface)', 
+                                border: '1px solid var(--color-border-light)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6
+                              }}>
+                                {(() => {
+                                  const start = formData.active_time_start || '08:00';
+                                  const end = formData.active_time_end || '18:00';
+                                  if (start === end) {
+                                    return <span>🌐 {t("Hoạt động toàn thời gian (24/24)")}</span>;
+                                  } else if (start < end) {
+                                    return <span style={{ color: '#059669', fontWeight: 600 }}>🟢 {t("Ca ngày: Hoạt động từ {start} đến {end}").replace('{start}', start).replace('{end}', end)}</span>;
+                                  } else {
+                                    return <span style={{ color: '#d97706', fontWeight: 600 }}>🌙 {t("Ca đêm: Hoạt động từ {start} đến {end} sáng hôm sau (vắt qua nửa đêm)").replace('{start}', start).replace('{end}', end)}</span>;
+                                  }
+                                })()}
+                              </div>
+
+                              {/* Chọn ngày trong tuần */}
+                              <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                    {t("Ngày áp dụng trong tuần")}
+                                  </label>
+                                  <div style={{ display: 'flex', gap: 4 }}>
+                                    <button
+                                      type="button"
+                                      className="btn ghost"
+                                      style={{ padding: '2px 6px', fontSize: '0.675rem', height: 'auto', borderRadius: 4 }}
+                                      onClick={() => setFormData({ ...formData, active_days: '1,2,3,4,5,6,7' })}
+                                    >
+                                      {t("Tất cả")}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn ghost"
+                                      style={{ padding: '2px 6px', fontSize: '0.675rem', height: 'auto', borderRadius: 4 }}
+                                      onClick={() => setFormData({ ...formData, active_days: '1,2,3,4,5' })}
+                                    >
+                                      {t("T2 - T6")}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn ghost"
+                                      style={{ padding: '2px 6px', fontSize: '0.675rem', height: 'auto', borderRadius: 4 }}
+                                      onClick={() => setFormData({ ...formData, active_days: '6,7' })}
+                                    >
+                                      {t("T7 - CN")}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                                  {[
+                                    { key: '1', label: t('T2') },
+                                    { key: '2', label: t('T3') },
+                                    { key: '3', label: t('T4') },
+                                    { key: '4', label: t('T5') },
+                                    { key: '5', label: t('T6') },
+                                    { key: '6', label: t('T7') },
+                                    { key: '7', label: t('CN') }
+                                  ].map(day => {
+                                    const daysList = (formData.active_days || '').split(',').map(d => d.trim()).filter(Boolean);
+                                    const isSelected = daysList.includes(day.key);
+                                    return (
+                                      <button
+                                        key={day.key}
+                                        type="button"
+                                        onClick={() => {
+                                          let nextDays: string[];
+                                          if (isSelected) {
+                                            if (daysList.length <= 1) {
+                                              toast.error(t('Vòng phải hoạt động ít nhất 1 ngày trong tuần!'));
+                                              return;
+                                            }
+                                            nextDays = daysList.filter(d => d !== day.key);
+                                          } else {
+                                            nextDays = [...daysList, day.key].sort();
+                                          }
+                                          setFormData({ ...formData, active_days: nextDays.join(',') });
+                                        }}
+                                        style={{
+                                          padding: '6px 2px',
+                                          fontSize: '0.75rem',
+                                          fontWeight: isSelected ? 700 : 500,
+                                          borderRadius: 6,
+                                          border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                                          background: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
+                                          color: isSelected ? '#ffffff' : 'var(--color-text-muted)',
+                                          cursor: 'pointer',
+                                          transition: 'all 0.15s ease'
+                                        }}
+                                      >
+                                        {day.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
 
                         {/* Phạm vi áp dụng & Roster Scope Selector */}
                         <div className="form-group">

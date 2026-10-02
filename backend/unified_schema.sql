@@ -337,6 +337,16 @@ CREATE TABLE IF NOT EXISTS `distribution_rounds` (
   `cc_emails` mediumtext DEFAULT NULL,
   `last_assigned_consultant_id` int(11) DEFAULT NULL, -- FK to users
   `is_active` tinyint(1) DEFAULT 1,
+  `is_schedule_active` tinyint(1) DEFAULT 0,
+  `active_time_start` varchar(5) DEFAULT '08:00',
+  `active_time_end` varchar(5) DEFAULT '18:00',
+  `active_days` varchar(50) DEFAULT '1,2,3,4,5,6,7',
+  `project_id` int(11) DEFAULT NULL,
+  `round_type` enum('round_robin','grab') DEFAULT 'round_robin',
+  `grab_countdown_seconds` int(11) DEFAULT 300,
+  `grab_cooldown_seconds` int(11) DEFAULT 3600,
+  `grab_fallback_to_databank` tinyint(1) DEFAULT 0,
+  `grab_max_attempts` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`last_assigned_consultant_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

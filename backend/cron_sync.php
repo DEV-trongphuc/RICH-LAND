@@ -1979,7 +1979,7 @@ foreach ($connections as $connItem) {
 
         // Preload all rounds for this connection sync to avoid N+1 queries in the loop
         $roundsCache = [];
-        $roundsRes = $conn->query("SELECT id, is_active, round_name, cc_emails, round_type, grab_countdown_seconds, grab_cooldown_seconds FROM distribution_rounds");
+        $roundsRes = $conn->query("SELECT id, is_active, is_schedule_active, active_time_start, active_time_end, active_days, round_name, cc_emails, round_type, grab_countdown_seconds, grab_cooldown_seconds FROM distribution_rounds");
         if ($roundsRes) {
             while ($rRow = $roundsRes->fetch_assoc()) {
                 $roundsCache[(int)$rRow['id']] = $rRow;
@@ -2171,7 +2171,7 @@ foreach ($connections as $connItem) {
                 $inactiveRoundName = '';
                 if ($targetRoundId) {
                     $chkRes = $roundsCache[(int)$targetRoundId] ?? null;
-                    if (!$chkRes || (int)$chkRes['is_active'] !== 1) {
+                    if (!$chkRes || !isRoundCurrentlyActive($chkRes)) {
                         $inactiveRoundName = $chkRes['round_name'] ?? ('ID ' . $targetRoundId);
                         $targetRoundId = null;
                     }

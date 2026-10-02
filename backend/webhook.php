@@ -530,13 +530,13 @@ if (is_array($ruleResult)) {
 
 $inactiveRoundName = '';
 if ($targetRoundId) {
-    $chkRound = $conn->prepare("SELECT is_active, round_name FROM distribution_rounds WHERE id = ?");
+    $chkRound = $conn->prepare("SELECT is_active, is_schedule_active, active_time_start, active_time_end, active_days, round_name FROM distribution_rounds WHERE id = ?");
     if ($chkRound) {
         $chkRound->bind_param("i", $targetRoundId);
         $chkRound->execute();
         $chkRes = $chkRound->get_result()->fetch_assoc();
         $chkRound->close();
-        if (!$chkRes || (int)$chkRes['is_active'] !== 1) {
+        if (!$chkRes || !isRoundCurrentlyActive($chkRes)) {
             $inactiveRoundName = $chkRes['round_name'] ?? ('ID ' . $targetRoundId);
             $targetRoundId = null;
         }
