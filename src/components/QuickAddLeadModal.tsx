@@ -1666,7 +1666,7 @@ export const QuickAddLeadModal = () => {
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Phân loại Lead')}</label>
                 <CustomSelect
                   options={[
-                    { value: '', label: t('-- Chọn phân loại (Không bắt buộc) --') },
+                    { value: '', label: t('Chọn phân loại') },
                     { value: 'Khách Nét', label: '🔥 ' + t('Khách Nét') },
                     { value: 'Khách Tiềm Năng', label: '⭐ ' + t('Khách Tiềm Năng') },
                     { value: 'Khách Lạnh', label: '❄️ ' + t('Khách Lạnh') },
@@ -1683,7 +1683,7 @@ export const QuickAddLeadModal = () => {
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Dự án nguồn')}</label>
                 <CustomSelect
                   options={[
-                    { value: '', label: t('-- Chọn dự án nguồn (Không bắt buộc) --') },
+                    { value: '', label: t('Chọn dự án nguồn') },
                     ...projectsList.map((p: any) => ({
                       value: p.id.toString(),
                       label: p.name || p.title || `Dự án #${p.id}`
