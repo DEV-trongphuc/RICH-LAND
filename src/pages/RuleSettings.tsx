@@ -37,7 +37,7 @@ const OP_LABELS: Record<string, string> = {
 };
 
 // Sortable Item Component
-const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisabled, isReadOnly }: { rule: any, idx: number, connections: any[], onEdit: (r: any) => void, onDelete: (id: number) => void, isDragDisabled?: boolean, isReadOnly?: boolean }) => {
+const SortableRuleItem = ({ rule, idx, connections, projects = [], onEdit, onDelete, isDragDisabled, isReadOnly }: { rule: any, idx: number, connections: any[], projects?: any[], onEdit: (r: any) => void, onDelete: (id: number) => void, isDragDisabled?: boolean, isReadOnly?: boolean }) => {
   const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
 
@@ -196,7 +196,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                               <span style={{
                                 background: 'var(--color-warning-light)', border: '1px dashed #f59e0b', padding: '4px 10px', borderRadius: 8, fontWeight: 700, color: '#b45309', fontSize: '0.8125rem'
                               }}>
-                                "{c.col === 'connection_id' ? (connections.find((conn: any) => String(conn.id) === String(c.val))?.sheet_name || c.val) : c.val}"
+                                "{c.col === 'connection_id' ? (connections.find((conn: any) => String(conn.id) === String(c.val))?.sheet_name || c.val) : c.col === 'project_id' ? (projects.find((p: any) => String(p.id) === String(c.val))?.name || c.val) : c.val}"
                               </span>
                             )}
                           </div>
@@ -313,6 +313,7 @@ const RuleSettingsInner = () => {
   const isReadOnly = !['admin', 'superadmin', 'super_admin', 'assistant'].includes(user?.role || '');
   const [rules, setRules] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [sysSettings, setSysSettings] = useState<any>(null);
@@ -382,8 +383,9 @@ const RuleSettingsInner = () => {
     phone: '0987654321',
     email: 'test@example.com',
     source: 'Facebook Ads',
-    type: 'Đăng ký khóa học',
-    note: 'Cần tư vấn lộ trình học nhanh'
+    type: 'Đăng ký tư vấn',
+    note: 'Cần tư vấn căn 2PN',
+    project_id: ''
   });
   const [simulateConnectionId, setSimulateConnectionId] = useState<string>('all');
   const [simulateConnectionType, setSimulateConnectionType] = useState<string>('sheets');
@@ -417,6 +419,10 @@ const RuleSettingsInner = () => {
         type: simulatePayload.type,
         note: simulatePayload.note
       };
+
+      if (simulatePayload.project_id) {
+        dataPayload.project_id = simulatePayload.project_id;
+      }
 
       simulateCustomFields.forEach(field => {
         if (field.key.trim() !== '') {
@@ -486,10 +492,20 @@ const RuleSettingsInner = () => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const json = await fetchAPI('projects');
+      if (json.success) setProjects(json.data || []);
+    } catch (e: any) {
+      console.error("Failed to fetch projects", e);
+    }
+  };
+
   useEffect(() => {
     fetchRules();
     fetchRounds();
     fetchConnections();
+    fetchProjects();
   }, []);
 
   useEffect(() => {
@@ -649,6 +665,8 @@ const RuleSettingsInner = () => {
   const getFieldOptions = () => {
     const baseFields = [
       { value: 'source', label: t('Nguồn Data / Phân loại Lead (Hệ thống)') },
+      { value: 'project_id', label: t('Dự án (Hệ thống - Project)') },
+      { value: 'preferred_location', label: t('Khu vực / Dự án quan tâm (Preferred Location)') },
       { value: 'type', label: t('Loại Data (Hệ thống)') },
       { value: 'platform', label: t('Nền tảng Ads (Platform: Meta, Google, TikTok,...)') },
       { value: 'utm_campaign', label: t('Tên Chiến dịch Ads (UTM Campaign)') },
@@ -870,7 +888,7 @@ const RuleSettingsInner = () => {
                   const originalIdx = rules.findIndex(r => r.id === rule.id);
                   return (
                     <SortableRuleItem
-                      key={rule.id} rule={rule} idx={originalIdx} connections={connections}
+                      key={rule.id} rule={rule} idx={originalIdx} connections={connections} projects={projects}
                       onEdit={openEditModal}
                       onDelete={(id) => { setDeleteId(id); setIsConfirmOpen(true); }}
                       isDragDisabled={isReadOnly || activeFilter !== 'all'}
@@ -1005,6 +1023,24 @@ const RuleSettingsInner = () => {
                                 }}
                                 disabled={isReadOnly}
                               />
+                            ) : c.col === 'project_id' ? (
+                              <CustomSelect
+                                options={[
+                                  { value: '', label: t('Chọn Dự án...') },
+                                  ...projects.map(proj => ({
+                                    value: String(proj.id),
+                                    label: proj.code ? `${proj.name} (${proj.code})` : proj.name
+                                  }))
+                                ]}
+                                value={c.val}
+                                onChange={v => {
+                                  const newB = [...branches];
+                                  newB[bIndex].conditions[i].val = String(v);
+                                  setBranches(newB);
+                                }}
+                                disabled={isReadOnly}
+                                placeholder={t("Chọn Dự án...")}
+                              />
                             ) : (
                               <input
                                 style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
@@ -1095,7 +1131,7 @@ const RuleSettingsInner = () => {
                     {branch.inject?.enabled && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
                         {branch.inject.fields.map((f: any, fi: number) => {
-                          const isCustomMode = f.isCustom || !['source', 'platform', 'type', 'note', 'name', ''].includes(f.col);
+                          const isCustomMode = f.isCustom || !['source', 'project_id', 'preferred_location', 'platform', 'type', 'note', 'name', ''].includes(f.col);
                           const rankOptions = ['R3_Fb', 'R3', 'R2', 'R3_Zalo', 'broadcast', 'ca_nhan', 'gioi_thieu', 'databank'];
                           return (
                             <div key={fi} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.5rem', alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', borderBottom: isMobile ? '1px dashed var(--color-border)' : 'none', paddingBottom: isMobile ? '10px' : '0', marginBottom: isMobile ? '10px' : '0' }}>
@@ -1103,6 +1139,8 @@ const RuleSettingsInner = () => {
                                 <CustomSelect
                                   options={[
                                     { value: 'source', label: t('Phân loại Lead / Rank (Source)') },
+                                    { value: 'project_id', label: t('Dự án (Project ID / Tên dự án)') },
+                                    { value: 'preferred_location', label: t('Khu vực quan tâm (Preferred Location)') },
                                     { value: 'platform', label: t('Nền tảng Ads (Platform)') },
                                     { value: 'type', label: t('Loại Khách (Type)') },
                                     { value: 'note', label: t('Ghi Chú (Note)') },
@@ -1114,7 +1152,7 @@ const RuleSettingsInner = () => {
                                     const newB = [...branches];
                                     if (val === 'custom_trigger') {
                                       newB[bIndex].inject.fields[fi].isCustom = true;
-                                      if (['source', 'platform', 'type', 'note', 'name'].includes(newB[bIndex].inject.fields[fi].col)) {
+                                      if (['source', 'project_id', 'preferred_location', 'platform', 'type', 'note', 'name'].includes(newB[bIndex].inject.fields[fi].col)) {
                                         newB[bIndex].inject.fields[fi].col = '';
                                       }
                                     } else {
@@ -1143,16 +1181,36 @@ const RuleSettingsInner = () => {
                               )}
 
                               <div style={{ flex: isMobile ? 'none' : (isCustomMode ? 1.5 : 2), width: isMobile ? '100%' : 'auto', minWidth: 150, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <input
-                                  style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
-                                  placeholder={f.col === 'source' ? t("VD: R3_Fb, R2, R3...") : t("Giá trị muốn gán tự động...")}
-                                  value={f.val}
-                                  onChange={e => {
-                                    const newB = [...branches];
-                                    newB[bIndex].inject.fields[fi].val = e.target.value;
-                                    setBranches(newB);
-                                  }}
-                                />
+                                {f.col === 'project_id' ? (
+                                  <CustomSelect
+                                    options={[
+                                      { value: '', label: t('Chọn Dự án...') },
+                                      ...projects.map(proj => ({
+                                        value: String(proj.id),
+                                        label: proj.code ? `${proj.name} (${proj.code})` : proj.name
+                                      }))
+                                    ]}
+                                    value={f.val}
+                                    onChange={v => {
+                                      const newB = [...branches];
+                                      newB[bIndex].inject.fields[fi].val = String(v);
+                                      setBranches(newB);
+                                    }}
+                                    disabled={isReadOnly}
+                                    placeholder={t("Chọn Dự án...")}
+                                  />
+                                ) : (
+                                  <input
+                                    style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
+                                    placeholder={f.col === 'source' ? t("VD: R3_Fb, R2, R3...") : t("Giá trị muốn gán tự động...")}
+                                    value={f.val}
+                                    onChange={e => {
+                                      const newB = [...branches];
+                                      newB[bIndex].inject.fields[fi].val = e.target.value;
+                                      setBranches(newB);
+                                    }}
+                                  />
+                                )}
                                 {f.col === 'source' && (
                                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
                                     <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginRight: 2 }}>{t('Gợi ý Rank:')}</span>
@@ -1360,6 +1418,22 @@ const RuleSettingsInner = () => {
                     placeholder={t("VD: Dang ky hoc")}
                   />
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t("Dự án (Project)")}</label>
+                <CustomSelect
+                  options={[
+                    { value: '', label: t('-- Không chọn Dự án --') },
+                    ...projects.map(p => ({
+                      value: String(p.id),
+                      label: p.code ? `${p.name} (${p.code})` : p.name
+                    }))
+                  ]}
+                  value={simulatePayload.project_id || ''}
+                  onChange={v => setSimulatePayload({ ...simulatePayload, project_id: String(v) })}
+                  placeholder={t("-- Chọn Dự án giả lập --")}
+                />
               </div>
 
               <div className="form-group">

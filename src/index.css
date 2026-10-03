@@ -6188,3 +6188,10 @@ body > div:not(#root):has(.custom-toast) {
   0% { transform: scale(0.92) translateY(12px); opacity: 0; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
+
+/* CustomSelect Stacking Context Breakout - prevents open dropdowns from being trapped under sibling inputs */
+div:has(> .custom-select-wrapper.open),
+div:has(.custom-select-wrapper.open),
+div:has(> * > .custom-select-wrapper.open) {
+  z-index: 1500 !important;
+}

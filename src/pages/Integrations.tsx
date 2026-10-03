@@ -40,6 +40,7 @@ const SYSTEM_FIELDS = [
   { value: 'property_type', label: 'Loại BĐS quan tâm (Căn hộ / Nhà phố / Biệt thự)' },
   { value: 'bedroom_count', label: 'Số phòng ngủ mong muốn' },
   { value: 'preferred_location', label: 'Khu vực / Dự án quan tâm' },
+  { value: 'project_id', label: 'Dự án (Project ID / Tên dự án)' },
 
   // --- Mạng Xã Hội & Khác ---
   { value: 'zalo_phone', label: 'Số Zalo / Link Zalo' },

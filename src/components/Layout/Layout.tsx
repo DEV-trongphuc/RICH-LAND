@@ -201,9 +201,15 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const checkIsLate = () => {
-    const workStart = consultantProfile?.work_start_time || '08:00';
-    const now = new Date();
-    const curHM = now.toTimeString().substring(0, 5); 
+    const today = new Date();
+    const dayKey = today.getDay() === 0 ? '7' : String(today.getDay());
+    let workStart = consultantProfile?.work_start_time || '08:00';
+    if (consultantProfile?.work_schedule && consultantProfile.work_schedule[dayKey]?.start) {
+      workStart = consultantProfile.work_schedule[dayKey].start;
+    } else if (consultantProfile?.today_work_start_time) {
+      workStart = consultantProfile.today_work_start_time;
+    }
+    const curHM = today.toTimeString().substring(0, 5); 
     return curHM > workStart;
   };
 

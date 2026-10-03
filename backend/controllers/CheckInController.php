@@ -10,16 +10,27 @@ class CheckInController {
 
     public function index(array $auth): void {
         // Option to check only today's check-in for the logged-in user (useful for dashboard/buttons)
+        // Option to check only today's check-in for the logged-in user (useful for dashboard/buttons)
         if (isset($_GET['today_only']) && $_GET['today_only'] == '1') {
             try {
                 $stmt = $this->db->prepare("
-                    SELECT c.*, IF(COALESCE(u.use_custom_work_hours, 0) = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time, u.full_name as user_name
+                    SELECT c.*, IF(COALESCE(u.use_custom_work_hours, 0) = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time, u.work_schedule as user_work_schedule, u.use_custom_work_hours, u.full_name as user_name
                     FROM check_ins c
                     JOIN users u ON c.user_id = u.id
                     WHERE c.user_id = ? AND c.check_in_date = ?
                 ");
                 $stmt->execute([$auth['user_id'], date('Y-m-d')]);
                 $row = $stmt->fetch();
+                if ($row) {
+                    $globalSchedRes = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
+                    $globalSchedRow = $globalSchedRes ? $globalSchedRes->fetch() : null;
+                    $globalSched = $globalSchedRow && !empty($globalSchedRow['setting_value']) ? json_decode($globalSchedRow['setting_value'], true) : null;
+                    $sched = ((int)($row['use_custom_work_hours'] ?? 0) === 1 && !empty($row['user_work_schedule'])) ? json_decode($row['user_work_schedule'], true) : $globalSched;
+                    $dayN = (string)date('N');
+                    if (is_array($sched) && !empty($sched[$dayN]['start'])) {
+                        $row['work_start_time'] = $sched[$dayN]['start'];
+                    }
+                }
                 respond(200, $row ?: null, 'Lấy thông tin check-in hôm nay thành công');
             } catch (\Throwable $e) {
                 $stmt = $this->db->prepare("
@@ -37,7 +48,7 @@ class CheckInController {
         $isManager = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'], true);
         
         try {
-            $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, IF(COALESCE(u.use_custom_work_hours, 0) = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
+            $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, u.work_schedule as user_work_schedule, u.use_custom_work_hours, IF(COALESCE(u.use_custom_work_hours, 0) = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
                     FROM check_ins c
                     JOIN users u ON c.user_id = u.id
                     WHERE u.tenant_id = ?";
@@ -94,6 +105,26 @@ class CheckInController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll() ?: [];
+
+        $globalSchedRes = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
+        $globalSchedRow = $globalSchedRes ? $globalSchedRes->fetch() : null;
+        $globalSched = $globalSchedRow && !empty($globalSchedRow['setting_value']) ? json_decode($globalSchedRow['setting_value'], true) : null;
+
+        foreach ($rows as &$r) {
+            $sched = null;
+            if ((int)($r['use_custom_work_hours'] ?? 0) === 1 && !empty($r['user_work_schedule'])) {
+                $sched = json_decode($r['user_work_schedule'], true);
+            } else {
+                $sched = $globalSched;
+            }
+            if (!empty($r['check_in_date']) && is_array($sched)) {
+                $dayN = (string)date('N', strtotime($r['check_in_date']));
+                if (!empty($sched[$dayN]['start'])) {
+                    $r['work_start_time'] = $sched[$dayN]['start'];
+                }
+            }
+        }
+        unset($r);
 
         if (isset($_GET['include_shifts']) && $_GET['include_shifts'] == '1') {
             $shifts = [];
@@ -239,7 +270,7 @@ class CheckInController {
         $isSupplementary = ($today !== date('Y-m-d')) || (!empty($b['is_supplementary']));
 
         // Fetch system settings for checkout & auto-approve requirements
-        $stmtSettings = $this->db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('require_checkin_weekend_lead', 'require_checkin_holiday_lead', 'holiday_schedules', 'require_checkout', 'auto_approve_checkin', 'global_work_start_time', 'global_work_end_time')");
+        $stmtSettings = $this->db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('require_checkin_weekend_lead', 'require_checkin_holiday_lead', 'holiday_schedules', 'require_checkout', 'auto_approve_checkin', 'global_work_start_time', 'global_work_end_time', 'global_work_schedule')");
         $stmtSettings->execute();
         $settingsMap = $stmtSettings->fetchAll(PDO::FETCH_KEY_PAIR);
 
@@ -261,19 +292,38 @@ class CheckInController {
         $existingRow = $stmtExisting->fetch(PDO::FETCH_ASSOC);
 
         // Fetch user work hours
-        $stmtUser = $this->db->prepare("SELECT work_start_time, work_end_time, use_custom_work_hours FROM users WHERE id = ?");
+        $stmtUser = $this->db->prepare("SELECT work_start_time, work_end_time, work_schedule, use_custom_work_hours FROM users WHERE id = ?");
         $stmtUser->execute([$auth['user_id']]);
         $uRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
         
         $workStartTime = '08:00';
         $workEndTime = '17:30';
-        if ($uRow) {
-            if ((int)($uRow['use_custom_work_hours'] ?? 0) === 1) {
-                $workStartTime = $uRow['work_start_time'] ?: '08:00';
-                $workEndTime = $uRow['work_end_time'] ?: '17:30';
-            } else {
-                $workStartTime = $settingsMap['global_work_start_time'] ?? '08:00';
-                $workEndTime = $settingsMap['global_work_end_time'] ?? '17:30';
+        $workSchedule = null;
+
+        if ($uRow && (int)($uRow['use_custom_work_hours'] ?? 0) === 1) {
+            $workStartTime = $uRow['work_start_time'] ?: '08:00';
+            $workEndTime = $uRow['work_end_time'] ?: '17:30';
+            if (!empty($uRow['work_schedule'])) {
+                $workSchedule = is_array($uRow['work_schedule']) ? $uRow['work_schedule'] : json_decode($uRow['work_schedule'], true);
+            }
+        } else {
+            $workStartTime = $settingsMap['global_work_start_time'] ?? '08:00';
+            $workEndTime = $settingsMap['global_work_end_time'] ?? '17:30';
+            if (!empty($settingsMap['global_work_schedule'])) {
+                $workSchedule = json_decode($settingsMap['global_work_schedule'], true);
+            }
+        }
+
+        // Apply day-of-week schedule (1 = Monday ... 7 = Sunday)
+        $dayOfWeek = (int)date('N', strtotime($today));
+        $dayKey = (string)$dayOfWeek;
+        if (is_array($workSchedule) && isset($workSchedule[$dayKey]) && is_array($workSchedule[$dayKey])) {
+            $dayConfig = $workSchedule[$dayKey];
+            if (!empty($dayConfig['start'])) {
+                $workStartTime = $dayConfig['start'];
+            }
+            if (!empty($dayConfig['end'])) {
+                $workEndTime = $dayConfig['end'];
             }
         }
 

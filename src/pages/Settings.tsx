@@ -1449,8 +1449,8 @@ const SettingsInner = () => {
       golden_hours_start_time: goldenHoursStartTime,
       golden_hours_end_time: goldenHoursEndTime,
       golden_hours_max_leads_per_consultant: goldenHoursMaxLeadsPerConsultant,
-      global_work_start_time: globalWorkStartTime,
-      global_work_end_time: globalWorkEndTime,
+      global_work_start_time: (globalScheduleMode === 'custom' && globalWorkSchedule?.["1"]?.start) ? globalWorkSchedule["1"].start : globalWorkStartTime,
+      global_work_end_time: (globalScheduleMode === 'custom' && globalWorkSchedule?.["1"]?.end) ? globalWorkSchedule["1"].end : globalWorkEndTime,
       global_work_schedule: JSON.stringify(globalScheduleMode === 'daily' 
         ? {
             "1": { active: true, start: globalWorkStartTime, end: globalWorkEndTime },

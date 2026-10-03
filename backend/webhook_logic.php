@@ -675,17 +675,72 @@ function normalizeTextForComparison($str)
     return trim($str);
 }
 
-function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId = null)
+function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId = null, $conn = null)
 {
     $dataVal = '';
-    if ($col === 'source')
+    if ($col === 'source') {
         $dataVal = $source;
-    elseif ($col === 'type')
+    } elseif ($col === 'type') {
         $dataVal = $type;
-    elseif ($col === 'connection_id')
+    } elseif ($col === 'connection_id') {
         $dataVal = (string) $connId;
-    else
+    } elseif ($col === 'project_id' || $col === 'project' || $col === 'project_name') {
+        $leadProjId = $data['project_id'] ?? null;
+        $leadProjText = $data['project_name'] ?? ($data['project'] ?? ($data['preferred_location'] ?? ($data['du_an'] ?? ($data['dự án'] ?? ''))));
+
+        static $projectsCache = null;
+        $activeConn = $conn ?? ($GLOBALS['conn'] ?? null);
+        if ($projectsCache === null && $activeConn !== null) {
+            $projectsCache = [];
+            $pRes = $activeConn->query("SELECT id, name, code FROM projects");
+            if ($pRes) {
+                while ($pRow = $pRes->fetch_assoc()) {
+                    $projectsCache[(int)$pRow['id']] = $pRow;
+                }
+            }
+        }
+
+        // Direct ID match
+        if ($leadProjId !== null && (string)$leadProjId !== '') {
+            if ((string)$leadProjId === (string)$val) {
+                return in_array(strtolower($op), ['equals', 'contains']) ? true : (strtolower($op) === 'not_equals' ? false : true);
+            }
+            if (!empty($projectsCache[(int)$leadProjId])) {
+                $pInfo = $projectsCache[(int)$leadProjId];
+                $normVal = normalizeTextForComparison($val);
+                $normPName = normalizeTextForComparison($pInfo['name']);
+                $normPCode = normalizeTextForComparison($pInfo['code'] ?? '');
+                if (strtolower($op) === 'equals') {
+                    if ($normPName === $normVal || $normPCode === $normVal || (string)$leadProjId === $normVal) {
+                        return true;
+                    }
+                } elseif (strtolower($op) === 'contains') {
+                    if (mb_strpos($normPName, $normVal) !== false || mb_strpos($normPCode, $normVal) !== false) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Project text match
+        if (!empty($leadProjText)) {
+            $normLeadText = normalizeTextForComparison($leadProjText);
+            $normVal = normalizeTextForComparison($val);
+            if (is_numeric($val) && !empty($projectsCache[(int)$val])) {
+                $targetProj = $projectsCache[(int)$val];
+                $normTargetName = normalizeTextForComparison($targetProj['name']);
+                $normTargetCode = normalizeTextForComparison($targetProj['code'] ?? '');
+                if (mb_strpos($normLeadText, $normTargetName) !== false || mb_strpos($normLeadText, $normTargetCode) !== false || $normLeadText === (string)$val) {
+                    return in_array(strtolower($op), ['equals', 'contains']);
+                }
+            }
+            $dataVal = $leadProjText;
+        } else {
+            $dataVal = (string)($leadProjId ?? '');
+        }
+    } else {
         $dataVal = $data[$col] ?? '';
+    }
 
     $op = strtolower($op);
 
@@ -941,7 +996,7 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
                     foreach ($conds as $cond) {
                         if (!isset($cond['col']))
                             continue;
-                        if (!evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'], $connId)) {
+                        if (!evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'], $connId, $conn)) {
                             $branchMatch = false;
                             break; // One condition failed, entire branch fails
                         }
@@ -956,7 +1011,7 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
             }
         } else {
             // Legacy format fallback
-            $isMatch = evaluateSingleCondition($data, $source, $type, $row['condition_column'], $row['condition_operator'], $row['condition_value'], $connId);
+            $isMatch = evaluateSingleCondition($data, $source, $type, $row['condition_column'], $row['condition_operator'], $row['condition_value'], $connId, $conn);
         }
 
         if ($isMatch) {

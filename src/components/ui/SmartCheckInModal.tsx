@@ -129,16 +129,25 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const getTodayWorkStart = () => {
+    const today = new Date();
+    const dayKey = today.getDay() === 0 ? '7' : String(today.getDay());
+    if (consultantProfile?.work_schedule && consultantProfile.work_schedule[dayKey]?.start) {
+      return consultantProfile.work_schedule[dayKey].start;
+    }
+    return consultantProfile?.today_work_start_time || consultantProfile?.work_start_time || '08:00';
+  };
+
+  const todayWorkStart = getTodayWorkStart();
+
   const checkIsLate = () => {
-    const workStart = consultantProfile?.work_start_time || '08:00';
     const now = new Date();
     const curHM = now.toTimeString().substring(0, 5);
-    return curHM > workStart;
+    return curHM > todayWorkStart;
   };
 
   const getMinutesLate = () => {
-    const workStart = consultantProfile?.work_start_time || '08:00';
-    const [startH, startM] = workStart.split(':').map(Number);
+    const [startH, startM] = todayWorkStart.split(':').map(Number);
     const now = new Date();
     const currentH = now.getHours();
     const currentM = now.getMinutes();
@@ -611,7 +620,7 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
               fontWeight: 700,
               border: '1px solid var(--color-border)'
             }}>
-              {t('Quy định:')} <span style={{ color: '#BD1D2D' }}>{consultantProfile?.work_start_time || '08:00'}</span>
+              {t('Quy định:')} <span style={{ color: '#BD1D2D' }}>{todayWorkStart}</span>
             </div>
           </div>
 

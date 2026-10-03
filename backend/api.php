@@ -14437,8 +14437,44 @@ switch ($action) {
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
         if ($consultantProfile) {
-            if (!empty($consultantProfile['work_schedule'])) {
-                $consultantProfile['work_schedule'] = json_decode($consultantProfile['work_schedule'], true);
+            if ((int)($consultantProfile['use_custom_work_hours'] ?? 0) !== 1) {
+                $sysSettingsRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('global_work_start_time', 'global_work_end_time', 'global_work_schedule')");
+                $sysMap = [];
+                if ($sysSettingsRes) {
+                    while ($sRow = $sysSettingsRes->fetch_assoc()) {
+                        $sysMap[$sRow['setting_key']] = $sRow['setting_value'];
+                    }
+                }
+                if (!empty($sysMap['global_work_start_time'])) {
+                    $consultantProfile['work_start_time'] = $sysMap['global_work_start_time'];
+                }
+                if (!empty($sysMap['global_work_end_time'])) {
+                    $consultantProfile['work_end_time'] = $sysMap['global_work_end_time'];
+                }
+                if (!empty($sysMap['global_work_schedule'])) {
+                    $consultantProfile['work_schedule'] = json_decode($sysMap['global_work_schedule'], true);
+                }
+            } else {
+                if (!empty($consultantProfile['work_schedule']) && is_string($consultantProfile['work_schedule'])) {
+                    $consultantProfile['work_schedule'] = json_decode($consultantProfile['work_schedule'], true);
+                }
+            }
+
+            // Calculate today's schedule based on day-of-week (1=Monday...7=Sunday)
+            $todayDayKey = (string)date('N');
+            if (!empty($consultantProfile['work_schedule']) && is_array($consultantProfile['work_schedule'])) {
+                $todaySched = $consultantProfile['work_schedule'][$todayDayKey] ?? null;
+                if ($todaySched && is_array($todaySched)) {
+                    if (!empty($todaySched['start'])) {
+                        $consultantProfile['today_work_start_time'] = $todaySched['start'];
+                        $consultantProfile['work_start_time'] = $todaySched['start'];
+                    }
+                    if (!empty($todaySched['end'])) {
+                        $consultantProfile['today_work_end_time'] = $todaySched['end'];
+                        $consultantProfile['work_end_time'] = $todaySched['end'];
+                    }
+                    $consultantProfile['today_is_active'] = !empty($todaySched['active']);
+                }
             }
             // Fetch teams managed by this user
             $stmtT = $conn->prepare("SELECT id FROM teams WHERE leader_id = ?");
@@ -18500,7 +18536,7 @@ switch ($action) {
 
                         $branchCondsDetail = [];
                         foreach ($conds as $cond) {
-                            $resVal = evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'], $connectionId);
+                            $resVal = evaluateSingleCondition($data, $source, $type, $cond['col'], $cond['op'], $cond['val'], $connectionId, $conn);
                             $branchCondsDetail[] = [
                                 'col' => $cond['col'],
                                 'op' => $cond['op'],
@@ -18538,7 +18574,7 @@ switch ($action) {
                     }
                 }
             } else {
-                $resVal = evaluateSingleCondition($data, $source, $type, $rule['condition_column'], $rule['condition_operator'], $rule['condition_value'], $connectionId);
+                $resVal = evaluateSingleCondition($data, $source, $type, $rule['condition_column'], $rule['condition_operator'], $rule['condition_value'], $connectionId, $conn);
                 $isMatch = $resVal;
                 $conditionsDetail[] = [
                     'col' => $rule['condition_column'],

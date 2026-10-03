@@ -2042,6 +2042,8 @@ foreach ($connections as $connItem) {
             $utm_content = extractMappedValues($mappings, 'utm_content', $rowData);
             $utm_term = extractMappedValues($mappings, 'utm_term', $rowData);
             $form_name = extractMappedValues($mappings, 'form_name', $rowData);
+            $preferred_location = extractMappedValues($mappings, 'preferred_location', $rowData);
+            $project_id = extractMappedValues($mappings, 'project_id', $rowData);
 
             if (!empty($connItem['auto_append_unmapped_note'])) {
                 $mappedCols = [];
@@ -2133,6 +2135,8 @@ foreach ($connections as $connItem) {
                 if (!empty($utm_content)) $rowDataForRules['utm_content'] = $utm_content;
                 if (!empty($utm_term)) $rowDataForRules['utm_term'] = $utm_term;
                 if (!empty($form_name)) $rowDataForRules['form_name'] = $form_name;
+                if (!empty($preferred_location)) $rowDataForRules['preferred_location'] = $preferred_location;
+                if (!empty($project_id)) $rowDataForRules['project_id'] = $project_id;
 
                 $ruleResult = evaluateRules($conn, $rowDataForRules, $source, $type, $connItem['id'], 'sheets');
                 $targetRoundId = null;
@@ -2148,7 +2152,7 @@ foreach ($connections as $connItem) {
                     $inject = $ruleResult['inject'] ?? [];
                     
                     // Áp dụng ghi đè dữ liệu (Inject Fields)
-                    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email', 'platform', 'budget'];
+                    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email', 'platform', 'budget', 'project_id', 'preferred_location'];
                     foreach ($inject as $k => $v) {
                         if (in_array($k, $standardFields)) {
                             if ($k === 'source') $source = $v;

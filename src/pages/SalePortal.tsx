@@ -4759,11 +4759,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
   const checkIsLate = () => {
-    const workStart = impersonatedSale
-      ? (impersonatedSale.work_start_time || '08:00')
-      : (data.consultant_profile?.work_start_time || '08:00');
-    const now = new Date();
-    const curHM = now.toTimeString().substring(0, 5); 
+    const today = new Date();
+    const dayKey = today.getDay() === 0 ? '7' : String(today.getDay());
+    const profile = impersonatedSale || data.consultant_profile;
+    let workStart = profile?.work_start_time || '08:00';
+    if (profile?.work_schedule && profile.work_schedule[dayKey]?.start) {
+      workStart = profile.work_schedule[dayKey].start;
+    } else if (profile?.today_work_start_time) {
+      workStart = profile.today_work_start_time;
+    }
+    const curHM = today.toTimeString().substring(0, 5); 
     return curHM > workStart;
   };
   const isLate = checkIsLate();
