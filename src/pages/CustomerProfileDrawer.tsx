@@ -5835,7 +5835,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               }}
             />
             <motion.div
-              className={`${styles.drawer} drawer-sheet`}
+              className={styles.drawer}
               {...drawerMotionProps}
               onAnimationComplete={() => {
                 setDrawerOpenComplete(true);

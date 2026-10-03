@@ -3930,7 +3930,7 @@ textarea, .form-textarea, textarea.form-input, textarea.form-control {
 }
 
 .drawer-sheet {
-  z-index: 10600 !important;
+  z-index: 10600;
 }
 
 /* Mobile Header / Sidebar alignment */
