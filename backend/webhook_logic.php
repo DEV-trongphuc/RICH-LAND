@@ -730,7 +730,14 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
                 $targetProj = $projectsCache[(int)$val];
                 $normTargetName = normalizeTextForComparison($targetProj['name']);
                 $normTargetCode = normalizeTextForComparison($targetProj['code'] ?? '');
-                if (mb_strpos($normLeadText, $normTargetName) !== false || mb_strpos($normLeadText, $normTargetCode) !== false || $normLeadText === (string)$val) {
+                if (
+                    $normLeadText === (string)$val ||
+                    $normLeadText === $normTargetName ||
+                    $normLeadText === $normTargetCode ||
+                    mb_strpos($normLeadText, $normTargetName) !== false ||
+                    mb_strpos($normTargetName, $normLeadText) !== false ||
+                    (!empty($normTargetCode) && (mb_strpos($normLeadText, $normTargetCode) !== false || mb_strpos($normTargetCode, $normLeadText) !== false))
+                ) {
                     return in_array(strtolower($op), ['equals', 'contains']);
                 }
             }
@@ -1705,6 +1712,37 @@ if (!function_exists('saveMappedExtendedFields')) {
             }
         }
 
+        // Resolve project_id if mapped
+        $projVal = extractMappedValues($mappings, 'project_id', $data);
+        $resolvedProjId = null;
+        $prefLocVal = extractMappedValues($mappings, 'preferred_location', $data);
+        if (!empty($projVal)) {
+            if (is_numeric($projVal)) {
+                $resolvedProjId = (int)$projVal;
+            } else {
+                $pStmt = $conn->prepare("SELECT id FROM projects WHERE LOWER(name) = LOWER(?) OR LOWER(code) = LOWER(?) LIMIT 1");
+                if ($pStmt) {
+                    $pStmt->bind_param("ss", $projVal, $projVal);
+                    $pStmt->execute();
+                    $pRes = $pStmt->get_result()->fetch_assoc();
+                    $pStmt->close();
+                    if ($pRes) {
+                        $resolvedProjId = (int)$pRes['id'];
+                    }
+                }
+            }
+            if ($resolvedProjId) {
+                $leadUpdates[] = "`project_id` = ?";
+                $leadTypes .= "i";
+                $leadParams[] = $resolvedProjId;
+            }
+            if (empty($prefLocVal) && !is_numeric($projVal)) {
+                $leadUpdates[] = "`preferred_location` = ?";
+                $leadTypes .= "s";
+                $leadParams[] = $projVal;
+            }
+        }
+
         if (!empty($leadUpdates)) {
             $sql = "UPDATE leads SET " . implode(", ", $leadUpdates) . " WHERE id = ?";
             $leadTypes .= "i";
@@ -1735,6 +1773,17 @@ if (!function_exists('saveMappedExtendedFields')) {
                         $cTypes .= ($col === 'budget') ? "d" : "s";
                         $cParams[] = ($col === 'budget') ? (float)$val : $val;
                     }
+                }
+
+                if ($resolvedProjId) {
+                    $cUpdates[] = "`project_id` = ?";
+                    $cTypes .= "i";
+                    $cParams[] = $resolvedProjId;
+                }
+                if (!empty($projVal) && empty($prefLocVal) && !is_numeric($projVal)) {
+                    $cUpdates[] = "`preferred_location` = ?";
+                    $cTypes .= "s";
+                    $cParams[] = $projVal;
                 }
 
                 if (!empty($cUpdates)) {

@@ -190,13 +190,33 @@ const SortableRuleItem = ({ rule, idx, connections, projects = [], onEdit, onDel
                               <SlidersHorizontal size={13} style={{ color: '#2563eb' }} /> {c.col}
                             </span>
                             <span style={{ color: 'var(--color-text-light)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
-                              {t(OP_LABELS[c.op]) || c.op}
+                              {c.col === 'project_id' && (c.op === 'equals' || c.op === 'contains') ? t('Thuộc dự án') : (t(OP_LABELS[c.op]) || c.op)}
                             </span>
                             {c.op !== 'is_empty' && c.op !== 'is_not_empty' && (
                               <span style={{
-                                background: 'var(--color-warning-light)', border: '1px dashed #f59e0b', padding: '4px 10px', borderRadius: 8, fontWeight: 700, color: '#b45309', fontSize: '0.8125rem'
+                                background: 'var(--color-warning-light)', border: '1px dashed #f59e0b', padding: '4px 10px', borderRadius: 8, fontWeight: 700, color: '#b45309', fontSize: '0.8125rem',
+                                display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap'
                               }}>
-                                "{c.col === 'connection_id' ? (connections.find((conn: any) => String(conn.id) === String(c.val))?.sheet_name || c.val) : c.col === 'project_id' ? (projects.find((p: any) => String(p.id) === String(c.val))?.name || c.val) : c.val}"
+                                {(() => {
+                                  if (c.col === 'connection_id') {
+                                    return `"${connections.find((conn: any) => String(conn.id) === String(c.val))?.sheet_name || c.val}"`;
+                                  }
+                                  if (c.col === 'project_id') {
+                                    const foundProj = projects.find((p: any) => String(p.id) === String(c.val));
+                                    if (foundProj) {
+                                      return (
+                                        <>
+                                          <span>"{foundProj.name}{foundProj.code ? ` (${foundProj.code})` : ''}"</span>
+                                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: 4, border: '1px solid #fde68a' }}>
+                                            {t('Khớp Tên, Mã & ID')}
+                                          </span>
+                                        </>
+                                      );
+                                    }
+                                    return `"${c.val}"`;
+                                  }
+                                  return `"${c.val}"`;
+                                })()}
                               </span>
                             )}
                           </div>
@@ -1024,23 +1044,28 @@ const RuleSettingsInner = () => {
                                 disabled={isReadOnly}
                               />
                             ) : c.col === 'project_id' ? (
-                              <CustomSelect
-                                options={[
-                                  { value: '', label: t('Chọn Dự án...') },
-                                  ...projects.map(proj => ({
-                                    value: String(proj.id),
-                                    label: proj.code ? `${proj.name} (${proj.code})` : proj.name
-                                  }))
-                                ]}
-                                value={c.val}
-                                onChange={v => {
-                                  const newB = [...branches];
-                                  newB[bIndex].conditions[i].val = String(v);
-                                  setBranches(newB);
-                                }}
-                                disabled={isReadOnly}
-                                placeholder={t("Chọn Dự án...")}
-                              />
+                              <div>
+                                <CustomSelect
+                                  options={[
+                                    { value: '', label: t('Chọn Dự án...') },
+                                    ...projects.map(proj => ({
+                                      value: String(proj.id),
+                                      label: proj.code ? `${proj.name} (${proj.code})` : proj.name
+                                    }))
+                                  ]}
+                                  value={c.val}
+                                  onChange={v => {
+                                    const newB = [...branches];
+                                    newB[bIndex].conditions[i].val = String(v);
+                                    setBranches(newB);
+                                  }}
+                                  disabled={isReadOnly}
+                                  placeholder={t("Chọn Dự án...")}
+                                />
+                                <div style={{ fontSize: '0.72rem', color: '#059669', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
+                                  <span>✓ Tự động khớp cả <strong>Tên dự án</strong>, <strong>Mã dự án (Code)</strong> và <strong>ID</strong> từ Sheet/Webhook</span>
+                                </div>
+                              </div>
                             ) : (
                               <input
                                 style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}

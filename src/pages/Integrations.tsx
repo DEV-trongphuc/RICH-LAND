@@ -2860,9 +2860,14 @@ print(res.json())`}
                                 <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Nếu không gửi, tự lấy: <strong>{selected.default_source || 'Website'}</strong></td>
                               </tr>
                               <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Phân loại / Dự án (Type)</td>
-                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>type, du_an, project, san_pham</td>
+                                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Phân loại Lead (Type)</td>
+                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>type, loai, loai_data, lead_type, demand, loai_hinh, loai_khach, phan_loai</td>
                                 <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Nếu không gửi, tự lấy: <strong>{selected.default_type || 'Nóng'}</strong></td>
+                              </tr>
+                              <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-primary)' }}>Dự án / Khu vực (Project)</td>
+                                <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#6366f1' }}>du_an, project, project_name, ten_du_an, preferred_location, vi_tri, khu_vuc, project_id</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>Tự động nhận diện Dự án trong CRM (khớp cả Tên, Mã, ID) để định tuyến chia số & hiển thị hồ sơ khách</td>
                               </tr>
                               <tr style={{ background: 'rgba(99, 102, 241, 0.05)' }}>
                                 <td style={{ padding: '8px 10px', fontWeight: 800, color: '#6366f1' }}>TẤT CẢ TRƯỜNG KHÁC</td>

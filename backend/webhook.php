@@ -370,6 +370,24 @@ $demand_type = $findSmartField('demand_type', ['demand_type', 'muc_dich', 'muc_d
 $property_type = $findSmartField('property_type', ['property_type', 'loai_bds', 'loai_bat_dong_san', 'product_type', 'loai_can_ho', 'san_pham']);
 $bedroom_count = $findSmartField('bedroom_count', ['bedroom_count', 'so_phong_ngu', 'phong_ngu', 'bedrooms', 'so_pn']);
 $preferred_location = $findSmartField('preferred_location', ['preferred_location', 'project', 'du_an', 'vi_tri', 'khu_vuc', 'project_name', 'ten_du_an']);
+$rawProjId = $findSmartField('project_id', ['project_id', 'id_du_an', 'id_project']);
+$project_id = null;
+if (!empty($rawProjId) && is_numeric($rawProjId)) {
+    $project_id = (int)$rawProjId;
+} elseif (!empty($preferred_location)) {
+    $pStmt = $conn->prepare("SELECT id, name FROM projects WHERE LOWER(name) = LOWER(?) OR LOWER(code) = LOWER(?) OR id = ? LIMIT 1");
+    if ($pStmt) {
+        $cleanLoc = trim($preferred_location);
+        $asId = is_numeric($cleanLoc) ? (int)$cleanLoc : 0;
+        $pStmt->bind_param("ssi", $cleanLoc, $cleanLoc, $asId);
+        $pStmt->execute();
+        $pRes = $pStmt->get_result()->fetch_assoc();
+        $pStmt->close();
+        if ($pRes) {
+            $project_id = (int)$pRes['id'];
+        }
+    }
+}
 $address = $findSmartField('address', ['address', 'dia_chi', 'full_address', 'dia_chi_nha']);
 $city = $findSmartField('city', ['city', 'tinh', 'thanh_pho', 'province', 'tinh_thanh']);
 $district = $findSmartField('district', ['district', 'quan', 'huyen', 'quan_huyen']);
@@ -489,6 +507,12 @@ $data['name'] = $name;
 $data['note'] = $note;
 $data['source'] = $source;
 $data['type'] = $type;
+if ($project_id) $data['project_id'] = $project_id;
+if (!empty($preferred_location)) {
+    $data['preferred_location'] = $preferred_location;
+    $data['project'] = $preferred_location;
+    $data['du_an'] = $preferred_location;
+}
 if (!empty($platform)) $data['platform'] = $platform;
 if (!empty($budget)) $data['budget'] = $budget;
 if (!empty($utm_campaign)) $data['utm_campaign'] = $utm_campaign;
@@ -508,7 +532,7 @@ if (is_array($ruleResult)) {
     $inject = $ruleResult['inject'] ?? [];
     
     // Áp dụng ghi đè dữ liệu (Inject Fields)
-    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email', 'platform', 'budget'];
+    $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email', 'platform', 'budget', 'project_id', 'preferred_location'];
     foreach ($inject as $k => $v) {
         if (in_array($k, $standardFields)) {
             if ($k === 'source') $source = $v;
@@ -519,6 +543,16 @@ if (is_array($ruleResult)) {
             if ($k === 'name') $name = $v;
             if ($k === 'phone') $phone = normalizePhone($v);
             if ($k === 'email') $email = trim($v);
+            if ($k === 'project_id') {
+                $project_id = (int)$v;
+                $pLookup = $conn->query("SELECT name FROM projects WHERE id = " . (int)$v . " LIMIT 1");
+                if ($pLookup && $pRow = $pLookup->fetch_assoc()) {
+                    if (empty($preferred_location)) {
+                        $preferred_location = $pRow['name'];
+                    }
+                }
+            }
+            if ($k === 'preferred_location') $preferred_location = $v;
         } else {
             // Append custom fields to note
             $note .= "\n[$k]: $v";
@@ -1157,6 +1191,21 @@ try {
 
     if ($leadId && !empty($mappings)) {
         saveMappedExtendedFields($conn, $leadId, $data, $mappings);
+    }
+    
+    if ($leadId && ($project_id || !empty($preferred_location))) {
+        $updProj = $conn->prepare("UPDATE leads SET project_id = COALESCE(?, project_id), preferred_location = IF(? != '', ?, preferred_location) WHERE id = ?");
+        if ($updProj) {
+            $updProj->bind_param("issi", $project_id, $preferred_location, $preferred_location, $leadId);
+            $updProj->execute();
+            $updProj->close();
+        }
+        $updContact = $conn->prepare("UPDATE contacts SET project_id = COALESCE(?, project_id), preferred_location = IF(? != '', ?, preferred_location) WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
+        if ($updContact) {
+            $updContact->bind_param("issss", $project_id, $preferred_location, $preferred_location, $phone, $email);
+            $updContact->execute();
+            $updContact->close();
+        }
     }
     
     // Save AI screening result if evaluated
