@@ -3896,7 +3896,7 @@ textarea, .form-textarea, textarea.form-input, textarea.form-control {
   inset: 0;
   background: rgba(0, 0, 0, 0.65) !important;
   backdrop-filter: blur(4px);
-  z-index: 10500 !important;
+  z-index: 10500;
   cursor: pointer !important;
 }
 
@@ -6190,8 +6190,12 @@ body > div:not(#root):has(.custom-toast) {
 }
 
 /* CustomSelect Stacking Context Breakout - prevents open dropdowns from being trapped under sibling inputs */
-div:has(> .custom-select-wrapper.open),
-div:has(.custom-select-wrapper.open),
-div:has(> * > .custom-select-wrapper.open) {
-  z-index: 1500 !important;
+.form-group:has(.custom-select-wrapper.open),
+.form-row:has(.custom-select-wrapper.open),
+.filter-item:has(.custom-select-wrapper.open),
+.filter-group:has(.custom-select-wrapper.open),
+div:not([class*="drawer"]):not([class*="modal"]):not([class*="dialog"]):not([class*="sheet"]):not([class*="popup"]):not([class*="overlay"]):not(#root):not(body > div):has(> .custom-select-wrapper.open),
+div:not([class*="drawer"]):not([class*="modal"]):not([class*="dialog"]):not([class*="sheet"]):not([class*="popup"]):not([class*="overlay"]):not(#root):not(body > div):has(> * > .custom-select-wrapper.open) {
+  z-index: 50;
+  position: relative;
 }

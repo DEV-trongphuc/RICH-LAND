@@ -358,7 +358,9 @@ $name = $findSmartField('name', ['name', 'full_name', 'fullname', 'ho_ten', 'hot
 $email = trim($findSmartField('email', ['email', 'mail', 'contact_email', 'customer_email', 'gmail', 'e_mail', 'dia_chi_email', 'client_email', 'email_address']));
 $note = $findSmartField('note', ['note', 'ghi_chu', 'ghichu', 'message', 'noidung', 'noi_dung', 'content', 'message_content', 'comment', 'description', 'thong_tin_them', 'loi_nhan', 'nhu_cau_chi_tiet', 'yeu_cau', 'nhu_cau', 'chi_tiet', 'remark']);
 $source = $findSmartField('source', ['source', 'nguon', 'utm_source', 'origin', 'channel', 'lead_source', 'nguon_data', 'source_name']);
-$type = $findSmartField('type', ['type', 'loai', 'loai_data', 'lead_type', 'demand', 'loai_hinh', 'loai_khach', 'phan_loai']);
+$type = $findSmartField('type', ['type', 'loai', 'loai_data', 'lead_type', 'demand', 'loai_khach', 'phan_loai']);
+$loai_lead = $findSmartField('loai_lead', ['loai_lead', 'lead_type']);
+$lead_phan_loai = $findSmartField('lead_phan_loai', ['lead_phan_loai', 'rank', 'lead_rank', 'phan_loai_lead']);
 $platform = $findSmartField('platform', ['platform', 'nen_tang', 'utm_platform', 'ad_platform', 'kenh', 'traffic_source']);
 $utm_campaign = $findSmartField('utm_campaign', ['utm_campaign', 'campaign', 'campaign_name', 'ten_chien_dich', 'chien_dich', 'campaign_id']);
 $utm_medium = $findSmartField('utm_medium', ['utm_medium', 'medium', 'hinh_thuc']);
@@ -367,7 +369,7 @@ $utm_term = $findSmartField('utm_term', ['utm_term', 'term', 'tu_khoa', 'keyword
 $form_name = $findSmartField('form_name', ['form_name', 'form_id', 'ten_form', 'form', 'landing_page_name', 'page_name']);
 $budget = $findSmartField('budget', ['budget', 'ngan_sach', 'tai_chinh', 'price', 'gia', 'gia_tien', 'muc_gia', 'khoang_gia']);
 $demand_type = $findSmartField('demand_type', ['demand_type', 'muc_dich', 'muc_dich_mua', 'nhu_cau_mua', 'purpose']);
-$property_type = $findSmartField('property_type', ['property_type', 'loai_bds', 'loai_bat_dong_san', 'product_type', 'loai_can_ho', 'san_pham']);
+$property_type = $findSmartField('property_type', ['property_type', 'loai_bds', 'loai_bat_dong_san', 'product_type', 'loai_can_ho', 'san_pham', 'loai_hinh']);
 $bedroom_count = $findSmartField('bedroom_count', ['bedroom_count', 'so_phong_ngu', 'phong_ngu', 'bedrooms', 'so_pn']);
 $preferred_location = $findSmartField('preferred_location', ['preferred_location', 'project', 'du_an', 'vi_tri', 'khu_vuc', 'project_name', 'ten_du_an']);
 $rawProjId = $findSmartField('project_id', ['project_id', 'id_du_an', 'id_project']);
@@ -520,6 +522,12 @@ if (!empty($utm_medium)) $data['utm_medium'] = $utm_medium;
 if (!empty($utm_content)) $data['utm_content'] = $utm_content;
 if (!empty($utm_term)) $data['utm_term'] = $utm_term;
 if (!empty($form_name)) $data['form_name'] = $form_name;
+if (!empty($loai_lead)) $data['loai_lead'] = $loai_lead;
+if (!empty($lead_phan_loai)) $data['lead_phan_loai'] = $lead_phan_loai;
+if (!empty($property_type)) {
+    $data['property_type'] = $property_type;
+    $data['loai_hinh'] = $property_type;
+}
 
 $ruleResult = evaluateRules($conn, $data, $source, $type, $connectionId, $connectionType);
 $targetRoundId = null;

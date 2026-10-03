@@ -730,14 +730,33 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
                 $targetProj = $projectsCache[(int)$val];
                 $normTargetName = normalizeTextForComparison($targetProj['name']);
                 $normTargetCode = normalizeTextForComparison($targetProj['code'] ?? '');
-                if (
+                
+                $isMatchedProj = (
                     $normLeadText === (string)$val ||
                     $normLeadText === $normTargetName ||
                     $normLeadText === $normTargetCode ||
                     mb_strpos($normLeadText, $normTargetName) !== false ||
                     mb_strpos($normTargetName, $normLeadText) !== false ||
                     (!empty($normTargetCode) && (mb_strpos($normLeadText, $normTargetCode) !== false || mb_strpos($normTargetCode, $normLeadText) !== false))
-                ) {
+                );
+
+                if (!$isMatchedProj) {
+                    $tokens = array_filter(explode(' ', $normLeadText));
+                    if (count($tokens) >= 2) {
+                        $allTokensFound = true;
+                        foreach ($tokens as $tok) {
+                            if (mb_strlen($tok) >= 2 && mb_strpos($normTargetName, $tok) === false && mb_strpos($normTargetCode, $tok) === false) {
+                                $allTokensFound = false;
+                                break;
+                            }
+                        }
+                        if ($allTokensFound) {
+                            $isMatchedProj = true;
+                        }
+                    }
+                }
+
+                if ($isMatchedProj) {
                     return in_array(strtolower($op), ['equals', 'contains']);
                 }
             }
@@ -4361,8 +4380,42 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             $hasOwnerContact = true;
         }
 
-        $loaiLead = !empty($lead['loai_lead']) ? $lead['loai_lead'] : (!empty($lead['type']) ? $lead['type'] : null);
-        $leadPhanLoai = !empty($lead['lead_phan_loai']) ? $lead['lead_phan_loai'] : null;
+        $noteText = $lead['note'] ?? '';
+        $noteLoaiLead = null;
+        $noteLeadPhanLoai = null;
+        if (!empty($noteText)) {
+            if (preg_match('/^[•\-\*]?\s*loai_lead\s*:\s*(.*)$/mi', $noteText, $mLoai)) {
+                $noteLoaiLead = trim($mLoai[1]);
+            }
+            if (preg_match('/^[•\-\*]?\s*lead_phan_loai\s*:\s*(.*)$/mi', $noteText, $mRank)) {
+                $noteLeadPhanLoai = trim($mRank[1]);
+            }
+        }
+
+        $loaiLead = !empty($lead['loai_lead']) ? $lead['loai_lead'] : ($noteLoaiLead ?: (!empty($lead['type']) ? $lead['type'] : null));
+        $leadPhanLoai = !empty($lead['lead_phan_loai']) ? $lead['lead_phan_loai'] : ($noteLeadPhanLoai ?: null);
+
+        // Sanitize: Không để loại hình căn hộ (Duplex, Penthouse, 1PN...) bị gán nhầm vào loại lead
+        $aptKeywords = ['duplex', 'penthouse', '1pn', '2pn', '3pn', 'shophouse', 'villa', 'studio'];
+        if ($loaiLead) {
+            $lLower = strtolower($loaiLead);
+            foreach ($aptKeywords as $kw) {
+                if (strpos($lLower, $kw) !== false) {
+                    $loaiLead = $noteLoaiLead ?: null;
+                    break;
+                }
+            }
+        }
+        if ($type) {
+            $tLower = strtolower($type);
+            foreach ($aptKeywords as $kw) {
+                if (strpos($tLower, $kw) !== false) {
+                    $type = $loaiLead ?: 'Nóng';
+                    break;
+                }
+            }
+        }
+
         $facebookLink = !empty($lead['facebook_link']) ? $lead['facebook_link'] : null;
         $linkVideoAds = !empty($lead['link_video_ads']) ? $lead['link_video_ads'] : null;
 
