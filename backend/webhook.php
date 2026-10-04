@@ -370,6 +370,16 @@ $form_name = $findSmartField('form_name', ['form_name', 'form_id', 'ten_form', '
 $budget = $findSmartField('budget', ['budget', 'ngan_sach', 'tai_chinh', 'price', 'gia', 'gia_tien', 'muc_gia', 'khoang_gia']);
 $demand_type = $findSmartField('demand_type', ['demand_type', 'muc_dich', 'muc_dich_mua', 'nhu_cau_mua', 'purpose']);
 $property_type = $findSmartField('property_type', ['property_type', 'loai_bds', 'loai_bat_dong_san', 'product_type', 'loai_can_ho', 'san_pham', 'loai_hinh']);
+$loai_hinh = $findSmartField('loai_hinh', ['loai_hinh', 'loai_can_ho', 'so_phong_ngu', 'phong_ngu', 'so_pn', 'bedroom_count']);
+if (empty($property_type) && !empty($loai_hinh)) {
+    $property_type = $loai_hinh;
+}
+if (empty($loai_hinh) && !empty($property_type)) {
+    $loai_hinh = $property_type;
+}
+$app_lienhe = $findSmartField('app_lienhe', ['app_lienhe', 'ung_dung_lien_he', 'ung_dung', 'app', 'contact_app', 'social_app', 'kenh_lien_he', 'zalo_app']);
+$hinh_thuc_tt = $findSmartField('hinh_thuc_tt', ['hinh_thuc_tt', 'hinh_thuc_thanh_toan', 'phuong_thuc_tt', 'payment_method']);
+$time_lienhe = $findSmartField('time_lienhe', ['time_lienhe', 'thoi_gian_lien_he', 'contact_time']);
 $bedroom_count = $findSmartField('bedroom_count', ['bedroom_count', 'so_phong_ngu', 'phong_ngu', 'bedrooms', 'so_pn']);
 $preferred_location = $findSmartField('preferred_location', ['preferred_location', 'project', 'du_an', 'vi_tri', 'khu_vuc', 'project_name', 'ten_du_an']);
 $rawProjId = $findSmartField('project_id', ['project_id', 'id_du_an', 'id_project']);
@@ -412,7 +422,37 @@ if (empty($type)) {
 // Universal Catch-All: Collect 100% of residual / extra fields into Note
 if ($autoAppendNote === 1 || $connectionType === 'webhook' || $connectionType === 'landing_page') {
     $extraNotes = [];
+
+    // Các trường Form Marketing quan trọng KHÔNG BAO GIỜ BỊ LOẠI BỎ khỏi [Dữ liệu Webhook bổ sung]
+    $essentialFormKeys = [
+        'loai_hinh' => !empty($loai_hinh) ? $loai_hinh : (!empty($property_type) ? $property_type : ($data['loai_hinh'] ?? '')),
+        'app_lienhe' => !empty($app_lienhe) ? $app_lienhe : ($data['app_lienhe'] ?? ''),
+        'hinh_thuc_tt' => !empty($hinh_thuc_tt) ? $hinh_thuc_tt : ($data['hinh_thuc_tt'] ?? ''),
+        'time_lienhe' => !empty($time_lienhe) ? $time_lienhe : ($data['time_lienhe'] ?? ''),
+        'nhu_cau' => !empty($demand_type) ? $demand_type : ($data['nhu_cau'] ?? ''),
+        'tieu_chi' => $data['tieu_chi'] ?? '',
+        'san_pham' => $data['san_pham'] ?? '',
+        'tinh_trang' => $data['tinh_trang'] ?? '',
+        'birthday' => !empty($dob) ? $dob : ($data['birthday'] ?? ''),
+        'city' => !empty($city) ? $city : ($data['city'] ?? ''),
+        'country' => $data['country'] ?? ''
+    ];
+
+    $processedKeys = [];
     foreach ($data as $k => $v) {
+        $kLower = strtolower(trim((string)$k));
+        if (isset($essentialFormKeys[$kLower])) {
+            $val = trim((string)$v);
+            if ($val === '' && !empty($essentialFormKeys[$kLower])) {
+                $val = trim((string)$essentialFormKeys[$kLower]);
+            }
+            if ($val !== '') {
+                $extraNotes[] = "• $kLower: $val";
+                $processedKeys[$kLower] = true;
+            }
+            continue;
+        }
+
         if (in_array($k, $matchedKeys)) continue;
         if (is_array($v)) {
             $valStr = json_encode($v, JSON_UNESCAPED_UNICODE);
@@ -421,8 +461,18 @@ if ($autoAppendNote === 1 || $connectionType === 'webhook' || $connectionType ==
         }
         if ($valStr !== '') {
             $extraNotes[] = "• $k: $valStr";
+            $processedKeys[$kLower] = true;
         }
     }
+
+    // Đảm bảo các trường Form bắt buộc nếu có giá trị ngoài payload mà chưa ghi thì ghi thêm
+    foreach ($essentialFormKeys as $ek => $ev) {
+        if (!empty($ev) && empty($processedKeys[$ek])) {
+            $extraNotes[] = "• $ek: " . trim((string)$ev);
+            $processedKeys[$ek] = true;
+        }
+    }
+
     if (!empty($extraNotes)) {
         $extraHeader = "\n\n[Dữ liệu Webhook bổ sung]:\n" . implode("\n", $extraNotes);
         $note = !empty($note) ? ($note . $extraHeader) : trim($extraHeader);
@@ -762,6 +812,24 @@ if ($isSilent == 1) {
         }
         $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
         logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.', false);
+
+        // Cập nhật property_type nếu có
+        $propTypeVal = !empty($property_type) ? $property_type : (!empty($loai_hinh) ? $loai_hinh : null);
+        if ($leadId && $propTypeVal) {
+            $updPropL = $conn->prepare("UPDATE leads SET property_type = ? WHERE id = ?");
+            if ($updPropL) {
+                $updPropL->bind_param("si", $propTypeVal, $leadId);
+                $updPropL->execute();
+                $updPropL->close();
+            }
+            $updPropC = $conn->prepare("UPDATE contacts SET property_type = ? WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
+            if ($updPropC) {
+                $updPropC->bind_param("sss", $propTypeVal, $phone, $email);
+                $updPropC->execute();
+                $updPropC->close();
+            }
+        }
+
         $conn->commit();
         if (!empty($leadId)) {
             triggerTwoWaySync($conn, $leadId);
@@ -1213,6 +1281,23 @@ try {
             $updContact->bind_param("issss", $project_id, $preferred_location, $preferred_location, $phone, $email);
             $updContact->execute();
             $updContact->close();
+        }
+    }
+
+    // Cập nhật property_type và thông tin form đăng ký cho leads & contacts
+    $propTypeVal = !empty($property_type) ? $property_type : (!empty($loai_hinh) ? $loai_hinh : null);
+    if ($leadId && $propTypeVal) {
+        $updPropL = $conn->prepare("UPDATE leads SET property_type = ? WHERE id = ?");
+        if ($updPropL) {
+            $updPropL->bind_param("si", $propTypeVal, $leadId);
+            $updPropL->execute();
+            $updPropL->close();
+        }
+        $updPropC = $conn->prepare("UPDATE contacts SET property_type = ? WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
+        if ($updPropC) {
+            $updPropC->bind_param("sss", $propTypeVal, $phone, $email);
+            $updPropC->execute();
+            $updPropC->close();
         }
     }
     

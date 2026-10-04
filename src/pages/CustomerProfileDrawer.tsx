@@ -7769,14 +7769,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 if (k === 'city') return formData.city || contact?.city || '';
                                 if (k === 'country') return formData.country || contact?.country || '';
                                 if (k === 'birthday') return formData.birthday || contact?.birthday || formData.dob || contact?.dob || '';
-                                if (k === 'loai_hinh') return webhookData.parsed['loai_hinh'] || formData.loai_hinh || contact?.loai_hinh || formData.property_type || contact?.property_type || formData.type || contact?.type || '';
+                                if (k === 'loai_hinh') {
+                                  const wbLoai = webhookData.parsed['loai_hinh'] || webhookData.parsed['property_type'] || formData.loai_hinh || contact?.loai_hinh || formData.property_type || contact?.property_type || formData.type || contact?.type || '';
+                                  if (wbLoai) return wbLoai;
+                                  const fullNote = (contact?.notes || formData.notes || '') + ' ' + (contact?.note || '');
+                                  const loaiMatch = fullNote.match(/(?:mấy phòng ngủ|may phong ngu|loại căn hộ|loai can ho)[^:]*:\s*([^\n\r,•\-]+)/i);
+                                  if (loaiMatch && loaiMatch[1]) return loaiMatch[1].trim();
+                                  return '';
+                                }
                                 if (k === 'nhu_cau') return webhookData.parsed['nhu_cau'] || formData.demand_type || contact?.demand_type || formData.nhu_cau || contact?.nhu_cau || '';
                                 if (k === 'san_pham') return webhookData.parsed['san_pham'] || formData.san_pham || contact?.san_pham || '';
                                 if (k === 'tieu_chi') return webhookData.parsed['tieu_chi'] || formData.tieu_chi || contact?.tieu_chi || '';
                                 if (k === 'tinh_trang') return webhookData.parsed['tinh_trang'] || formData.tinh_trang || contact?.tinh_trang || '';
                                 if (k === 'hinh_thuc_tt') return webhookData.parsed['hinh_thuc_tt'] || formData.hinh_thuc_tt || contact?.hinh_thuc_tt || '';
                                 if (k === 'time_lienhe') return webhookData.parsed['time_lienhe'] || formData.time_lienhe || contact?.time_lienhe || '';
-                                if (k === 'app_lienhe') return webhookData.parsed['app_lienhe'] || formData.app_lienhe || contact?.app_lienhe || '';
+                                if (k === 'app_lienhe') {
+                                  const wbApp = webhookData.parsed['app_lienhe'] || webhookData.parsed['ung_dung_lien_he'] || webhookData.parsed['app'] || formData.app_lienhe || contact?.app_lienhe || '';
+                                  if (wbApp) return wbApp;
+                                  const fullNote = (contact?.notes || formData.notes || '') + ' ' + (contact?.note || '');
+                                  const appMatch = fullNote.match(/(?:ứng dụng nào|ung dung nao|app liên hệ|app lien he)[^:]*:\s*([^\n\r,•\-]+)/i);
+                                  if (appMatch && appMatch[1]) return appMatch[1].trim();
+                                  return '';
+                                }
                                 return '';
                               };
 

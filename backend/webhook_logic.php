@@ -2200,6 +2200,147 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
     }
 }
 
+/**
+ * Gửi thông báo đa kênh (Web In-App, Telegram, Zalo, Email) cho Sale khi Lead bị thu hồi tự động do quá hạn tiếp nhận
+ */
+function sendSaleLeadRecalledNotification($conn, $leadId, $oldConsultantId, $recallMinutes = 2, $roundName = 'Vòng xoay') {
+    if (!$leadId || !$oldConsultantId) return;
+
+    try {
+        // 1. Lấy thông tin Sale bị thu hồi
+        $saleStmt = $conn->prepare("SELECT id, full_name, email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ?");
+        if (!$saleStmt) return;
+        $saleStmt->bind_param("i", $oldConsultantId);
+        $saleStmt->execute();
+        $sale = $saleStmt->get_result()->fetch_assoc();
+        $saleStmt->close();
+
+        if (!$sale) return;
+
+        // 2. Lấy thông tin Lead
+        $leadStmt = $conn->prepare("SELECT name, phone, email, source, type FROM leads WHERE id = ?");
+        if (!$leadStmt) return;
+        $leadStmt->bind_param("i", $leadId);
+        $leadStmt->execute();
+        $lead = $leadStmt->get_result()->fetch_assoc();
+        $leadStmt->close();
+
+        $custName = !empty($lead['name']) ? $lead['name'] : 'Khách hàng';
+        $custPhone = !empty($lead['phone']) ? $lead['phone'] : '';
+
+        // Che sao tên & SĐT để bảo mật
+        $maskedName = $custName;
+        if (!empty($custName) && $custName !== 'Khách hàng') {
+            $nameParts = explode(' ', trim($custName));
+            if (count($nameParts) > 1) {
+                $lastPart = array_pop($nameParts);
+                $maskedName = implode(' ', $nameParts) . ' ' . str_repeat('*', mb_strlen($lastPart, 'UTF-8'));
+            } else {
+                $maskedName = mb_substr($custName, 0, 2, 'UTF-8') . '***';
+            }
+        }
+
+        $maskedPhone = '';
+        if (!empty($custPhone)) {
+            $trimmed = trim($custPhone);
+            if (strlen($trimmed) >= 7) {
+                $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
+            } else {
+                $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', max(1, strlen($trimmed) - 2));
+            }
+        }
+
+        $saleName = $sale['full_name'] ?? 'Bạn';
+        $roundDisplay = !empty($roundName) ? $roundName : 'Vòng xoay';
+        $minsDisplay = $recallMinutes > 0 ? (int)$recallMinutes : 2;
+
+        // A. Kênh 1: Chuông thông báo Web In-App (bảng notifications)
+        try {
+            $notifTitle = "⚠️ Thu hồi Lead do quá hạn: " . $maskedName;
+            $notifBody = "Lead {$maskedName}" . ($maskedPhone ? " ({$maskedPhone})" : "") . " thuộc vòng \"{$roundDisplay}\" đã bị thu hồi do bạn không bấm tiếp nhận sau {$minsDisplay} phút và đã chuyển cho nhân sự khác.";
+            $insN = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'lead_recalled', '/contacts')");
+            if ($insN) {
+                $insN->bind_param("iss", $oldConsultantId, $notifTitle, $notifBody);
+                $insN->execute();
+                $insN->close();
+            }
+        } catch (\Throwable $eWeb) {
+            error_log("Recall Web Notif Error: " . $eWeb->getMessage());
+        }
+
+        // B. Kênh 2: Telegram Bot
+        $teleBotToken = get_system_setting($conn, 'telegram_bot_token');
+        if (!empty($teleBotToken) && !empty($sale['telegram_chat_id'])) {
+            require_once __DIR__ . '/telegram_bot.php';
+            $teleMsg = "⚠️ <b>[ THÔNG BÁO THU HỒI LEAD ]</b> ⚠️\n"
+                . "━━━━━━━━━━━━━━━━━━━━\n"
+                . "Xin chào <b>" . htmlspecialchars($saleName) . "</b>,\n"
+                . "Lead khách hàng: <b>" . htmlspecialchars($maskedName) . "</b>" . ($maskedPhone ? " (" . htmlspecialchars($maskedPhone) . ")" : "") . "\n"
+                . "⭕ Vòng phân bổ: <b>" . htmlspecialchars($roundDisplay) . "</b>\n"
+                . "⏰ Thời hạn tiếp nhận: <b>{$minsDisplay} phút</b>\n\n"
+                . "❌ <b>Trạng thái:</b> ĐÃ THU HỒI TỰ ĐỘNG\n"
+                . "📝 <b>Lý do:</b> Bạn đã không bấm tiếp nhận lead trong vòng {$minsDisplay} phút. Lead đã được chuyển sang nhân sự khác trong vòng quay để chăm sóc kịp thời.\n\n"
+                . "<i>💡 Vui lòng chú ý thông báo và bấm tiếp nhận nhanh hơn ở các lượt phân bổ tiếp theo!</i>";
+
+            if (function_exists('sendTelegramMessage')) {
+                try {
+                    sendTelegramMessage($teleBotToken, $sale['telegram_chat_id'], $teleMsg, true, 0);
+                } catch (\Throwable $eTg) {
+                    error_log("Recall Telegram Error: " . $eTg->getMessage());
+                }
+            }
+        }
+
+        // C. Kênh 3: Zalo Bot
+        $zaloBotToken = get_system_setting($conn, 'zalo_bot_token');
+        if (!empty($zaloBotToken) && !empty($sale['zalo_chat_id'])) {
+            require_once __DIR__ . '/zalo_bot.php';
+            $zaloMsg = "⚠️ [ THÔNG BÁO THU HỒI LEAD ] ⚠️\n"
+                . "━━━━━━━━━━━━━━━━━━━━\n"
+                . "Xin chào {$saleName},\n"
+                . "Lead: {$maskedName}" . ($maskedPhone ? " ({$maskedPhone})" : "") . "\n"
+                . "Vòng: {$roundDisplay}\n\n"
+                . "❌ Trạng thái: ĐÃ THU HỒI TỰ ĐỘNG\n"
+                . "Lý do: Không bấm tiếp nhận sau {$minsDisplay} phút. Lead đã được chuyển cho nhân sự khác.\n"
+                . "💡 Chú ý tiếp nhận kịp thời ở lượt phân bổ tiếp theo!";
+
+            if (function_exists('sendZaloMessage')) {
+                try {
+                    sendZaloMessage($zaloBotToken, $sale['zalo_chat_id'], $zaloMsg, true, 0);
+                } catch (\Throwable $eZa) {
+                    error_log("Recall Zalo Error: " . $eZa->getMessage());
+                }
+            }
+        }
+
+        // D. Kênh 4: Email
+        if (!empty($sale['email'])) {
+            require_once __DIR__ . '/mailer.php';
+            $emailSubj = "[Rich Land CRM] ⚠️ Thu hồi Lead do quá hạn tiếp nhận: " . $maskedName;
+            $emailBody = "<h3>⚠️ Thông báo Thu hồi Lead tự động!</h3>"
+                . "<p>Chào <strong>" . htmlspecialchars($saleName) . "</strong>,</p>"
+                . "<p>Hệ thống vừa tự động thu hồi một Lead đã phân bổ cho bạn:</p>"
+                . "<ul>"
+                . "    <li><strong>Khách hàng:</strong> " . htmlspecialchars($maskedName) . "</li>"
+                . "    <li><strong>Số điện thoại:</strong> " . htmlspecialchars($maskedPhone ?: 'Không có') . "</li>"
+                . "    <li><strong>Vòng phân bổ:</strong> " . htmlspecialchars($roundDisplay) . "</li>"
+                . "    <li><strong>Lý do:</strong> Quá hạn tiếp nhận sau " . $minsDisplay . " phút.</li>"
+                . "</ul>"
+                . "<p>Lead đã được tự động chuyển sang nhân sự khác trong vòng quay. Vui lòng theo dõi và phản hồi kịp thời ở các lượt tiếp theo.</p>";
+
+            if (function_exists('sendEmailNotification')) {
+                try {
+                    sendEmailNotification($sale['email'], $emailSubj, 'Thu hồi Lead quá hạn', $emailBody, '');
+                } catch (\Throwable $eEm) {
+                    error_log("Recall Email Error: " . $eEm->getMessage());
+                }
+            }
+        }
+    } catch (\Throwable $e) {
+        error_log("Error in sendSaleLeadRecalledNotification: " . $e->getMessage());
+    }
+}
+
 function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $message, $triggerSync = true, $customDate = null)
 {
     if ($customDate) {

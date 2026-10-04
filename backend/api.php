@@ -4381,13 +4381,34 @@ switch ($action) {
         // Admin/Manager can ALWAYS toggle without registration deadline restrictions
         $canToggle = $isAdminOrMgr ? true : (time() < $deadline);
 
+        // Kiểm tra chế độ đăng ký trực đêm & trạng thái điểm danh ban ngày
+        $regMode = 'free';
+        $resMode = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_registration_mode' LIMIT 1");
+        if ($resMode && $mRow = $resMode->fetch_assoc()) {
+            $regMode = !empty($mRow['setting_value']) ? $mRow['setting_value'] : 'free';
+        }
+
+        $hasDayCheckin = false;
+        $stmtCI = $conn->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status != 'rejected' LIMIT 1");
+        if ($stmtCI) {
+            $stmtCI->bind_param("is", $dbUserId, $shiftDate);
+            $stmtCI->execute();
+            $hasDayCheckin = (bool)$stmtCI->get_result()->fetch_assoc();
+            $stmtCI->close();
+        }
+
+        $canRegisterByMode = ($regMode === 'free' || $hasDayCheckin || $isAdminOrMgr);
+
         echo json_encode([
             'success' => true, 
             'registered' => ($res !== null),
             'approved' => ($res !== null ? (int)$res['approved'] : 0),
             'shift_date' => $shiftDate,
             'can_toggle' => $canToggle,
-            'deadline_time' => date('H:i', $deadline)
+            'deadline_time' => date('H:i', $deadline),
+            'registration_mode' => $regMode,
+            'has_day_checkin' => $hasDayCheckin,
+            'can_register_by_mode' => $canRegisterByMode
         ]);
         break;
 
@@ -4470,6 +4491,32 @@ switch ($action) {
         }
 
         if ($register) {
+            // Kiểm tra Chế độ Đăng ký trực đêm (Nếu bật require_day_checkin -> Yêu cầu phải checkin ban ngày trước)
+            if (!$isAdminOrMgr) {
+                $regMode = 'free';
+                $resMode = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_registration_mode' LIMIT 1");
+                if ($resMode && $mRow = $resMode->fetch_assoc()) {
+                    $regMode = !empty($mRow['setting_value']) ? $mRow['setting_value'] : 'free';
+                }
+
+                if ($regMode === 'require_day_checkin') {
+                    $stmtCI = $conn->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status != 'rejected' LIMIT 1");
+                    $stmtCI->bind_param("is", $dbUserId, $shiftDate);
+                    $stmtCI->execute();
+                    $hasDayCheckin = (bool)$stmtCI->get_result()->fetch_assoc();
+                    $stmtCI->close();
+
+                    if (!$hasDayCheckin) {
+                        echo json_encode([
+                            'success' => false,
+                            'require_day_checkin' => true,
+                            'message' => 'Hệ thống đang áp dụng quy định: Chỉ những nhân sự đã hoàn tất Điểm danh ca ngày hôm nay mới được phép đăng ký ca trực đêm. Vui lòng điểm danh trước!'
+                        ]);
+                        break;
+                    }
+                }
+            }
+
             // Check if user is already registered for today to prevent duplicate requests/notifications
             $stmtCheckReg = $conn->prepare("SELECT approved FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? LIMIT 1");
             $stmtCheckReg->bind_param("is", $dbUserId, $shiftDate);

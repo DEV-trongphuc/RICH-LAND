@@ -348,8 +348,13 @@ const SettingsInner = () => {
   const [lateNightShiftRegistrationMinutes, setLateNightShiftRegistrationMinutes] = useState<number>(30);
   const [advanceNightShiftRegistrationMinutes, setAdvanceNightShiftRegistrationMinutes] = useState<number>(0);
   const [autoApproveNightShift, setAutoApproveNightShift] = useState<boolean>(true);
+  const [nightShiftRegistrationMode, setNightShiftRegistrationMode] = useState<string>("free");
+  const [nightShiftRegReminderEnabled, setNightShiftRegReminderEnabled] = useState<boolean>(true);
+  const [nightShiftRegRemindLeadMinutes, setNightShiftRegRemindLeadMinutes] = useState<number>(120);
   const [allowWeekendShiftRegistration, setAllowWeekendShiftRegistration] = useState<boolean>(true);
   const [autoApproveWeekendShift, setAutoApproveWeekendShift] = useState<boolean>(true);
+  const [weekendShiftRegReminderEnabled, setWeekendShiftRegReminderEnabled] = useState<boolean>(true);
+  const [weekendShiftRegRemindTime, setWeekendShiftRegRemindTime] = useState<string>("15:00");
   const [weekendShiftRegistrationLeadHours, setWeekendShiftRegistrationLeadHours] = useState<number>(0);
   const [requireCheckinWeekendLead, setRequireCheckinWeekendLead] = useState<boolean>(false);
   const [requireCheckinHolidayLead, setRequireCheckinHolidayLead] = useState<boolean>(false);
@@ -879,6 +884,21 @@ const SettingsInner = () => {
         }
         if (json.data.auto_approve_night_shift !== undefined) {
           setAutoApproveNightShift(json.data.auto_approve_night_shift === '1' || json.data.auto_approve_night_shift === 1);
+        }
+        if (json.data.night_shift_registration_mode !== undefined) {
+          setNightShiftRegistrationMode(json.data.night_shift_registration_mode || 'free');
+        }
+        if (json.data.night_shift_reg_reminder_enabled !== undefined) {
+          setNightShiftRegReminderEnabled(json.data.night_shift_reg_reminder_enabled === '1' || json.data.night_shift_reg_reminder_enabled === 1);
+        }
+        if (json.data.night_shift_reg_remind_lead_minutes !== undefined) {
+          setNightShiftRegRemindLeadMinutes(Number(json.data.night_shift_reg_remind_lead_minutes) || 120);
+        }
+        if (json.data.weekend_shift_reg_reminder_enabled !== undefined) {
+          setWeekendShiftRegReminderEnabled(json.data.weekend_shift_reg_reminder_enabled === '1' || json.data.weekend_shift_reg_reminder_enabled === 1);
+        }
+        if (json.data.weekend_shift_reg_remind_time !== undefined) {
+          setWeekendShiftRegRemindTime(json.data.weekend_shift_reg_remind_time || '15:00');
         }
         if (json.data.allow_lead_distribution_on_pending_checkin !== undefined) {
           setAllowLeadDistributionOnPendingCheckin(json.data.allow_lead_distribution_on_pending_checkin === '1' || json.data.allow_lead_distribution_on_pending_checkin === 1);
@@ -1426,6 +1446,11 @@ const SettingsInner = () => {
       late_night_shift_registration_minutes: allowLateNightShiftRegistration ? lateNightShiftRegistrationMinutes : 0,
       advance_night_shift_registration_minutes: allowLateNightShiftRegistration ? 0 : advanceNightShiftRegistrationMinutes,
       auto_approve_night_shift: autoApproveNightShift ? 1 : 0,
+      night_shift_registration_mode: nightShiftRegistrationMode,
+      night_shift_reg_reminder_enabled: nightShiftRegReminderEnabled ? 1 : 0,
+      night_shift_reg_remind_lead_minutes: nightShiftRegRemindLeadMinutes,
+      weekend_shift_reg_reminder_enabled: weekendShiftRegReminderEnabled ? 1 : 0,
+      weekend_shift_reg_remind_time: weekendShiftRegRemindTime,
       shift_history_retention_days: shiftHistoryRetentionDays,
       allow_lead_distribution_on_pending_checkin: allowLeadDistributionOnPendingCheckin ? 1 : 0,
       attendance_notification_enabled: attendanceNotificationEnabled ? 1 : 0,
@@ -5469,6 +5494,129 @@ function doPost(e) {
                       </div>
                     </div>
 
+                    {/* Chế độ đăng ký ca trực đêm linh động (User Request) */}
+                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>{t('Chế độ đăng ký ca trực đêm')}</span>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: nightShiftRegistrationMode === 'require_day_checkin' ? 'rgba(234, 88, 12, 0.12)' : 'rgba(16, 185, 129, 0.12)', color: nightShiftRegistrationMode === 'require_day_checkin' ? '#ea580c' : '#10b981', fontWeight: 700 }}>
+                            {nightShiftRegistrationMode === 'require_day_checkin' ? t('Yêu cầu Check-in ban ngày') : t('Tự do (Mặc định)')}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                          {t('Quy định điều kiện nhân sự được phép nhận thông báo nhắc nhở và bấm đăng ký ca trực đêm (qua ngày mới hệ thống sẽ tự động reset danh sách trực ca theo ngày).')}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+                        {/* Option 1: Free */}
+                        <div 
+                          onClick={() => setNightShiftRegistrationMode('free')}
+                          style={{
+                            padding: '0.875rem 1rem',
+                            borderRadius: 'var(--radius-lg)',
+                            border: `2px solid ${nightShiftRegistrationMode === 'free' ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            background: nightShiftRegistrationMode === 'free' ? 'rgba(37,99,235,0.06)' : 'var(--color-surface)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            gap: '0.75rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ marginTop: '2px' }}>
+                            <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${nightShiftRegistrationMode === 'free' ? 'var(--color-primary)' : 'var(--color-text-muted)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {nightShiftRegistrationMode === 'free' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--color-primary)' }} />}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              🟢 {t('Chế độ Tự do (Mặc định)')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.35 }}>
+                              {t('Tất cả nhân sự Sale đang hoạt động đều nhận thông báo nhắc nhở và có thể tự do đăng ký ca trực đêm.')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Option 2: Require Checkin */}
+                        <div 
+                          onClick={() => setNightShiftRegistrationMode('require_day_checkin')}
+                          style={{
+                            padding: '0.875rem 1rem',
+                            borderRadius: 'var(--radius-lg)',
+                            border: `2px solid ${nightShiftRegistrationMode === 'require_day_checkin' ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            background: nightShiftRegistrationMode === 'require_day_checkin' ? 'rgba(37,99,235,0.06)' : 'var(--color-surface)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            gap: '0.75rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ marginTop: '2px' }}>
+                            <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${nightShiftRegistrationMode === 'require_day_checkin' ? 'var(--color-primary)' : 'var(--color-text-muted)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {nightShiftRegistrationMode === 'require_day_checkin' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--color-primary)' }} />}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              🔒 {t('Chỉ ai check-in ban ngày')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.35 }}>
+                              {t('Chỉ nhân viên ĐÃ điểm danh ca ngày hôm nay mới nhận thông báo nhắc và được phép đăng ký ca trực đêm.')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Thông báo nhắc ĐĂNG KÝ ca trực đêm */}
+                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                            🔔 {t('Thông báo nhắc ĐĂNG KÝ ca trực đêm')}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                            {t('Hệ thống tự động gửi thông báo (Chuông Web/Zalo/Telegram/Email) mời đăng ký trực đêm cho các nhân viên Sale đủ điều kiện.')}
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                          <ToggleSwitch
+                            checked={nightShiftRegReminderEnabled}
+                            onChange={setNightShiftRegReminderEnabled}
+                          />
+                        </div>
+                      </div>
+
+                      {nightShiftRegReminderEnabled && (
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem', background: 'var(--color-surface)', padding: '0.875rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)' }}>
+                          <div>
+                            <label className="form-label">{t('Thời gian gửi thông báo trước giờ trực (phút)')}</label>
+                            <input
+                              type="number"
+                              min="1"
+                              className="form-input"
+                              value={nightShiftRegRemindLeadMinutes}
+                              onChange={e => setNightShiftRegRemindLeadMinutes(Math.max(1, Number(e.target.value)))}
+                            />
+                            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                              {t('Ví dụ: Đặt 120 phút (2 tiếng) thì hệ thống sẽ gửi nhắc lúc {time} khi ca đêm bắt đầu lúc {start}.').replace('{time}', (() => {
+                                try {
+                                  const [h, m] = (nightShiftStartTime || '18:00').split(':').map(Number);
+                                  const d = new Date();
+                                  d.setHours(h, m, 0, 0);
+                                  d.setMinutes(d.getMinutes() - (nightShiftRegRemindLeadMinutes || 120));
+                                  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                                } catch (e) {
+                                  return '16:00';
+                                }
+                              })()).replace('{start}', nightShiftStartTime || '18:00')}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
                       <label className="form-label" style={{ fontWeight: 700 }}>{t('Thời gian lưu trữ lịch sử ca trực (Đêm, Cuối tuần, Ngày lễ)')}</label>
                       <CustomSelect
@@ -5727,6 +5875,43 @@ function doPost(e) {
                               </div>
                             </div>
                             <div />
+                          </div>
+
+                          {/* Thông báo nhắc ĐĂNG KÝ ca trực cuối tuần */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.75rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  🔔 {t('Thông báo nhắc ĐĂNG KÝ ca trực cuối tuần')}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                                  {t('Tự động gửi thông báo chiều Thứ Sáu hàng tuần mời nhân viên đăng ký ca trực Thứ 7 & Chủ Nhật để chuẩn bị nhận data cuối tuần.')}
+                                </div>
+                              </div>
+                              <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                                <ToggleSwitch
+                                  checked={weekendShiftRegReminderEnabled}
+                                  onChange={setWeekendShiftRegReminderEnabled}
+                                />
+                              </div>
+                            </div>
+
+                            {weekendShiftRegReminderEnabled && (
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem', background: 'var(--color-surface)', padding: '0.875rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)' }}>
+                                <div>
+                                  <label className="form-label">{t('Giờ gửi thông báo nhắc vào Thứ Sáu')}</label>
+                                  <input
+                                    type="time"
+                                    className="form-input"
+                                    value={weekendShiftRegRemindTime}
+                                    onChange={e => setWeekendShiftRegRemindTime(e.target.value)}
+                                  />
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                    {t('Mặc định 15:00 chiều Thứ Sáu. Đăng ký trực xong sẽ tự động áp dụng theo từng ngày.')}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </>
                       )}

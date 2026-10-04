@@ -1611,10 +1611,13 @@ if (!function_exists('recallInactiveLeads')) {
                 // Post-commit: trigger live write-back
                 triggerTwoWaySync($conn, $leadId);
 
-                // Send notifications handled centrally by logDistribution
+                // Gửi thông báo thu hồi tự động cho Sale cũ qua Web Chuông, Telegram, Zalo, Email
+                require_once __DIR__ . '/webhook_logic.php';
+                if (function_exists('sendSaleLeadRecalledNotification')) {
+                    sendSaleLeadRecalledNotification($conn, $leadId, $oldConsultantId, (int)$row['lead_recall_minutes'], $roundName);
+                }
 
-
-                logSync("Recalled lead ID $leadId from sale $oldConsultantName successfully.");
+                logSync("Recalled lead ID $leadId from sale $oldConsultantName successfully. Sent recall notification.");
 
             } catch (Exception $e) {
                 $conn->rollback();
@@ -3575,6 +3578,11 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
         'attendance_notification_lead_minutes',
         'night_duty_notification_enabled',
         'night_duty_notification_lead_minutes',
+        'night_shift_reg_reminder_enabled',
+        'night_shift_reg_remind_lead_minutes',
+        'night_shift_registration_mode',
+        'weekend_shift_reg_reminder_enabled',
+        'weekend_shift_reg_remind_time',
         'zalo_bot_token',
         'telegram_bot_token',
         'night_shift_start_time',
@@ -3906,6 +3914,199 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                 }
             } catch (Exception $nsEx) {
                 error_log("Error calculating night shift reminder: " . $nsEx->getMessage());
+            }
+        }
+    }
+
+    // C. Nhắc nhở ĐĂNG KÝ ca trực đêm hôm nay (Gửi cho các Sale chưa đăng ký ca đêm)
+    $nightShiftRegRemindEnabled = isset($settings['night_shift_reg_reminder_enabled']) ? (int)$settings['night_shift_reg_reminder_enabled'] : 1;
+    $nightShiftRegLeadMinutes = isset($settings['night_shift_reg_remind_lead_minutes']) ? (int)$settings['night_shift_reg_remind_lead_minutes'] : 120;
+    $nightShiftRegMode = $settings['night_shift_registration_mode'] ?? 'free';
+
+    if ($nightShiftRegRemindEnabled === 1) {
+        $nightShiftStart = $settings['night_shift_start_time'] ?? '18:00';
+        $nightShiftEnd = $settings['night_shift_end_time'] ?? '08:40';
+        $nightStartParts = explode(':', $nightShiftStart);
+        if (count($nightStartParts) >= 2) {
+            try {
+                $regReminderTime = new DateTime($todayStr . ' ' . $nightShiftStart);
+                $regReminderTime->modify("-{$nightShiftRegLeadMinutes} minutes");
+
+                $nowTs = $now->getTimestamp();
+                $regRemindTs = $regReminderTime->getTimestamp();
+                $nightStartTs = (new DateTime($todayStr . ' ' . $nightShiftStart))->getTimestamp();
+
+                // Nếu thời điểm hiện tại nằm trong khung giờ nhắc trước ca đêm
+                if ($nowTs >= $regRemindTs && $nowTs < $nightStartTs) {
+                    $candidatesSql = "
+                        SELECT u.id, u.full_name, u.email, u.zalo_chat_id, u.telegram_chat_id
+                        FROM users u
+                        WHERE u.status = 'active'
+                          AND (u.role = 'sales' OR (u.role = 'manager' AND u.manager_behavior_mode = 'combined'))
+                          AND u.id NOT IN (
+                              SELECT nsr.user_id FROM night_shift_registrations nsr WHERE nsr.shift_date = ?
+                          )
+                    ";
+
+                    // Chế độ 2: Chỉ lọc những nhân sự đã có check-in ban ngày hôm nay
+                    if ($nightShiftRegMode === 'require_day_checkin') {
+                        $candidatesSql .= " AND u.id IN (
+                            SELECT ci.user_id FROM check_ins ci WHERE ci.check_in_date = ? AND ci.status != 'rejected'
+                        )";
+                    }
+
+                    $stmtCand = $conn->prepare($candidatesSql);
+                    if ($stmtCand) {
+                        if ($nightShiftRegMode === 'require_day_checkin') {
+                            $stmtCand->bind_param("ss", $todayStr, $todayStr);
+                        } else {
+                            $stmtCand->bind_param("s", $todayStr);
+                        }
+                        $stmtCand->execute();
+                        $candRes = $stmtCand->get_result();
+
+                        while ($cand = $candRes->fetch_assoc()) {
+                            $userId = (int)$cand['id'];
+
+                            // Chống gửi lặp trong ngày
+                            $chk = $conn->prepare("SELECT id FROM sent_notifications WHERE user_id = ? AND notify_type = 'night_shift_reg_invitation' AND notify_date = ?");
+                            $chk->bind_param("is", $userId, $todayStr);
+                            $chk->execute();
+                            $hasSent = (bool)$chk->get_result()->fetch_assoc();
+                            $chk->close();
+
+                            if (!$hasSent) {
+                                $msg = "🌙 Mời đăng ký ca trực đêm: Ca trực đêm từ {$nightShiftStart} đến {$nightShiftEnd} đã mở đăng ký. Vui lòng đăng ký sớm để tham gia phân bổ lead ca đêm!";
+
+                                // 1. Chuông thông báo web in-app
+                                try {
+                                    $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '🌙 Mời đăng ký ca trực đêm hôm nay', ?, 'night_shift_reg_invitation', '/attendance')");
+                                    if ($insNotif) {
+                                        $insNotif->bind_param("is", $userId, $msg);
+                                        $insNotif->execute();
+                                        $insNotif->close();
+                                    }
+                                } catch (Throwable $eWeb) {
+                                    error_log("Night Shift Reg Invitation Web Notif Error: " . $eWeb->getMessage());
+                                }
+
+                                // 2. Zalo
+                                if (!empty($zaloBotToken) && !empty($cand['zalo_chat_id']) && function_exists('sendZaloMessage')) {
+                                    try {
+                                        sendZaloMessage($zaloBotToken, $cand['zalo_chat_id'], $msg, false);
+                                    } catch (Throwable $eZ) {}
+                                }
+
+                                // 3. Telegram
+                                if (!empty($telegramBotToken) && !empty($cand['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
+                                    try {
+                                        $tgText = "🌙 <b>[ MỜI ĐĂNG KÝ CA TRỰC ĐÊM HÔM NAY ]</b>\n\nXin chào <b>" . htmlspecialchars($cand['full_name']) . "</b>,\nCa trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b> đã mở đăng ký.\nVui lòng vào hệ thống đăng ký trước giờ bắt đầu để nhận phân bổ lead đêm!";
+                                        sendTelegramMessage($telegramBotToken, $cand['telegram_chat_id'], $tgText);
+                                    } catch (Throwable $eT) {}
+                                }
+
+                                // 4. Email
+                                if (!empty($cand['email']) && function_exists('sendEmailNotification')) {
+                                    try {
+                                        $emailSub = "[RICH LAND] Mời đăng ký ca trực đêm hôm nay";
+                                        $emailBody = "Chào <strong>" . htmlspecialchars($cand['full_name']) . "</strong>,<br/><br/>" .
+                                                     "Hệ thống đã mở đăng ký ca trực đêm hôm nay (khung giờ từ " . htmlspecialchars($nightShiftStart) . " đến " . htmlspecialchars($nightShiftEnd) . ").<br/>" .
+                                                     "Vui lòng truy cập hệ thống để đăng ký trực đêm nếu bạn muốn tham gia nhận phân bổ khách hàng ca đêm.<br/><br/>" .
+                                                     "Trân trọng!";
+                                        sendEmailNotification($cand['email'], $emailSub, "MỜI ĐĂNG KÝ CA TRỰC ĐÊM", $emailBody, 'Đăng ký trực đêm ngay', true);
+                                    } catch (Throwable $eM) {}
+                                }
+
+                                $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'night_shift_reg_invitation', ?)");
+                                $ins->bind_param("is", $userId, $todayStr);
+                                $ins->execute();
+                                $ins->close();
+
+                                logSync("Sent night shift registration reminder to Sale: {$cand['full_name']} (User ID: {$userId})");
+                            }
+                        }
+                        $stmtCand->close();
+                    }
+                }
+            } catch (Exception $nsRegEx) {
+                error_log("Error calculating night shift registration reminder: " . $nsRegEx->getMessage());
+            }
+        }
+    }
+
+    // D. Nhắc nhở ĐĂNG KÝ ca trực cuối tuần (Vào Thứ Sáu hàng tuần)
+    $weekendShiftRegRemindEnabled = isset($settings['weekend_shift_reg_reminder_enabled']) ? (int)$settings['weekend_shift_reg_reminder_enabled'] : 1;
+    $weekendShiftRemindTime = $settings['weekend_shift_reg_remind_time'] ?? '15:00';
+
+    if ($weekendShiftRegRemindEnabled === 1 && (int)$now->format('N') === 5) { // Thứ Sáu
+        $currentHi = $now->format('H:i');
+        if ($currentHi >= $weekendShiftRemindTime && $currentHi < '23:59') {
+            $saturdayDate = date('Y-m-d', strtotime('saturday this week'));
+            $sundayDate = date('Y-m-d', strtotime('sunday this week'));
+            $saturdayFmt = date('d/m', strtotime($saturdayDate));
+            $sundayFmt = date('d/m', strtotime($sundayDate));
+
+            $saleRes = $conn->query("
+                SELECT u.id, u.full_name, u.email, u.zalo_chat_id, u.telegram_chat_id
+                FROM users u
+                WHERE u.status = 'active'
+                  AND (u.role = 'sales' OR (u.role = 'manager' AND u.manager_behavior_mode = 'combined'))
+            ");
+
+            if ($saleRes) {
+                while ($sUser = $saleRes->fetch_assoc()) {
+                    $uId = (int)$sUser['id'];
+
+                    $chk = $conn->prepare("SELECT id FROM sent_notifications WHERE user_id = ? AND notify_type = 'weekend_shift_reg_invitation' AND notify_date = ?");
+                    $chk->bind_param("is", $uId, $todayStr);
+                    $chk->execute();
+                    $hasSent = (bool)$chk->get_result()->fetch_assoc();
+                    $chk->close();
+
+                    if (!$hasSent) {
+                        $msg = "📅 Mời đăng ký ca trực Cuối tuần: Hệ thống đã mở đăng ký ca trực Thứ 7 ({$saturdayFmt}) & Chủ Nhật ({$sundayFmt}). Vui lòng đăng ký sớm để hệ thống sắp xếp phân bổ lead cuối tuần!";
+
+                        try {
+                            $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '📅 Mời đăng ký ca trực Cuối tuần', ?, 'weekend_shift_reg_invitation', '/attendance')");
+                            if ($insNotif) {
+                                $insNotif->bind_param("is", $uId, $msg);
+                                $insNotif->execute();
+                                $insNotif->close();
+                            }
+                        } catch (Throwable $eWeb) {}
+
+                        if (!empty($zaloBotToken) && !empty($sUser['zalo_chat_id']) && function_exists('sendZaloMessage')) {
+                            try {
+                                sendZaloMessage($zaloBotToken, $sUser['zalo_chat_id'], $msg, false);
+                            } catch (Throwable $eZ) {}
+                        }
+
+                        if (!empty($telegramBotToken) && !empty($sUser['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
+                            try {
+                                $tgText = "📅 <b>[ MỜI ĐĂNG KÝ CA TRỰC CUỐI TUẦN ]</b>\n\nXin chào <b>" . htmlspecialchars($sUser['full_name']) . "</b>,\nHệ thống đã mở đăng ký ca trực Thứ 7 (<b>{$saturdayFmt}</b>) & Chủ Nhật (<b>{$sundayFmt}</b>).\nCác chuyên viên vui lòng đăng ký sớm để tham gia nhận khách cuối tuần!";
+                                sendTelegramMessage($telegramBotToken, $sUser['telegram_chat_id'], $tgText);
+                            } catch (Throwable $eT) {}
+                        }
+
+                        if (!empty($sUser['email']) && function_exists('sendEmailNotification')) {
+                            try {
+                                $emailSub = "[RICH LAND] Mời đăng ký ca trực Thứ 7 & Chủ Nhật tuần này";
+                                $emailBody = "Chào <strong>" . htmlspecialchars($sUser['full_name']) . "</strong>,<br/><br/>" .
+                                             "Hệ thống đã mở đăng ký ca trực cuối tuần: Thứ 7 ({$saturdayFmt}) & Chủ Nhật ({$sundayFmt}).<br/>" .
+                                             "Vui lòng vào trang Điểm danh / Lịch trực để đăng ký ca trực và sẵn sàng nhận phân bổ khách hàng.<br/><br/>" .
+                                             "Chúc bạn một cuối tuần bùng nổ giao dịch!";
+                                sendEmailNotification($sUser['email'], $emailSub, "ĐĂNG KÝ CA TRỰC CUỐI TUẦN", $emailBody, 'Đăng ký ca trực ngay', true);
+                            } catch (Throwable $eM) {}
+                        }
+
+                        $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'weekend_shift_reg_invitation', ?)");
+                        $ins->bind_param("is", $uId, $todayStr);
+                        $ins->execute();
+                        $ins->close();
+
+                        logSync("Sent weekend shift registration reminder to Sale: {$sUser['full_name']} (User ID: {$uId})");
+                    }
+                }
             }
         }
     }
