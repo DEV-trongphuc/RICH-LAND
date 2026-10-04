@@ -688,6 +688,17 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
         $leadProjId = $data['project_id'] ?? null;
         $leadProjText = $data['project_name'] ?? ($data['project'] ?? ($data['preferred_location'] ?? ($data['du_an'] ?? ($data['dự án'] ?? ''))));
 
+        $opLower = strtolower($op);
+
+        // 1. Xử lý các phép toán kiểm tra rỗng / không rỗng
+        $hasLeadProject = (!empty($leadProjId) && trim((string)$leadProjId) !== '') || (!empty($leadProjText) && trim((string)$leadProjText) !== '');
+        if ($opLower === 'is_empty') {
+            return !$hasLeadProject;
+        } elseif ($opLower === 'is_not_empty') {
+            return $hasLeadProject;
+        }
+
+        // 2. Nạp cache danh mục dự án
         static $projectsCache = null;
         $activeConn = $conn ?? ($GLOBALS['conn'] ?? null);
         if ($projectsCache === null && $activeConn !== null) {
@@ -700,70 +711,110 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
             }
         }
 
-        // Direct ID match
-        if ($leadProjId !== null && (string)$leadProjId !== '') {
-            if ((string)$leadProjId === (string)$val) {
-                return in_array(strtolower($op), ['equals', 'contains']) ? true : (strtolower($op) === 'not_equals' ? false : true);
-            }
-            if (!empty($projectsCache[(int)$leadProjId])) {
-                $pInfo = $projectsCache[(int)$leadProjId];
-                $normVal = normalizeTextForComparison($val);
-                $normPName = normalizeTextForComparison($pInfo['name']);
-                $normPCode = normalizeTextForComparison($pInfo['code'] ?? '');
-                if (strtolower($op) === 'equals') {
-                    if ($normPName === $normVal || $normPCode === $normVal || (string)$leadProjId === $normVal) {
-                        return true;
-                    }
-                } elseif (strtolower($op) === 'contains') {
-                    if (mb_strpos($normPName, $normVal) !== false || mb_strpos($normPCode, $normVal) !== false) {
-                        return true;
-                    }
+        // Tự động resolve leadProjId nếu lead có chuỗi text khớp mã Code hoặc Tên dự án trong DB
+        if ((empty($leadProjId) || !is_numeric($leadProjId)) && !empty($leadProjText) && !empty($projectsCache)) {
+            $normLeadTextForResolve = normalizeTextForComparison($leadProjText);
+            foreach ($projectsCache as $pId => $pRow) {
+                $normPCode = normalizeTextForComparison($pRow['code'] ?? '');
+                $normPName = normalizeTextForComparison($pRow['name'] ?? '');
+                if ($normLeadTextForResolve === (string)$pId || ($normPCode !== '' && $normLeadTextForResolve === $normPCode) || ($normPName !== '' && $normLeadTextForResolve === $normPName)) {
+                    $leadProjId = $pId;
+                    break;
                 }
             }
         }
 
-        // Project text match
-        if (!empty($leadProjText)) {
-            $normLeadText = normalizeTextForComparison($leadProjText);
-            $normVal = normalizeTextForComparison($val);
-            if (is_numeric($val) && !empty($projectsCache[(int)$val])) {
-                $targetProj = $projectsCache[(int)$val];
-                $normTargetName = normalizeTextForComparison($targetProj['name']);
+        $valTrim = trim((string)$val);
+        $normVal = normalizeTextForComparison($valTrim);
+
+        // 3. TRƯỜNG HỢP A: Giá trị so sánh ($val) là ID của một Dự án trong danh mục (khi cấu hình từ dropdown UI)
+        if (is_numeric($valTrim) && !empty($projectsCache[(int)$valTrim])) {
+            $targetProj = $projectsCache[(int)$valTrim];
+            $targetProjId = (int)$targetProj['id'];
+            $isMatched = false;
+
+            if (!empty($leadProjId) && is_numeric($leadProjId)) {
+                // Khi Lead đã có Project ID cụ thể: Bắt buộc phải trùng đúng ID dự án
+                $isMatched = ((int)$leadProjId === $targetProjId);
+            } elseif (!empty($leadProjText)) {
+                // Khi Lead chưa resolve được ID nhưng có text: So khớp với thông tin Target Project
+                $normLeadText = normalizeTextForComparison($leadProjText);
+                $normTargetName = normalizeTextForComparison($targetProj['name'] ?? '');
                 $normTargetCode = normalizeTextForComparison($targetProj['code'] ?? '');
-                
-                $isMatchedProj = (
-                    $normLeadText === (string)$val ||
-                    $normLeadText === $normTargetName ||
-                    $normLeadText === $normTargetCode ||
-                    mb_strpos($normLeadText, $normTargetName) !== false ||
-                    mb_strpos($normTargetName, $normLeadText) !== false ||
-                    (!empty($normTargetCode) && (mb_strpos($normLeadText, $normTargetCode) !== false || mb_strpos($normTargetCode, $normLeadText) !== false))
+
+                $isMatched = (
+                    $normLeadText === (string)$targetProjId ||
+                    ($normTargetCode !== '' && $normLeadText === $normTargetCode) ||
+                    ($normTargetName !== '' && $normLeadText === $normTargetName) ||
+                    ($normTargetCode !== '' && mb_strpos($normLeadText, $normTargetCode) !== false) ||
+                    ($normTargetName !== '' && mb_strpos($normLeadText, $normTargetName) !== false) ||
+                    ($normTargetName !== '' && mb_strlen($normLeadText) >= 4 && mb_strpos($normTargetName, $normLeadText) !== false)
                 );
 
-                if (!$isMatchedProj) {
+                if (!$isMatched && !empty($normLeadText)) {
                     $tokens = array_filter(explode(' ', $normLeadText));
                     if (count($tokens) >= 2) {
                         $allTokensFound = true;
                         foreach ($tokens as $tok) {
-                            if (mb_strlen($tok) >= 2 && mb_strpos($normTargetName, $tok) === false && mb_strpos($normTargetCode, $tok) === false) {
+                            if (mb_strlen($tok) >= 2 && mb_strpos($normTargetName, $tok) === false && ($normTargetCode === '' || mb_strpos($normTargetCode, $tok) === false)) {
                                 $allTokensFound = false;
                                 break;
                             }
                         }
                         if ($allTokensFound) {
-                            $isMatchedProj = true;
+                            $isMatched = true;
                         }
                     }
                 }
-
-                if ($isMatchedProj) {
-                    return in_array(strtolower($op), ['equals', 'contains']);
-                }
             }
-            $dataVal = $leadProjText;
-        } else {
-            $dataVal = (string)($leadProjId ?? '');
+
+            if (in_array($opLower, ['equals', 'contains'])) {
+                return $isMatched;
+            } elseif (in_array($opLower, ['not_equals', 'not_contains'])) {
+                return !$isMatched;
+            }
+            return false;
         }
+
+        // 4. TRƯỜNG HỢP B: Giá trị so sánh ($val) là Text tự do (Tên dự án, Mã dự án do người dùng gõ tay)
+        if (!empty($leadProjId) && is_numeric($leadProjId) && !empty($projectsCache[(int)$leadProjId])) {
+            $pInfo = $projectsCache[(int)$leadProjId];
+            $normPName = normalizeTextForComparison($pInfo['name'] ?? '');
+            $normPCode = normalizeTextForComparison($pInfo['code'] ?? '');
+            $normLeadText = !empty($leadProjText) ? normalizeTextForComparison($leadProjText) : '';
+
+            $isExactMatch = (
+                $normPName === $normVal ||
+                $normPCode === $normVal ||
+                (string)$leadProjId === $normVal ||
+                ($normLeadText !== '' && $normLeadText === $normVal)
+            );
+
+            // Chỉ cho phép contains nếu $normVal đủ dài (>= 3 ký tự hoặc không phải thuần số 1 chữ số)
+            // để tránh 1 chữ số vô tình nằm trong mã dự án
+            $allowContains = (mb_strlen($normVal) >= 3 || !is_numeric($normVal));
+            $isContainsMatch = $isExactMatch || (
+                $allowContains && (
+                    mb_strpos($normPName, $normVal) !== false ||
+                    ($normLeadText !== '' && mb_strpos($normLeadText, $normVal) !== false) ||
+                    ($normPCode !== '' && mb_strlen($normVal) >= 4 && mb_strpos($normPCode, $normVal) !== false)
+                )
+            );
+
+            if ($opLower === 'equals') return $isExactMatch;
+            if ($opLower === 'contains') return $isContainsMatch;
+            if ($opLower === 'not_equals') return !$isExactMatch;
+            if ($opLower === 'not_contains') return !$isContainsMatch;
+            if ($opLower === 'starts_with') return (mb_strpos($normPName, $normVal) === 0 || ($normLeadText !== '' && mb_strpos($normLeadText, $normVal) === 0));
+            if ($opLower === 'ends_with') {
+                $valLen = mb_strlen($normVal);
+                return (mb_substr($normPName, -$valLen) === $normVal || ($normLeadText !== '' && mb_substr($normLeadText, -$valLen) === $normVal));
+            }
+            return false;
+        }
+
+        // 5. Fallback nếu Lead chỉ có text tự do và $val cũng là text tự do
+        $dataVal = (string)($leadProjText ?: ($leadProjId ?? ''));
     } else {
         $dataVal = $data[$col] ?? '';
     }
