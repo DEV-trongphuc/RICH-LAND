@@ -5530,7 +5530,7 @@ function doPost(e) {
                           </div>
                           <div>
                             <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              🟢 {t('Chế độ Tự do (Mặc định)')}
+                              {t('Chế độ Tự do (Mặc định)')}
                             </div>
                             <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.35 }}>
                               {t('Tất cả nhân sự Sale đang hoạt động đều nhận thông báo nhắc nhở và có thể tự do đăng ký ca trực đêm.')}
@@ -5559,7 +5559,7 @@ function doPost(e) {
                           </div>
                           <div>
                             <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              🔒 {t('Chỉ ai check-in ban ngày')}
+                              {t('Chỉ ai check-in ban ngày')}
                             </div>
                             <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.35 }}>
                               {t('Chỉ nhân viên ĐÃ điểm danh ca ngày hôm nay mới nhận thông báo nhắc và được phép đăng ký ca trực đêm.')}
@@ -5574,7 +5574,7 @@ function doPost(e) {
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                            🔔 {t('Thông báo nhắc ĐĂNG KÝ ca trực đêm')}
+                            {t('Thông báo nhắc ĐĂNG KÝ ca trực đêm')}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
                             {t('Hệ thống tự động gửi thông báo (Chuông Web/Zalo/Telegram/Email) mời đăng ký trực đêm cho các nhân viên Sale đủ điều kiện.')}
@@ -5882,7 +5882,7 @@ function doPost(e) {
                             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  🔔 {t('Thông báo nhắc ĐĂNG KÝ ca trực cuối tuần')}
+                                  {t('Thông báo nhắc ĐĂNG KÝ ca trực cuối tuần')}
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
                                   {t('Tự động gửi thông báo chiều Thứ Sáu hàng tuần mời nhân viên đăng ký ca trực Thứ 7 & Chủ Nhật để chuẩn bị nhận data cuối tuần.')}

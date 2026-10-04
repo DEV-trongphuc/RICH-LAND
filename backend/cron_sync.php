@@ -3846,12 +3846,12 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                         $chk->close();
                         
                         if (!$hasSent) {
-                            $msg = "🌙 Hôm nay bạn có đăng ký trực đêm thời gian từ {$nightShiftStart} đến {$nightShiftEnd}. Chúc bạn buổi tối vui vẻ và trực ca hiệu quả!";
+                            $msg = "Hôm nay bạn có đăng ký trực đêm thời gian từ {$nightShiftStart} đến {$nightShiftEnd}. Chúc bạn buổi tối vui vẻ và trực ca hiệu quả!";
                             
                             // 1. Send Web In-App Notification Bell (Isolated)
                             if ($getSaleMatrixSetting($conn, $userId, 'NIGHT_SHIFT_BOOKING', 'bell')) {
                                 try {
-                                    $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '🌙 Nhắc nhở ca trực đêm', ?, 'night_duty_reminder', '/attendance')");
+                                    $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, 'Nhắc nhở ca trực đêm', ?, 'night_duty_reminder', '/attendance')");
                                     if ($insNotif) {
                                         $insNotif->bind_param("is", $userId, $msg);
                                         $insNotif->execute();
@@ -3877,7 +3877,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                             if ($getSaleMatrixSetting($conn, $userId, 'NIGHT_SHIFT_BOOKING', 'telegram')) {
                                 try {
                                     if (!empty($telegramBotToken) && !empty($reg['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
-                                        $tgText = "🌙 <b>[ NHẮC NHỞ LỊCH TRỰC ĐÊM ]</b>\n\nXin chào <b>" . htmlspecialchars($reg['full_name']) . "</b>,\nHôm nay bạn có lịch trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b>.\nChúc bạn buổi tối vui vẻ và trực ca hiệu quả!";
+                                        $tgText = "<b>[ NHẮC NHỞ LỊCH TRỰC ĐÊM ]</b>\n\nXin chào <b>" . htmlspecialchars($reg['full_name']) . "</b>,\nHôm nay bạn có lịch trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b>.\nChúc bạn buổi tối vui vẻ và trực ca hiệu quả!";
                                         sendTelegramMessage($telegramBotToken, $reg['telegram_chat_id'], $tgText);
                                     }
                                 } catch (Throwable $eTg) {
@@ -3976,11 +3976,11 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                             $chk->close();
 
                             if (!$hasSent) {
-                                $msg = "🌙 Mời đăng ký ca trực đêm: Ca trực đêm từ {$nightShiftStart} đến {$nightShiftEnd} đã mở đăng ký. Vui lòng đăng ký sớm để tham gia phân bổ lead ca đêm!";
+                                $msg = "Mời đăng ký ca trực đêm: Ca trực đêm từ {$nightShiftStart} đến {$nightShiftEnd} đã mở đăng ký. Vui lòng đăng ký sớm để tham gia phân bổ lead ca đêm!";
 
                                 // 1. Chuông thông báo web in-app
                                 try {
-                                    $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '🌙 Mời đăng ký ca trực đêm hôm nay', ?, 'night_shift_reg_invitation', '/attendance')");
+                                    $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, 'Mời đăng ký ca trực đêm hôm nay', ?, 'night_shift_reg_invitation', '/attendance')");
                                     if ($insNotif) {
                                         $insNotif->bind_param("is", $userId, $msg);
                                         $insNotif->execute();
@@ -4000,7 +4000,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                 // 3. Telegram
                                 if (!empty($telegramBotToken) && !empty($cand['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
                                     try {
-                                        $tgText = "🌙 <b>[ MỜI ĐĂNG KÝ CA TRỰC ĐÊM HÔM NAY ]</b>\n\nXin chào <b>" . htmlspecialchars($cand['full_name']) . "</b>,\nCa trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b> đã mở đăng ký.\nVui lòng vào hệ thống đăng ký trước giờ bắt đầu để nhận phân bổ lead đêm!";
+                                        $tgText = "<b>[ MỜI ĐĂNG KÝ CA TRỰC ĐÊM HÔM NAY ]</b>\n\nXin chào <b>" . htmlspecialchars($cand['full_name']) . "</b>,\nCa trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b> đã mở đăng ký.\nVui lòng vào hệ thống đăng ký trước giờ bắt đầu để nhận phân bổ lead đêm!";
                                         sendTelegramMessage($telegramBotToken, $cand['telegram_chat_id'], $tgText);
                                     } catch (Throwable $eT) {}
                                 }
@@ -4064,10 +4064,10 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                     $chk->close();
 
                     if (!$hasSent) {
-                        $msg = "📅 Mời đăng ký ca trực Cuối tuần: Hệ thống đã mở đăng ký ca trực Thứ 7 ({$saturdayFmt}) & Chủ Nhật ({$sundayFmt}). Vui lòng đăng ký sớm để hệ thống sắp xếp phân bổ lead cuối tuần!";
+                        $msg = "Mời đăng ký ca trực Cuối tuần: Hệ thống đã mở đăng ký ca trực Thứ 7 ({$saturdayFmt}) & Chủ Nhật ({$sundayFmt}). Vui lòng đăng ký sớm để hệ thống sắp xếp phân bổ lead cuối tuần!";
 
                         try {
-                            $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '📅 Mời đăng ký ca trực Cuối tuần', ?, 'weekend_shift_reg_invitation', '/attendance')");
+                            $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, 'Mời đăng ký ca trực Cuối tuần', ?, 'weekend_shift_reg_invitation', '/attendance')");
                             if ($insNotif) {
                                 $insNotif->bind_param("is", $uId, $msg);
                                 $insNotif->execute();
@@ -4083,7 +4083,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
 
                         if (!empty($telegramBotToken) && !empty($sUser['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
                             try {
-                                $tgText = "📅 <b>[ MỜI ĐĂNG KÝ CA TRỰC CUỐI TUẦN ]</b>\n\nXin chào <b>" . htmlspecialchars($sUser['full_name']) . "</b>,\nHệ thống đã mở đăng ký ca trực Thứ 7 (<b>{$saturdayFmt}</b>) & Chủ Nhật (<b>{$sundayFmt}</b>).\nCác chuyên viên vui lòng đăng ký sớm để tham gia nhận khách cuối tuần!";
+                                $tgText = "<b>[ MỜI ĐĂNG KÝ CA TRỰC CUỐI TUẦN ]</b>\n\nXin chào <b>" . htmlspecialchars($sUser['full_name']) . "</b>,\nHệ thống đã mở đăng ký ca trực Thứ 7 (<b>{$saturdayFmt}</b>) & Chủ Nhật (<b>{$sundayFmt}</b>).\nCác chuyên viên vui lòng đăng ký sớm để tham gia nhận khách cuối tuần!";
                                 sendTelegramMessage($telegramBotToken, $sUser['telegram_chat_id'], $tgText);
                             } catch (Throwable $eT) {}
                         }

@@ -17,11 +17,19 @@ function query(sql) {
 }
 
 async function run() {
-  const cCols = await query("SHOW COLUMNS FROM contacts LIKE '%loai%'");
-  console.log('Contacts Columns:', cCols);
+  console.log('Adding columns to leads...');
+  const resL = await query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS loai_hinh VARCHAR(100) NULL AFTER property_type, ADD COLUMN IF NOT EXISTS app_lienhe VARCHAR(100) NULL AFTER zalo_phone");
+  console.log('Res Leads:', resL);
 
-  const lCols = await query("SHOW COLUMNS FROM leads LIKE '%loai%'");
-  console.log('Leads Columns:', lCols);
+  console.log('Adding columns to contacts...');
+  const resC = await query("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS loai_hinh VARCHAR(100) NULL AFTER property_type, ADD COLUMN IF NOT EXISTS app_lienhe VARCHAR(100) NULL AFTER zalo_phone");
+  console.log('Res Contacts:', resC);
+
+  const lCols = await query("SHOW COLUMNS FROM leads WHERE Field IN ('loai_hinh', 'app_lienhe')");
+  console.log('Verified Leads Columns:', lCols);
+
+  const cCols = await query("SHOW COLUMNS FROM contacts WHERE Field IN ('loai_hinh', 'app_lienhe')");
+  console.log('Verified Contacts Columns:', cCols);
 }
 
 run();

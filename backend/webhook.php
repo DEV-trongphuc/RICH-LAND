@@ -813,18 +813,19 @@ if ($isSilent == 1) {
         $actualOwnerId = ($crmCheckResult['isDuplicate'] && !empty($crmCheckResult['assignedTo'])) ? $crmCheckResult['assignedTo'] : $assignedToId;
         logDistribution($conn, $leadId, $actualOwnerId, null, 'silent', 'Chỉ đồng bộ check trùng, không định tuyến.', false);
 
-        // Cập nhật property_type nếu có
+        // Cập nhật property_type, loai_hinh, app_lienhe nếu có
         $propTypeVal = !empty($property_type) ? $property_type : (!empty($loai_hinh) ? $loai_hinh : null);
-        if ($leadId && $propTypeVal) {
-            $updPropL = $conn->prepare("UPDATE leads SET property_type = ? WHERE id = ?");
+        $appLienHeVal = !empty($app_lienhe) ? $app_lienhe : null;
+        if ($leadId) {
+            $updPropL = $conn->prepare("UPDATE leads SET property_type = COALESCE(?, property_type), loai_hinh = COALESCE(?, loai_hinh), app_lienhe = COALESCE(?, app_lienhe) WHERE id = ?");
             if ($updPropL) {
-                $updPropL->bind_param("si", $propTypeVal, $leadId);
+                $updPropL->bind_param("sssi", $propTypeVal, $propTypeVal, $appLienHeVal, $leadId);
                 $updPropL->execute();
                 $updPropL->close();
             }
-            $updPropC = $conn->prepare("UPDATE contacts SET property_type = ? WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
+            $updPropC = $conn->prepare("UPDATE contacts SET property_type = COALESCE(?, property_type), loai_hinh = COALESCE(?, loai_hinh), app_lienhe = COALESCE(?, app_lienhe) WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
             if ($updPropC) {
-                $updPropC->bind_param("sss", $propTypeVal, $phone, $email);
+                $updPropC->bind_param("sssss", $propTypeVal, $propTypeVal, $appLienHeVal, $phone, $email);
                 $updPropC->execute();
                 $updPropC->close();
             }
@@ -1284,18 +1285,19 @@ try {
         }
     }
 
-    // Cập nhật property_type và thông tin form đăng ký cho leads & contacts
+    // Cập nhật property_type, loai_hinh, app_lienhe và thông tin form đăng ký cho leads & contacts
     $propTypeVal = !empty($property_type) ? $property_type : (!empty($loai_hinh) ? $loai_hinh : null);
-    if ($leadId && $propTypeVal) {
-        $updPropL = $conn->prepare("UPDATE leads SET property_type = ? WHERE id = ?");
+    $appLienHeVal = !empty($app_lienhe) ? $app_lienhe : null;
+    if ($leadId) {
+        $updPropL = $conn->prepare("UPDATE leads SET property_type = COALESCE(?, property_type), loai_hinh = COALESCE(?, loai_hinh), app_lienhe = COALESCE(?, app_lienhe) WHERE id = ?");
         if ($updPropL) {
-            $updPropL->bind_param("si", $propTypeVal, $leadId);
+            $updPropL->bind_param("sssi", $propTypeVal, $propTypeVal, $appLienHeVal, $leadId);
             $updPropL->execute();
             $updPropL->close();
         }
-        $updPropC = $conn->prepare("UPDATE contacts SET property_type = ? WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
+        $updPropC = $conn->prepare("UPDATE contacts SET property_type = COALESCE(?, property_type), loai_hinh = COALESCE(?, loai_hinh), app_lienhe = COALESCE(?, app_lienhe) WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
         if ($updPropC) {
-            $updPropC->bind_param("sss", $propTypeVal, $phone, $email);
+            $updPropC->bind_param("sssss", $propTypeVal, $propTypeVal, $appLienHeVal, $phone, $email);
             $updPropC->execute();
             $updPropC->close();
         }

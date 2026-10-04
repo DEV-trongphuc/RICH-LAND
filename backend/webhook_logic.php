@@ -2256,7 +2256,7 @@ function sendSaleLeadRecalledNotification($conn, $leadId, $oldConsultantId, $rec
 
         // A. Kênh 1: Chuông thông báo Web In-App (bảng notifications)
         try {
-            $notifTitle = "⚠️ Thu hồi Lead do quá hạn: " . $maskedName;
+            $notifTitle = "Thu hồi Lead do quá hạn: " . $maskedName;
             $notifBody = "Lead {$maskedName}" . ($maskedPhone ? " ({$maskedPhone})" : "") . " thuộc vòng \"{$roundDisplay}\" đã bị thu hồi do bạn không bấm tiếp nhận sau {$minsDisplay} phút và đã chuyển cho nhân sự khác.";
             $insN = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'lead_recalled', '/contacts')");
             if ($insN) {
@@ -2272,15 +2272,15 @@ function sendSaleLeadRecalledNotification($conn, $leadId, $oldConsultantId, $rec
         $teleBotToken = get_system_setting($conn, 'telegram_bot_token');
         if (!empty($teleBotToken) && !empty($sale['telegram_chat_id'])) {
             require_once __DIR__ . '/telegram_bot.php';
-            $teleMsg = "⚠️ <b>[ THÔNG BÁO THU HỒI LEAD ]</b> ⚠️\n"
+            $teleMsg = "<b>[ THÔNG BÁO THU HỒI LEAD ]</b>\n"
                 . "━━━━━━━━━━━━━━━━━━━━\n"
                 . "Xin chào <b>" . htmlspecialchars($saleName) . "</b>,\n"
                 . "Lead khách hàng: <b>" . htmlspecialchars($maskedName) . "</b>" . ($maskedPhone ? " (" . htmlspecialchars($maskedPhone) . ")" : "") . "\n"
-                . "⭕ Vòng phân bổ: <b>" . htmlspecialchars($roundDisplay) . "</b>\n"
-                . "⏰ Thời hạn tiếp nhận: <b>{$minsDisplay} phút</b>\n\n"
-                . "❌ <b>Trạng thái:</b> ĐÃ THU HỒI TỰ ĐỘNG\n"
-                . "📝 <b>Lý do:</b> Bạn đã không bấm tiếp nhận lead trong vòng {$minsDisplay} phút. Lead đã được chuyển sang nhân sự khác trong vòng quay để chăm sóc kịp thời.\n\n"
-                . "<i>💡 Vui lòng chú ý thông báo và bấm tiếp nhận nhanh hơn ở các lượt phân bổ tiếp theo!</i>";
+                . "Vòng phân bổ: <b>" . htmlspecialchars($roundDisplay) . "</b>\n"
+                . "Thời hạn tiếp nhận: <b>{$minsDisplay} phút</b>\n\n"
+                . "<b>Trạng thái:</b> ĐÃ THU HỒI TỰ ĐỘNG\n"
+                . "<b>Lý do:</b> Bạn đã không bấm tiếp nhận lead trong vòng {$minsDisplay} phút. Lead đã được chuyển sang nhân sự khác trong vòng quay để kịp thời chăm sóc khách hàng.\n\n"
+                . "<i>Vui lòng chú ý thông báo và bấm tiếp nhận nhanh hơn ở các lượt phân bổ tiếp theo.</i>";
 
             if (function_exists('sendTelegramMessage')) {
                 try {
@@ -2295,14 +2295,14 @@ function sendSaleLeadRecalledNotification($conn, $leadId, $oldConsultantId, $rec
         $zaloBotToken = get_system_setting($conn, 'zalo_bot_token');
         if (!empty($zaloBotToken) && !empty($sale['zalo_chat_id'])) {
             require_once __DIR__ . '/zalo_bot.php';
-            $zaloMsg = "⚠️ [ THÔNG BÁO THU HỒI LEAD ] ⚠️\n"
+            $zaloMsg = "[ THÔNG BÁO THU HỒI LEAD ]\n"
                 . "━━━━━━━━━━━━━━━━━━━━\n"
                 . "Xin chào {$saleName},\n"
                 . "Lead: {$maskedName}" . ($maskedPhone ? " ({$maskedPhone})" : "") . "\n"
                 . "Vòng: {$roundDisplay}\n\n"
-                . "❌ Trạng thái: ĐÃ THU HỒI TỰ ĐỘNG\n"
+                . "Trạng thái: ĐÃ THU HỒI TỰ ĐỘNG\n"
                 . "Lý do: Không bấm tiếp nhận sau {$minsDisplay} phút. Lead đã được chuyển cho nhân sự khác.\n"
-                . "💡 Chú ý tiếp nhận kịp thời ở lượt phân bổ tiếp theo!";
+                . "Vui lòng chú ý tiếp nhận kịp thời ở lượt phân bổ tiếp theo.";
 
             if (function_exists('sendZaloMessage')) {
                 try {
@@ -2316,8 +2316,8 @@ function sendSaleLeadRecalledNotification($conn, $leadId, $oldConsultantId, $rec
         // D. Kênh 4: Email
         if (!empty($sale['email'])) {
             require_once __DIR__ . '/mailer.php';
-            $emailSubj = "[Rich Land CRM] ⚠️ Thu hồi Lead do quá hạn tiếp nhận: " . $maskedName;
-            $emailBody = "<h3>⚠️ Thông báo Thu hồi Lead tự động!</h3>"
+            $emailSubj = "[Rich Land CRM] Thu hồi Lead do quá hạn tiếp nhận: " . $maskedName;
+            $emailBody = "<h3>Thông báo Thu hồi Lead tự động</h3>"
                 . "<p>Chào <strong>" . htmlspecialchars($saleName) . "</strong>,</p>"
                 . "<p>Hệ thống vừa tự động thu hồi một Lead đã phân bổ cho bạn:</p>"
                 . "<ul>"

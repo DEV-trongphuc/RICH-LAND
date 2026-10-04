@@ -827,7 +827,8 @@ class ContactController {
             'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
             'utm_campaign', 'utm_medium', 'utm_content', 'utm_term', 'platform',
             'form_name', 'zalo_phone', 'facebook_link', 'nguoi_gioi_thieu_id',
-            'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai'
+            'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai',
+            'loai_hinh', 'app_lienhe'
         ];
         $sets = []; $params = [];
         
