@@ -1029,10 +1029,20 @@ class ContactController {
                     });
                 }
 
+                // Fire automated outbound webhook triggers
+                require_once __DIR__ . '/../config/TriggerHelper.php';
+                TriggerHelper::dispatch($this->db, 'pipeline_status', $currStatus, $newStatus, $id);
+
                 // Update security_expires_at
                 $securityExpires = $this->getSecurityExpiration($newStatus);
                 $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
                 $stmtTimer->execute([$securityExpires, $id]);
+
+                // Nếu chuyển sang "Quan tâm" hoặc các mốc tiến triển: Ẩn Person khỏi kho Databank (bảo mật thêm)
+                if ($newStatus !== 'chua_xac_dinh' && $newStatus !== 'not_lead') {
+                    $stmtHidePerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = (SELECT person_id FROM contacts WHERE id = ? LIMIT 1)");
+                    $stmtHidePerson->execute([$id]);
+                }
 
                 // Auto spawn workflow tasks if stage changes
                 $targetStageId = isset($b['stage_id']) ? (int)$b['stage_id'] : null;
@@ -1231,10 +1241,20 @@ class ContactController {
                 CapiHelper::sendEvent($this->db, $id, $capiMap[$newStatus]);
             }
 
+            // Fire automated outbound webhook triggers
+            require_once __DIR__ . '/../config/TriggerHelper.php';
+            TriggerHelper::dispatch($this->db, 'pipeline_status', $currStatus, $newStatus, $id);
+
             // Update security timer
             $securityExpires = $this->getSecurityExpiration($newStatus);
             $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
             $stmtTimer->execute([$securityExpires, $id]);
+
+            // Nếu chuyển sang "Quan tâm" hoặc các mốc tiến triển: Ẩn Person khỏi kho Databank (bảo mật thêm)
+            if ($newStatus !== 'chua_xac_dinh' && $newStatus !== 'not_lead') {
+                $stmtHidePerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = (SELECT person_id FROM contacts WHERE id = ? LIMIT 1)");
+                $stmtHidePerson->execute([$id]);
+            }
 
             // Auto spawn workflow tasks
             require_once __DIR__ . '/../config/WorkflowHelper.php';
@@ -1347,7 +1367,7 @@ class ContactController {
 
     private function getSecurityExpiration(string $status): ?string {
         $defaultDurations = [
-            'chua_xac_dinh' => '+3 hours',
+            'chua_xac_dinh' => '+6 hours',
             'quan_tam' => '+1 day',
             'thien_chi' => '+3 days',
             'dong_y_gap' => '+4 days',
@@ -1361,7 +1381,7 @@ class ContactController {
         
         $triggerStatus = $this->getSetting('parallel_assignment_trigger_status', 'chua_xac_dinh');
         if ($status === $triggerStatus) {
-            $shareHours = (int)$this->getSetting('uncontacted_lead_share_hours', '3');
+            $shareHours = (int)$this->getSetting('uncontacted_lead_share_hours', '6');
             if ($shareHours > 0) {
                 $duration = "+$shareHours hours";
             }

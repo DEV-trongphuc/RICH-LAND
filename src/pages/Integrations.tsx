@@ -519,6 +519,171 @@ const IntegrationsInner = () => {
   const [isTestingMaster, setIsTestingMaster] = useState(false);
   const [customSystemFields, setCustomSystemFields] = useState<any[]>([]);
 
+  // Sample JSON Import & Dropdown Mapper states
+  const [showSampleJsonModal, setShowSampleJsonModal] = useState(false);
+  const [sampleJsonText, setSampleJsonText] = useState('');
+  const [extractedJsonFields, setExtractedJsonFields] = useState<{ key: string; sample: string }[]>([]);
+  const [isManualColInput, setIsManualColInput] = useState(false);
+
+  const extractKeysFromPayload = (data: any, prefix = ''): { key: string; sample: string }[] => {
+    const results: { key: string; sample: string }[] = [];
+    if (!data || typeof data !== 'object') return results;
+    
+    if (Array.isArray(data)) {
+      if (data.length > 0 && typeof data[0] === 'object') {
+        return extractKeysFromPayload(data[0], prefix);
+      }
+      return results;
+    }
+
+    for (const [k, v] of Object.entries(data)) {
+      const fullKey = prefix ? `${prefix}.${k}` : k;
+      if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+        results.push(...extractKeysFromPayload(v, fullKey));
+      } else if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'object') {
+        results.push(...extractKeysFromPayload(v[0], `${fullKey}[0]`));
+      } else {
+        const sampleStr = v === null ? 'null' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+        results.push({ key: fullKey, sample: sampleStr.length > 30 ? sampleStr.slice(0, 27) + '...' : sampleStr });
+      }
+    }
+    return results;
+  };
+
+  const handleParseSampleJson = (jsonStr: string) => {
+    try {
+      const parsed = JSON.parse(jsonStr);
+      const fields = extractKeysFromPayload(parsed);
+      if (fields.length === 0) {
+        toast.error(t('Không tìm thấy trường dữ liệu nào trong JSON.'));
+        return;
+      }
+      setExtractedJsonFields(fields);
+      setNewMappingCol(fields[0].key);
+      setIsManualColInput(false);
+      setShowSampleJsonModal(false);
+      toast.success(t('Đã trích xuất {count} trường từ JSON!').replace('{count}', String(fields.length)));
+    } catch (e: any) {
+      toast.error(t('JSON không hợp lệ: ') + (e.message || ''));
+    }
+  };
+
+  const handleLoadFromLatestWebhook = async () => {
+    if (!selected) return;
+    try {
+      let logs = webhookLogs;
+      if (!logs || logs.length === 0) {
+        const res = await fetchAPI(`get_webhook_logs&connection_id=${selected.id}`);
+        if (res.success && Array.isArray(res.data)) {
+          logs = res.data;
+          setWebhookLogs(logs);
+        }
+      }
+      if (!logs || logs.length === 0) {
+        toast.error(t('Chưa có lịch sử Webhook nào được ghi nhận cho kết nối này.'));
+        return;
+      }
+      const latestPayload = logs[0].raw_payload;
+      if (!latestPayload) {
+        toast.error(t('Payload gần nhất trống.'));
+        return;
+      }
+      handleParseSampleJson(latestPayload);
+    } catch (e: any) {
+      toast.error(t('Lỗi đọc log Webhook: ') + e.message);
+    }
+  };
+
+  const handleAutoMatchFields = async (isForCreateModal = false) => {
+    if (extractedJsonFields.length === 0) {
+      toast.error(t('Vui lòng nhập JSON mẫu trước để tự động nhận diện!'));
+      return;
+    }
+    const matchRules: { keywords: string[]; sys_field: string }[] = [
+      { keywords: ['phone', 'sdt', 'tel', 'mobile', 'so_dien_thoai', 'dienthoai'], sys_field: 'phone' },
+      { keywords: ['phone2', 'sdt2', 'tel2', 'so_phu'], sys_field: 'phone2' },
+      { keywords: ['name', 'full_name', 'fullname', 'ho_ten', 'hoten', 'ten', 'cust_name'], sys_field: 'name' },
+      { keywords: ['email', 'mail'], sys_field: 'email' },
+      { keywords: ['gender', 'gioi_tinh', 'sex'], sys_field: 'gender' },
+      { keywords: ['dob', 'birthday', 'ngay_sinh', 'birth'], sys_field: 'dob' },
+      { keywords: ['citizen_id', 'cccd', 'cmnd', 'cmdt'], sys_field: 'citizen_id' },
+      { keywords: ['address', 'dia_chi', 'diachi'], sys_field: 'address' },
+      { keywords: ['city', 'thanh_pho', 'tinh_thanh', 'province'], sys_field: 'city' },
+      { keywords: ['district', 'quan_huyen', 'huyen'], sys_field: 'district' },
+      { keywords: ['company', 'cong_ty', 'don_vi'], sys_field: 'company' },
+      { keywords: ['budget', 'gia', 'price', 'tai_chinh', 'ngan_sach', 'doanh_thu'], sys_field: 'budget' },
+      { keywords: ['utm_campaign', 'campaign', 'chien_dich', 'adset'], sys_field: 'utm_campaign' },
+      { keywords: ['utm_medium', 'medium', 'hinh_thuc'], sys_field: 'utm_medium' },
+      { keywords: ['utm_content', 'content', 'mau_quang_cao'], sys_field: 'utm_content' },
+      { keywords: ['utm_term', 'term', 'tu_khoa'], sys_field: 'utm_term' },
+      { keywords: ['source', 'nguon', 'platform', 'nen_tang'], sys_field: 'source' },
+      { keywords: ['note', 'ghi_chu', 'ghichu', 'comment', 'message', 'loi_nhan', 'noi_dung'], sys_field: 'note' },
+      { keywords: ['project', 'du_an', 'project_id', 'can_ho'], sys_field: 'project_id' },
+      { keywords: ['zalo', 'zalo_phone'], sys_field: 'zalo_phone' },
+      { keywords: ['facebook', 'fb_link', 'fb'], sys_field: 'facebook_link' }
+    ];
+
+    let matchedCount = 0;
+    const newItems: { sheet_column: string; system_field: string; custom_label: string }[] = [];
+    const usedSysFields = new Set<string>();
+
+    for (const f of extractedJsonFields) {
+      const lowerKey = f.key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      for (const rule of matchRules) {
+        if (!usedSysFields.has(rule.sys_field) && rule.keywords.some(kw => lowerKey.includes(kw))) {
+          newItems.push({
+            sheet_column: f.key,
+            system_field: rule.sys_field,
+            custom_label: ''
+          });
+          usedSysFields.add(rule.sys_field);
+          matchedCount++;
+          break;
+        }
+      }
+    }
+
+    if (newItems.length === 0) {
+      toast(t('Không tìm thấy trường nào trùng khớp tự động. Bạn hãy chọn map thủ công qua Dropdown!'), { icon: 'ℹ️' });
+      return;
+    }
+
+    if (isForCreateModal) {
+      const merged = [...tempMappings];
+      newItems.forEach(item => {
+        if (!merged.some(m => m.sheet_col === item.sheet_column || m.sys_field === item.system_field)) {
+          merged.push({ sheet_col: item.sheet_column, sys_field: item.system_field, custom_label: item.custom_label });
+        }
+      });
+      setTempMappings(merged);
+      toast.success(t('Đã tự động nhận diện và map {count} trường!').replace('{count}', String(matchedCount)));
+    } else if (selected) {
+      setIsSavingMapping(true);
+      try {
+        for (const item of newItems) {
+          const exists = (selected.mappings || []).some(m => m.sheet_column === item.sheet_column || m.system_field === item.system_field);
+          if (!exists) {
+            await fetchAPI('add_mapping', {
+              method: 'POST',
+              body: JSON.stringify({
+                connection_id: selected.id,
+                sheet_column: item.sheet_column,
+                system_field: item.system_field,
+                custom_label: item.custom_label
+              })
+            });
+          }
+        }
+        await fetchData();
+        toast.success(t('Đã tự động nhận diện và map thành công {count} trường!').replace('{count}', String(matchedCount)));
+      } catch (e: any) {
+        toast.error(t('Lỗi lưu mapping: ') + e.message);
+      } finally {
+        setIsSavingMapping(false);
+      }
+    }
+  };
+
   const getSelectFields = () => {
     const isSyncActive = selected?.sync_saleperson || (showEditConn && editSyncSaleperson) || (showAddConn && syncSaleperson);
     const baseFields = isSyncActive ? SYSTEM_FIELDS : SYSTEM_FIELDS.filter(f => f.value !== 'saleperson');
@@ -1155,6 +1320,45 @@ const IntegrationsInner = () => {
           </div>
         </div>
 
+        {/* Action Toolbar: Nhập JSON mẫu, Lấy từ Webhook gần nhất & Auto-match */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
+          <button 
+            type="button"
+            className="btn outline"
+            onClick={() => setShowSampleJsonModal(true)}
+            style={{ fontSize: '0.8125rem', height: 36, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, background: 'var(--color-surface)' }}
+          >
+            <Code size={15} color="var(--color-primary)" /> {t('📋 Nhập JSON Mẫu')}
+          </button>
+
+          {isWebhookType && (
+            <button 
+              type="button"
+              className="btn outline"
+              onClick={handleLoadFromLatestWebhook}
+              style={{ fontSize: '0.8125rem', height: 36, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, background: 'var(--color-surface)' }}
+            >
+              <Zap size={15} color="#eab308" /> {t('⚡ Lấy từ Webhook gần nhất')}
+            </button>
+          )}
+
+          {extractedJsonFields.length > 0 && (
+            <>
+              <span style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: 12, background: 'rgba(37,99,235,0.1)', color: 'var(--color-primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <CheckCircle2 size={13} /> {extractedJsonFields.length} {t('trường từ JSON')}
+              </span>
+              <button 
+                type="button"
+                className="btn outline"
+                onClick={() => handleAutoMatchFields(false)}
+                style={{ fontSize: '0.8125rem', height: 36, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700, borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'rgba(37,99,235,0.04)' }}
+              >
+                <Sparkles size={15} /> {t('✨ Tự động nhận diện (Auto-match)')}
+              </button>
+            </>
+          )}
+        </div>
+
         {/* Add Mapping Row at the TOP */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
           <div style={{ flex: '1 1 200px' }}>
@@ -1171,14 +1375,57 @@ const IntegrationsInner = () => {
                 value={newMappingCol}
                 onChange={v => setNewMappingCol(String(v))}
               />
+            ) : extractedJsonFields.length > 0 && !isManualColInput ? (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <CustomSelect
+                    options={[
+                      ...extractedJsonFields.map(f => ({ value: f.key, label: `${f.key} (${f.sample})` })),
+                      { value: '__manual__', label: '✏️ ' + t('Nhập tay trường khác...') }
+                    ]}
+                    value={newMappingCol}
+                    onChange={v => {
+                      if (v === '__manual__') {
+                        setIsManualColInput(true);
+                        setNewMappingCol('');
+                      } else {
+                        setNewMappingCol(String(v));
+                      }
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn outline"
+                  onClick={() => setIsManualColInput(true)}
+                  title={t('Chuyển sang gõ tay')}
+                  style={{ height: 42, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Edit2 size={14} />
+                </button>
+              </div>
             ) : (
-              <input
-                className="form-input"
-                placeholder={isWebhookType ? t("VD: phone_number, sdt, ho_ten") : t("VD: Số Điện Thoại KH")}
-                value={newMappingCol}
-                onChange={e => setNewMappingCol(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
-              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  className="form-input"
+                  style={{ flex: 1 }}
+                  placeholder={isWebhookType ? t("VD: phone_number, sdt, ho_ten") : t("VD: Số Điện Thoại KH")}
+                  value={newMappingCol}
+                  onChange={e => setNewMappingCol(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveMapping()}
+                />
+                {extractedJsonFields.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn outline"
+                    onClick={() => setIsManualColInput(false)}
+                    title={t('Quay lại chọn từ Dropdown JSON')}
+                    style={{ height: 42, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Code size={14} />
+                  </button>
+                )}
+              </div>
             )}
           </div>
           <div style={{ flex: '1 1 180px' }}>
@@ -3158,18 +3405,87 @@ print(res.json())`}
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Ánh xạ các cột trên Google Sheets của bạn vào hệ thống Rich Land DATA.')}</p>
               </div>
 
+              {/* Toolbar: Nhập JSON mẫu & Auto-match */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                <button 
+                  type="button"
+                  className="btn outline"
+                  onClick={() => setShowSampleJsonModal(true)}
+                  style={{ fontSize: '0.8125rem', height: 34, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, background: 'var(--color-surface)' }}
+                >
+                  <Code size={14} color="var(--color-primary)" /> {t('📋 Nhập JSON Mẫu')}
+                </button>
+                {extractedJsonFields.length > 0 && (
+                  <>
+                    <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: 12, background: 'rgba(37,99,235,0.1)', color: 'var(--color-primary)', fontWeight: 700 }}>
+                      {extractedJsonFields.length} {t('trường từ JSON')}
+                    </span>
+                    <button 
+                      type="button"
+                      className="btn outline"
+                      onClick={() => handleAutoMatchFields(true)}
+                      style={{ fontSize: '0.8125rem', height: 34, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700, borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'rgba(37,99,235,0.04)' }}
+                    >
+                      <Sparkles size={14} /> {t('✨ Tự động nhận diện (Auto-match)')}
+                    </button>
+                  </>
+                )}
+              </div>
+
               {/* Add Mapping Row at the TOP */}
               <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
                 <div style={{ flex: '1 1 180px' }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Cột trên Sheets')}</label>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Cột / Key dữ liệu')}</label>
                   {fetchedColumns.length > 0 ? (
                     <CustomSelect
                       options={fetchedColumns.map(c => ({ value: c, label: c }))}
                       value={newMappingCol}
                       onChange={v => setNewMappingCol(String(v))}
                     />
+                  ) : extractedJsonFields.length > 0 && !isManualColInput ? (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <CustomSelect
+                          options={[
+                            ...extractedJsonFields.map(f => ({ value: f.key, label: `${f.key} (${f.sample})` })),
+                            { value: '__manual__', label: '✏️ ' + t('Nhập tay trường khác...') }
+                          ]}
+                          value={newMappingCol}
+                          onChange={v => {
+                            if (v === '__manual__') {
+                              setIsManualColInput(true);
+                              setNewMappingCol('');
+                            } else {
+                              setNewMappingCol(String(v));
+                            }
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn outline"
+                        onClick={() => setIsManualColInput(true)}
+                        title={t('Chuyển sang gõ tay')}
+                        style={{ height: 38, padding: '0 8px' }}
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                    </div>
                   ) : (
-                    <input className="form-input" style={{ border: '1px solid var(--color-border)' }} value={newMappingCol} onChange={e => setNewMappingCol(e.target.value)} placeholder={t("VD: Nguồn KH")} />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input className="form-input" style={{ border: '1px solid var(--color-border)', flex: 1, height: 38 }} value={newMappingCol} onChange={e => setNewMappingCol(e.target.value)} placeholder={t("VD: Nguồn KH, phone")} />
+                      {extractedJsonFields.length > 0 && (
+                        <button
+                          type="button"
+                          className="btn outline"
+                          onClick={() => setIsManualColInput(false)}
+                          title={t('Quay lại chọn từ Dropdown JSON')}
+                          style={{ height: 38, padding: '0 8px' }}
+                        >
+                          <Code size={13} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div style={{ flex: '1 1 160px' }}>
@@ -3363,6 +3679,53 @@ print(res.json())`}
         title={t("Xóa mapping cột")}
         message={t("Bạn có chắc chắn muốn xóa mapping cột dữ liệu này không?")}
       />
+
+      <CustomModal
+        isOpen={showSampleJsonModal}
+        onClose={() => setShowSampleJsonModal(false)}
+        title={t("📋 Nhập JSON Mẫu để Tự Động Trích Xuất Trường")}
+        width="680px"
+      >
+        <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)' }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+            {t("Dán cấu trúc JSON mẫu mà bên ngoài (Landing Page, Meta Ads, Zalo, Zapier, Webhook...) gửi tới. Hệ thống sẽ tự động bóc tách các trường (kể cả trường lồng nhau) để đưa vào Dropdown lựa chọn và tự động nhận diện map trường.")}
+          </p>
+          <textarea
+            className="form-input font-mono"
+            rows={11}
+            style={{ fontSize: '0.8125rem', lineHeight: 1.4, resize: 'vertical', background: 'var(--color-bg)' }}
+            placeholder={`{\n  "phone": "0912345678",\n  "full_name": "Nguyễn Văn A",\n  "email": "vana@gmail.com",\n  "user_data": {\n    "address": "TP.HCM",\n    "campaign": "Vinhomes Grand Park"\n  }\n}`}
+            value={sampleJsonText}
+            onChange={e => setSampleJsonText(e.target.value)}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+            <button 
+              type="button"
+              className="btn outline"
+              onClick={() => {
+                setSampleJsonText(`{\n  "phone": "0909123456",\n  "name": "Trần Thị Khách",\n  "email": "khachhang@gmail.com",\n  "utm_campaign": "Dự án RichLand Center",\n  "utm_source": "Facebook Ads",\n  "budget": 3500000000,\n  "note": "Khách cần tư vấn căn 2PN tầng cao"\n}`);
+              }}
+              style={{ fontSize: '0.75rem' }}
+            >
+              {t("Dán dữ liệu mẫu")}
+            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" className="btn outline" onClick={() => setShowSampleJsonModal(false)}>
+                {t("Hủy")}
+              </button>
+              <button 
+                type="button"
+                className="btn primary" 
+                onClick={() => handleParseSampleJson(sampleJsonText)}
+                disabled={!sampleJsonText.trim()}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+              >
+                <Check size={16} /> {t("Trích xuất trường & Đưa vào Dropdown")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </CustomModal>
 
       <CustomModal
         isOpen={showEditConn}

@@ -1068,6 +1068,7 @@ switch ($resource) {
         if ($resourceId === 'settings' && $method === 'GET') $ctrl->getSettings($auth);
         elseif ($resourceId === 'settings' && $method === 'POST') $ctrl->saveSettings($auth);
         elseif ($resourceId === 'logs' && $method === 'GET') $ctrl->getLogs($auth);
+        elseif ($resourceId === 'test-trigger' && $method === 'POST') $ctrl->testTrigger($auth);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 

@@ -5499,8 +5499,15 @@ function doPost(e) {
                       <div>
                         <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span>{t('Chế độ đăng ký ca trực đêm')}</span>
-                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: nightShiftRegistrationMode === 'require_day_checkin' ? 'rgba(234, 88, 12, 0.12)' : 'rgba(16, 185, 129, 0.12)', color: nightShiftRegistrationMode === 'require_day_checkin' ? '#ea580c' : '#10b981', fontWeight: 700 }}>
-                            {nightShiftRegistrationMode === 'require_day_checkin' ? t('Yêu cầu Check-in ban ngày') : t('Tự do (Mặc định)')}
+                          <span style={{ 
+                            fontSize: '0.7rem', 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            background: nightShiftRegistrationMode === 'require_day_checkin_ontime' ? 'rgba(16, 185, 129, 0.15)' : (nightShiftRegistrationMode === 'require_day_checkin' ? 'rgba(234, 88, 12, 0.12)' : 'rgba(59, 130, 246, 0.12)'), 
+                            color: nightShiftRegistrationMode === 'require_day_checkin_ontime' ? '#059669' : (nightShiftRegistrationMode === 'require_day_checkin' ? '#ea580c' : '#2563eb'), 
+                            fontWeight: 700 
+                          }}>
+                            {nightShiftRegistrationMode === 'require_day_checkin_ontime' ? t('Chỉ check-in đúng giờ') : (nightShiftRegistrationMode === 'require_day_checkin' ? t('Có Check-in ban ngày') : t('Tự do (Mặc định)'))}
                           </span>
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
@@ -5508,7 +5515,7 @@ function doPost(e) {
                         </div>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '0.75rem' }}>
                         {/* Option 1: Free */}
                         <div 
                           onClick={() => setNightShiftRegistrationMode('free')}
@@ -5530,10 +5537,10 @@ function doPost(e) {
                           </div>
                           <div>
                             <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {t('Chế độ Tự do (Mặc định)')}
+                              {t('Tự do (Mặc định)')}
                             </div>
                             <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.35 }}>
-                              {t('Tất cả nhân sự Sale đang hoạt động đều nhận thông báo nhắc nhở và có thể tự do đăng ký ca trực đêm.')}
+                              {t('Tất cả nhân sự Sale đang hoạt động đều nhận thông báo và có thể tự do đăng ký ca trực đêm.')}
                             </div>
                           </div>
                         </div>
@@ -5559,10 +5566,40 @@ function doPost(e) {
                           </div>
                           <div>
                             <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {t('Chỉ ai check-in ban ngày')}
+                              {t('Có Check-in ngày')}
                             </div>
                             <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.35 }}>
-                              {t('Chỉ nhân viên ĐÃ điểm danh ca ngày hôm nay mới nhận thông báo nhắc và được phép đăng ký ca trực đêm.')}
+                              {t('Chỉ nhân viên ĐÃ điểm danh ca ngày hôm nay (kể cả đi trễ) mới được phép đăng ký trực đêm.')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Option 3: Require Checkin On-time (NEW) */}
+                        <div 
+                          onClick={() => setNightShiftRegistrationMode('require_day_checkin_ontime')}
+                          style={{
+                            padding: '0.875rem 1rem',
+                            borderRadius: 'var(--radius-lg)',
+                            border: `2px solid ${nightShiftRegistrationMode === 'require_day_checkin_ontime' ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            background: nightShiftRegistrationMode === 'require_day_checkin_ontime' ? 'rgba(16,185,129,0.08)' : 'var(--color-surface)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            gap: '0.75rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ marginTop: '2px' }}>
+                            <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${nightShiftRegistrationMode === 'require_day_checkin_ontime' ? 'var(--color-primary)' : 'var(--color-text-muted)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {nightShiftRegistrationMode === 'require_day_checkin_ontime' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--color-primary)' }} />}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {t('Chỉ ai đúng giờ')}
+                              <span style={{ fontSize: '0.65rem', background: 'rgba(16,185,129,0.2)', color: '#059669', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>Không trễ</span>
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.35 }}>
+                              {t('Chỉ nhân viên điểm danh ca ngày ĐÚNG GIỜ (không bị trễ, không chờ duyệt) mới được phép đăng ký.')}
                             </div>
                           </div>
                         </div>

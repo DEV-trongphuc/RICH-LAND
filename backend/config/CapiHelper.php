@@ -138,45 +138,74 @@ class CapiHelper {
             $basePath = preg_replace('#/(api.php|index.php|backend).*$#i', '', $requestUri);
             $eventSourceUrl = $protocol . "://" . $host . rtrim($basePath, '/');
 
+            $phoneHash = !empty($phone) ? self::normalizeAndHash($phone, false) : '';
+            $fnHash = !empty($firstName) ? self::normalizeAndHash($firstName, true) : '';
+
+            $eventTime = time();
+
+            // Custom data payload
+            if ($eventName === 'Purchase') {
+                $customData = [
+                    'currency' => $currency ?: 'VND',
+                    'value' => (float)($value > 0 ? $value : 13674109347),
+                    'content_type' => 'real_estate',
+                    'lead_event_source' => 'Rich Land CRM',
+                    'event_source' => 'crm'
+                ];
+            } else {
+                $customData = [
+                    'lead_event_source' => 'Rich Land CRM',
+                    'event_source' => 'crm'
+                ];
+            }
+
+            // User data payload following exact client schema
+            $userData = [
+                'em' => null,
+                'ph' => $phoneHash ?: null,
+                'fn' => !empty($fnHash) ? [$fnHash] : [],
+                'lead_id' => $leadId ? (string)$leadId : ($contactId ? (string)$contactId : ''),
+                'external_id' => 'phone_' . ($phoneHash ?: ($contactId ?: 'unknown'))
+            ];
+
             $eventItem = [
                 'event_name' => $eventName,
-                'event_time' => time(),
-                'event_source_url' => $eventSourceUrl,
-                'action_source' => 'website',
-                'user_data' => [
-                    'ph' => !empty($phone) ? [self::normalizeAndHash($phone, false)] : [],
-                    'em' => !empty($email) ? [self::normalizeAndHash($email, true)] : [],
-                    'fn' => !empty($firstName) ? [self::normalizeAndHash($firstName, true)] : [],
-                    'ln' => !empty($lastName) ? [self::normalizeAndHash($lastName, true)] : [],
-                    'client_ip_address' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-                    'client_user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Mozilla/5.0'
+                'event_time' => $eventTime,
+                'event_id' => $leadId ? (string)$leadId : ('capi_' . ($contactId ?: 'raw') . '_' . $eventTime),
+                'action_source' => 'system_generated',
+                'user_data' => $userData,
+                'original_event_data' => [
+                    'event_name' => $eventName,
+                    'event_time' => $eventTime
                 ],
-                'custom_data' => [
-                    'value' => $value,
-                    'currency' => $currency
-                ],
-                'event_id' => 'capi_' . ($contactId ?: 'raw') . '_' . time() . '_' . rand(1000, 9999)
+                'custom_data' => $customData
             ];
 
+            // Outer wrapper array [ { "data": [ ... ] } ] as requested by client
             $payload = [
-                'data' => [$eventItem]
+                [
+                    'data' => [$eventItem]
+                ]
             ];
 
-            $payloadJson = json_encode($payload);
+            $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             $payloadHash = hash('sha256', $payloadJson);
 
             // Defer Meta Graph API cURL request to background shutdown execution
-            register_shutdown_function(function() use ($db, $pixelId, $token, $payloadJson, $payloadHash, $leadId, $contactId, $eventName) {
+            register_shutdown_function(function() use ($db, $pixelId, $token, $payloadJson, $payloadHash, $leadId, $contactId, $eventName, $eventItem) {
                 if (function_exists('fastcgi_finish_request')) {
                     @fastcgi_finish_request();
                 }
 
                 $url = "https://graph.facebook.com/v19.0/$pixelId/events?access_token=$token";
                 
+                // Meta direct graph API endpoint expects {"data": [...]}, send metaDirectBody
+                $metaDirectBody = json_encode(['data' => [$eventItem]], JSON_UNESCAPED_UNICODE);
+
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
                 curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $metaDirectBody);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_HTTPHEADER, [
                     'Content-Type: application/json'

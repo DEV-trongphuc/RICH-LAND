@@ -63,6 +63,29 @@ $stmtCI2->close();
 $canRegisterAfterCheckin = ($modeRequire === 'free' || $hasCheckinAfter);
 assertTest("TC-08: Sau khi check-in ban ngày thành công, user ĐƯỢC PHÉP đăng ký trực đêm", $canRegisterAfterCheckin === true);
 
+// Trường hợp C: Chế độ 'require_day_checkin_ontime' (Chỉ ai check-in đúng giờ, không trễ)
+$modeOntime = 'require_day_checkin_ontime';
+// Test C1: User check-in bị trễ (late_minutes = 15)
+$conn->query("UPDATE check_ins SET late_minutes = 15, status = 'approved' WHERE user_id = $testUserId AND check_in_date = '$testDate'");
+$stmtCIOntime1 = $conn->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' AND (late_minutes IS NULL OR late_minutes <= 0) LIMIT 1");
+$stmtCIOntime1->bind_param("is", $testUserId, $testDate);
+$stmtCIOntime1->execute();
+$hasOntimeCheckinLate = (bool)$stmtCIOntime1->get_result()->fetch_assoc();
+$stmtCIOntime1->close();
+assertTest("TC-08.1: Ở chế độ require_day_checkin_ontime, user checkin TRỄ (late_minutes=15) BỊ CHẶN đăng ký", $hasOntimeCheckinLate === false);
+
+// Test C2: User check-in đúng giờ (late_minutes = 0)
+$conn->query("UPDATE check_ins SET late_minutes = 0, status = 'approved' WHERE user_id = $testUserId AND check_in_date = '$testDate'");
+$stmtCIOntime2 = $conn->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' AND (late_minutes IS NULL OR late_minutes <= 0) LIMIT 1");
+$stmtCIOntime2->bind_param("is", $testUserId, $testDate);
+$stmtCIOntime2->execute();
+$hasOntimeCheckinGood = (bool)$stmtCIOntime2->get_result()->fetch_assoc();
+$stmtCIOntime2->close();
+assertTest("TC-08.2: Ở chế độ require_day_checkin_ontime, user checkin ĐÚNG GIỜ (late_minutes=0) ĐƯỢC PHÉP đăng ký", $hasOntimeCheckinGood === true);
+
+// Dọn dẹp dữ liệu test
+$conn->query("DELETE FROM check_ins WHERE user_id = $testUserId AND check_in_date = '$testDate'");
+
 // 3. Kiểm tra trường độ dài và cấu trúc bảng notifications & sent_notifications
 $colNotif = $conn->query("SHOW COLUMNS FROM notifications LIKE 'type'")->fetch_assoc();
 $colSent = $conn->query("SHOW COLUMNS FROM sent_notifications LIKE 'notify_type'")->fetch_assoc();

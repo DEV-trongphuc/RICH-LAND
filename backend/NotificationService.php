@@ -781,7 +781,7 @@ class NotificationService {
                 return [
                     'recipients' => $recipients,
                     'title' => "Cảnh báo hạn bảo mật Data",
-                    'body' => "Khách hàng $custName sắp hết hạn bảo mật và sẽ bị thu hồi sau $deadlineText",
+                    'body' => "Khách hàng $custName sắp hết hạn bảo mật độc quyền và sẽ hiển thị lên kho Databank sau $deadlineText nếu không có cập nhật mới",
                     'type' => "security_warning",
                     'link' => "/contacts",
                     'zalo_msg' => "⏳ [ CẢNH BÁO HẠN BẢO MẬT DATA ]\n\n"

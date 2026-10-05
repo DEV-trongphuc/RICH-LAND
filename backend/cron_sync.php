@@ -2904,9 +2904,11 @@ function releaseExpiredLeadsToKho($conn) {
     
     $sql = "SELECT c.id AS contact_id, c.person_id, c.owner_id, c.tenant_id, c.first_name, c.last_name, c.pipeline_status
             FROM contacts c
+            JOIN persons p ON c.person_id = p.id
             WHERE c.security_expires_at <= NOW()
               AND c.security_expires_at IS NOT NULL
               AND c.deleted_at IS NULL
+              AND p.is_public = 0
               AND c.pipeline_status NOT IN ((SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1), 'da_coc', 'dong_deal', 'thanh_cong')
               $sourcesFilter
               AND NOT EXISTS (
@@ -2932,193 +2934,86 @@ function releaseExpiredLeadsToKho($conn) {
 
         $conn->begin_transaction();
         try {
-            // 1. Soft-delete the individual expired contact row
-            $stmtDel = $conn->prepare("UPDATE contacts SET deleted_at = NOW(), notes = NULL WHERE id = ?");
-            $stmtDel->bind_param("i", $contactId);
-            $stmtDel->execute();
-            $stmtDel->close();
-
-            logSync("Soft-deleted expired contact ID $contactId (Person ID $personId) for Owner ID $ownerId");
-
-            // Send in-app notification & email about contact expiry/revocation
-            $stmtOwner = $conn->prepare("SELECT email, full_name FROM users WHERE id = ?");
-            $stmtOwner->bind_param("i", $ownerId);
-            $stmtOwner->execute();
-            $ownerRow = $stmtOwner->get_result()->fetch_assoc();
-            $stmtOwner->close();
-
-            $clientName = trim($row['first_name'] . ' ' . $row['last_name']) ?: 'Khách hàng ẩn danh';
-            $notifTitle = "Thu hồi khách hàng do hết hạn bảo mật";
-            $notifBody = "Khách hàng $clientName đã bị thu hồi khỏi danh sách của bạn do hết hạn bảo mật.";
+            // Business Rule: KHÔNG THU HỒI, KHÔNG XÓA KHTN CỦA SALES GỐC (deleted_at giữ nguyên NULL)
+            // Hết hạn bảo mật thời đoạn chỉ làm hiển thị Person lên Kho Databank để sale khác có thể lấy khách song song.
             
-            $stmtNotif = $conn->prepare("
-                INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
-                VALUES (?, ?, ?, ?, 'contact_expired', '/contacts')
+            // Check for active cooperation slips across all contacts of this person
+            $checkCoopStmt = $conn->prepare("
+                SELECT id FROM cooperation_slips 
+                WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ?) 
+                  AND status != 'rejected' LIMIT 1
             ");
-            $stmtNotif->bind_param("iiss", $ownerId, $tenantId, $notifTitle, $notifBody);
-            $stmtNotif->execute();
-            $stmtNotif->close();
+            $checkCoopStmt->bind_param("i", $personId);
+            $checkCoopStmt->execute();
+            $coopRow = $checkCoopStmt->get_result()->fetch_assoc();
+            $checkCoopStmt->close();
 
-            if ($ownerRow && !empty($ownerRow['email'])) {
-                require_once __DIR__ . '/mailer.php';
-                $emailSubject = "[RICH LAND] Thông báo thu hồi khách hàng: " . $clientName;
-                $emailTitle = "THU HỒI KHÁCH HÀNG HẾT HẠN BẢO MẬT";
-                $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
-                                "Khách hàng <strong>" . htmlspecialchars($clientName) . "</strong> đã bị thu hồi khỏi danh sách chăm sóc của bạn do hết hạn bảo mật tương tác mà không phát sinh cập nhật mới.<br/>" .
-                                "Vui lòng liên hệ Admin nếu có bất kỳ thắc mắc nào.";
-                sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+            if ($coopRow) {
+                logSync("Person ID $personId co phieu hop tac hoa hong active. Tu choi tu dong ra Kho.");
+                $conn->commit();
+                continue;
             }
 
-            // 2. Check if there are any other active contacts left for this Person
-            $stmtActive = $conn->prepare("SELECT COUNT(*) as active_cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL");
-            $stmtActive->bind_param("i", $personId);
-            $stmtActive->execute();
-            $activeCnt = (int)($stmtActive->get_result()->fetch_assoc()['active_cnt'] ?? 0);
-            $stmtActive->close();
+            // Rule 5.13: Same-reason reject lockout check
+            $lockoutCount = (int) get_system_setting($conn, 'lockout_reason_count_threshold') ?: 3;
+            $checkReasonStmt = $conn->prepare("
+                SELECT dr.reason, COUNT(*) as cnt 
+                FROM data_reports dr
+                JOIN leads l ON dr.lead_id = l.id
+                WHERE l.person_id = ?
+                  AND dr.status IN ('approved', 'approved_no_comp')
+                GROUP BY dr.reason
+                HAVING cnt >= ?
+                LIMIT 1
+            ");
+            $checkReasonStmt->bind_param("ii", $personId, $lockoutCount);
+            $checkReasonStmt->execute();
+            $hasThreeSameReason = $checkReasonStmt->get_result()->fetch_assoc();
+            $checkReasonStmt->close();
 
-            // Check if any remaining active claims are in deal won status
-            $hasProtectedStatus = false;
-            if ($activeCnt > 0) {
-                $stmtProtected = $conn->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND deleted_at IS NULL AND pipeline_status = (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1)");
-                $stmtProtected->bind_param("i", $personId);
-                $stmtProtected->execute();
-                $pRow = $stmtProtected->get_result()->fetch_row();
-                $hasProtectedStatus = $pRow && ((int)$pRow[0] > 0);
-                $stmtProtected->close();
+            if ($hasThreeSameReason) {
+                logSync("Person ID $personId bi bao loi trung " . $lockoutCount . " lan cung 1 ly do (" . $hasThreeSameReason['reason'] . "). Tu choi ra Kho.");
+                $conn->commit();
+                continue;
             }
 
-            $maxParallelClaims = 2;
-            $stmtSetting = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'max_parallel_sales_per_client' LIMIT 1");
-            if ($stmtSetting) {
-                $stmtSetting->execute();
-                $sRes = $stmtSetting->get_result()->fetch_row();
-                if ($sRes) {
-                    $maxParallelClaims = (int)$sRes[0];
-                }
-                $stmtSetting->close();
+            // Update person is_public = 1 (Hiện lên Databank cho sale khác thấy)
+            $stmtPerson = $conn->prepare("SELECT public_count FROM persons WHERE id = ? FOR UPDATE");
+            $stmtPerson->bind_param("i", $personId);
+            $stmtPerson->execute();
+            $personData = $stmtPerson->get_result()->fetch_assoc();
+            $stmtPerson->close();
+
+            $publicCount = (int)($personData['public_count'] ?? 0);
+            if ($publicCount === 0) {
+                $newPublicCount = 1;
+                $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ?, deleted_from_databank = 0 WHERE id = ?");
+                $upd->bind_param("ii", $newPublicCount, $personId);
+                $upd->execute();
+                $upd->close();
+            } else {
+                $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
+                $upd->bind_param("i", $personId);
+                $upd->execute();
+                $upd->close();
             }
 
-            if ($activeCnt < $maxParallelClaims && !$hasProtectedStatus) {
-                if ($activeCnt === 0) {
-                    // No active contacts left for this person. Release to Databank!
-                    
-                    // Rule 5.13: Same-reason reject lockout check
-                    $lockoutCount = (int) get_system_setting($conn, 'lockout_reason_count_threshold') ?: 3;
-                    $checkReasonStmt = $conn->prepare("
-                        SELECT dr.reason, COUNT(*) as cnt 
-                        FROM data_reports dr
-                        JOIN leads l ON dr.lead_id = l.id
-                        WHERE l.person_id = ?
-                          AND dr.status IN ('approved', 'approved_no_comp')
-                        GROUP BY dr.reason
-                        HAVING cnt >= ?
-                        LIMIT 1
-                    ");
-                    $checkReasonStmt->bind_param("ii", $personId, $lockoutCount);
-                    $checkReasonStmt->execute();
-                    $hasThreeSameReason = $checkReasonStmt->get_result()->fetch_assoc();
-                    $checkReasonStmt->close();
-
-                    if ($hasThreeSameReason) {
-                        logSync("Person ID $personId bi bao loi trung " . $lockoutCount . " lan cung 1 ly do (" . $hasThreeSameReason['reason'] . "). Tu choi ra Kho.");
-                        $conn->commit();
-                        continue;
-                    }
-
-                    // Check for active cooperation slips across all contacts of this person
-                    $checkCoopStmt = $conn->prepare("
-                        SELECT id FROM cooperation_slips 
-                        WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ?) 
-                          AND status != 'rejected' LIMIT 1
-                    ");
-                    $checkCoopStmt->bind_param("i", $personId);
-                    $checkCoopStmt->execute();
-                    $coopRow = $checkCoopStmt->get_result()->fetch_assoc();
-                    $checkCoopStmt->close();
-
-                    if ($coopRow) {
-                        logSync("Person ID $personId co phieu hop tac hoa hong active. Tu choi tu dong ra Kho.");
-                        $conn->commit();
-                        continue;
-                    }
-
-                    // Update person is_public = 1
-                    $stmtPerson = $conn->prepare("SELECT public_count FROM persons WHERE id = ? FOR UPDATE");
-                    $stmtPerson->bind_param("i", $personId);
-                    $stmtPerson->execute();
-                    $personData = $stmtPerson->get_result()->fetch_assoc();
-                    $stmtPerson->close();
-
-                    $publicCount = (int)($personData['public_count'] ?? 0);
-                    if ($publicCount === 0) {
-                        $newPublicCount = 1;
-                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ?, deleted_from_databank = 0 WHERE id = ?");
-                        $upd->bind_param("ii", $newPublicCount, $personId);
-                        $upd->execute();
-                        $upd->close();
-                    } else {
-                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
-                        $upd->bind_param("i", $personId);
-                        $upd->execute();
-                        $upd->close();
-                    }
-
-                    // Delete notes records for all contacts of this person
-                    $stmtDelNotes = $conn->prepare("
-                        DELETE FROM notes 
-                        WHERE entity_type = 'contact' 
-                          AND entity_id IN (SELECT id FROM contacts WHERE person_id = ?)
-                    ");
-                    $stmtDelNotes->bind_param("i", $personId);
-                    $stmtDelNotes->execute();
-                    $stmtDelNotes->close();
-
-                    // Delete activities records for all contacts of this person
-                    $stmtDelActs = $conn->prepare("
-                        DELETE FROM activities 
-                        WHERE related_type = 'contact' 
-                          AND related_id IN (SELECT id FROM contacts WHERE person_id = ?)
-                    ");
-                    $stmtDelActs->bind_param("i", $personId);
-                    $stmtDelActs->execute();
-                    $stmtDelActs->close();
-
-                    // Clear notes for all contacts of this person (just in case)
-                    $updAllNotes = $conn->prepare("UPDATE contacts SET notes = NULL WHERE person_id = ?");
-                    $updAllNotes->bind_param("i", $personId);
-                    $updAllNotes->execute();
-                    $updAllNotes->close();
-
-                    // Clear assignment on leads table
-                    $updLeads = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'unassigned', last_assigned_at = NULL WHERE person_id = ?");
-                    $updLeads->bind_param("i", $personId);
-                    $updLeads->execute();
-                    $updLeads->close();
-                    
-                    $stmtL = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
-                    $stmtL->bind_param("i", $personId);
-                    $stmtL->execute();
-                    $lRow = $stmtL->get_result()->fetch_assoc();
-                    $stmtL->close();
-                    $leadId = $lRow ? (int)$lRow['id'] : null;
-                    
-                    if ($leadId !== null && $leadId > 0) {
-                        logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Hết hạn bảo mật, tự động đưa ra Kho chung', false);
-                    }
-                    logSync("Released Person ID $personId to Kho chung.");
-                } else {
-                    // Slots available but some sales are still working, just set is_public = 1
-                    $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
-                    $upd->bind_param("i", $personId);
-                    $upd->execute();
-                    $upd->close();
-                }
+            $stmtL = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $stmtL->bind_param("i", $personId);
+            $stmtL->execute();
+            $lRow = $stmtL->get_result()->fetch_assoc();
+            $stmtL->close();
+            $leadId = $lRow ? (int)$lRow['id'] : null;
+            
+            if ($leadId !== null && $leadId > 0) {
+                logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Hết hạn bảo mật thời đoạn, hiển thị lên Kho Databank (giữ nguyên KHTN Sales gốc)', false);
             }
+            logSync("Expired security timer for contact ID $contactId (Person ID $personId). Released to Databank as public (is_public=1) while keeping original sales contact intact.");
 
             $conn->commit();
         } catch (Exception $e) {
             $conn->rollback();
-            logSync("Error releasing/deleting contact ID $contactId: " . $e->getMessage());
+            logSync("Error releasing contact ID $contactId to Databank: " . $e->getMessage());
         }
     }
     $stmt->close();
@@ -3948,8 +3843,17 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                           )
                     ";
 
-                    // Chế độ 2: Chỉ lọc những nhân sự đã có check-in ban ngày hôm nay
-                    if ($nightShiftRegMode === 'require_day_checkin') {
+                    // Chế độ lọc ứng viên theo cấu hình đăng ký trực ca:
+                    if ($nightShiftRegMode === 'require_day_checkin_ontime') {
+                        // Mode 3: Chỉ những nhân sự đã check-in ban ngày ĐÚNG GIỜ (không trễ)
+                        $candidatesSql .= " AND u.id IN (
+                            SELECT ci.user_id FROM check_ins ci 
+                            WHERE ci.check_in_date = ? 
+                              AND ci.status = 'approved' 
+                              AND (ci.late_minutes IS NULL OR ci.late_minutes <= 0)
+                        )";
+                    } else if ($nightShiftRegMode === 'require_day_checkin') {
+                        // Mode 2: Những nhân sự có check-in ban ngày (kể cả trễ)
                         $candidatesSql .= " AND u.id IN (
                             SELECT ci.user_id FROM check_ins ci WHERE ci.check_in_date = ? AND ci.status != 'rejected'
                         )";
@@ -3957,7 +3861,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
 
                     $stmtCand = $conn->prepare($candidatesSql);
                     if ($stmtCand) {
-                        if ($nightShiftRegMode === 'require_day_checkin') {
+                        if ($nightShiftRegMode === 'require_day_checkin' || $nightShiftRegMode === 'require_day_checkin_ontime') {
                             $stmtCand->bind_param("ss", $todayStr, $todayStr);
                         } else {
                             $stmtCand->bind_param("s", $todayStr);

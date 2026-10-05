@@ -4499,7 +4499,22 @@ switch ($action) {
                     $regMode = !empty($mRow['setting_value']) ? $mRow['setting_value'] : 'free';
                 }
 
-                if ($regMode === 'require_day_checkin') {
+                if ($regMode === 'require_day_checkin_ontime') {
+                    $stmtCI = $conn->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' AND (late_minutes IS NULL OR late_minutes <= 0) LIMIT 1");
+                    $stmtCI->bind_param("is", $dbUserId, $shiftDate);
+                    $stmtCI->execute();
+                    $hasOntimeCheckin = (bool)$stmtCI->get_result()->fetch_assoc();
+                    $stmtCI->close();
+
+                    if (!$hasOntimeCheckin) {
+                        echo json_encode([
+                            'success' => false,
+                            'require_day_checkin_ontime' => true,
+                            'message' => 'Hệ thống đang áp dụng quy định: Chỉ những nhân sự đã hoàn tất Điểm danh ca ngày ĐÚNG GIỜ (không bị trễ) mới được phép đăng ký ca trực đêm. Vui lòng kiểm tra lại!'
+                        ]);
+                        break;
+                    }
+                } else if ($regMode === 'require_day_checkin') {
                     $stmtCI = $conn->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status != 'rejected' LIMIT 1");
                     $stmtCI->bind_param("is", $dbUserId, $shiftDate);
                     $stmtCI->execute();

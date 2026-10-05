@@ -4463,7 +4463,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
         }
 
         $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
-        $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+3 hours';
+        $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+6 hours';
         $shareHours = (int)get_system_setting($conn, 'uncontacted_lead_share_hours');
         if ($shareHours > 0) {
             $chuaXacDinhDuration = "+$shareHours hours";
