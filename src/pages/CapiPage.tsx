@@ -211,8 +211,18 @@ export default function CapiPage() {
         setPixelId(resSettings.data?.meta_pixel_id || '');
         setAccessToken(resSettings.data?.meta_access_token || '');
         setCapiEventTriggers(resSettings.data?.capi_event_triggers || {});
-        setPipelineStatuses(resSettings.data?.pipeline_statuses || []);
-        setPipelineStatusLabels(resSettings.data?.pipeline_status_labels || {});
+        
+        const fetchedStatuses: string[] = resSettings.data?.pipeline_statuses || [];
+        if (!fetchedStatuses.includes('not_lead') && !fetchedStatuses.includes('notlead')) {
+          fetchedStatuses.push('not_lead');
+        }
+        setPipelineStatuses(fetchedStatuses);
+
+        const fetchedLabels: Record<string, string> = resSettings.data?.pipeline_status_labels || {};
+        if (!fetchedLabels['not_lead']) fetchedLabels['not_lead'] = 'Not Lead';
+        if (!fetchedLabels['notlead']) fetchedLabels['notlead'] = 'Not Lead';
+        setPipelineStatusLabels(fetchedLabels);
+
         if (resSettings.data?.capi_custom_event_names?.length > 0) {
           setCustomEvents(resSettings.data.capi_custom_event_names);
         }
@@ -1160,36 +1170,74 @@ export default function CapiPage() {
             </div>
 
             {/* Variable insertion chips */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Chèn biến:</span>
-              {[
-                '{{lead_id}}', 
-                '{{phone_sha256}}', 
-                '{{first_name_sha256}}', 
-                '{{price}}', 
-                '{{status}}', 
-                '{{timestamp}}', 
-                '{{phone}}', 
-                '{{full_name}}'
-              ].map(tag => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => appendVariableToPayload(tag)}
-                  style={{
-                    fontSize: '0.65rem',
-                    fontFamily: 'monospace',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--color-border)',
-                    background: 'var(--color-bg)',
-                    cursor: 'pointer'
-                  }}
-                  title={`Nhấp để chèn biến ${tag}`}
-                >
-                  + {tag}
-                </button>
-              ))}
+            <div style={{ marginBottom: '0.65rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Biến tiêu chuẩn:</span>
+                {[
+                  '{{lead_id}}', 
+                  '{{phone_sha256}}', 
+                  '{{first_name_sha256}}', 
+                  '{{price}}', 
+                  '{{status}}', 
+                  '{{timestamp}}', 
+                  '{{phone}}', 
+                  '{{full_name}}'
+                ].map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => appendVariableToPayload(tag)}
+                    style={{
+                      fontSize: '0.65rem',
+                      fontFamily: 'monospace',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-bg)',
+                      cursor: 'pointer'
+                    }}
+                    title={`Nhấp để chèn biến ${tag}`}
+                  >
+                    + {tag}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600 }}>Biến Database mở rộng:</span>
+                {[
+                  '{{address}}',
+                  '{{city}}',
+                  '{{source}}',
+                  '{{notes}}',
+                  '{{owner_name}}',
+                  '{{budget_range}}',
+                  '{{utm_campaign}}',
+                  '{{email}}'
+                ].map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => appendVariableToPayload(tag)}
+                    style={{
+                      fontSize: '0.65rem',
+                      fontFamily: 'monospace',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                      background: 'rgba(59, 130, 246, 0.05)',
+                      color: 'var(--color-primary)',
+                      cursor: 'pointer'
+                    }}
+                    title={`Nhấp để chèn biến database ${tag}`}
+                  >
+                    + {tag}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                ✨ <em>Hệ thống tự động hỗ trợ <strong>tất cả các trường trong Database</strong> theo cú pháp <code>{'{{tên_cột}}'}</code> (ví dụ: {'{{gender}}'}, {'{{utm_source}}'}, {'{{customer_type}}'}, {'{{bedroom_count}}'},...).</em>
+              </div>
             </div>
 
             <textarea

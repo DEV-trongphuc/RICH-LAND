@@ -27,6 +27,9 @@ class CapiController {
         if (empty($hierarchy)) {
             $hierarchy = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal', 'not_lead'];
         }
+        if (!in_array('not_lead', $hierarchy) && !in_array('notlead', $hierarchy)) {
+            $hierarchy[] = 'not_lead';
+        }
 
         $labels = [];
         if (!empty($settings['pipeline_status_labels'])) {
@@ -41,8 +44,14 @@ class CapiController {
                 'booking' => 'Booking',
                 'dat_coc' => 'Đặt cọc',
                 'dong_deal' => 'Đóng deal',
-                'not_lead' => 'Không phải lead'
+                'not_lead' => 'Not Lead'
             ];
+        }
+        if (!isset($labels['not_lead'])) {
+            $labels['not_lead'] = 'Not Lead';
+        }
+        if (!isset($labels['notlead'])) {
+            $labels['notlead'] = 'Not Lead';
         }
 
         $triggers = [];
@@ -183,6 +192,9 @@ class CapiController {
             '{{new_value}}' => 'da_gap',
             '{{timestamp}}' => (string)$timeNow,
             '{{event_time}}' => (string)$timeNow,
+            '{{owner_name}}' => 'Vũ Văn Thành',
+            '{{owner_phone}}' => '0912345678',
+            '{{owner_email}}' => 'thanh.vu@richland.city',
             '{pixel_id}' => $pixelId,
             '{meta_pixel_id}' => $pixelId,
             '{token}' => $token,
@@ -190,8 +202,68 @@ class CapiController {
             '{meta_access_token}' => $token
         ];
 
+        // Sample data for all common database columns in contacts/persons
+        $sampleDbFields = [
+            'address' => '123 Nguyễn Huệ, Phường Bến Nghé, Quận 1',
+            'city' => 'Hồ Chí Minh',
+            'ward' => 'Bến Nghé',
+            'district' => 'Quận 1',
+            'source' => 'facebook_ads',
+            'notes' => 'Khách quan tâm căn 2PN view sông',
+            'gender' => 'Nam',
+            'budget' => '3500000000',
+            'budget_range' => '3 - 5 tỷ',
+            'customer_type' => 'Khách mua ở',
+            'industry' => 'Tài chính',
+            'company' => 'Rich Land Corp',
+            'tax_code' => '0312345678',
+            'citizen_id' => '079090123456',
+            'dob' => '1990-05-15',
+            'bedroom_count' => '2PN',
+            'preferred_location' => 'Trung tâm thành phố',
+            'utm_source' => 'facebook',
+            'utm_medium' => 'cpc',
+            'utm_campaign' => 'du_an_hai_phong_2026',
+            'utm_content' => 'ad_group_01',
+            'utm_term' => 'can_ho_cao_cap',
+            'platform' => 'fb',
+            'form_name' => 'Form Đăng Ký Dự Án',
+            'ad_name' => 'Ad 01 - Ưu đãi đợt 1',
+            'zalo_phone' => $samplePhone,
+            'not_lead_reason' => 'Không đúng nhu cầu',
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+        foreach ($sampleDbFields as $colKey => $colVal) {
+            if (!isset($macroMap['{{' . $colKey . '}}'])) {
+                $macroMap['{{' . $colKey . '}}'] = (string)$colVal;
+            }
+        }
+
+        // Render URL with raw values or URL encoding
         $renderedUrl = str_replace(array_keys($macroMap), array_values($macroMap), $targetUrl);
-        $renderedPayload = str_replace(array_keys($macroMap), array_values($macroMap), $payloadTemplate);
+        // Fallback for any other {{col_name}} in URL
+        $renderedUrl = preg_replace_callback('/\{\{([a-zA-Z0-9_\-]+)\}\}/', function($m) {
+            return 'sample_' . $m[1];
+        }, $renderedUrl);
+
+        // Render Payload with JSON-safe escaping
+        $renderedPayload = preg_replace_callback('/\{\{([a-zA-Z0-9_\-]+)\}\}/', function($m) use ($macroMap) {
+            $tag = '{{' . $m[1] . '}}';
+            if (isset($macroMap[$tag])) {
+                $val = $macroMap[$tag];
+                if (in_array($tag, ['{{price}}', '{{timestamp}}', '{{event_time}}', '{{contact_id}}', '{{lead_id}}']) && is_numeric($val)) {
+                    return $val;
+                }
+                return addcslashes($val, "\"\\\r\n\t\f\b");
+            }
+            return 'sample_' . $m[1];
+        }, $payloadTemplate);
+        $renderedPayload = str_replace(
+            ['{pixel_id}', '{meta_pixel_id}', '{token}', '{access_token}', '{meta_access_token}'],
+            [$pixelId, $pixelId, $token, $token, $token],
+            $renderedPayload
+        );
 
         $httpHeaders = ['Content-Type: application/json'];
         if (!empty($headersRaw)) {

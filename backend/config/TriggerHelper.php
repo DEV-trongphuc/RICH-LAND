@@ -40,7 +40,12 @@ class TriggerHelper {
                 $trgVal = trim($t['trigger_value'] ?? '');
 
                 if ($trgField === $field) {
-                    if ($trgVal === '*' || $trgVal === (string)$newVal) {
+                    $isMatch = ($trgVal === '*' || $trgVal === (string)$newVal);
+                    // Match not_lead and notlead interchangeably
+                    if (!$isMatch && ($trgVal === 'not_lead' || $trgVal === 'notlead') && ($newVal === 'not_lead' || $newVal === 'notlead')) {
+                        $isMatch = true;
+                    }
+                    if ($isMatch) {
                         $matchedTriggers[] = $t;
                     }
                 }
@@ -50,16 +55,24 @@ class TriggerHelper {
                 return;
             }
 
-            // 3. Fetch contact details
+            // 3. Fetch contact details with person and owner user details
             $stmtC = $db->prepare("
-                SELECT c.*, p.full_name AS person_full_name, p.phone AS person_phone 
+                SELECT 
+                    c.*, 
+                    p.full_name AS person_full_name, 
+                    p.phone AS person_phone,
+                    p.email AS person_email,
+                    u.full_name AS owner_name,
+                    u.phone AS owner_phone,
+                    u.email AS owner_email
                 FROM contacts c
                 LEFT JOIN persons p ON c.person_id = p.id
+                LEFT JOIN users u ON c.owner_id = u.id
                 WHERE c.id = ?
                 LIMIT 1
             ");
             $stmtC->execute([$contactId]);
-            $c = $stmtC->fetch();
+            $c = $stmtC->fetch(PDO::FETCH_ASSOC);
             if (!$c) {
                 return;
             }
@@ -95,10 +108,10 @@ class TriggerHelper {
             $lastName = $c['last_name'] ?? '';
             $fullName = trim("$lastName $firstName") ?: ($c['person_full_name'] ?? '');
             $fnHash = !empty($firstName) ? CapiHelper::normalizeAndHash($firstName, true) : '';
-            $email = $c['email'] ?? '';
+            $email = $c['email'] ?? ($c['person_email'] ?? '');
             $timeNow = time();
 
-            // Replacement dictionary
+            // Base replacement dictionary
             $macroMap = [
                 '{{lead_id}}' => (string)$leadId,
                 '{{contact_id}}' => (string)$contactId,
@@ -117,6 +130,9 @@ class TriggerHelper {
                 '{{field}}' => (string)$field,
                 '{{timestamp}}' => (string)$timeNow,
                 '{{event_time}}' => (string)$timeNow,
+                '{{owner_name}}' => (string)($c['owner_name'] ?? ''),
+                '{{owner_phone}}' => (string)($c['owner_phone'] ?? ''),
+                '{{owner_email}}' => (string)($c['owner_email'] ?? ''),
                 '{pixel_id}' => $pixelId,
                 '{meta_pixel_id}' => $pixelId,
                 '{token}' => $token,
@@ -124,8 +140,25 @@ class TriggerHelper {
                 '{meta_access_token}' => $token
             ];
 
+            // Dynamically populate all database columns from contacts/persons
+            foreach ($c as $colName => $colValue) {
+                if (is_string($colName) && !isset($macroMap['{{' . $colName . '}}'])) {
+                    $macroMap['{{' . $colName . '}}'] = (string)($colValue ?? '');
+                }
+            }
+
+            // Create JSON-safe escaped dictionary for payload replacement
+            $jsonMacroMap = [];
+            foreach ($macroMap as $k => $v) {
+                if (in_array($k, ['{{price}}', '{{timestamp}}', '{{event_time}}', '{{contact_id}}', '{{lead_id}}']) && is_numeric($v)) {
+                    $jsonMacroMap[$k] = $v;
+                } else {
+                    $jsonMacroMap[$k] = addcslashes($v, "\"\\\r\n\t\f\b");
+                }
+            }
+
             // 4. Fire each matched trigger in shutdown
-            register_shutdown_function(function() use ($db, $matchedTriggers, $macroMap, $contactId, $leadId) {
+            register_shutdown_function(function() use ($db, $matchedTriggers, $macroMap, $jsonMacroMap, $contactId, $leadId) {
                 if (function_exists('fastcgi_finish_request')) {
                     @fastcgi_finish_request();
                 }
@@ -144,7 +177,7 @@ class TriggerHelper {
 
                         // Payload
                         $payloadTemplate = $trg['payload_template'] ?? '{}';
-                        $renderedPayload = str_replace(array_keys($macroMap), array_values($macroMap), $payloadTemplate);
+                        $renderedPayload = str_replace(array_keys($jsonMacroMap), array_values($jsonMacroMap), $payloadTemplate);
 
                         // Headers
                         $httpHeaders = ['Content-Type: application/json'];
