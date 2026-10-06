@@ -5,11 +5,12 @@ import {
   Link2, Save, Check, X, AlertCircle, RefreshCw, Code, CheckCircle, 
   Info, ShieldAlert, Search, Calendar, FileText, MessageCircle, Eye, 
   Zap, Settings as SettingsIcon, Plus, Trash2, Edit2, Play, ExternalLink, 
-  Sliders, Layers, Globe, Radio, Copy
+  Sliders, Layers, Globe, Radio, Copy, Users, UserPlus, Database, Briefcase, CreditCard
 } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Skeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { Pagination } from '../components/ui/Pagination';
 import { useUIStore } from '../store/uiStore';
 
 interface CapiLog {
@@ -46,19 +47,24 @@ export interface TriggerCondition {
   value: string;
 }
 
+export interface TriggerBranch {
+  conditions: TriggerCondition[]; // Các điều kiện trong nhánh kết hợp bằng AND
+}
+
 export interface OutboundTrigger {
   id: string;
   name: string;
   is_active: boolean;
   source_table: string; // 'contacts' | 'leads' | 'persons' | 'deals' | 'deposits'
   change_type: 'update' | 'insert' | 'delete' | 'all'; // Updates, Adds, Deletes
-  condition_logic: 'OR' | 'AND';
-  conditions: TriggerCondition[];
+  branches: TriggerBranch[]; // Các nhánh kết hợp bằng OR
   target_url: string;
   http_method: 'POST' | 'PUT' | 'GET' | 'PATCH';
   headers: string;
   payload_template: string;
   // Legacy compatibility
+  condition_logic?: 'OR' | 'AND';
+  conditions?: TriggerCondition[];
   trigger_field?: string;
   trigger_value?: string;
 }
@@ -74,17 +80,17 @@ export interface TestResult {
 }
 
 const TRIGGER_TABLES = [
-  { id: 'contacts', name: 'contacts', label: 'Khách hàng (contacts)', desc: 'Khách hàng CRM, phân công Sale, trạng thái phễu', icon: '👥' },
-  { id: 'leads', name: 'leads', label: 'Lead tiềm năng (leads)', desc: 'Lead mới từ Ads Facebook / TikTok / Website', icon: '📥' },
-  { id: 'persons', name: 'persons', label: 'Kho Databank (persons)', desc: 'SĐT danh tính cá nhân & kho chung công ty', icon: '🗄️' },
-  { id: 'deals', name: 'deals', label: 'Giao dịch BĐS (deals)', desc: 'Hợp đồng, căn hộ giao dịch, doanh số, hoa hồng', icon: '🤝' },
-  { id: 'deposits', name: 'deposits', label: 'Đặt cọc & Booking (deposits)', desc: 'Tiền cọc giữ chỗ, phiếu thu, hủy cọc', icon: '💰' }
+  { id: 'contacts', name: 'contacts', label: 'Khách hàng (contacts)', desc: 'Khách hàng CRM, phân công Sale, trạng thái phễu', icon: Users },
+  { id: 'leads', name: 'leads', label: 'Lead tiềm năng (leads)', desc: 'Lead mới từ Ads Facebook / TikTok / Website', icon: UserPlus },
+  { id: 'persons', name: 'persons', label: 'Kho Databank (persons)', desc: 'SĐT danh tính cá nhân & kho chung công ty', icon: Database },
+  { id: 'deals', name: 'deals', label: 'Giao dịch BĐS (deals)', desc: 'Hợp đồng, căn hộ giao dịch, doanh số, hoa hồng', icon: Briefcase },
+  { id: 'deposits', name: 'deposits', label: 'Đặt cọc & Booking (deposits)', desc: 'Tiền cọc giữ chỗ, phiếu thu, hủy cọc', icon: CreditCard }
 ];
 
 const TRIGGER_CHANGE_TYPES = [
-  { id: 'update', label: 'Updates (Cập nhật)', desc: 'Kích hoạt khi dữ liệu/trạng thái thay đổi', color: '#2563eb', bg: 'rgba(37, 99, 235, 0.08)', border: 'rgba(37, 99, 235, 0.25)' },
-  { id: 'insert', label: 'Adds (Thêm mới)', desc: 'Kích hoạt khi có bản ghi mới được tạo', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)', border: 'rgba(22, 163, 74, 0.25)' },
-  { id: 'delete', label: 'Deletes (Xóa bản ghi)', desc: 'Kích hoạt khi bản ghi bị xóa hoặc hủy', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)', border: 'rgba(220, 38, 38, 0.25)' }
+  { id: 'update', label: 'Updates (Cập nhật)', desc: 'Kích hoạt khi dữ liệu/trạng thái thay đổi', icon: RefreshCw, color: '#2563eb', bg: 'rgba(37, 99, 235, 0.08)', border: 'rgba(37, 99, 235, 0.25)' },
+  { id: 'insert', label: 'Adds (Thêm mới)', desc: 'Kích hoạt khi có bản ghi mới được tạo', icon: Plus, color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)', border: 'rgba(22, 163, 74, 0.25)' },
+  { id: 'delete', label: 'Deletes (Xóa bản ghi)', desc: 'Kích hoạt khi bản ghi bị xóa hoặc hủy', icon: Trash2, color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)', border: 'rgba(220, 38, 38, 0.25)' }
 ];
 
 const TRIGGER_OPERATORS = [
@@ -147,28 +153,55 @@ const TABLE_SUGGESTED_FIELDS: Record<string, { field: string; label: string; typ
 const normalizeTrigger = (t: any): OutboundTrigger => {
   const source_table = t.source_table || 'contacts';
   const change_type = t.change_type || 'update';
-  const condition_logic = t.condition_logic === 'AND' ? 'AND' : 'OR';
   
-  let conditions: TriggerCondition[] = [];
-  if (Array.isArray(t.conditions) && t.conditions.length > 0) {
-    conditions = t.conditions.map((c: any) => ({
-      field: c.field || 'pipeline_status',
-      operator: c.operator || '=',
-      value: c.value !== undefined ? String(c.value) : ''
+  let branches: TriggerBranch[] = [];
+
+  if (Array.isArray(t.branches) && t.branches.length > 0) {
+    branches = t.branches.map((b: any) => ({
+      conditions: Array.isArray(b.conditions) && b.conditions.length > 0
+        ? b.conditions.map((c: any) => ({
+            field: c.field || c.col || 'pipeline_status',
+            operator: c.operator || c.op || '=',
+            value: c.value !== undefined ? String(c.value) : (c.val !== undefined ? String(c.val) : '')
+          }))
+        : [{ field: 'pipeline_status', operator: '=', value: '' }]
     }));
+  } else if (Array.isArray(t.conditions) && t.conditions.length > 0) {
+    if (t.condition_logic === 'AND') {
+      branches = [{
+        conditions: t.conditions.map((c: any) => ({
+          field: c.field || 'pipeline_status',
+          operator: c.operator || '=',
+          value: c.value !== undefined ? String(c.value) : ''
+        }))
+      }];
+    } else {
+      // Default OR: each condition is an independent branch
+      branches = t.conditions.map((c: any) => ({
+        conditions: [{
+          field: c.field || 'pipeline_status',
+          operator: c.operator || '=',
+          value: c.value !== undefined ? String(c.value) : ''
+        }]
+      }));
+    }
   } else if (t.trigger_field) {
-    conditions = [{
-      field: t.trigger_field,
-      operator: '=',
-      value: t.trigger_value || ''
+    branches = [{
+      conditions: [{
+        field: t.trigger_field,
+        operator: '=',
+        value: t.trigger_value || ''
+      }]
     }];
   } else {
-    conditions = [{
-      field: 'pipeline_status',
-      operator: '=',
-      value: 'da_gap'
-    }];
+    branches = [
+      { conditions: [{ field: 'pipeline_status', operator: '=', value: 'da_gap' }] },
+      { conditions: [{ field: 'pipeline_status', operator: '=', value: 'dong_y_gap' }] }
+    ];
   }
+
+  const allConditions = branches.flatMap(b => b.conditions);
+  const firstCond = allConditions[0] || { field: 'pipeline_status', operator: '=', value: 'da_gap' };
 
   return {
     id: t.id || 'trg_' + Date.now(),
@@ -176,10 +209,11 @@ const normalizeTrigger = (t: any): OutboundTrigger => {
     is_active: t.is_active !== undefined ? Boolean(t.is_active) : true,
     source_table,
     change_type,
-    condition_logic,
-    conditions,
-    trigger_field: conditions[0]?.field || 'pipeline_status',
-    trigger_value: conditions[0]?.value || 'da_gap',
+    branches,
+    conditions: allConditions,
+    condition_logic: 'OR',
+    trigger_field: firstCond.field,
+    trigger_value: firstCond.value,
     target_url: t.target_url || '',
     http_method: t.http_method || 'POST',
     headers: t.headers || '{\n  "Content-Type": "application/json"\n}',
@@ -309,10 +343,9 @@ export default function CapiPage() {
     is_active: true,
     source_table: 'contacts',
     change_type: 'update',
-    condition_logic: 'OR',
-    conditions: [
-      { field: 'pipeline_status', operator: '=', value: 'da_gap' },
-      { field: 'pipeline_status', operator: '=', value: 'dong_y_gap' }
+    branches: [
+      { conditions: [{ field: 'pipeline_status', operator: '=', value: 'da_gap' }] },
+      { conditions: [{ field: 'pipeline_status', operator: '=', value: 'dong_y_gap' }] }
     ],
     target_url: 'https://graph.facebook.com/v19.0/{pixel_id}/events?access_token={token}',
     http_method: 'POST',
@@ -337,6 +370,8 @@ export default function CapiPage() {
   const [showCapiConfigModal, setShowCapiConfigModal] = useState(false);
   const [logSearch, setLogSearch] = useState('');
   const [logFilterStatus, setLogFilterStatus] = useState<'all' | '200' | 'error'>('all');
+  const [logPage, setLogPage] = useState(1);
+  const [logPageSize, setLogPageSize] = useState(25);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const getInitials = (name?: string | null) => {
@@ -503,40 +538,88 @@ export default function CapiPage() {
     setTriggerForm(prev => ({
       ...prev,
       source_table: tableId,
-      conditions: prev.conditions.length > 0
-        ? prev.conditions.map(c => ({ ...c, field: defaultField, value: '' }))
-        : [{ field: defaultField, operator: '=', value: '' }]
+      branches: prev.branches && prev.branches.length > 0
+        ? prev.branches.map(b => ({
+            conditions: b.conditions.map(c => ({ ...c, field: defaultField, value: '' }))
+          }))
+        : [{ conditions: [{ field: defaultField, operator: '=', value: '' }] }]
     }));
   };
 
-  const handleAddCondition = () => {
+  const handleAddBranch = () => {
     const currentTableFields = TABLE_SUGGESTED_FIELDS[triggerForm.source_table] || TABLE_SUGGESTED_FIELDS.contacts;
     const defaultField = currentTableFields[0]?.field || 'pipeline_status';
     setTriggerForm(prev => ({
       ...prev,
-      conditions: [
-        ...prev.conditions,
-        { field: defaultField, operator: '=', value: '' }
+      branches: [
+        ...(prev.branches || []),
+        { conditions: [{ field: defaultField, operator: '=', value: '' }] }
       ]
     }));
   };
 
-  const handleRemoveCondition = (index: number) => {
-    if (triggerForm.conditions.length <= 1) {
-      addToast('Trigger cần có ít nhất 1 dòng điều kiện lọc', 'warning');
+  const handleRemoveBranch = (branchIndex: number) => {
+    if ((triggerForm.branches || []).length <= 1) {
+      addToast('Trigger cần có ít nhất 1 nhánh điều kiện lọc', 'warning');
       return;
     }
     setTriggerForm(prev => ({
       ...prev,
-      conditions: prev.conditions.filter((_, i) => i !== index)
+      branches: prev.branches.filter((_, idx) => idx !== branchIndex)
     }));
   };
 
-  const handleUpdateCondition = (index: number, patch: Partial<TriggerCondition>) => {
-    setTriggerForm(prev => ({
-      ...prev,
-      conditions: prev.conditions.map((c, i) => i === index ? { ...c, ...patch } : c)
-    }));
+  const handleAddCondition = (branchIndex: number) => {
+    const currentTableFields = TABLE_SUGGESTED_FIELDS[triggerForm.source_table] || TABLE_SUGGESTED_FIELDS.contacts;
+    const defaultField = currentTableFields[0]?.field || 'pipeline_status';
+    setTriggerForm(prev => {
+      const nextBranches = [...(prev.branches || [])];
+      if (!nextBranches[branchIndex]) return prev;
+      nextBranches[branchIndex] = {
+        ...nextBranches[branchIndex],
+        conditions: [
+          ...nextBranches[branchIndex].conditions,
+          { field: defaultField, operator: '=', value: '' }
+        ]
+      };
+      return { ...prev, branches: nextBranches };
+    });
+  };
+
+  const handleRemoveCondition = (branchIndex: number, conditionIndex: number) => {
+    setTriggerForm(prev => {
+      const nextBranches = [...(prev.branches || [])];
+      if (!nextBranches[branchIndex]) return prev;
+      const curConditions = nextBranches[branchIndex].conditions;
+      if (curConditions.length <= 1) {
+        if (nextBranches.length > 1) {
+          // If only 1 condition in this branch and multiple branches exist, remove the branch
+          return {
+            ...prev,
+            branches: nextBranches.filter((_, idx) => idx !== branchIndex)
+          };
+        }
+        addToast('Mỗi nhánh cần có ít nhất 1 điều kiện lọc', 'warning');
+        return prev;
+      }
+      nextBranches[branchIndex] = {
+        ...nextBranches[branchIndex],
+        conditions: curConditions.filter((_, idx) => idx !== conditionIndex)
+      };
+      return { ...prev, branches: nextBranches };
+    });
+  };
+
+  const handleUpdateCondition = (branchIndex: number, conditionIndex: number, patch: Partial<TriggerCondition>) => {
+    setTriggerForm(prev => {
+      const nextBranches = [...(prev.branches || [])];
+      if (!nextBranches[branchIndex]) return prev;
+      nextBranches[branchIndex] = {
+        ...nextBranches[branchIndex],
+        conditions: nextBranches[branchIndex].conditions.map((c, idx) => idx === conditionIndex ? { ...c, ...patch } : c)
+      };
+      return { ...prev, branches: nextBranches };
+    });
   };
 
   const handleOpenCreateTrigger = () => {
@@ -547,10 +630,9 @@ export default function CapiPage() {
       is_active: true,
       source_table: 'contacts',
       change_type: 'update',
-      condition_logic: 'OR',
-      conditions: [
-        { field: 'pipeline_status', operator: '=', value: 'da_gap' },
-        { field: 'pipeline_status', operator: '=', value: 'dong_y_gap' }
+      branches: [
+        { conditions: [{ field: 'pipeline_status', operator: '=', value: 'da_gap' }] },
+        { conditions: [{ field: 'pipeline_status', operator: '=', value: 'dong_y_gap' }] }
       ],
       target_url: 'https://graph.facebook.com/v19.0/{pixel_id}/events?access_token={token}',
       http_method: 'POST',
@@ -613,6 +695,7 @@ export default function CapiPage() {
         body: JSON.stringify({
           source_table: normalized.source_table,
           change_type: normalized.change_type,
+          branches: normalized.branches,
           condition_logic: normalized.condition_logic,
           conditions: normalized.conditions,
           target_url: normalized.target_url,
@@ -796,7 +879,28 @@ export default function CapiPage() {
       </div>
 
       {/* TAB 1: META CAPI & ÁNH XẠ PHỄU (FULL WIDTH DETAILED LOGS) */}
-      {activeTab === 'capi' && (
+      {activeTab === 'capi' && (() => {
+        const filteredLogs = logs.filter(l => {
+          const q = logSearch.toLowerCase().trim();
+          const matchesSearch = !q ||
+            (l.event_name && l.event_name.toLowerCase().includes(q)) ||
+            (l.display_name && l.display_name.toLowerCase().includes(q)) ||
+            (l.first_name && l.first_name.toLowerCase().includes(q)) ||
+            (l.last_name && l.last_name.toLowerCase().includes(q)) ||
+            (l.phone && l.phone.includes(q)) ||
+            (l.owner_name && l.owner_name.toLowerCase().includes(q)) ||
+            (String(l.response_status).includes(q));
+
+          const matchesStatus = logFilterStatus === 'all' ||
+            (logFilterStatus === '200' && Number(l.response_status) === 200) ||
+            (logFilterStatus === 'error' && Number(l.response_status) !== 200);
+
+          return matchesSearch && matchesStatus;
+        });
+
+        const paginatedLogs = filteredLogs.slice((logPage - 1) * logPageSize, logPage * logPageSize);
+
+        return (
         <div className="card" style={{ padding: '1.25rem', width: '100%', display: 'flex', flexDirection: 'column' }}>
           {/* Top toolbar inside Log card */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem', marginBottom: '1rem' }}>
@@ -815,27 +919,11 @@ export default function CapiPage() {
                 background: 'rgba(0,0,0,0.05)', 
                 color: 'var(--color-text-muted)' 
               }}>
-                {logs.filter(l => {
-                  const q = logSearch.toLowerCase().trim();
-                  const matchesSearch = !q ||
-                    (l.event_name && l.event_name.toLowerCase().includes(q)) ||
-                    (l.display_name && l.display_name.toLowerCase().includes(q)) ||
-                    (l.first_name && l.first_name.toLowerCase().includes(q)) ||
-                    (l.last_name && l.last_name.toLowerCase().includes(q)) ||
-                    (l.phone && l.phone.includes(q)) ||
-                    (l.owner_name && l.owner_name.toLowerCase().includes(q)) ||
-                    (String(l.response_status).includes(q));
-
-                  const matchesStatus = logFilterStatus === 'all' ||
-                    (logFilterStatus === '200' && Number(l.response_status) === 200) ||
-                    (logFilterStatus === 'error' && Number(l.response_status) !== 200);
-
-                  return matchesSearch && matchesStatus;
-                }).length} / {logs.length} bản ghi
+                {filteredLogs.length} / {logs.length} bản ghi
               </span>
             </div>
 
-            {/* Filter controls & Settings button */}
+            {/* Filter controls without lower redundant setting button */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {/* Search input */}
               <div style={{ position: 'relative', width: '220px' }}>
@@ -844,7 +932,10 @@ export default function CapiPage() {
                   type="text"
                   placeholder="Tìm khách, SĐT, sự kiện..."
                   value={logSearch}
-                  onChange={e => setLogSearch(e.target.value)}
+                  onChange={e => {
+                    setLogSearch(e.target.value);
+                    setLogPage(1);
+                  }}
                   className="form-input"
                   style={{ paddingLeft: '30px', fontSize: '0.75rem', height: '32px' }}
                 />
@@ -854,7 +945,10 @@ export default function CapiPage() {
               <div style={{ display: 'flex', border: '1px solid var(--color-border)', borderRadius: '6px', overflow: 'hidden' }}>
                 <button
                   type="button"
-                  onClick={() => setLogFilterStatus('all')}
+                  onClick={() => {
+                    setLogFilterStatus('all');
+                    setLogPage(1);
+                  }}
                   style={{
                     padding: '4px 10px',
                     fontSize: '0.72rem',
@@ -869,7 +963,10 @@ export default function CapiPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setLogFilterStatus('200')}
+                  onClick={() => {
+                    setLogFilterStatus('200');
+                    setLogPage(1);
+                  }}
                   style={{
                     padding: '4px 10px',
                     fontSize: '0.72rem',
@@ -885,7 +982,10 @@ export default function CapiPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setLogFilterStatus('error')}
+                  onClick={() => {
+                    setLogFilterStatus('error');
+                    setLogPage(1);
+                  }}
                   style={{
                     padding: '4px 10px',
                     fontSize: '0.72rem',
@@ -900,18 +1000,6 @@ export default function CapiPage() {
                   Lỗi (4xx/5xx)
                 </button>
               </div>
-
-              {/* Setting button */}
-              <button
-                type="button"
-                onClick={() => setShowCapiConfigModal(true)}
-                className="btn primary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', height: '32px', padding: '0 12px', fontWeight: 700 }}
-                title="Cài đặt cấu hình Meta Pixel & Ánh xạ phễu"
-              >
-                <SettingsIcon size={14} />
-                <span>Cài đặt</span>
-              </button>
             </div>
           </div>
 
@@ -962,25 +1050,7 @@ export default function CapiPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {logs
-                    .filter(l => {
-                      const q = logSearch.toLowerCase().trim();
-                      const matchesSearch = !q ||
-                        (l.event_name && l.event_name.toLowerCase().includes(q)) ||
-                        (l.display_name && l.display_name.toLowerCase().includes(q)) ||
-                        (l.first_name && l.first_name.toLowerCase().includes(q)) ||
-                        (l.last_name && l.last_name.toLowerCase().includes(q)) ||
-                        (l.phone && l.phone.includes(q)) ||
-                        (l.owner_name && l.owner_name.toLowerCase().includes(q)) ||
-                        (String(l.response_status).includes(q));
-
-                      const matchesStatus = logFilterStatus === 'all' ||
-                        (logFilterStatus === '200' && Number(l.response_status) === 200) ||
-                        (logFilterStatus === 'error' && Number(l.response_status) !== 200);
-
-                      return matchesSearch && matchesStatus;
-                    })
-                    .map(l => {
+                  {paginatedLogs.map(l => {
                       const isTrigger = l.event_name.startsWith('TRIGGER:');
                       const cleanEvent = l.event_name.replace('TRIGGER: ', '').trim() || 'CompleteRegistration';
                       const customerName = l.display_name || (l.first_name ? `${l.last_name || ''} ${l.first_name}`.trim() : (l.lead_id === 2147483647 ? 'Khách hàng mẫu (Test)' : 'Khách hàng'));
@@ -1150,8 +1220,26 @@ export default function CapiPage() {
               </table>
             </div>
           )}
+
+          {/* Pagination */}
+          {!loading && filteredLogs.length > 0 && (
+            <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+              <Pagination
+                total={filteredLogs.length}
+                page={logPage}
+                pageSize={logPageSize}
+                onChange={setLogPage}
+                showSizeChanger
+                onPageSizeChange={(newSize) => {
+                  setLogPageSize(newSize);
+                  setLogPage(1);
+                }}
+              />
+            </div>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       {/* TAB 2: BỘ KÍCH HOẠT TRIGGER TỰ ĐỘNG */}
       {activeTab === 'triggers' && (
@@ -1238,27 +1326,34 @@ export default function CapiPage() {
                       <span style={{
                         fontSize: '0.68rem',
                         fontWeight: 800,
-                        padding: '1px 7px',
+                        padding: '2px 8px',
                         borderRadius: '4px',
                         background: 'rgba(139, 92, 246, 0.1)',
                         color: '#8b5cf6',
                         border: '1px solid rgba(139, 92, 246, 0.25)',
-                        fontFamily: 'monospace'
+                        fontFamily: 'monospace',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
                       }}>
-                        📂 {trg.source_table || 'contacts'}
+                        <Database size={11} />
+                        <span>{trg.source_table || 'contacts'}</span>
                       </span>
 
                       {/* Change type pill */}
                       <span style={{
                         fontSize: '0.68rem',
                         fontWeight: 800,
-                        padding: '1px 7px',
+                        padding: '2px 8px',
                         borderRadius: '4px',
                         background: trg.change_type === 'insert' ? 'rgba(22, 163, 74, 0.1)' : trg.change_type === 'delete' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(37, 99, 235, 0.1)',
                         color: trg.change_type === 'insert' ? '#16a34a' : trg.change_type === 'delete' ? '#dc2626' : '#2563eb',
-                        border: '1px solid currentColor'
+                        border: '1px solid currentColor',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
                       }}>
-                        {trg.change_type === 'insert' ? '➕ Adds' : trg.change_type === 'delete' ? '🗑️ Deletes' : '⚡ Updates'}
+                        {trg.change_type === 'insert' ? <><Plus size={11} /> Adds</> : trg.change_type === 'delete' ? <><Trash2 size={11} /> Deletes</> : <><RefreshCw size={11} /> Updates</>}
                       </span>
                     </div>
 
@@ -1266,10 +1361,29 @@ export default function CapiPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.775rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Điều kiện:</span>
-                        {trg.conditions && trg.conditions.length > 0 ? (
+                        {trg.branches && trg.branches.length > 0 ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            {trg.branches.map((b, bIdx) => (
+                              <span key={bIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                {bIdx > 0 && <span style={{ fontWeight: 800, margin: '0 4px', color: '#ea580c', fontSize: '0.7rem' }}>HOẶC</span>}
+                                <span style={{ background: 'rgba(0,0,0,0.035)', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-primary)' }}>N{bIdx + 1}:</span>
+                                  {b.conditions.map((c, cIdx) => (
+                                    <span key={cIdx} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                      {cIdx > 0 && <span style={{ fontWeight: 800, margin: '0 3px', color: '#2563eb', fontSize: '0.65rem' }}>VÀ</span>}
+                                      <code style={{ fontSize: '0.72rem', fontWeight: 700 }}>
+                                        {c.field} {c.operator} {c.value || '*'}
+                                      </code>
+                                    </span>
+                                  ))}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : trg.conditions && trg.conditions.length > 0 ? (
                           trg.conditions.map((c, i) => (
                             <span key={i} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                              {i > 0 && <span style={{ fontWeight: 800, margin: '0 4px', color: trg.condition_logic === 'OR' ? '#ea580c' : '#2563eb', fontSize: '0.68rem' }}>{trg.condition_logic}</span>}
+                              {i > 0 && <span style={{ fontWeight: 800, margin: '0 4px', color: trg.condition_logic === 'AND' ? '#2563eb' : '#ea580c', fontSize: '0.68rem' }}>{trg.condition_logic || 'OR'}</span>}
                               <code style={{ background: 'rgba(0,0,0,0.04)', padding: '1px 6px', borderRadius: '4px', color: 'var(--color-text)', fontWeight: 700 }}>
                                 {c.field} {c.operator} {c.value || '*'}
                               </code>
@@ -1468,8 +1582,8 @@ export default function CapiPage() {
       <CustomModal
         isOpen={showTriggerModal}
         onClose={() => setShowTriggerModal(false)}
-        title={editingTrigger ? '✏️ Chỉnh Sửa Bộ Kích Hoạt Trigger' : '⚡ Tạo Mới Bộ Kích Hoạt Trigger'}
-        width="820px"
+        title={editingTrigger ? 'Chỉnh Sửa Bộ Kích Hoạt Trigger' : 'Tạo Mới Bộ Kích Hoạt Trigger'}
+        width="960px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* ============================================================ */}
@@ -1484,7 +1598,7 @@ export default function CapiPage() {
                 </h4>
               </div>
               <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                Bảng ➔ Loại thao tác (Adds / Updates / Deletes) ➔ Bộ lọc quy tắc
+                Bảng ➔ Loại thao tác (Adds / Updates / Deletes) ➔ Các Nhánh quy tắc lọc
               </span>
             </div>
 
@@ -1509,9 +1623,10 @@ export default function CapiPage() {
                 </label>
                 <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700 }}>Bảng đang chọn: {triggerForm.source_table}</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px' }}>
                 {TRIGGER_TABLES.map(tbl => {
                   const isSelected = triggerForm.source_table === tbl.id;
+                  const Icon = tbl.icon;
                   return (
                     <button
                       key={tbl.id}
@@ -1521,18 +1636,18 @@ export default function CapiPage() {
                         padding: '8px 10px',
                         borderRadius: '8px',
                         border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                        background: isSelected ? 'rgba(189, 29, 45, 0.06)' : 'var(--color-bg)',
+                        background: isSelected ? 'var(--color-primary-light, rgba(189, 29, 45, 0.06))' : 'var(--color-bg)',
                         color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
                         textAlign: 'left',
                         cursor: 'pointer',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '2px',
+                        gap: '3px',
                         transition: 'all 0.15s'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
-                        <span>{tbl.icon}</span>
+                        <Icon size={15} />
                         <span>{tbl.name}</span>
                       </div>
                       <span style={{ fontSize: '0.66rem', color: 'var(--color-text-muted)', lineHeight: 1.2 }}>
@@ -1555,6 +1670,7 @@ export default function CapiPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                 {TRIGGER_CHANGE_TYPES.map(ct => {
                   const isSelected = triggerForm.change_type === ct.id;
+                  const Icon = ct.icon;
                   return (
                     <button
                       key={ct.id}
@@ -1570,13 +1686,16 @@ export default function CapiPage() {
                         textAlign: 'left',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '2px',
+                        gap: '3px',
                         transition: 'all 0.15s'
                       }}
                     >
-                      <span style={{ fontSize: '0.825rem', fontWeight: 800 }}>
-                        {ct.label}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Icon size={14} />
+                        <span style={{ fontSize: '0.825rem', fontWeight: 800 }}>
+                          {ct.label}
+                        </span>
+                      </div>
                       <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1.2 }}>
                         {ct.desc}
                       </span>
@@ -1586,181 +1705,262 @@ export default function CapiPage() {
               </div>
             </div>
 
-            {/* 1.3 CHỌN ĐIỀU KIỆN (CONDITIONS BUILDER) */}
-            <div style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '1rem', background: 'var(--color-bg)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '8px' }}>
-                <div>
-                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, margin: 0 }}>
-                    3. Chọn Điều kiện kích hoạt (Rules Filter)
-                  </label>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                    VD: status = da_gap HOẶC status = dong_y_gap, hoặc budget &gt; 1,000,000,000
-                  </span>
-                </div>
-
-                {/* Logic Selector: OR vs AND */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tổ hợp:</span>
-                  <div style={{ display: 'flex', border: '1px solid var(--color-border)', borderRadius: '6px', overflow: 'hidden' }}>
-                    <button
-                      type="button"
-                      onClick={() => setTriggerForm(prev => ({ ...prev, condition_logic: 'OR' }))}
-                      style={{
-                        padding: '3px 10px',
-                        fontSize: '0.72rem',
-                        fontWeight: 800,
-                        border: 'none',
-                        background: triggerForm.condition_logic === 'OR' ? '#ea580c' : 'var(--color-bg)',
-                        color: triggerForm.condition_logic === 'OR' ? '#fff' : 'var(--color-text-muted)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      HOẶC (Khớp bất kỳ)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTriggerForm(prev => ({ ...prev, condition_logic: 'AND' }))}
-                      style={{
-                        padding: '3px 10px',
-                        fontSize: '0.72rem',
-                        fontWeight: 800,
-                        border: 'none',
-                        borderLeft: '1px solid var(--color-border)',
-                        background: triggerForm.condition_logic === 'AND' ? '#2563eb' : 'var(--color-bg)',
-                        color: triggerForm.condition_logic === 'AND' ? '#fff' : 'var(--color-text-muted)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      VÀ (Khớp tất cả)
-                    </button>
-                  </div>
-                </div>
+            {/* 1.3 THIẾT LẬP CÁC NHÁNH ĐIỀU KIỆN (RULES FILTER - BRANCH SYSTEM) */}
+            <div style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '1.25rem', background: 'var(--color-bg)' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 800, margin: 0 }}>
+                  3. Chọn Điều kiện kích hoạt (Rules Filter)
+                </label>
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.4, display: 'block', marginTop: '2px' }}>
+                  Quy tắc: Các điều kiện trong cùng 1 Nhánh kết hợp bằng <strong>VÀ (AND)</strong>. Giữa các Nhánh kết hợp bằng <strong>HOẶC (OR)</strong>. Thỏa mãn bất kỳ Nhánh nào thì Trigger sẽ được kích hoạt.
+                </span>
               </div>
 
-              {/* Conditions Rows */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '0.75rem' }}>
-                {triggerForm.conditions.map((cond, idx) => {
-                  const isPipelineField = cond.field === 'pipeline_status' || cond.field === 'status';
-                  const isNoValueOperator = cond.operator === 'is_empty' || cond.operator === 'is_not_empty';
+              {/* Branches list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {(triggerForm.branches || []).map((branch, bIdx) => (
+                  <div
+                    key={bIdx}
+                    style={{
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-lg, 10px)',
+                      padding: '1.25rem',
+                      position: 'relative',
+                      background: 'var(--color-surface, #fff)',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                    }}
+                  >
+                    {/* Left red accent bar */}
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: 4,
+                      background: 'var(--color-primary, #bd1d2d)',
+                      borderRadius: '10px 0 0 10px'
+                    }} />
 
-                  return (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', background: 'rgba(0,0,0,0.015)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-primary)', width: '20px' }}>
-                        #{idx + 1}
-                      </span>
+                    {/* Branch Title and Actions */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-primary, #bd1d2d)', textTransform: 'uppercase', margin: 0 }}>
+                          NHÁNH {bIdx + 1}
+                        </h4>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                          (Các điều kiện bên dưới cùng thỏa mãn - logic VÀ)
+                        </span>
+                      </div>
 
-                      {/* Field selector */}
-                      <div style={{ flex: '1 1 200px' }}>
-                        <select
-                          value={cond.field}
-                          onChange={e => handleUpdateCondition(idx, { field: e.target.value })}
-                          className="form-input"
-                          style={{ fontSize: '0.775rem', height: '32px' }}
+                      {(triggerForm.branches || []).length > 1 && (
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          style={{ color: 'var(--color-danger, #ef4444)', padding: 4 }}
+                          onClick={() => handleRemoveBranch(bIdx)}
+                          title="Xóa nhánh này"
                         >
-                          {(TABLE_SUGGESTED_FIELDS[triggerForm.source_table] || TABLE_SUGGESTED_FIELDS.contacts).map(f => (
-                            <option key={f.field} value={f.field}>
-                              {f.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Operator selector */}
-                      <div style={{ width: '130px' }}>
-                        <select
-                          value={cond.operator}
-                          onChange={e => handleUpdateCondition(idx, { operator: e.target.value })}
-                          className="form-input font-bold"
-                          style={{ fontSize: '0.775rem', height: '32px' }}
-                        >
-                          {TRIGGER_OPERATORS.map(op => (
-                            <option key={op.value} value={op.value}>
-                              {op.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Value input or quick select */}
-                      <div style={{ flex: '1 1 200px' }}>
-                        {isNoValueOperator ? (
-                          <div style={{ height: '32px', display: 'flex', alignItems: 'center', padding: '0 10px', background: 'rgba(0,0,0,0.03)', borderRadius: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                            (Không cần nhập giá trị)
-                          </div>
-                        ) : isPipelineField ? (
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            <select
-                              value={cond.value}
-                              onChange={e => handleUpdateCondition(idx, { value: e.target.value })}
-                              className="form-input"
-                              style={{ fontSize: '0.775rem', height: '32px' }}
-                            >
-                              <option value="">-- Chọn trạng thái --</option>
-                              <option value="*">* Mọi trạng thái</option>
-                              {pipelineStatuses.map(st => (
-                                <option key={st} value={st}>
-                                  {pipelineStatusLabels[st] || st} ({st})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        ) : (
-                          <input
-                            type="text"
-                            placeholder="Giá trị (VD: 1000000000 hoặc da_gap)"
-                            value={cond.value}
-                            onChange={e => handleUpdateCondition(idx, { value: e.target.value })}
-                            className="form-input"
-                            style={{ fontSize: '0.775rem', height: '32px' }}
-                          />
-                        )}
-                      </div>
-
-                      {/* Remove condition button */}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCondition(idx)}
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: '1px solid rgba(239, 68, 68, 0.2)',
-                          background: 'rgba(239, 68, 68, 0.05)',
-                          color: 'var(--color-danger)',
-                          borderRadius: '6px',
-                          cursor: 'pointer'
-                        }}
-                        title="Xóa điều kiện này"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
-                  );
-                })}
+
+                    {/* Conditions inside Branch */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {branch.conditions.map((c, cIdx) => {
+                        const isLast = cIdx === branch.conditions.length - 1;
+                        const isNoValueOperator = c.operator === 'is_empty' || c.operator === 'is_not_empty';
+                        const isPipelineField = c.field === 'pipeline_status' || c.field === 'status';
+
+                        return (
+                          <div key={cIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative' }}>
+                            {/* IF / AND badge */}
+                            <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                              {cIdx === 0 ? (
+                                <div style={{
+                                  background: 'var(--color-primary-light, rgba(189, 29, 45, 0.1))',
+                                  color: 'var(--color-primary, #bd1d2d)',
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: '50%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 800,
+                                  flexShrink: 0,
+                                  position: 'relative',
+                                  zIndex: 2
+                                }}>
+                                  IF
+                                </div>
+                              ) : (
+                                <div style={{
+                                  background: 'var(--color-bg, #f1f5f9)',
+                                  color: 'var(--color-text-muted, #64748b)',
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: '50%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 800,
+                                  flexShrink: 0,
+                                  position: 'relative',
+                                  zIndex: 2
+                                }}>
+                                  AND
+                                </div>
+                              )}
+
+                              {/* Connecting vertical line */}
+                              <div style={{
+                                position: 'absolute',
+                                top: 32,
+                                bottom: isLast ? -20 : -10,
+                                left: 15,
+                                width: 2,
+                                background: 'var(--color-border, #e2e8f0)',
+                                zIndex: 1
+                              }} />
+                            </div>
+
+                            {/* Field selector */}
+                            <div style={{ flex: '1 1 220px' }}>
+                              <select
+                                value={c.field}
+                                onChange={e => handleUpdateCondition(bIdx, cIdx, { field: e.target.value })}
+                                className="form-input"
+                                style={{ fontSize: '0.8rem', height: '36px', borderRadius: 20 }}
+                              >
+                                {(TABLE_SUGGESTED_FIELDS[triggerForm.source_table] || TABLE_SUGGESTED_FIELDS.contacts).map(f => (
+                                  <option key={f.field} value={f.field}>
+                                    {f.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Operator selector */}
+                            <div style={{ width: '170px', flexShrink: 0 }}>
+                              <select
+                                value={c.operator}
+                                onChange={e => handleUpdateCondition(bIdx, cIdx, { operator: e.target.value })}
+                                className="form-input font-bold"
+                                style={{ fontSize: '0.8rem', height: '36px', borderRadius: 20 }}
+                              >
+                                {TRIGGER_OPERATORS.map(op => (
+                                  <option key={op.value} value={op.value}>
+                                    {op.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Value input or quick select */}
+                            <div style={{ flex: '1 1 220px' }}>
+                              {isNoValueOperator ? (
+                                <div style={{ height: '36px', display: 'flex', alignItems: 'center', padding: '0 16px', background: 'var(--color-bg, #f8fafc)', borderRadius: 20, border: '1px solid var(--color-border)', fontSize: '0.78rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                                  (Không cần nhập giá trị)
+                                </div>
+                              ) : isPipelineField ? (
+                                <select
+                                  value={c.value}
+                                  onChange={e => handleUpdateCondition(bIdx, cIdx, { value: e.target.value })}
+                                  className="form-input"
+                                  style={{ fontSize: '0.8rem', height: '36px', borderRadius: 20 }}
+                                >
+                                  <option value="">-- Chọn trạng thái --</option>
+                                  <option value="*">* Mọi trạng thái</option>
+                                  {pipelineStatuses.map(st => (
+                                    <option key={st} value={st}>
+                                      {pipelineStatusLabels[st] || st} ({st})
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type="text"
+                                  placeholder="Nhập giá trị..."
+                                  value={c.value}
+                                  onChange={e => handleUpdateCondition(bIdx, cIdx, { value: e.target.value })}
+                                  className="form-input"
+                                  style={{ fontSize: '0.8rem', height: '36px', borderRadius: 20 }}
+                                />
+                              )}
+                            </div>
+
+                            {/* Delete Condition Button */}
+                            {branch.conditions.length > 1 && (
+                              <button
+                                type="button"
+                                className="btn ghost"
+                                style={{ color: 'var(--color-danger)', padding: '8px', flexShrink: 0 }}
+                                onClick={() => handleRemoveCondition(bIdx, cIdx)}
+                                title="Xóa điều kiện này"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Add condition button inside branch */}
+                      <div style={{ paddingLeft: 44, marginTop: '0.5rem', position: 'relative' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleAddCondition(bIdx)}
+                          style={{
+                            background: 'var(--color-primary-light, rgba(189, 29, 45, 0.1))',
+                            color: 'var(--color-primary, #bd1d2d)',
+                            border: 'none',
+                            borderRadius: 20,
+                            padding: '6px 16px',
+                            fontSize: '0.8125rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}
+                        >
+                          <Plus size={14} /> Thêm điều kiện (VÀ)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Add condition button & Live preview summary */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              {/* Add New Branch Button */}
+              <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
                 <button
                   type="button"
-                  onClick={handleAddCondition}
-                  className="btn sm"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '4px 10px', color: 'var(--color-primary)', borderColor: 'var(--color-primary-light)' }}
+                  onClick={handleAddBranch}
+                  style={{
+                    width: '100%',
+                    padding: '0.875rem',
+                    background: 'transparent',
+                    border: '2px dashed var(--color-border)',
+                    borderRadius: 'var(--radius-lg, 10px)',
+                    color: 'var(--color-primary, #bd1d2d)',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
                 >
-                  <Plus size={13} />
-                  <span>Thêm điều kiện lọc</span>
+                  <Plus size={18} /> Thêm Nhánh Mới (HOẶC)
                 </button>
-
-                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                  {triggerForm.conditions.length} điều kiện được liên kết bằng logic <strong>{triggerForm.condition_logic}</strong>
-                </span>
               </div>
 
               {/* Live preview rule summary */}
               <div style={{
-                marginTop: '0.75rem',
                 padding: '8px 12px',
                 background: 'rgba(59, 130, 246, 0.05)',
                 border: '1px solid rgba(59, 130, 246, 0.2)',
@@ -1774,13 +1974,18 @@ export default function CapiPage() {
               }}>
                 <Zap size={14} style={{ color: '#3b82f6', flexShrink: 0 }} />
                 <span><strong>Quy tắc hoạt động:</strong> Lắng nghe bảng <code style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{triggerForm.source_table}</code> khi có thao tác <code style={{ color: '#2563eb', fontWeight: 800 }}>{triggerForm.change_type.toUpperCase()}</code> thỏa mãn:</span>
-                <span style={{ fontWeight: 600 }}>
-                  {triggerForm.conditions.map((c, idx) => (
-                    <span key={idx}>
-                      {idx > 0 && <strong style={{ color: triggerForm.condition_logic === 'OR' ? '#ea580c' : '#2563eb', margin: '0 6px' }}>{triggerForm.condition_logic}</strong>}
-                      <code style={{ background: 'rgba(0,0,0,0.06)', padding: '1px 5px', borderRadius: '4px' }}>
-                        {c.field} {c.operator} {c.value || '*'}
-                      </code>
+                <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                  {(triggerForm.branches || []).map((b, bIdx) => (
+                    <span key={bIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      {bIdx > 0 && <strong style={{ color: '#ea580c', margin: '0 4px' }}>HOẶC</strong>}
+                      <span style={{ background: 'rgba(0,0,0,0.06)', padding: '2px 6px', borderRadius: '4px' }}>
+                        (Nhánh {bIdx + 1}: {b.conditions.map((c, cIdx) => (
+                          <span key={cIdx}>
+                            {cIdx > 0 && <strong style={{ color: '#2563eb', margin: '0 4px' }}>VÀ</strong>}
+                            {c.field} {c.operator} {c.value || '*'}
+                          </span>
+                        ))})
+                      </span>
                     </span>
                   ))}
                 </span>
@@ -1939,7 +2144,8 @@ export default function CapiPage() {
                 ))}
               </div>
               <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                ✨ <em>Hệ thống tự động hỗ trợ <strong>tất cả các trường trong Database</strong> theo cú pháp <code>{'{{tên_cột}}'}</code> (ví dụ: {'{{gender}}'}, {'{{utm_source}}'}, {'{{customer_type}}'}, {'{{bedroom_count}}'},...).</em>
+                <Info size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                <em>Hệ thống tự động hỗ trợ <strong>tất cả các trường trong Database</strong> theo cú pháp <code>{'{{tên_cột}}'}</code> (ví dụ: {'{{gender}}'}, {'{{utm_source}}'}, {'{{customer_type}}'}, {'{{bedroom_count}}'},...).</em>
               </div>
             </div>
 
@@ -1962,7 +2168,7 @@ export default function CapiPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-primary)' }}
             >
               {testingTrigger ? <RefreshCw size={14} className="spin" /> : <Play size={14} />}
-              <span>{testingTrigger ? 'Đang bắn thử...' : '⚡ Bắn Thử Nghiệm Ngay'}</span>
+              <span>{testingTrigger ? 'Đang bắn thử...' : 'Bắn Thử Nghiệm Ngay'}</span>
             </button>
 
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -1991,7 +2197,7 @@ export default function CapiPage() {
         <CustomModal
           isOpen={showTestModal}
           onClose={() => setShowTestModal(false)}
-          title="⚡ Kết Quả Thực Thi Bắn Thử Nghiệm"
+          title="Kết Quả Thực Thi Bắn Thử Nghiệm"
           width="680px"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -2083,7 +2289,7 @@ export default function CapiPage() {
         <CustomModal
           isOpen={showCapiConfigModal}
           onClose={() => setShowCapiConfigModal(false)}
-          title="⚙️ Cài Đặt Meta Conversion API & Ánh Xạ Phễu"
+          title="Cài Đặt Meta Conversion API & Ánh Xạ Phễu"
           width="620px"
         >
           <form onSubmit={e => { e.preventDefault(); handleSaveSettings(); setShowCapiConfigModal(false); }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -2187,7 +2393,7 @@ export default function CapiPage() {
         <CustomModal
           isOpen={!!viewPayload}
           onClose={() => setViewPayload(null)}
-          title="📦 Chi tiết JSON Payload đã gửi đi"
+          title="Chi tiết JSON Payload đã gửi đi"
           width="620px"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -2220,7 +2426,7 @@ export default function CapiPage() {
         <CustomModal
           isOpen={!!viewResponse}
           onClose={() => setViewResponse(null)}
-          title="📡 Chi tiết phản hồi từ máy chủ (Response Body)"
+          title="Chi tiết phản hồi từ máy chủ (Response Body)"
           width="580px"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

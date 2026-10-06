@@ -246,13 +246,18 @@ class CapiController {
             }
         }
 
-        // Evaluate conditions if provided
+        // Evaluate conditions or branches if provided
         require_once __DIR__ . '/../config/TriggerHelper.php';
-        $conditions = $b['conditions'] ?? [];
-        $conditionLogic = strtoupper(trim($b['condition_logic'] ?? 'OR'));
+        $branches = $b['branches'] ?? null;
         $conditionPassed = true;
-        if (is_array($conditions) && !empty($conditions)) {
-            $conditionPassed = TriggerHelper::evaluateConditions($conditions, $conditionLogic, $sampleDbFields, ['pipeline_status' => 'dong_y_gap']);
+        if (is_array($branches) && !empty($branches)) {
+            $conditionPassed = TriggerHelper::evaluateBranches($branches, $sampleDbFields, ['pipeline_status' => 'dong_y_gap']);
+        } else {
+            $conditions = $b['conditions'] ?? [];
+            $conditionLogic = strtoupper(trim($b['condition_logic'] ?? 'OR'));
+            if (is_array($conditions) && !empty($conditions)) {
+                $conditionPassed = TriggerHelper::evaluateConditions($conditions, $conditionLogic, $sampleDbFields, ['pipeline_status' => 'dong_y_gap']);
+            }
         }
 
         // Render URL with raw values or URL encoding

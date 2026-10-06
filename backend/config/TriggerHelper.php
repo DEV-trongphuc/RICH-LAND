@@ -72,31 +72,36 @@ class TriggerHelper {
                     continue;
                 }
 
-                // Check 3: Evaluate Conditions
-                $conditions = $t['conditions'] ?? null;
+                // Check 3: Evaluate Conditions or Branches
+                $branches = $t['branches'] ?? null;
                 $isMatch = false;
 
-                if (is_array($conditions) && !empty($conditions)) {
-                    $logic = strtoupper(trim($t['condition_logic'] ?? 'OR'));
-                    $isMatch = self::evaluateConditions($conditions, $logic, $dataToEvaluate, $oldData);
+                if (is_array($branches) && !empty($branches)) {
+                    $isMatch = self::evaluateBranches($branches, $dataToEvaluate, $oldData);
                 } else {
-                    // Legacy fallback: single trigger_field & trigger_value
-                    $trgField = trim($t['trigger_field'] ?? '');
-                    $trgVal = trim($t['trigger_value'] ?? '');
-
-                    if (!empty($trgField)) {
-                        $actualVal = $dataToEvaluate[$trgField] ?? null;
-                        if ($trgVal === '*' && $actualVal !== null) {
-                            $isMatch = true;
-                        } elseif ($actualVal !== null) {
-                            $isMatch = ($trgVal === (string)$actualVal);
-                            if (!$isMatch && ($trgVal === 'not_lead' || $trgVal === 'notlead') && ($actualVal === 'not_lead' || $actualVal === 'notlead')) {
-                                $isMatch = true;
-                            }
-                        }
+                    $conditions = $t['conditions'] ?? null;
+                    if (is_array($conditions) && !empty($conditions)) {
+                        $logic = strtoupper(trim($t['condition_logic'] ?? 'OR'));
+                        $isMatch = self::evaluateConditions($conditions, $logic, $dataToEvaluate, $oldData);
                     } else {
-                        // No conditions specified means trigger on any event for this table
-                        $isMatch = true;
+                        // Legacy fallback: single trigger_field & trigger_value
+                        $trgField = trim($t['trigger_field'] ?? '');
+                        $trgVal = trim($t['trigger_value'] ?? '');
+
+                        if (!empty($trgField)) {
+                            $actualVal = $dataToEvaluate[$trgField] ?? null;
+                            if ($trgVal === '*' && $actualVal !== null) {
+                                $isMatch = true;
+                            } elseif ($actualVal !== null) {
+                                $isMatch = ($trgVal === (string)$actualVal);
+                                if (!$isMatch && ($trgVal === 'not_lead' || $trgVal === 'notlead') && ($actualVal === 'not_lead' || $actualVal === 'notlead')) {
+                                    $isMatch = true;
+                                }
+                            }
+                        } else {
+                            // No conditions specified means trigger on any event for this table
+                            $isMatch = true;
+                        }
                     }
                 }
 
@@ -210,6 +215,48 @@ class TriggerHelper {
         } catch (\Throwable $e) {
             error_log("TriggerHelper fireEvent exception: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Evaluates trigger branches against current record data.
+     * Branches are combined with OR (any branch matches => trigger matches).
+     * Conditions within a branch are combined with AND (all conditions in that branch must match).
+     */
+    public static function evaluateBranches(array $branches, array $recordData, ?array $oldData = null): bool {
+        if (empty($branches)) {
+            return true;
+        }
+
+        foreach ($branches as $branch) {
+            $conditions = $branch['conditions'] ?? [];
+            if (empty($conditions)) {
+                return true;
+            }
+
+            $branchPass = true;
+            foreach ($conditions as $c) {
+                $field = trim($c['field'] ?? ($c['col'] ?? ''));
+                if (empty($field)) {
+                    continue;
+                }
+
+                $op = trim($c['operator'] ?? ($c['op'] ?? '='));
+                $targetVal = trim((string)($c['value'] ?? ($c['val'] ?? '')));
+                $actualVal = $recordData[$field] ?? null;
+                $oldVal = $oldData[$field] ?? null;
+
+                if (!self::evaluateSingleCondition($op, $actualVal, $targetVal, $oldVal)) {
+                    $branchPass = false;
+                    break;
+                }
+            }
+
+            if ($branchPass) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
