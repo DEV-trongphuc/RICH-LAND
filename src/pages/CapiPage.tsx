@@ -14,6 +14,9 @@ import { useUIStore } from '../store/uiStore';
 
 interface CapiLog {
   id: number;
+  lead_id?: number | null;
+  contact_id?: number | null;
+  contact_real_id?: number | null;
   event_name: string;
   sent_payload: string;
   response_status: number;
@@ -22,6 +25,13 @@ interface CapiLog {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  email?: string | null;
+  pipeline_status?: string | null;
+  source?: string | null;
+  avatar_url?: string | null;
+  person_full_name?: string | null;
+  display_name?: string | null;
+  owner_name?: string | null;
 }
 
 interface CustomEventItem {
@@ -30,26 +40,152 @@ interface CustomEventItem {
   description?: string;
 }
 
-interface OutboundTrigger {
+export interface TriggerCondition {
+  field: string;
+  operator: string;
+  value: string;
+}
+
+export interface OutboundTrigger {
   id: string;
   name: string;
   is_active: boolean;
-  trigger_field: string;
-  trigger_value: string;
+  source_table: string; // 'contacts' | 'leads' | 'persons' | 'deals' | 'deposits'
+  change_type: 'update' | 'insert' | 'delete' | 'all'; // Updates, Adds, Deletes
+  condition_logic: 'OR' | 'AND';
+  conditions: TriggerCondition[];
   target_url: string;
-  http_method: 'POST' | 'PUT';
+  http_method: 'POST' | 'PUT' | 'GET' | 'PATCH';
   headers: string;
   payload_template: string;
+  // Legacy compatibility
+  trigger_field?: string;
+  trigger_value?: string;
 }
 
-interface TestResult {
+export interface TestResult {
   http_code: number;
   response: string;
   curl_error?: string;
   rendered_url: string;
   rendered_payload: string;
   duration_ms: number;
+  condition_passed?: boolean;
 }
+
+const TRIGGER_TABLES = [
+  { id: 'contacts', name: 'contacts', label: 'Khách hàng (contacts)', desc: 'Khách hàng CRM, phân công Sale, trạng thái phễu', icon: '👥' },
+  { id: 'leads', name: 'leads', label: 'Lead tiềm năng (leads)', desc: 'Lead mới từ Ads Facebook / TikTok / Website', icon: '📥' },
+  { id: 'persons', name: 'persons', label: 'Kho Databank (persons)', desc: 'SĐT danh tính cá nhân & kho chung công ty', icon: '🗄️' },
+  { id: 'deals', name: 'deals', label: 'Giao dịch BĐS (deals)', desc: 'Hợp đồng, căn hộ giao dịch, doanh số, hoa hồng', icon: '🤝' },
+  { id: 'deposits', name: 'deposits', label: 'Đặt cọc & Booking (deposits)', desc: 'Tiền cọc giữ chỗ, phiếu thu, hủy cọc', icon: '💰' }
+];
+
+const TRIGGER_CHANGE_TYPES = [
+  { id: 'update', label: 'Updates (Cập nhật)', desc: 'Kích hoạt khi dữ liệu/trạng thái thay đổi', color: '#2563eb', bg: 'rgba(37, 99, 235, 0.08)', border: 'rgba(37, 99, 235, 0.25)' },
+  { id: 'insert', label: 'Adds (Thêm mới)', desc: 'Kích hoạt khi có bản ghi mới được tạo', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)', border: 'rgba(22, 163, 74, 0.25)' },
+  { id: 'delete', label: 'Deletes (Xóa bản ghi)', desc: 'Kích hoạt khi bản ghi bị xóa hoặc hủy', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.08)', border: 'rgba(220, 38, 38, 0.25)' }
+];
+
+const TRIGGER_OPERATORS = [
+  { value: '=', label: '= (Bằng)' },
+  { value: '!=', label: '!= (Khác)' },
+  { value: '>', label: '> (Lớn hơn - số)' },
+  { value: '>=', label: '>= (Lớn hơn hoặc bằng)' },
+  { value: '<', label: '< (Nhỏ hơn - số)' },
+  { value: '<=', label: '<= (Nhỏ hơn hoặc bằng)' },
+  { value: 'contains', label: 'Chứa chữ (contains)' },
+  { value: 'is_empty', label: 'Rỗng / Chưa có dữ liệu' },
+  { value: 'is_not_empty', label: 'Có dữ liệu (không rỗng)' }
+];
+
+const TABLE_SUGGESTED_FIELDS: Record<string, { field: string; label: string; type?: 'status' | 'number' | 'text' }[]> = {
+  contacts: [
+    { field: 'pipeline_status', label: 'Trạng thái phễu (pipeline_status)', type: 'status' },
+    { field: 'status', label: 'Trạng thái chăm sóc (status)', type: 'text' },
+    { field: 'budget', label: 'Ngân sách dự kiến (budget)', type: 'number' },
+    { field: 'source', label: 'Nguồn khách hàng (source)', type: 'text' },
+    { field: 'demand_type', label: 'Nhu cầu mua/thuê (demand_type)', type: 'text' },
+    { field: 'property_type', label: 'Loại hình BĐS (property_type)', type: 'text' },
+    { field: 'owner_id', label: 'ID Sale phụ trách (owner_id)', type: 'number' },
+    { field: 'lead_score', label: 'Điểm tiềm năng (lead_score)', type: 'number' },
+    { field: 'temperature', label: 'Nhiệt độ lead (temperature)', type: 'text' },
+    { field: 'notes', label: 'Ghi chú (notes)', type: 'text' },
+    { field: 'city', label: 'Tỉnh / Thành phố (city)', type: 'text' }
+  ],
+  leads: [
+    { field: 'status', label: 'Trạng thái lead (status)', type: 'status' },
+    { field: 'budget', label: 'Ngân sách (budget)', type: 'number' },
+    { field: 'source', label: 'Nguồn lead (source)', type: 'text' },
+    { field: 'demand_type', label: 'Nhu cầu (demand_type)', type: 'text' },
+    { field: 'property_type', label: 'Loại hình (property_type)', type: 'text' },
+    { field: 'assigned_to', label: 'ID Sale tiếp nhận (assigned_to)', type: 'number' },
+    { field: 'utm_campaign', label: 'Chiến dịch UTM (utm_campaign)', type: 'text' },
+    { field: 'form_name', label: 'Tên form ads (form_name)', type: 'text' },
+    { field: 'ad_name', label: 'Tên mẫu quảng cáo (ad_name)', type: 'text' },
+    { field: 'lead_phan_loai', label: 'Phân loại lead (lead_phan_loai)', type: 'text' }
+  ],
+  persons: [
+    { field: 'is_public', label: 'Trạng thái vào kho chung (is_public: 0 hoặc 1)', type: 'number' },
+    { field: 'public_count', label: 'Số lần nhả kho (public_count)', type: 'number' },
+    { field: 'is_blocked', label: 'Bị khóa/chặn (is_blocked: 0 hoặc 1)', type: 'number' },
+    { field: 'phone', label: 'Số điện thoại (phone)', type: 'text' },
+    { field: 'email', label: 'Email (email)', type: 'text' }
+  ],
+  deals: [
+    { field: 'status', label: 'Trạng thái deal (status)', type: 'text' },
+    { field: 'actual_value', label: 'Doanh số thực tế (actual_value)', type: 'number' },
+    { field: 'expected_value', label: 'Doanh thu dự kiến (expected_value)', type: 'number' },
+    { field: 'pipeline_stage_id', label: 'ID Giai đoạn phễu deal (pipeline_stage_id)', type: 'number' }
+  ],
+  deposits: [
+    { field: 'status', label: 'Trạng thái cọc (status)', type: 'text' },
+    { field: 'deposit_amount', label: 'Số tiền đặt cọc (deposit_amount)', type: 'number' }
+  ]
+};
+
+const normalizeTrigger = (t: any): OutboundTrigger => {
+  const source_table = t.source_table || 'contacts';
+  const change_type = t.change_type || 'update';
+  const condition_logic = t.condition_logic === 'AND' ? 'AND' : 'OR';
+  
+  let conditions: TriggerCondition[] = [];
+  if (Array.isArray(t.conditions) && t.conditions.length > 0) {
+    conditions = t.conditions.map((c: any) => ({
+      field: c.field || 'pipeline_status',
+      operator: c.operator || '=',
+      value: c.value !== undefined ? String(c.value) : ''
+    }));
+  } else if (t.trigger_field) {
+    conditions = [{
+      field: t.trigger_field,
+      operator: '=',
+      value: t.trigger_value || ''
+    }];
+  } else {
+    conditions = [{
+      field: 'pipeline_status',
+      operator: '=',
+      value: 'da_gap'
+    }];
+  }
+
+  return {
+    id: t.id || 'trg_' + Date.now(),
+    name: t.name || 'Trigger Webhook',
+    is_active: t.is_active !== undefined ? Boolean(t.is_active) : true,
+    source_table,
+    change_type,
+    condition_logic,
+    conditions,
+    trigger_field: conditions[0]?.field || 'pipeline_status',
+    trigger_value: conditions[0]?.value || 'da_gap',
+    target_url: t.target_url || '',
+    http_method: t.http_method || 'POST',
+    headers: t.headers || '{\n  "Content-Type": "application/json"\n}',
+    payload_template: t.payload_template || PRESET_TEMPLATES.meta_standard
+  };
+};
 
 const DEFAULT_STANDARD_EVENTS: CustomEventItem[] = [
   { name: 'Skip', label: 'Không gửi (Skip)', description: 'Bỏ qua không gửi sự kiện' },
@@ -169,10 +305,15 @@ export default function CapiPage() {
   const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [triggerForm, setTriggerForm] = useState<OutboundTrigger>({
     id: '',
-    name: '',
+    name: 'Bắn Meta CAPI khi Đã Gặp hoặc Đồng Ý Gặp',
     is_active: true,
-    trigger_field: 'pipeline_status',
-    trigger_value: 'da_gap',
+    source_table: 'contacts',
+    change_type: 'update',
+    condition_logic: 'OR',
+    conditions: [
+      { field: 'pipeline_status', operator: '=', value: 'da_gap' },
+      { field: 'pipeline_status', operator: '=', value: 'dong_y_gap' }
+    ],
     target_url: 'https://graph.facebook.com/v19.0/{pixel_id}/events?access_token={token}',
     http_method: 'POST',
     headers: '{\n  "Content-Type": "application/json"\n}',
@@ -190,8 +331,40 @@ export default function CapiPage() {
   const [success, setSuccess] = useState('');
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
 
-  // Debug payload viewer modal
+  // Debug payload and response viewer modal
   const [viewPayload, setViewPayload] = useState<string | null>(null);
+  const [viewResponse, setViewResponse] = useState<string | null>(null);
+  const [showCapiConfigModal, setShowCapiConfigModal] = useState(false);
+  const [logSearch, setLogSearch] = useState('');
+  const [logFilterStatus, setLogFilterStatus] = useState<'all' | '200' | 'error'>('all');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const getInitials = (name?: string | null) => {
+    if (!name || !name.trim()) return 'KH';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const getAvatarColor = (name?: string | null) => {
+    if (!name) return '#6b7280';
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colors = [
+      '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', 
+      '#10b981', '#06b6d4', '#6366f1', '#bd1d2d'
+    ];
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const handleCopyText = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    addToast('Đã sao chép vào clipboard', 'success');
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   useEffect(() => {
     const handleResize = () => setIsLargeScreen(window.innerWidth >= 1024);
@@ -227,7 +400,7 @@ export default function CapiPage() {
           setCustomEvents(resSettings.data.capi_custom_event_names);
         }
         if (Array.isArray(resSettings.data?.outbound_webhook_triggers)) {
-          setOutboundTriggers(resSettings.data.outbound_webhook_triggers);
+          setOutboundTriggers(resSettings.data.outbound_webhook_triggers.map(normalizeTrigger));
         }
       }
       if (resLogs.success) {
@@ -324,14 +497,61 @@ export default function CapiPage() {
   };
 
   // Outbound Trigger Operations
+  const handleSelectTable = (tableId: string) => {
+    const defaultFields = TABLE_SUGGESTED_FIELDS[tableId] || TABLE_SUGGESTED_FIELDS.contacts;
+    const defaultField = defaultFields[0]?.field || 'pipeline_status';
+    setTriggerForm(prev => ({
+      ...prev,
+      source_table: tableId,
+      conditions: prev.conditions.length > 0
+        ? prev.conditions.map(c => ({ ...c, field: defaultField, value: '' }))
+        : [{ field: defaultField, operator: '=', value: '' }]
+    }));
+  };
+
+  const handleAddCondition = () => {
+    const currentTableFields = TABLE_SUGGESTED_FIELDS[triggerForm.source_table] || TABLE_SUGGESTED_FIELDS.contacts;
+    const defaultField = currentTableFields[0]?.field || 'pipeline_status';
+    setTriggerForm(prev => ({
+      ...prev,
+      conditions: [
+        ...prev.conditions,
+        { field: defaultField, operator: '=', value: '' }
+      ]
+    }));
+  };
+
+  const handleRemoveCondition = (index: number) => {
+    if (triggerForm.conditions.length <= 1) {
+      addToast('Trigger cần có ít nhất 1 dòng điều kiện lọc', 'warning');
+      return;
+    }
+    setTriggerForm(prev => ({
+      ...prev,
+      conditions: prev.conditions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleUpdateCondition = (index: number, patch: Partial<TriggerCondition>) => {
+    setTriggerForm(prev => ({
+      ...prev,
+      conditions: prev.conditions.map((c, i) => i === index ? { ...c, ...patch } : c)
+    }));
+  };
+
   const handleOpenCreateTrigger = () => {
     setEditingTrigger(null);
     setTriggerForm({
       id: 'trg_' + Date.now(),
-      name: 'Bắn Meta CAPI khi Đã Gặp',
+      name: 'Bắn Meta CAPI khi Đã Gặp hoặc Đồng Ý Gặp',
       is_active: true,
-      trigger_field: 'pipeline_status',
-      trigger_value: 'da_gap',
+      source_table: 'contacts',
+      change_type: 'update',
+      condition_logic: 'OR',
+      conditions: [
+        { field: 'pipeline_status', operator: '=', value: 'da_gap' },
+        { field: 'pipeline_status', operator: '=', value: 'dong_y_gap' }
+      ],
       target_url: 'https://graph.facebook.com/v19.0/{pixel_id}/events?access_token={token}',
       http_method: 'POST',
       headers: '{\n  "Content-Type": "application/json"\n}',
@@ -342,7 +562,7 @@ export default function CapiPage() {
 
   const handleOpenEditTrigger = (trg: OutboundTrigger) => {
     setEditingTrigger(trg);
-    setTriggerForm({ ...trg });
+    setTriggerForm(normalizeTrigger(trg));
     setShowTriggerModal(true);
   };
 
@@ -356,17 +576,18 @@ export default function CapiPage() {
       return;
     }
 
+    const normalized = normalizeTrigger(triggerForm);
     let updatedTriggers: OutboundTrigger[];
     if (editingTrigger) {
-      updatedTriggers = outboundTriggers.map(t => t.id === editingTrigger.id ? triggerForm : t);
+      updatedTriggers = outboundTriggers.map(t => t.id === editingTrigger.id ? normalized : t);
     } else {
-      updatedTriggers = [...outboundTriggers, { ...triggerForm, id: triggerForm.id || 'trg_' + Date.now() }];
+      updatedTriggers = [...outboundTriggers, { ...normalized, id: normalized.id || 'trg_' + Date.now() }];
     }
 
     setOutboundTriggers(updatedTriggers);
     setShowTriggerModal(false);
     handleSaveSettings(customEvents, updatedTriggers, capiEventTriggers);
-    addToast(`Đã lưu trigger "${triggerForm.name}"`, 'success');
+    addToast(`Đã lưu trigger "${normalized.name}"`, 'success');
   };
 
   const handleDeleteTrigger = (id: string) => {
@@ -386,13 +607,18 @@ export default function CapiPage() {
   const handleTestTrigger = async (trgToTest = triggerForm) => {
     setTestingTrigger(true);
     try {
+      const normalized = normalizeTrigger(trgToTest);
       const res = await fetchAPI('capi/test-trigger', {
         method: 'POST',
         body: JSON.stringify({
-          target_url: trgToTest.target_url,
-          http_method: trgToTest.http_method,
-          headers: trgToTest.headers,
-          payload_template: trgToTest.payload_template
+          source_table: normalized.source_table,
+          change_type: normalized.change_type,
+          condition_logic: normalized.condition_logic,
+          conditions: normalized.conditions,
+          target_url: normalized.target_url,
+          http_method: normalized.http_method,
+          headers: normalized.headers,
+          payload_template: normalized.payload_template
         })
       });
 
@@ -459,47 +685,69 @@ export default function CapiPage() {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-              <Link2 size={24} style={{ color: 'var(--color-primary)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '7px', color: 'var(--color-text)' }}>
+              <Link2 size={18} style={{ color: 'var(--color-primary)' }} />
               Tích Hợp Meta Conversion API & Automation Triggers
-            </h1>
+            </h2>
             <button
               onClick={() => setShowInfoModal(true)}
               style={{
                 background: 'rgba(189, 29, 45, 0.06)',
                 border: '1px solid rgba(189, 29, 45, 0.2)',
-                padding: '4px 10px',
-                borderRadius: '20px',
+                padding: '2px 8px',
+                borderRadius: '16px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
+                gap: '4px',
                 cursor: 'pointer',
                 color: 'var(--color-primary)',
                 fontWeight: 600,
-                fontSize: '0.75rem',
+                fontSize: '0.7rem',
                 transition: 'all 0.2s'
               }}
               title="Xem hướng dẫn quy tắc Conversion API & Forward-only"
             >
-              <Info size={13} />
-              <span>Giải thích cơ chế & Forward-only</span>
+              <Info size={12} />
+              <span>Forward-only</span>
             </button>
           </div>
-          <p className="page-subtitle" style={{ margin: '4px 0 0 0' }}>
+          <p style={{ margin: '3px 0 0 0', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
             Cấu hình đẩy ngược sự kiện phễu bán hàng về Meta Ads và thiết lập các bộ Trigger bắn Webhook tự động linh hoạt
           </p>
         </div>
-        <button
-          onClick={loadData}
-          className="btn"
-          style={{ width: '38px', height: '38px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}
-          title="Tải lại trang"
-        >
-          <RefreshCw size={18} />
-        </button>
+
+        {/* Action Buttons Top Right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={() => setShowCapiConfigModal(true)}
+            className="btn primary"
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              padding: '6px 14px', 
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              boxShadow: '0 2px 6px rgba(189, 29, 45, 0.2)'
+            }}
+            title="Mở bảng cấu hình Meta Pixel & Ánh xạ sự kiện"
+          >
+            <SettingsIcon size={15} />
+            <span>Cài đặt</span>
+          </button>
+          
+          <button
+            onClick={loadData}
+            className="btn"
+            style={{ width: '34px', height: '34px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}
+            title="Tải lại trang"
+          >
+            <RefreshCw size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Navigation Tabs */}
@@ -547,212 +795,361 @@ export default function CapiPage() {
         </button>
       </div>
 
-      {/* TAB 1: META CAPI & ÁNH XẠ PHỄU */}
+      {/* TAB 1: META CAPI & ÁNH XẠ PHỄU (FULL WIDTH DETAILED LOGS) */}
       {activeTab === 'capi' && (
-        <div style={{ display: 'grid', gridTemplateColumns: isLargeScreen ? '1fr 2fr' : '1fr', gap: '1.5rem' }}>
-          {/* Settings Form */}
-          <div className="card" style={{ padding: '1.5rem', height: 'fit-content' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Globe size={18} style={{ color: 'var(--color-primary)' }} />
-                Cấu hình Meta CAPI
-              </h3>
-            </div>
-
-            <form onSubmit={e => { e.preventDefault(); handleSaveSettings(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label className="form-label" style={{ fontWeight: 600 }}>Meta Pixel ID</label>
-                <input
-                  type="text"
-                  placeholder="VD: 1234567890"
-                  value={pixelId}
-                  onChange={e => setPixelId(e.target.value)}
-                  className="form-input"
-                />
-              </div>
-              <div>
-                <label className="form-label" style={{ fontWeight: 600 }}>System Access Token</label>
-                <textarea
-                  placeholder="EAAG..."
-                  value={accessToken}
-                  onChange={e => setAccessToken(e.target.value)}
-                  className="form-input font-mono"
-                  style={{ height: '110px', resize: 'none', fontSize: '0.75rem' }}
-                />
-              </div>
-
-              {/* Status & Event Mapping Section */}
-              <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                  <label className="form-label" style={{ fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Code size={16} style={{ color: 'var(--color-primary)' }} />
-                    Ánh xạ Trạng thái & Sự kiện Meta CAPI
-                  </label>
-                  {/* Gear ⚙️ button for custom events declaration */}
-                  <button
-                    type="button"
-                    onClick={() => setShowEventModal(true)}
-                    className="btn sm"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '4px 10px',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      borderRadius: '8px',
-                      background: 'rgba(0, 0, 0, 0.04)',
-                      border: '1px solid var(--color-border)'
-                    }}
-                    title="Khai báo thêm danh sách sự kiện Meta CAPI"
-                  >
-                    <SettingsIcon size={14} style={{ color: 'var(--color-primary)' }} />
-                    <span>Khai báo sự kiện</span>
-                  </button>
-                </div>
-
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.4 }}>
-                  Chỉ định sự kiện Standard Meta CAPI tương ứng sẽ tự động kích hoạt khi khách hàng chuyển sang từng trạng thái phễu.
-                </p>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '0.875rem', background: 'rgba(0, 0, 0, 0.015)' }}>
-                  {pipelineStatuses.map(status => (
-                    <div key={status} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                      <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                        {pipelineStatusLabels[status] || status}
-                      </span>
-                      <CustomSelect
-                        options={capiEventOptions}
-                        value={capiEventTriggers[status] || 'Skip'}
-                        onChange={val => setCapiEventTriggers(prev => ({ ...prev, [status]: val }))}
-                        width="190px"
-                        placeholder="Chọn sự kiện..."
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className={`btn primary ${saving ? 'loading' : ''}`}
-                style={{ marginTop: '0.75rem', alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                {saving ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
-                <span>{saving ? 'Đang lưu cấu hình...' : 'Lưu cấu hình'}</span>
-              </button>
-            </form>
-          </div>
-
-          {/* Logs Table */}
-          <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="card" style={{ padding: '1.25rem', width: '100%', display: 'flex', flexDirection: 'column' }}>
+          {/* Top toolbar inside Log card */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Layers size={18} style={{ color: 'var(--color-primary)' }} />
-                Nhật ký sự kiện gửi đi (CAPI Logs)
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                {logs.length} bản ghi gần nhất
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>
+                  Nhật Ký Sự Kiện Gửi Đi (CAPI & Trigger Logs)
+                </h3>
+              </div>
+              <span style={{ 
+                fontSize: '0.72rem', 
+                fontWeight: 700, 
+                padding: '2px 8px', 
+                borderRadius: '12px', 
+                background: 'rgba(0,0,0,0.05)', 
+                color: 'var(--color-text-muted)' 
+              }}>
+                {logs.filter(l => {
+                  const q = logSearch.toLowerCase().trim();
+                  const matchesSearch = !q ||
+                    (l.event_name && l.event_name.toLowerCase().includes(q)) ||
+                    (l.display_name && l.display_name.toLowerCase().includes(q)) ||
+                    (l.first_name && l.first_name.toLowerCase().includes(q)) ||
+                    (l.last_name && l.last_name.toLowerCase().includes(q)) ||
+                    (l.phone && l.phone.includes(q)) ||
+                    (l.owner_name && l.owner_name.toLowerCase().includes(q)) ||
+                    (String(l.response_status).includes(q));
+
+                  const matchesStatus = logFilterStatus === 'all' ||
+                    (logFilterStatus === '200' && Number(l.response_status) === 200) ||
+                    (logFilterStatus === 'error' && Number(l.response_status) !== 200);
+
+                  return matchesSearch && matchesStatus;
+                }).length} / {logs.length} bản ghi
               </span>
             </div>
 
-            {loading ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', minWidth: 650, textAlign: 'left', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 700 }}>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'left' }}>Sự kiện</th>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'left' }}>Khách hàng</th>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'center' }}>Mã HTTP</th>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'center' }}>Payload</th>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'right' }}>Múi giờ gửi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                        <td style={{ padding: '0.75rem 0' }}><Skeleton width="60%" height={12} /></td>
-                        <td style={{ padding: '0.75rem 0' }}><Skeleton width="80%" height={12} /></td>
-                        <td style={{ padding: '0.75rem 0', textAlign: 'center' }}><Skeleton width="40px" height={16} style={{ margin: '0 auto' }} /></td>
-                        <td style={{ padding: '0.75rem 0', textAlign: 'center' }}><Skeleton width="30px" height={16} style={{ margin: '0 auto' }} /></td>
-                        <td style={{ padding: '0.75rem 0', textAlign: 'right' }}><Skeleton width="50%" height={12} style={{ marginLeft: 'auto' }} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* Filter controls & Settings button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {/* Search input */}
+              <div style={{ position: 'relative', width: '220px' }}>
+                <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                <input
+                  type="text"
+                  placeholder="Tìm khách, SĐT, sự kiện..."
+                  value={logSearch}
+                  onChange={e => setLogSearch(e.target.value)}
+                  className="form-input"
+                  style={{ paddingLeft: '30px', fontSize: '0.75rem', height: '32px' }}
+                />
               </div>
-            ) : logs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3.5rem 0', color: 'var(--color-text-muted)', border: '1px dashed var(--color-border)', borderRadius: '10px' }}>
-                <Radio size={32} style={{ color: 'var(--color-text-muted)', margin: '0 auto 8px auto', display: 'block', opacity: 0.5 }} />
-                Chưa có sự kiện nào được bắn về Meta
+
+              {/* Status filter buttons */}
+              <div style={{ display: 'flex', border: '1px solid var(--color-border)', borderRadius: '6px', overflow: 'hidden' }}>
+                <button
+                  type="button"
+                  onClick={() => setLogFilterStatus('all')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    background: logFilterStatus === 'all' ? 'var(--color-primary)' : 'var(--color-bg)',
+                    color: logFilterStatus === 'all' ? '#fff' : 'var(--color-text-muted)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Tất cả
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogFilterStatus('200')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    borderLeft: '1px solid var(--color-border)',
+                    background: logFilterStatus === '200' ? '#10b981' : 'var(--color-bg)',
+                    color: logFilterStatus === '200' ? '#fff' : 'var(--color-text-muted)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  200 OK
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogFilterStatus('error')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    borderLeft: '1px solid var(--color-border)',
+                    background: logFilterStatus === 'error' ? '#ef4444' : 'var(--color-bg)',
+                    color: logFilterStatus === 'error' ? '#fff' : 'var(--color-text-muted)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Lỗi (4xx/5xx)
+                </button>
               </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', minWidth: 650, textAlign: 'left', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 700 }}>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'left' }}>Sự kiện</th>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'left' }}>Khách hàng</th>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'center' }}>Mã HTTP</th>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'center' }}>Payload</th>
-                      <th style={{ padding: '0.5rem 0', textAlign: 'right' }}>Múi giờ gửi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.map(l => (
-                      <tr key={l.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                        <td style={{ padding: '0.75rem 0', fontWeight: 700, textAlign: 'left' }}>
-                          <span style={{ 
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            color: l.event_name.startsWith('TRIGGER:') ? 'var(--color-primary)' : 'inherit'
-                          }}>
-                            {l.event_name}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.75rem 0', textAlign: 'left' }}>
-                          <span style={{ fontWeight: 600 }}>
-                            {l.first_name ? `${l.last_name || ''} ${l.first_name}`.trim() : 'Raw Lead'}
-                          </span>
-                          {l.phone && <span style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{l.phone}</span>}
-                        </td>
-                        <td style={{ padding: '0.75rem 0', textAlign: 'center' }}>
-                          <span
-                            className="font-mono font-bold"
-                            style={{
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '0.75rem',
-                              background: l.response_status === 200 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                              color: l.response_status === 200 ? 'var(--color-success)' : 'var(--color-danger)',
-                              border: l.response_status === 200 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
-                            }}
-                          >
-                            {l.response_status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.75rem 0', textAlign: 'center' }}>
-                          <button
-                            onClick={() => setViewPayload(l.sent_payload)}
-                            className="btn sm"
-                            style={{ padding: '2px 8px', height: '24px', borderRadius: '4px' }}
-                            title="Xem chi tiết payload JSON đã gửi"
-                          >
-                            <Code size={13} />
-                          </button>
-                        </td>
-                        <td style={{ padding: '0.75rem 0', textAlign: 'right', color: 'var(--color-text-light)', fontFamily: 'monospace' }}>
-                          {new Date(l.sent_at).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+
+              {/* Setting button */}
+              <button
+                type="button"
+                onClick={() => setShowCapiConfigModal(true)}
+                className="btn primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', height: '32px', padding: '0 12px', fontWeight: 700 }}
+                title="Cài đặt cấu hình Meta Pixel & Ánh xạ phễu"
+              >
+                <SettingsIcon size={14} />
+                <span>Cài đặt</span>
+              </button>
+            </div>
           </div>
+
+          {/* Table */}
+          {loading ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', minWidth: 850, textAlign: 'left', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <th style={{ padding: '0.5rem' }}>Thời gian gửi</th>
+                    <th style={{ padding: '0.5rem' }}>Kênh & Sự kiện</th>
+                    <th style={{ padding: '0.5rem' }}>Khách hàng</th>
+                    <th style={{ padding: '0.5rem' }}>Phụ trách</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Mã HTTP</th>
+                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Chi tiết</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                      <td style={{ padding: '0.75rem 0.5rem' }}><Skeleton width="90px" height={14} /></td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}><Skeleton width="120px" height={14} /></td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}><Skeleton width="160px" height={14} /></td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}><Skeleton width="100px" height={14} /></td>
+                      <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}><Skeleton width="40px" height={16} style={{ margin: '0 auto' }} /></td>
+                      <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}><Skeleton width="80px" height={16} style={{ margin: '0 auto' }} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : logs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3.5rem 0', color: 'var(--color-text-muted)', border: '1px dashed var(--color-border)', borderRadius: '10px' }}>
+              <Radio size={32} style={{ color: 'var(--color-text-muted)', margin: '0 auto 8px auto', display: 'block', opacity: 0.5 }} />
+              Chưa có sự kiện nào được bắn về Meta hoặc Webhook
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', minWidth: 850, textAlign: 'left', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 700, fontSize: '0.7rem' }}>
+                    <th style={{ padding: '0.65rem 0.5rem', width: '130px' }}>Thời gian gửi</th>
+                    <th style={{ padding: '0.65rem 0.5rem', width: '160px' }}>Kênh & Sự kiện</th>
+                    <th style={{ padding: '0.65rem 0.5rem', minWidth: '220px' }}>Khách hàng</th>
+                    <th style={{ padding: '0.65rem 0.5rem', width: '140px' }}>Phụ trách</th>
+                    <th style={{ padding: '0.65rem 0.5rem', width: '90px', textAlign: 'center' }}>Mã HTTP</th>
+                    <th style={{ padding: '0.65rem 0.5rem', width: '150px', textAlign: 'center' }}>Chi tiết</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs
+                    .filter(l => {
+                      const q = logSearch.toLowerCase().trim();
+                      const matchesSearch = !q ||
+                        (l.event_name && l.event_name.toLowerCase().includes(q)) ||
+                        (l.display_name && l.display_name.toLowerCase().includes(q)) ||
+                        (l.first_name && l.first_name.toLowerCase().includes(q)) ||
+                        (l.last_name && l.last_name.toLowerCase().includes(q)) ||
+                        (l.phone && l.phone.includes(q)) ||
+                        (l.owner_name && l.owner_name.toLowerCase().includes(q)) ||
+                        (String(l.response_status).includes(q));
+
+                      const matchesStatus = logFilterStatus === 'all' ||
+                        (logFilterStatus === '200' && Number(l.response_status) === 200) ||
+                        (logFilterStatus === 'error' && Number(l.response_status) !== 200);
+
+                      return matchesSearch && matchesStatus;
+                    })
+                    .map(l => {
+                      const isTrigger = l.event_name.startsWith('TRIGGER:');
+                      const cleanEvent = l.event_name.replace('TRIGGER: ', '').trim() || 'CompleteRegistration';
+                      const customerName = l.display_name || (l.first_name ? `${l.last_name || ''} ${l.first_name}`.trim() : (l.lead_id === 2147483647 ? 'Khách hàng mẫu (Test)' : 'Khách hàng'));
+                      const isSuccess = Number(l.response_status) === 200;
+
+                      return (
+                        <tr key={l.id} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.15s' }}>
+                          {/* 1. Time */}
+                          <td style={{ padding: '0.65rem 0.5rem', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)', fontFamily: 'monospace' }}>
+                                {new Date(l.sent_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                {new Date(l.sent_at).toLocaleDateString('vi-VN')}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 2. Channel & Event */}
+                          <td style={{ padding: '0.65rem 0.5rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                width: 'fit-content',
+                                fontSize: '0.62rem',
+                                fontWeight: 800,
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                background: isTrigger ? 'rgba(234, 88, 12, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                color: isTrigger ? '#ea580c' : '#3b82f6',
+                                border: isTrigger ? '1px solid rgba(234, 88, 12, 0.25)' : '1px solid rgba(59, 130, 246, 0.25)'
+                              }}>
+                                {isTrigger ? 'WEBHOOK TRIGGER' : 'META CAPI'}
+                              </span>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                {cleanEvent}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 3. Customer WITH ROUND AVATAR AT THE FRONT */}
+                          <td style={{ padding: '0.65rem 0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {/* Round avatar */}
+                              {l.avatar_url ? (
+                                <img
+                                  src={l.avatar_url}
+                                  alt={customerName}
+                                  style={{
+                                    width: '34px',
+                                    height: '34px',
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    flexShrink: 0,
+                                    border: '1px solid var(--color-border)'
+                                  }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: '34px',
+                                    height: '34px',
+                                    borderRadius: '50%',
+                                    background: getAvatarColor(customerName),
+                                    color: '#ffffff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 800,
+                                    flexShrink: 0,
+                                    letterSpacing: '0.5px',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                  }}
+                                >
+                                  {getInitials(customerName)}
+                                </div>
+                              )}
+
+                              {/* Customer details */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                                <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {customerName}
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                  {l.phone && (
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                                      {l.phone}
+                                    </span>
+                                  )}
+                                  {l.pipeline_status && (
+                                    <span style={{
+                                      fontSize: '0.64rem',
+                                      padding: '1px 5px',
+                                      borderRadius: '4px',
+                                      background: 'rgba(0,0,0,0.05)',
+                                      color: 'var(--color-text)',
+                                      fontWeight: 600
+                                    }}>
+                                      {pipelineStatusLabels[l.pipeline_status] || l.pipeline_status}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* 4. Sales / Owner */}
+                          <td style={{ padding: '0.65rem 0.5rem' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: l.owner_name ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                              {l.owner_name || '—'}
+                            </span>
+                          </td>
+
+                          {/* 5. HTTP Status code */}
+                          <td style={{ padding: '0.65rem 0.5rem', textAlign: 'center' }}>
+                            <span
+                              className="font-mono font-bold"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.75rem',
+                                background: isSuccess ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                color: isSuccess ? '#10b981' : '#ef4444',
+                                border: isSuccess ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                              }}
+                            >
+                              {isSuccess ? <Check size={11} /> : <AlertCircle size={11} />}
+                              {l.response_status || 'ERR'}
+                            </span>
+                          </td>
+
+                          {/* 6. Details (Payload & Response buttons) */}
+                          <td style={{ padding: '0.65rem 0.5rem', textAlign: 'center' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setViewPayload(l.sent_payload)}
+                                className="btn sm"
+                                style={{ padding: '3px 7px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                title="Xem chi tiết Payload đã gửi"
+                              >
+                                <Code size={12} />
+                                <span>Payload</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setViewResponse(l.response_body || 'Không có nội dung phản hồi')}
+                                className="btn sm"
+                                style={{ padding: '3px 7px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                title="Xem phản hồi từ API (Response)"
+                              >
+                                <Eye size={12} />
+                                <span>Phản hồi</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -815,7 +1212,7 @@ export default function CapiPage() {
                   }}
                 >
                   <div style={{ flex: 1, minWidth: '280px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
                       <span style={{ 
                         display: 'inline-block', 
                         width: '8px', 
@@ -827,23 +1224,66 @@ export default function CapiPage() {
                         {trg.name}
                       </h4>
                       <span style={{
-                        fontSize: '0.7rem',
+                        fontSize: '0.68rem',
                         fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: '20px',
+                        padding: '1px 7px',
+                        borderRadius: '12px',
                         background: trg.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0, 0, 0, 0.05)',
                         color: trg.is_active ? 'var(--color-success)' : 'var(--color-text-muted)'
                       }}>
-                        {trg.is_active ? 'Đang hoạt động' : 'Tạm dừng'}
+                        {trg.is_active ? 'Đang bật' : 'Tạm dừng'}
+                      </span>
+
+                      {/* Table pill */}
+                      <span style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        padding: '1px 7px',
+                        borderRadius: '4px',
+                        background: 'rgba(139, 92, 246, 0.1)',
+                        color: '#8b5cf6',
+                        border: '1px solid rgba(139, 92, 246, 0.25)',
+                        fontFamily: 'monospace'
+                      }}>
+                        📂 {trg.source_table || 'contacts'}
+                      </span>
+
+                      {/* Change type pill */}
+                      <span style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        padding: '1px 7px',
+                        borderRadius: '4px',
+                        background: trg.change_type === 'insert' ? 'rgba(22, 163, 74, 0.1)' : trg.change_type === 'delete' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(37, 99, 235, 0.1)',
+                        color: trg.change_type === 'insert' ? '#16a34a' : trg.change_type === 'delete' ? '#dc2626' : '#2563eb',
+                        border: '1px solid currentColor'
+                      }}>
+                        {trg.change_type === 'insert' ? '➕ Adds' : trg.change_type === 'delete' ? '🗑️ Deletes' : '⚡ Updates'}
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
-                      <div>
-                        <strong>(1) Kích hoạt khi:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--color-text)', background: 'rgba(0,0,0,0.04)', padding: '1px 6px', borderRadius: '4px' }}>{trg.trigger_field} = {trg.trigger_value}</span>
+                    {/* Conditions and Target API */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.775rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Điều kiện:</span>
+                        {trg.conditions && trg.conditions.length > 0 ? (
+                          trg.conditions.map((c, i) => (
+                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                              {i > 0 && <span style={{ fontWeight: 800, margin: '0 4px', color: trg.condition_logic === 'OR' ? '#ea580c' : '#2563eb', fontSize: '0.68rem' }}>{trg.condition_logic}</span>}
+                              <code style={{ background: 'rgba(0,0,0,0.04)', padding: '1px 6px', borderRadius: '4px', color: 'var(--color-text)', fontWeight: 700 }}>
+                                {c.field} {c.operator} {c.value || '*'}
+                              </code>
+                            </span>
+                          ))
+                        ) : (
+                          <code style={{ background: 'rgba(0,0,0,0.04)', padding: '1px 6px', borderRadius: '4px', color: 'var(--color-text)', fontWeight: 700 }}>
+                            {trg.trigger_field} = {trg.trigger_value}
+                          </code>
+                        )}
                       </div>
-                      <div>
-                        <strong>(2) API Đích:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--color-primary)' }}>{trg.http_method} {trg.target_url.slice(0, 45)}...</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', color: 'var(--color-text-muted)' }}>
+                        <span style={{ fontWeight: 600 }}>API Đích:</span>
+                        <span style={{ fontFamily: 'monospace', color: 'var(--color-primary)', fontWeight: 600 }}>{trg.http_method} {trg.target_url.slice(0, 50)}...</span>
                       </div>
                     </div>
                   </div>
@@ -1032,55 +1472,318 @@ export default function CapiPage() {
         width="820px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Condition 1: Trường nào thay đổi */}
-          <div style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '1rem', background: 'rgba(0,0,0,0.01)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', fontSize: '0.75rem', fontWeight: 800 }}>1</span>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 800, margin: 0 }}>Điều kiện: Trường nào thay đổi thì kích hoạt?</h4>
+          {/* ============================================================ */}
+          {/* MỤC 1: ĐIỀU KIỆN KÍCH HOẠT (TABLE -> TYPE CHANGE -> CONDITIONS) */}
+          {/* ============================================================ */}
+          <div style={{ border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem', background: 'rgba(0,0,0,0.015)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', fontSize: '0.8rem', fontWeight: 800 }}>1</span>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
+                  Mục 1: Điều Kiện Kích Hoạt Trigger (Chi tiết)
+                </h4>
+              </div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                Bảng ➔ Loại thao tác (Adds / Updates / Deletes) ➔ Bộ lọc quy tắc
+              </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Tên mô tả Trigger *</label>
-                <input
-                  type="text"
-                  placeholder="VD: Bắn CAPI khi Đã Gặp"
-                  value={triggerForm.name}
-                  onChange={e => setTriggerForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="form-input"
-                  style={{ fontSize: '0.8rem' }}
-                />
+            {/* Tên mô tả Trigger */}
+            <div style={{ marginBottom: '1rem' }}>
+              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Tên mô tả Bộ Trigger *</label>
+              <input
+                type="text"
+                placeholder="VD: Bắn Meta CAPI khi Đã Gặp hoặc Đồng Ý Gặp"
+                value={triggerForm.name}
+                onChange={e => setTriggerForm(prev => ({ ...prev, name: e.target.value }))}
+                className="form-input"
+                style={{ fontSize: '0.825rem', fontWeight: 600 }}
+              />
+            </div>
+
+            {/* 1.1 CHỌN TABLE */}
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, margin: 0 }}>
+                  1. Chọn Table (Lắng nghe bảng dữ liệu nào) *
+                </label>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700 }}>Bảng đang chọn: {triggerForm.source_table}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
+                {TRIGGER_TABLES.map(tbl => {
+                  const isSelected = triggerForm.source_table === tbl.id;
+                  return (
+                    <button
+                      key={tbl.id}
+                      type="button"
+                      onClick={() => handleSelectTable(tbl.id)}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: isSelected ? 'rgba(189, 29, 45, 0.06)' : 'var(--color-bg)',
+                        color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                        <span>{tbl.icon}</span>
+                        <span>{tbl.name}</span>
+                      </div>
+                      <span style={{ fontSize: '0.66rem', color: 'var(--color-text-muted)', lineHeight: 1.2 }}>
+                        {tbl.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 1.2 CHỌN TYPE CHANGE */}
+            <div style={{ marginBottom: '1.15rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, margin: 0 }}>
+                  2. Chọn Type Change (Loại sự kiện thay đổi) *
+                </label>
+                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>3 loại: Adds, Updates, Deletes</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                {TRIGGER_CHANGE_TYPES.map(ct => {
+                  const isSelected = triggerForm.change_type === ct.id;
+                  return (
+                    <button
+                      key={ct.id}
+                      type="button"
+                      onClick={() => setTriggerForm(prev => ({ ...prev, change_type: ct.id as any }))}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: isSelected ? `2px solid ${ct.color}` : '1px solid var(--color-border)',
+                        background: isSelected ? ct.bg : 'var(--color-bg)',
+                        color: isSelected ? ct.color : 'var(--color-text)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <span style={{ fontSize: '0.825rem', fontWeight: 800 }}>
+                        {ct.label}
+                      </span>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1.2 }}>
+                        {ct.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 1.3 CHỌN ĐIỀU KIỆN (CONDITIONS BUILDER) */}
+            <div style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '1rem', background: 'var(--color-bg)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, margin: 0 }}>
+                    3. Chọn Điều kiện kích hoạt (Rules Filter)
+                  </label>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                    VD: status = da_gap HOẶC status = dong_y_gap, hoặc budget &gt; 1,000,000,000
+                  </span>
+                </div>
+
+                {/* Logic Selector: OR vs AND */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tổ hợp:</span>
+                  <div style={{ display: 'flex', border: '1px solid var(--color-border)', borderRadius: '6px', overflow: 'hidden' }}>
+                    <button
+                      type="button"
+                      onClick={() => setTriggerForm(prev => ({ ...prev, condition_logic: 'OR' }))}
+                      style={{
+                        padding: '3px 10px',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        border: 'none',
+                        background: triggerForm.condition_logic === 'OR' ? '#ea580c' : 'var(--color-bg)',
+                        color: triggerForm.condition_logic === 'OR' ? '#fff' : 'var(--color-text-muted)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      HOẶC (Khớp bất kỳ)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTriggerForm(prev => ({ ...prev, condition_logic: 'AND' }))}
+                      style={{
+                        padding: '3px 10px',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        border: 'none',
+                        borderLeft: '1px solid var(--color-border)',
+                        background: triggerForm.condition_logic === 'AND' ? '#2563eb' : 'var(--color-bg)',
+                        color: triggerForm.condition_logic === 'AND' ? '#fff' : 'var(--color-text-muted)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      VÀ (Khớp tất cả)
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Trường giám sát thay đổi</label>
-                <select
-                  value={triggerForm.trigger_field}
-                  onChange={e => setTriggerForm(prev => ({ ...prev, trigger_field: e.target.value }))}
-                  className="form-input"
-                  style={{ fontSize: '0.8rem' }}
-                >
-                  <option value="pipeline_status">Trạng thái phễu (pipeline_status)</option>
-                  <option value="assigned_to">Nhân viên phụ trách (assigned_to)</option>
-                  <option value="notes">Ghi chú (notes)</option>
-                </select>
+              {/* Conditions Rows */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '0.75rem' }}>
+                {triggerForm.conditions.map((cond, idx) => {
+                  const isPipelineField = cond.field === 'pipeline_status' || cond.field === 'status';
+                  const isNoValueOperator = cond.operator === 'is_empty' || cond.operator === 'is_not_empty';
+
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', background: 'rgba(0,0,0,0.015)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-primary)', width: '20px' }}>
+                        #{idx + 1}
+                      </span>
+
+                      {/* Field selector */}
+                      <div style={{ flex: '1 1 200px' }}>
+                        <select
+                          value={cond.field}
+                          onChange={e => handleUpdateCondition(idx, { field: e.target.value })}
+                          className="form-input"
+                          style={{ fontSize: '0.775rem', height: '32px' }}
+                        >
+                          {(TABLE_SUGGESTED_FIELDS[triggerForm.source_table] || TABLE_SUGGESTED_FIELDS.contacts).map(f => (
+                            <option key={f.field} value={f.field}>
+                              {f.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Operator selector */}
+                      <div style={{ width: '130px' }}>
+                        <select
+                          value={cond.operator}
+                          onChange={e => handleUpdateCondition(idx, { operator: e.target.value })}
+                          className="form-input font-bold"
+                          style={{ fontSize: '0.775rem', height: '32px' }}
+                        >
+                          {TRIGGER_OPERATORS.map(op => (
+                            <option key={op.value} value={op.value}>
+                              {op.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Value input or quick select */}
+                      <div style={{ flex: '1 1 200px' }}>
+                        {isNoValueOperator ? (
+                          <div style={{ height: '32px', display: 'flex', alignItems: 'center', padding: '0 10px', background: 'rgba(0,0,0,0.03)', borderRadius: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                            (Không cần nhập giá trị)
+                          </div>
+                        ) : isPipelineField ? (
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <select
+                              value={cond.value}
+                              onChange={e => handleUpdateCondition(idx, { value: e.target.value })}
+                              className="form-input"
+                              style={{ fontSize: '0.775rem', height: '32px' }}
+                            >
+                              <option value="">-- Chọn trạng thái --</option>
+                              <option value="*">* Mọi trạng thái</option>
+                              {pipelineStatuses.map(st => (
+                                <option key={st} value={st}>
+                                  {pipelineStatusLabels[st] || st} ({st})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            placeholder="Giá trị (VD: 1000000000 hoặc da_gap)"
+                            value={cond.value}
+                            onChange={e => handleUpdateCondition(idx, { value: e.target.value })}
+                            className="form-input"
+                            style={{ fontSize: '0.775rem', height: '32px' }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Remove condition button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCondition(idx)}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          background: 'rgba(239, 68, 68, 0.05)',
+                          color: 'var(--color-danger)',
+                          borderRadius: '6px',
+                          cursor: 'pointer'
+                        }}
+                        title="Xóa điều kiện này"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Giá trị kích hoạt</label>
-                <select
-                  value={triggerForm.trigger_value}
-                  onChange={e => setTriggerForm(prev => ({ ...prev, trigger_value: e.target.value }))}
-                  className="form-input"
-                  style={{ fontSize: '0.8rem' }}
+              {/* Add condition button & Live preview summary */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleAddCondition}
+                  className="btn sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '4px 10px', color: 'var(--color-primary)', borderColor: 'var(--color-primary-light)' }}
                 >
-                  <option value="*">* Mọi giá trị (Bất kỳ thay đổi nào)</option>
-                  {pipelineStatuses.map(st => (
-                    <option key={st} value={st}>
-                      {pipelineStatusLabels[st] || st} ({st})
-                    </option>
+                  <Plus size={13} />
+                  <span>Thêm điều kiện lọc</span>
+                </button>
+
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                  {triggerForm.conditions.length} điều kiện được liên kết bằng logic <strong>{triggerForm.condition_logic}</strong>
+                </span>
+              </div>
+
+              {/* Live preview rule summary */}
+              <div style={{
+                marginTop: '0.75rem',
+                padding: '8px 12px',
+                background: 'rgba(59, 130, 246, 0.05)',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+                borderRadius: '8px',
+                fontSize: '0.75rem',
+                color: 'var(--color-text)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexWrap: 'wrap'
+              }}>
+                <Zap size={14} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                <span><strong>Quy tắc hoạt động:</strong> Lắng nghe bảng <code style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{triggerForm.source_table}</code> khi có thao tác <code style={{ color: '#2563eb', fontWeight: 800 }}>{triggerForm.change_type.toUpperCase()}</code> thỏa mãn:</span>
+                <span style={{ fontWeight: 600 }}>
+                  {triggerForm.conditions.map((c, idx) => (
+                    <span key={idx}>
+                      {idx > 0 && <strong style={{ color: triggerForm.condition_logic === 'OR' ? '#ea580c' : '#2563eb', margin: '0 6px' }}>{triggerForm.condition_logic}</strong>}
+                      <code style={{ background: 'rgba(0,0,0,0.06)', padding: '1px 5px', borderRadius: '4px' }}>
+                        {c.field} {c.operator} {c.value || '*'}
+                      </code>
+                    </span>
                   ))}
-                </select>
+                </span>
               </div>
             </div>
           </div>
@@ -1319,6 +2022,29 @@ export default function CapiPage() {
               </div>
             </div>
 
+            {/* Condition Evaluation Result Banner */}
+            {testResult.condition_passed !== undefined && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                background: testResult.condition_passed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                color: testResult.condition_passed ? '#10b981' : '#d97706',
+                border: testResult.condition_passed ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
+              }}>
+                {testResult.condition_passed ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                <span>
+                  {testResult.condition_passed 
+                    ? 'Bộ lọc quy tắc điều kiện: ĐẠT (Khớp dữ liệu bản ghi mẫu)' 
+                    : 'Bộ lọc quy tắc điều kiện: KHÔNG KHỚP (Nếu chạy thực tế sự kiện này sẽ tự động bỏ qua)'}
+                </span>
+              </div>
+            )}
+
             {/* Rendered URL */}
             <div>
               <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>API URL Đã Bắn Đến:</label>
@@ -1352,16 +2078,128 @@ export default function CapiPage() {
         </CustomModal>
       )}
 
+      {/* MODAL CÀI ĐẶT META CAPI & ÁNH XẠ PHỄU */}
+      {showCapiConfigModal && (
+        <CustomModal
+          isOpen={showCapiConfigModal}
+          onClose={() => setShowCapiConfigModal(false)}
+          title="⚙️ Cài Đặt Meta Conversion API & Ánh Xạ Phễu"
+          width="620px"
+        >
+          <form onSubmit={e => { e.preventDefault(); handleSaveSettings(); setShowCapiConfigModal(false); }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+              <label className="form-label" style={{ fontWeight: 600 }}>Meta Pixel ID</label>
+              <input
+                type="text"
+                placeholder="VD: 1234567890"
+                value={pixelId}
+                onChange={e => setPixelId(e.target.value)}
+                className="form-input"
+              />
+            </div>
+            <div>
+              <label className="form-label" style={{ fontWeight: 600 }}>System Access Token</label>
+              <textarea
+                placeholder="EAAG..."
+                value={accessToken}
+                onChange={e => setAccessToken(e.target.value)}
+                className="form-input font-mono"
+                style={{ height: '110px', resize: 'none', fontSize: '0.75rem' }}
+              />
+            </div>
+
+            {/* Status & Event Mapping Section */}
+            <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <label className="form-label" style={{ fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Code size={16} style={{ color: 'var(--color-primary)' }} />
+                  Ánh xạ Trạng thái & Sự kiện Meta CAPI
+                </label>
+                {/* Gear button for custom events declaration */}
+                <button
+                  type="button"
+                  onClick={() => setShowEventModal(true)}
+                  className="btn sm"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '4px 10px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    borderRadius: '8px',
+                    background: 'rgba(0, 0, 0, 0.04)',
+                    border: '1px solid var(--color-border)'
+                  }}
+                  title="Khai báo thêm danh sách sự kiện Meta CAPI"
+                >
+                  <SettingsIcon size={14} style={{ color: 'var(--color-primary)' }} />
+                  <span>Khai báo sự kiện</span>
+                </button>
+              </div>
+
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.4 }}>
+                Chỉ định sự kiện Standard Meta CAPI tương ứng sẽ tự động kích hoạt khi khách hàng chuyển sang từng trạng thái phễu.
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '0.875rem', background: 'rgba(0, 0, 0, 0.015)' }}>
+                {pipelineStatuses.map(status => (
+                  <div key={status} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {pipelineStatusLabels[status] || status}
+                    </span>
+                    <CustomSelect
+                      options={capiEventOptions}
+                      value={capiEventTriggers[status] || (status === 'not_lead' ? 'Disqualified' : 'Skip')}
+                      onChange={val => setCapiEventTriggers(prev => ({ ...prev, [status]: val }))}
+                      width="190px"
+                      placeholder="Chọn sự kiện..."
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowCapiConfigModal(false)}
+                className="btn"
+              >
+                Đóng
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className={`btn primary ${saving ? 'loading' : ''}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                {saving ? <RefreshCw size={15} className="spin" /> : <Save size={15} />}
+                <span>{saving ? 'Đang lưu...' : 'Lưu cấu hình'}</span>
+              </button>
+            </div>
+          </form>
+        </CustomModal>
+      )}
+
       {/* Payload Viewer Modal */}
       {viewPayload && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="card" style={{ maxWidth: '540px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                <Code size={20} /> Chi tiết payload JSON
-              </h2>
-              <button onClick={() => setViewPayload(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}>
-                <X size={20} />
+        <CustomModal
+          isOpen={!!viewPayload}
+          onClose={() => setViewPayload(null)}
+          title="📦 Chi tiết JSON Payload đã gửi đi"
+          width="620px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => handleCopyText(viewPayload, 'payload')}
+                className="btn sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              >
+                {copiedKey === 'payload' ? <Check size={13} style={{ color: 'var(--color-success)' }} /> : <Copy size={13} />}
+                <span>{copiedKey === 'payload' ? 'Đã sao chép' : 'Sao chép JSON'}</span>
               </button>
             </div>
             <pre style={{ padding: '1rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', maxHeight: '380px', overflow: 'auto', fontSize: '0.75rem', color: 'var(--color-primary)', fontFamily: 'monospace' }}>
@@ -1374,7 +2212,40 @@ export default function CapiPage() {
               })()}
             </pre>
           </div>
-        </div>
+        </CustomModal>
+      )}
+
+      {/* Response Viewer Modal */}
+      {viewResponse && (
+        <CustomModal
+          isOpen={!!viewResponse}
+          onClose={() => setViewResponse(null)}
+          title="📡 Chi tiết phản hồi từ máy chủ (Response Body)"
+          width="580px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => handleCopyText(viewResponse, 'res')}
+                className="btn sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              >
+                {copiedKey === 'res' ? <Check size={13} style={{ color: 'var(--color-success)' }} /> : <Copy size={13} />}
+                <span>{copiedKey === 'res' ? 'Đã sao chép' : 'Sao chép'}</span>
+              </button>
+            </div>
+            <pre style={{ padding: '1rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', maxHeight: '380px', overflow: 'auto', fontSize: '0.75rem', color: 'var(--color-text)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+              {(() => {
+                try {
+                  return JSON.stringify(JSON.parse(viewResponse), null, 2);
+                } catch {
+                  return viewResponse;
+                }
+              })()}
+            </pre>
+          </div>
+        </CustomModal>
       )}
 
       {/* Explanation of CAPI rules */}

@@ -233,11 +233,26 @@ class CapiController {
             'not_lead_reason' => 'Không đúng nhu cầu',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
+            'pipeline_status' => $sampleStatus,
+            'status' => $sampleStatus,
+            'is_public' => 1,
+            'actual_value' => $samplePrice,
+            'expected_value' => $samplePrice,
+            'deposit_amount' => 50000000
         ];
         foreach ($sampleDbFields as $colKey => $colVal) {
             if (!isset($macroMap['{{' . $colKey . '}}'])) {
                 $macroMap['{{' . $colKey . '}}'] = (string)$colVal;
             }
+        }
+
+        // Evaluate conditions if provided
+        require_once __DIR__ . '/../config/TriggerHelper.php';
+        $conditions = $b['conditions'] ?? [];
+        $conditionLogic = strtoupper(trim($b['condition_logic'] ?? 'OR'));
+        $conditionPassed = true;
+        if (is_array($conditions) && !empty($conditions)) {
+            $conditionPassed = TriggerHelper::evaluateConditions($conditions, $conditionLogic, $sampleDbFields, ['pipeline_status' => 'dong_y_gap']);
         }
 
         // Render URL with raw values or URL encoding
@@ -327,7 +342,8 @@ class CapiController {
             'curl_error' => $curlError,
             'rendered_url' => $renderedUrl,
             'rendered_payload' => $renderedPayload,
-            'duration_ms' => $durationMs
+            'duration_ms' => $durationMs,
+            'condition_passed' => $conditionPassed
         ], 'Đã thực thi bắn thử nghiệm');
     }
 
@@ -335,13 +351,28 @@ class CapiController {
         requireRole($auth, ['admin', 'superadmin', 'super_admin', 'director']);
 
         $stmt = $this->db->query("
-            SELECT cl.*, c.first_name, c.last_name, c.phone 
+            SELECT 
+                cl.*, 
+                c.id AS contact_real_id,
+                c.first_name, 
+                c.last_name, 
+                COALESCE(c.phone, l.phone, p.phone) AS phone,
+                COALESCE(c.email, l.email, p.email) AS email,
+                COALESCE(c.pipeline_status, l.status) AS pipeline_status,
+                COALESCE(c.source, l.source) AS source,
+                c.avatar_url,
+                p.full_name AS person_full_name,
+                COALESCE(p.full_name, l.name, NULLIF(TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, ''))), '')) AS display_name,
+                u.full_name AS owner_name
             FROM capi_logs cl
             LEFT JOIN contacts c ON cl.contact_id = c.id
+            LEFT JOIN leads l ON cl.lead_id = l.id
+            LEFT JOIN persons p ON (c.person_id = p.id OR l.person_id = p.id)
+            LEFT JOIN users u ON u.id = COALESCE(c.owner_id, l.assigned_to)
             ORDER BY cl.sent_at DESC 
-            LIMIT 100
+            LIMIT 200
         ");
-        $logs = $stmt->fetchAll() ?: [];
+        $logs = $stmt ? ($stmt->fetchAll() ?: []) : [];
         respond(200, $logs, 'Lấy lịch sử CAPI logs thành công');
     }
 }
