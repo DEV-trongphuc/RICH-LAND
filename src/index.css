@@ -6199,3 +6199,11 @@ div:not([class*="drawer"]):not([class*="modal"]):not([class*="dialog"]):not([cla
   z-index: 50;
   position: relative;
 }
+
+/* High-contrast Workspace search input placeholder when custom wallpaper/template is active */
+.ws-search-has-bg::placeholder {
+  color: rgba(255, 255, 255, 0.88) !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+}

@@ -1202,45 +1202,105 @@ function hasApprovedShiftForDate($conn, $userId, $date)
 /**
  * Kiểm tra xem Tư vấn viên có đăng ký trực ca đêm và ca đêm đang hoạt động hay không.
  * Nếu đang trong khung giờ ca đêm, Sale bắt buộc phải đăng ký trực đêm mới nhận được data.
+/**
+ * Xác định thông tin khung giờ trực đêm và ngày trực (shift_date).
+ * Hỗ trợ khung giờ vắt qua nửa đêm (ví dụ 19:01 đến 08:39).
+ */
+if (!function_exists('getNightShiftWindowInfo')) {
+    function getNightShiftWindowInfo($conn, $currentTime = null)
+    {
+        if ($currentTime === null) {
+            $currentTime = date('H:i');
+        } else {
+            $currentTime = substr(trim($currentTime), 0, 5);
+        }
+
+        $start = get_system_setting($conn, 'night_shift_start_time') ?: '19:01';
+        $end = get_system_setting($conn, 'night_shift_end_time') ?: '08:39';
+        $start = substr(trim($start), 0, 5);
+        $end = substr(trim($end), 0, 5);
+
+        $isNightShift = false;
+        $shiftDate = date('Y-m-d');
+
+        if ($start < $end) {
+            $isNightShift = ($currentTime >= $start && $currentTime <= $end);
+            $shiftDate = date('Y-m-d');
+        } else {
+            if ($currentTime >= $start) {
+                $isNightShift = true;
+                $shiftDate = date('Y-m-d');
+            } else if ($currentTime <= $end) {
+                $isNightShift = true;
+                $shiftDate = date('Y-m-d', strtotime('-1 day'));
+            } else {
+                $isNightShift = false;
+                $shiftDate = date('Y-m-d');
+            }
+        }
+
+        return [
+            'is_night_shift' => $isNightShift,
+            'start_time' => $start,
+            'end_time' => $end,
+            'shift_date' => $shiftDate
+        ];
+    }
+}
+
+/**
+ * Kiểm tra chính xác bản ghi ĐĂNG KÝ TRỰC ĐÊM đã được duyệt trong bảng night_shift_registrations.
+ * Tuyệt đối không nhầm lẫn với ca trực ngày cuối tuần hay trực lễ ban ngày.
+ */
+if (!function_exists('hasApprovedNightShiftForDate')) {
+    function hasApprovedNightShiftForDate($conn, $consultantOrUserId, $shiftDate)
+    {
+        if (!$consultantOrUserId) {
+            return false;
+        }
+
+        $cId = (int)$consultantOrUserId;
+        $targetUserId = $cId;
+
+        // Map consultant_id sang users.id qua email nếu có khác biệt
+        $stmtU = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+        if ($stmtU) {
+            $stmtU->bind_param("i", $cId);
+            $stmtU->execute();
+            $row = $stmtU->get_result()->fetch_assoc();
+            $stmtU->close();
+            if ($row && !empty($row['id'])) {
+                $targetUserId = (int)$row['id'];
+            }
+        }
+
+        $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE (user_id = ? OR user_id = ?) AND shift_date = ? AND approved = 1 LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("iis", $targetUserId, $cId, $shiftDate);
+            $stmt->execute();
+            $hasShift = (bool)$stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            return $hasShift;
+        }
+
+        return false;
+    }
+}
+
+/**
+ * Kiểm tra xem Tư vấn viên có đăng ký trực ca đêm và ca đêm đang hoạt động hay không.
+ * Nếu đang trong khung giờ ca đêm, Sale bắt buộc phải đăng ký trực đêm mới nhận được data.
  */
 function checkNightShiftAvailability($conn, $consultantId, $currentTime)
 {
-    $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '22:00';
-    $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
-
-    $isNightShiftTime = false;
-    if ($nightShiftStart < $nightShiftEnd) {
-        $isNightShiftTime = ($currentTime >= $nightShiftStart && $currentTime <= $nightShiftEnd);
-    } else {
-        $isNightShiftTime = ($currentTime >= $nightShiftStart || $currentTime <= $nightShiftEnd);
+    $window = getNightShiftWindowInfo($conn, $currentTime);
+    if (!$window['is_night_shift']) {
+        return false;
     }
 
-    if ($isNightShiftTime) {
-        $currentHour = (int)date('H');
-        $endHour = (int)explode(':', $nightShiftEnd)[0];
-        $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
-
-        // Resolve user ID via email mapping
-        $targetUserId = null;
-        $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
-        if ($stmtUId) {
-            $stmtUId->bind_param("i", $consultantId);
-            $stmtUId->execute();
-            $uRow = $stmtUId->get_result()->fetch_assoc();
-            $stmtUId->close();
-            if ($uRow) {
-                $targetUserId = (int)$uRow['id'];
-            }
-        }
-        if (!$targetUserId) {
-            $targetUserId = $consultantId;
-        }
-
-        return hasApprovedShiftForDate($conn, $targetUserId, $shiftDate);
-    }
-
-    return false;
+    return hasApprovedNightShiftForDate($conn, $consultantId, $window['shift_date']);
 }
+
 
 if (!function_exists('isConsultantOnNormalCooldown')) {
     function isConsultantOnNormalCooldown($conn, $consultantId, $roundId, $cooldownSec) {
@@ -1398,9 +1458,11 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
 
     $today = date('Y-m-d');
     $currentTime = date('H:i');
+    $nightShiftWindow = getNightShiftWindowInfo($conn, $currentTime);
+    $isNightShiftNow = $nightShiftWindow['is_night_shift'];
 
-    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
-    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
+    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '19:01';
+    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '20:30';
     $isGoldenHoursTime = false;
     if ($goldenHoursStart < $goldenHoursEnd) {
         $isGoldenHoursTime = ($currentTime >= $goldenHoursStart && $currentTime <= $goldenHoursEnd);
@@ -1416,7 +1478,10 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
         $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule']);
         $cNightShift = checkNightShiftAvailability($conn, (int)$c['id'], $currentTime);
         $isCool = isConsultantOnNormalCooldown($conn, (int)$c['id'], $roundId, $normalCooldownSec);
-        if (!$isOnVacation && $isGatePassed && ($cInWorkHours || $cNightShift || $isGoldenHoursTime) && !$isCool) {
+
+        // Trong ca trực đêm: BẮT BUỘC phải có duyệt đăng ký ca đêm ($cNightShift). Khung giờ ngày KHÔNG được dùng!
+        $isOnDuty = $isNightShiftNow ? $cNightShift : ($cInWorkHours || $isGoldenHoursTime);
+        if (!$isOnVacation && $isGatePassed && $isOnDuty && !$isCool) {
             $activeCount++;
         }
     }
@@ -1434,8 +1499,9 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
 
         $isCool = isConsultantOnNormalCooldown($conn, (int)$row['id'], $roundId, $normalCooldownSec);
 
-        // Must be on duty (either in regular work hours OR active approved night shift OR active checked-in golden hours)
-        $isAvailable = !$isOnVacation && $isGatePassed && ($isInWorkHours || $isNightShiftActive || $isGoldenHoursTime) && !$isCool;
+        // Trong ca trực đêm: BẮT BUỘC phải có duyệt đăng ký ca đêm ($isNightShiftActive). Khung giờ ngày KHÔNG được dùng!
+        $isOnDuty = $isNightShiftNow ? $isNightShiftActive : ($isInWorkHours || $isGoldenHoursTime);
+        $isAvailable = !$isOnVacation && $isGatePassed && $isOnDuty && !$isCool;
 
         // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale. 
@@ -1449,7 +1515,7 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
 
         // Priority 2: Starvation Prevention (skipped_credit) - only if available (not on vacation), enabled, within hourly limit, and currently on shift
         // TỐI ƯU CÔNG BẰNG: Chọn người có skipped_credit cao nhất (ưu tiên ID thấp nếu hòa)
-        if ($starvationEnabled === 1 && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
+        if ($starvationEnabled === 1 && $isAvailable && $isOnDuty && intval($row['skipped_credit']) > 0) {
             if (empty($starvationConsultant) || intval($row['skipped_credit']) > intval($starvationConsultant['skipped_credit'])) {
                 $hourlyCount = $starvationCounts[(int) $row['id']] ?? 0;
                 if ($hourlyCount < $starvationMaxPerHour) {
@@ -2488,9 +2554,11 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
 
     $today = date('Y-m-d');
     $currentTime = date('H:i');
+    $nightShiftWindow = getNightShiftWindowInfo($conn, $currentTime);
+    $isNightShiftNow = $nightShiftWindow['is_night_shift'];
 
-    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
-    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
+    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '19:01';
+    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '20:30';
     $isGoldenHoursTime = false;
     if ($goldenHoursStart < $goldenHoursEnd) {
         $isGoldenHoursTime = ($currentTime >= $goldenHoursStart && $currentTime <= $goldenHoursEnd);
@@ -2505,7 +2573,8 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
         $isGatePassed = (checkConsultantGates($conn, (int)$c['id'], $lead) === true);
         $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule']);
         $cNightShift = checkNightShiftAvailability($conn, (int)$c['id'], $currentTime);
-        if (!$isOnVacation && $isGatePassed && ($cInWorkHours || $cNightShift || $isGoldenHoursTime)) {
+        $isOnDuty = $isNightShiftNow ? $cNightShift : ($cInWorkHours || $isGoldenHoursTime);
+        if (!$isOnVacation && $isGatePassed && $isOnDuty) {
             $activeCount++;
         }
     }
@@ -2520,7 +2589,8 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
         if ($gateResult !== true) {
             error_log("RICH LAND INFO (Sim): Consultant ID " . $row['id'] . " failed gate check: " . $gateResult);
         }
-        $isAvailable = !$isOnVacation && $isGatePassed && ($isInWorkHours || $isNightShiftActive || $isGoldenHoursTime);
+        $isOnDuty = $isNightShiftNow ? $isNightShiftActive : ($isInWorkHours || $isGoldenHoursTime);
+        $isAvailable = !$isOnVacation && $isGatePassed && $isOnDuty;
 
         // Priority 1: Compensation
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale.
@@ -2718,79 +2788,96 @@ function checkConsultantGates($conn, $consultantId, $lead = null, $bypassBackpre
         }
     }
 
-    // Determine if today is a rest day (weekend/off day) for this user
-    $isRestDay = isRestDayForUser($conn, $targetUserId, $todayStr);
-
-    if (!empty($holidayName)) {
-        // Holiday constraint
-        $stmtCheckReg = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1");
-        $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
-        $stmtCheckReg->execute();
-        $hasReg = $stmtCheckReg->get_result()->fetch_assoc();
-        $stmtCheckReg->close();
-        if (!$hasReg) {
-            return "Failed Gate 2: No approved holiday registration for today ({$holidayName})";
-        }
-    } else if ($isRestDay) {
-        // Rest day constraint
-        $stmtCheckReg = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1");
-        $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
-        $stmtCheckReg->execute();
-        $hasReg = $stmtCheckReg->get_result()->fetch_assoc();
-        $stmtCheckReg->close();
-        if (!$hasReg) {
-            return "Failed Gate 2: No approved weekend registration for today";
-        }
-    }
-
-    // Every active agent today must have an approved check-in
-    // Bypass check-in requirement if they are registered for weekend/holiday shift or night shift
-    $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
-    $isApprovedNightShift = false;
-    $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '18:00';
-    $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+    // GATE 2: Check-in ngày hợp lệ, Đúng giờ & Đăng ký trực ca đêm
     $currentTime = date('H:i');
-    $isNightShiftTime = false;
-    if ($nightShiftStart < $nightShiftEnd) {
-        $isNightShiftTime = ($currentTime >= $nightShiftStart && $currentTime <= $nightShiftEnd);
-    } else {
-        $isNightShiftTime = ($currentTime >= $nightShiftStart || $currentTime <= $nightShiftEnd);
-    }
-    if ($isNightShiftTime) {
-        $currentHour = (int)date('H');
-        $endHour = (int)explode(':', $nightShiftEnd)[0];
-        $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
-        
-        if (hasApprovedShiftForDate($conn, $targetUserId, $shiftDate)) {
-            $isApprovedNightShift = true;
+    $nightShiftWindow = getNightShiftWindowInfo($conn, $currentTime);
+
+    if ($nightShiftWindow['is_night_shift']) {
+        // Trong khung giờ trực đêm: Bắt buộc TVV phải có đăng ký trực đêm đã được duyệt (approved = 1)
+        $isApprovedNight = hasApprovedNightShiftForDate($conn, $targetUserId, $nightShiftWindow['shift_date']);
+        if (!$isApprovedNight) {
+            return "Failed Gate 2: Đang trong khung giờ ca trực đêm ({$nightShiftWindow['start_time']} - {$nightShiftWindow['end_time']}) nhưng TVV chưa đăng ký hoặc chưa được duyệt trực ca đêm ngày {$nightShiftWindow['shift_date']}";
         }
-    }
-
-    $reqCheckinWeekend = (int) get_system_setting($conn, 'require_checkin_weekend_lead');
-    $reqCheckinHoliday = (int) get_system_setting($conn, 'require_checkin_holiday_lead');
-
-    $mustCheckinOnWeekend = ($isRestDay && $reqCheckinWeekend === 1);
-    $mustCheckinOnHoliday = (!empty($holidayName) && $reqCheckinHoliday === 1);
-
-    if ($mustCheckinOnWeekend || $mustCheckinOnHoliday) {
-        $bypassCheckIn = $isApprovedNightShift;
+        // TVV trực ca đêm hợp lệ -> Vượt qua Gate 2 thành công!
     } else {
-        $bypassCheckIn = $isWeekendOrHoliday || $isApprovedNightShift;
-    }
+        // Trong khung giờ ban ngày: Kiểm tra ngày nghỉ / ngày lễ
+        $isRestDay = isRestDayForUser($conn, $targetUserId, $todayStr);
+        $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
 
-    if (!$bypassCheckIn) {
-        $allowPendingCheckin = (int) get_system_setting($conn, 'allow_lead_distribution_on_pending_checkin');
-        if ($allowPendingCheckin === 1) {
-            $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status IN ('approved', 'pending_approval')");
+        if (!empty($holidayName)) {
+            // Holiday constraint ban ngày
+            $stmtCheckReg = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1");
+            if ($stmtCheckReg) {
+                $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
+                $stmtCheckReg->execute();
+                $hasReg = $stmtCheckReg->get_result() ? $stmtCheckReg->get_result()->fetch_assoc() : null;
+                $stmtCheckReg->close();
+                if (!$hasReg) {
+                    return "Failed Gate 2: No approved holiday registration for today ({$holidayName})";
+                }
+            }
+        } else if ($isRestDay) {
+            // Rest day constraint ban ngày
+            $stmtCheckReg = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1");
+            if ($stmtCheckReg) {
+                $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
+                $stmtCheckReg->execute();
+                $hasReg = $stmtCheckReg->get_result() ? $stmtCheckReg->get_result()->fetch_assoc() : null;
+                $stmtCheckReg->close();
+                if (!$hasReg) {
+                    return "Failed Gate 2: No approved weekend registration for today";
+                }
+            }
+        }
+
+        $reqCheckinWeekend = (int) get_system_setting($conn, 'require_checkin_weekend_lead');
+        $reqCheckinHoliday = (int) get_system_setting($conn, 'require_checkin_holiday_lead');
+        $reqCheckinGeneral = get_system_setting($conn, 'require_checkin_to_receive_leads');
+        $requireCheckin = ($reqCheckinGeneral === null || $reqCheckinGeneral === '' || (int)$reqCheckinGeneral === 1);
+
+        $mustCheckinOnWeekend = ($isRestDay && $reqCheckinWeekend === 1);
+        $mustCheckinOnHoliday = (!empty($holidayName) && $reqCheckinHoliday === 1);
+
+        $needsCheckIn = false;
+        if ($isWeekendOrHoliday) {
+            $needsCheckIn = ($mustCheckinOnWeekend || $mustCheckinOnHoliday);
         } else {
-            $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved'");
+            $needsCheckIn = $requireCheckin;
         }
-        $stmtCheck->bind_param("is", $targetUserId, $todayStr);
-        $stmtCheck->execute();
-        $hasCheckIn = $stmtCheck->get_result()->fetch_assoc();
-        $stmtCheck->close();
-        if (!$hasCheckIn) {
-            return "Failed Gate 2: No approved or active check-in for today";
+
+        if ($needsCheckIn) {
+            $allowPendingCheckin = (int) get_system_setting($conn, 'allow_lead_distribution_on_pending_checkin');
+            $requireOntimeCheckin = (int) get_system_setting($conn, 'require_ontime_checkin_to_receive_leads');
+
+            $stmtCheck = $conn->prepare("SELECT status, late_minutes FROM check_ins WHERE user_id = ? AND check_in_date = ? LIMIT 1");
+            if ($stmtCheck) {
+                $stmtCheck->bind_param("is", $targetUserId, $todayStr);
+                $stmtCheck->execute();
+                $resCheck = $stmtCheck->get_result();
+                $checkIn = $resCheck ? $resCheck->fetch_assoc() : null;
+                $stmtCheck->close();
+
+                if (!$checkIn) {
+                    return "Failed Gate 2: Chưa điểm danh/chấm công ngày hôm nay";
+                }
+
+                if ($allowPendingCheckin === 1) {
+                    if (!in_array($checkIn['status'], ['approved', 'pending_approval'])) {
+                        return "Failed Gate 2: Trạng thái điểm danh không hợp lệ ({$checkIn['status']})";
+                    }
+                } else {
+                    if ($checkIn['status'] !== 'approved') {
+                        return "Failed Gate 2: Điểm danh đang chờ quản lý duyệt hoặc bị từ chối ({$checkIn['status']})";
+                    }
+                }
+
+                if ($requireOntimeCheckin === 1) {
+                    $lateMin = isset($checkIn['late_minutes']) ? (int)$checkIn['late_minutes'] : 0;
+                    if ($lateMin > 0) {
+                        return "Failed Gate 2: Hệ thống chỉ chia lead cho nhân sự điểm danh ĐÚNG GIỜ (nhân sự này đi trễ {$lateMin} phút)";
+                    }
+                }
+            }
         }
     }
 
@@ -2902,36 +2989,9 @@ function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = nul
 
     // Check Night Shift Registration if in Night Shift Time Window
     if ($conn !== null && $userId !== null && $userId > 0) {
-        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '22:00';
-        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
-        
-        $isNightShiftTime = false;
-        if ($nightShiftStart < $nightShiftEnd) {
-            $isNightShiftTime = ($timeStr >= $nightShiftStart && $timeStr <= $nightShiftEnd);
-        } else {
-            $isNightShiftTime = ($timeStr >= $nightShiftStart || $timeStr <= $nightShiftEnd);
-        }
-
-        if ($isNightShiftTime) {
-            $currentHour = (int)date('H');
-            $endHour = (int)explode(':', $nightShiftEnd)[0];
-            $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
-            
-            $stmtN = $conn->prepare("
-                SELECT 1 FROM night_shift_registrations nsr
-                LEFT JOIN consultants c ON nsr.user_id = c.id
-                WHERE (nsr.user_id = ? OR c.id = ?) AND nsr.shift_date = ? AND nsr.approved = 1
-                LIMIT 1
-            ");
-            if ($stmtN) {
-                $stmtN->bind_param("iis", $userId, $userId, $shiftDate);
-                $stmtN->execute();
-                $hasNightReg = (bool)$stmtN->get_result()->fetch_assoc();
-                $stmtN->close();
-                if ($hasNightReg) {
-                    return true; // Active during night shift!
-                }
-            }
+        $nightWindow = getNightShiftWindowInfo($conn, $timeStr);
+        if ($nightWindow['is_night_shift']) {
+            return hasApprovedNightShiftForDate($conn, $userId, $nightWindow['shift_date']);
         }
     }
 

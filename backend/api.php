@@ -1349,6 +1349,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         $cStmt->close();
 
                         $currentTime = date('H:i');
+                        $nightWindow = getNightShiftWindowInfo($conn, $currentTime);
                         foreach ($activeConsultants as $c) {
                             // Check cooldown (grab_cooldown_seconds)
                             $cooldownStmt = $conn->prepare("
@@ -1362,7 +1363,8 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                             if ($cooldownStmt) {
                                 $cooldownStmt->bind_param("iii", $c['id'], $assignedRoundId, $grabCooldownSeconds);
                                 $cooldownStmt->execute();
-                                $isOnCooldown = $cooldownStmt->get_result()->num_rows > 0;
+                                $cdRes = $cooldownStmt->get_result();
+                                $isOnCooldown = ($cdRes && $cdRes instanceof mysqli_result) ? ($cdRes->num_rows > 0) : false;
                                 $cooldownStmt->close();
 
                                 if ($isOnCooldown) {
@@ -1370,7 +1372,18 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                                 }
                             }
 
-                            // Check gates
+                            // Check active on-duty / shift registration
+                            if ($nightWindow['is_night_shift']) {
+                                if (!hasApprovedNightShiftForDate($conn, $c['id'], $nightWindow['shift_date'])) {
+                                    continue; // Bỏ qua nếu không đăng ký trực ca đêm
+                                }
+                            } else {
+                                if (!isConsultantInWorkHours($currentTime, $c['work_start_time'] ?? '00:00', $c['work_end_time'] ?? '23:59', $c['work_schedule'] ?? null, $c['id'], $conn)) {
+                                    continue; // Bỏ qua nếu ngoài giờ làm việc ban ngày
+                                }
+                            }
+
+                            // Check gates (verifies attendance, on-time, quotas, roster)
                             if (checkConsultantGates($conn, $c['id'], $leadData, true) === true) {
                                 $eligibleConsultants[] = $c;
                             }
@@ -3630,6 +3643,8 @@ switch ($action) {
                 l.ai_evaluation,
                 l.is_accepted,
                 l.accepted_at,
+                l.lead_phan_loai,
+                l.loai_lead,
                 dl.status, 
                 c.name as assigned_to_name, 
                 c.avatar as assigned_to_avatar, 
@@ -3642,6 +3657,7 @@ switch ($action) {
                 r.resolved_at,
                 p.is_public as is_public,
                 p.id as person_id,
+                p.is_blocked as is_blocked,
                 (SELECT MAX(received_at) FROM distribution_logs WHERE lead_id = dl.lead_id AND id < dl.id) as last_activity_at
             FROM distribution_logs dl
             INNER JOIN (
@@ -3677,31 +3693,93 @@ switch ($action) {
             }
         }
 
+        $takersMap = [];
         if (!empty($personIds)) {
             $personIds = array_unique($personIds);
             $inClause = implode(',', array_map('intval', $personIds));
-            $tQuery = "SELECT c.person_id, c.id as contact_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
+            $tQuery = "SELECT 
+                        c.person_id, 
+                        c.id as contact_id, 
+                        c.lead_id,
+                        c.owner_id as id, 
+                        cons.name, 
+                        cons.avatar, 
+                        cons.phone as consultant_phone,
+                        tm.name as team_name,
+                        dr.round_name,
+                        c.pipeline_status, 
+                        c.status as contact_status, 
+                        c.lead_phan_loai, 
+                        c.source, 
+                        c.created_at as claimed_at,
+                        c.updated_at
                        FROM contacts c
-                       JOIN users u ON c.owner_id = u.id
-                       JOIN consultants cons ON u.email = cons.email
-                       WHERE c.person_id IN ($inClause) AND c.deleted_at IS NULL";
+                       LEFT JOIN users u ON c.owner_id = u.id
+                       LEFT JOIN consultants cons ON (u.email = cons.email OR u.id = cons.id)
+                       LEFT JOIN teams tm ON (cons.team_id = tm.id OR u.team_id = tm.id)
+                       LEFT JOIN leads ld ON c.lead_id = ld.id
+                       LEFT JOIN distribution_rounds dr ON ld.target_round_id = dr.id
+                       WHERE c.person_id IN ($inClause) AND c.deleted_at IS NULL
+                       ORDER BY c.created_at DESC";
             $tRes = $conn->query($tQuery);
             if ($tRes) {
-                $takersMap = [];
                 while ($tRow = $tRes->fetch_assoc()) {
                     $pid = $tRow['person_id'];
                     unset($tRow['person_id']);
                     $takersMap[$pid][] = $tRow;
                 }
-                foreach ($data as &$row) {
-                    $pid = isset($row['person_id']) ? (int)$row['person_id'] : 0;
-                    if (isset($takersMap[$pid])) {
-                        $row['takers'] = $takersMap[$pid];
-                    }
-                }
-                unset($row);
             }
         }
+
+        $statusOrder = [
+            'not_lead' => 0,
+            'chua_xac_dinh' => 1,
+            'cham_soc_dai_han' => 2,
+            'quan_tam' => 3,
+            'thien_chi' => 4,
+            'dong_y_gap' => 4,
+            'da_gap' => 5,
+            'booking' => 6,
+            'dat_coc' => 7,
+            'dong_deal' => 8
+        ];
+
+        foreach ($data as &$row) {
+            $pid = isset($row['person_id']) ? (int)$row['person_id'] : 0;
+            $rowTakers = $takersMap[$pid] ?? [];
+            $row['takers'] = $rowTakers;
+
+            $isBlockedNotLead = ((int)($row['is_blocked'] ?? 0) === 1 || ($row['status'] ?? '') === 'not_lead' || ($row['report_status'] ?? '') === 'approved');
+            
+            if ($isBlockedNotLead) {
+                $row['highest_status'] = 'not_lead';
+            } else {
+                $maxRank = 0;
+                $highest = '';
+                $hasNotLeadTaker = false;
+                foreach ($rowTakers as $tk) {
+                    $st = $tk['pipeline_status'] ?? '';
+                    if ($st === 'not_lead') {
+                        $hasNotLeadTaker = true;
+                        break;
+                    }
+                    $rank = $statusOrder[$st] ?? 0;
+                    if ($rank > $maxRank) {
+                        $maxRank = $rank;
+                        $highest = $st;
+                    }
+                }
+                if ($hasNotLeadTaker) {
+                    $row['highest_status'] = 'not_lead';
+                } else if (!empty($highest)) {
+                    $row['highest_status'] = $highest;
+                } else {
+                    $row['highest_status'] = $row['status'] ?? 'chua_xac_dinh';
+                }
+            }
+        }
+        unset($row);
+
         echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $responseLimit]);
         break;
 
@@ -4339,8 +4417,10 @@ switch ($action) {
             }
         }
 
-        $currentHour = (int)date('H');
-        $shiftDate = ($currentHour < 6) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+        require_once __DIR__ . '/webhook_logic.php';
+        $currentTime = date('H:i');
+        $nightWindow = getNightShiftWindowInfo($conn, $currentTime);
+        $shiftDate = $nightWindow['shift_date'];
 
         $stmt = $conn->prepare("SELECT id, approved FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
         $stmt->bind_param("is", $dbUserId, $shiftDate);
@@ -4348,11 +4428,7 @@ switch ($action) {
         $res = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        $nightShiftStart = '18:00';
-        $setRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_start_time' LIMIT 1");
-        if ($setRes && $sRow = $setRes->fetch_assoc()) {
-            $nightShiftStart = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '18:00';
-        }
+        $nightShiftStart = $nightWindow['start_time'];
 
         // Load late and advance registration settings
         $allowLate = 0;
@@ -4391,15 +4467,29 @@ switch ($action) {
         }
 
         $hasDayCheckin = false;
-        $stmtCI = $conn->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status != 'rejected' LIMIT 1");
+        $hasOntimeCheckin = false;
+        $stmtCI = $conn->prepare("SELECT status, late_minutes FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status != 'rejected' LIMIT 1");
         if ($stmtCI) {
             $stmtCI->bind_param("is", $dbUserId, $shiftDate);
             $stmtCI->execute();
-            $hasDayCheckin = (bool)$stmtCI->get_result()->fetch_assoc();
+            $ciRow = $stmtCI->get_result()->fetch_assoc();
             $stmtCI->close();
+            if ($ciRow) {
+                $hasDayCheckin = true;
+                $hasOntimeCheckin = ($ciRow['status'] === 'approved' && (empty($ciRow['late_minutes']) || (int)$ciRow['late_minutes'] <= 0));
+            }
         }
 
-        $canRegisterByMode = ($regMode === 'free' || $hasDayCheckin || $isAdminOrMgr);
+        $canRegisterByMode = $isAdminOrMgr;
+        if (!$canRegisterByMode) {
+            if ($regMode === 'free') {
+                $canRegisterByMode = true;
+            } else if ($regMode === 'require_day_checkin') {
+                $canRegisterByMode = $hasDayCheckin;
+            } else if ($regMode === 'require_day_checkin_ontime') {
+                $canRegisterByMode = $hasOntimeCheckin;
+            }
+        }
 
         echo json_encode([
             'success' => true, 
@@ -4410,6 +4500,7 @@ switch ($action) {
             'deadline_time' => date('H:i', $deadline),
             'registration_mode' => $regMode,
             'has_day_checkin' => $hasDayCheckin,
+            'has_ontime_checkin' => $hasOntimeCheckin,
             'can_register_by_mode' => $canRegisterByMode
         ]);
         break;
@@ -4439,18 +4530,16 @@ switch ($action) {
             }
         }
 
-        $currentHour = (int)date('H');
-        $defaultShiftDate = ($currentHour < 6) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+        require_once __DIR__ . '/webhook_logic.php';
+        $currentTime = date('H:i');
+        $nightWindow = getNightShiftWindowInfo($conn, $currentTime);
+        $defaultShiftDate = $nightWindow['shift_date'];
         $shiftDate = !empty($b['shift_date']) ? trim($b['shift_date']) : $defaultShiftDate;
         $register = isset($b['register']) ? (bool)$b['register'] : true;
 
         // ONLY check registration deadline for regular staff (Admin/Manager has NO deadline restriction)
         if (!$isAdminOrMgr) {
-            $nightShiftStart = '18:00';
-            $setRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_start_time' LIMIT 1");
-            if ($setRes && $sRow = $setRes->fetch_assoc()) {
-                $nightShiftStart = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '18:00';
-            }
+            $nightShiftStart = $nightWindow['start_time'];
 
             // Load late and advance registration settings
             $allowLate = 0;
@@ -6113,9 +6202,26 @@ switch ($action) {
         ");
         $data = [];
         if ($res && $res->num_rows > 0) {
+            $isSaleUser = ($role === 'sale' || $role === 'sales');
             while ($row = $res->fetch_assoc()) {
                 if (isset($row['work_schedule']) && $row['work_schedule'] !== null) {
                     $row['work_schedule'] = json_decode($row['work_schedule'], true);
+                }
+                // Mask sensitive info of other consultants if requester is sale
+                if ($isSaleUser && (int)($row['id'] ?? 0) !== $currentUserId) {
+                    if (!empty($row['phone'])) {
+                        $p = trim($row['phone']);
+                        $row['phone'] = strlen($p) > 6 ? substr($p, 0, 3) . '****' . substr($p, -3) : '******';
+                    }
+                    if (!empty($row['email'])) {
+                        $eParts = explode('@', $row['email']);
+                        $namePart = $eParts[0] ?? '';
+                        $domainPart = $eParts[1] ?? '';
+                        $maskedName = strlen($namePart) > 2 ? substr($namePart, 0, 2) . '***' : $namePart . '***';
+                        $row['email'] = $maskedName . '@' . $domainPart;
+                    }
+                    $row['zalo_chat_id'] = null;
+                    $row['telegram_chat_id'] = null;
                 }
                 $data[] = $row;
             }
@@ -6123,7 +6229,22 @@ switch ($action) {
         if (empty($data)) {
             $uRes = $conn->query("SELECT id, full_name AS name, email, phone, role, avatar_url AS avatar, zalo_chat_id, telegram_chat_id FROM users WHERE is_active = 1 ORDER BY full_name ASC");
             if ($uRes) {
+                $isSaleUser = ($role === 'sale' || $role === 'sales');
                 while ($uRow = $uRes->fetch_assoc()) {
+                    if ($isSaleUser && (int)($uRow['id'] ?? 0) !== $currentUserId) {
+                        if (!empty($uRow['phone'])) {
+                            $p = trim($uRow['phone']);
+                            $uRow['phone'] = strlen($p) > 6 ? substr($p, 0, 3) . '****' . substr($p, -3) : '******';
+                        }
+                        if (!empty($uRow['email'])) {
+                            $eParts = explode('@', $uRow['email']);
+                            $namePart = $eParts[0] ?? '';
+                            $domainPart = $eParts[1] ?? '';
+                            $uRow['email'] = (strlen($namePart) > 2 ? substr($namePart, 0, 2) . '***' : $namePart . '***') . '@' . $domainPart;
+                        }
+                        $uRow['zalo_chat_id'] = null;
+                        $uRow['telegram_chat_id'] = null;
+                    }
                     $data[] = $uRow;
                 }
             }
@@ -9214,9 +9335,22 @@ switch ($action) {
             break;
         }
 
-        if (($ctx['status'] ?? '') === 'databank_claim') {
+        if (($ctx['status'] ?? '') === 'databank_claim' || ($ctx['source'] ?? '') === 'databank' || ($ctx['lead_type'] ?? '') === 'databank') {
             echo json_encode(['success' => false, 'message' => 'Khách hàng tự nhận từ Kho Data không được phép gửi ticket bù data.']);
             break;
+        }
+
+        // Also check if contact has lead_phan_loai or source is databank
+        $dbkChk = $conn->prepare("SELECT lead_phan_loai, source FROM contacts WHERE lead_id = ? LIMIT 1");
+        if ($dbkChk) {
+            $dbkChk->bind_param("i", $lead_id);
+            $dbkChk->execute();
+            $cDbk = $dbkChk->get_result()->fetch_assoc();
+            $dbkChk->close();
+            if ($cDbk && (($cDbk['lead_phan_loai'] ?? '') === 'databank' || ($cDbk['source'] ?? '') === 'databank')) {
+                echo json_encode(['success' => false, 'message' => 'Khách hàng lấy từ Kho Data (databank) không được phép gửi ticket bù data lỗi.']);
+                break;
+            }
         }
 
         // Check if already has a pending report
@@ -9375,6 +9509,19 @@ switch ($action) {
         if (($logRow['status'] ?? '') === 'databank_claim') {
             echo json_encode(['success' => false, 'message' => 'Khách hàng tự nhận từ Kho Data không được phép gửi ticket bù data.']);
             break;
+        }
+
+        // Check contacts lead_phan_loai or source
+        $dbkChk = $conn->prepare("SELECT lead_phan_loai, source FROM contacts WHERE lead_id = ? LIMIT 1");
+        if ($dbkChk) {
+            $dbkChk->bind_param("i", $lead_id);
+            $dbkChk->execute();
+            $cDbk = $dbkChk->get_result()->fetch_assoc();
+            $dbkChk->close();
+            if ($cDbk && (($cDbk['lead_phan_loai'] ?? '') === 'databank' || ($cDbk['source'] ?? '') === 'databank')) {
+                echo json_encode(['success' => false, 'message' => 'Khách hàng lấy từ Kho Data (databank) không được phép gửi ticket bù data lỗi.']);
+                break;
+            }
         }
 
         // Reject report if lead / contact is already Not Lead
@@ -10488,6 +10635,22 @@ switch ($action) {
                 $updContact->bind_param("ii", $report['lead_id'], $report['lead_id']);
                 $updContact->execute();
                 $updContact->close();
+            }
+
+            // BAN from Databank and blacklist person completely
+            $updPerson = $conn->prepare("UPDATE persons SET is_blocked = 1, deleted_from_databank = 1, is_public = 0 WHERE (id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')");
+            if ($updPerson) {
+                $updPerson->bind_param("ii", $report['lead_id'], $report['lead_id']);
+                $updPerson->execute();
+                $updPerson->close();
+            }
+
+            // Mark lead status as not_lead
+            $updLead = $conn->prepare("UPDATE leads SET status = 'not_lead', assigned_to = NULL, is_accepted = 0 WHERE id = ?");
+            if ($updLead) {
+                $updLead->bind_param("i", $report['lead_id']);
+                $updLead->execute();
+                $updLead->close();
             }
 
             $conn->commit();
@@ -17484,7 +17647,7 @@ switch ($action) {
                             $isComp = !empty($assignResult['is_compensation']);
                             $logStatus = $isComp ? 'compensation' : 'assigned';
 
-                            $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = 'active', target_round_id = ?, is_accepted = 1, accepted_at = NOW(), last_interaction_date = NOW() WHERE id = ?");
+                            $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = 'assigned', target_round_id = ?, is_accepted = 0, accepted_at = NULL, last_assigned_at = NOW(), last_interaction_date = NOW() WHERE id = ?");
                             $upLead->bind_param("iii", $assignedConsultantId, $target_round_id, $lead_id);
                             $upLead->execute();
                             $upLead->close();
@@ -17978,15 +18141,19 @@ switch ($action) {
         ]);
         break;
 
+    case 'update_lead':
     case 'update_lead_fields':
         $input = json_decode(file_get_contents('php://input'), true);
-        $lead_id = isset($input['lead_id']) ? (int) $input['lead_id'] : 0;
+        $lead_id = isset($input['lead_id']) ? (int) $input['lead_id'] : (isset($_GET['lead_id']) ? (int)$_GET['lead_id'] : 0);
         $name = isset($input['name']) ? trim($input['name']) : '';
         $phone = isset($input['phone']) ? trim($input['phone']) : '';
         $email = isset($input['email']) ? trim($input['email']) : '';
         $source = isset($input['source']) ? trim($input['source']) : '';
         $type = isset($input['type']) ? trim($input['type']) : '';
         $note = isset($input['note']) ? trim($input['note']) : '';
+        $lead_phan_loai = isset($input['lead_phan_loai']) ? trim($input['lead_phan_loai']) : (isset($input['phan_loai_lead']) ? trim($input['phan_loai_lead']) : null);
+        $loai_lead = isset($input['loai_lead']) ? trim($input['loai_lead']) : null;
+        $status = isset($input['status']) ? trim($input['status']) : (isset($input['pipeline_status']) ? trim($input['pipeline_status']) : null);
 
         if (!$lead_id) {
             echo json_encode(['success' => false, 'message' => 'Thiếu ID khách hàng']);
@@ -18001,13 +18168,8 @@ switch ($action) {
             }
         }
 
-        if (empty($name)) {
-            echo json_encode(['success' => false, 'message' => 'Tên khách hàng không được để trống']);
-            break;
-        }
-
         // Fetch current values for logging
-        $stmt = $conn->prepare("SELECT name, phone, email, source, type, note FROM leads WHERE id = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT name, phone, email, source, type, note, lead_phan_loai, loai_lead, status FROM leads WHERE id = ? LIMIT 1");
         if (!$stmt) {
             echo json_encode(['success' => false, 'message' => 'Lỗi kết nối CSDL']);
             break;
@@ -18023,14 +18185,50 @@ switch ($action) {
         $lead = $res->fetch_assoc();
         $stmt->close();
 
+        if (empty($name)) {
+            $name = $lead['name'];
+        }
+        if (empty($phone)) {
+            $phone = $lead['phone'];
+        }
+        if ($email === '' && isset($lead['email'])) {
+            $email = $lead['email'];
+        }
+        if ($source === '' && isset($lead['source'])) {
+            $source = $lead['source'];
+        }
+        if ($type === '' && isset($lead['type'])) {
+            $type = $lead['type'];
+        }
+        if ($note === '' && isset($lead['note'])) {
+            $note = $lead['note'];
+        }
+        if ($lead_phan_loai === null) {
+            $lead_phan_loai = $lead['lead_phan_loai'];
+        }
+        if ($loai_lead === null) {
+            $loai_lead = $lead['loai_lead'];
+        }
+        if ($status === null) {
+            $status = $lead['status'];
+        }
+
         // Update lead fields
-        $updStmt = $conn->prepare("UPDATE leads SET name = ?, phone = ?, email = ?, source = ?, type = ?, note = ? WHERE id = ?");
+        $updStmt = $conn->prepare("UPDATE leads SET name = ?, phone = ?, email = ?, source = ?, type = ?, note = ?, lead_phan_loai = ?, loai_lead = ?, status = ?, last_interaction_date = NOW() WHERE id = ?");
         if (!$updStmt) {
-            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật CSDL']);
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật CSDL: ' . $conn->error]);
             break;
         }
-        $updStmt->bind_param("ssssssi", $name, $phone, $email, $source, $type, $note, $lead_id);
+        $updStmt->bind_param("sssssssssi", $name, $phone, $email, $source, $type, $note, $lead_phan_loai, $loai_lead, $status, $lead_id);
         if ($updStmt->execute()) {
+            // Also sync to contacts where lead_id = ?
+            $cUp = $conn->prepare("UPDATE contacts SET lead_phan_loai = ?, loai_lead = ?, pipeline_status = COALESCE(?, pipeline_status) WHERE lead_id = ?");
+            if ($cUp) {
+                $cUp->bind_param("sssi", $lead_phan_loai, $loai_lead, $status, $lead_id);
+                $cUp->execute();
+                $cUp->close();
+            }
+
             // Log admin action
             $adminAccountId = isset($decodedUser['id']) ? (int) $decodedUser['id'] : 0;
             logAdminAction($conn, $adminAccountId, 'UPDATE_LEAD_FIELDS', [
@@ -18049,7 +18247,7 @@ switch ($action) {
                 'old_note' => $lead['note'],
                 'new_note' => $note
             ]);
-            echo json_encode(['success' => true, 'message' => 'Cập nhật thông tin khách hàng thành công']);
+            echo json_encode(['success' => true, 'message' => 'Cập nhật thông tin khách hàng thành công', 'data' => ['lead_id' => $lead_id]]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi lưu thông tin']);
         }
@@ -19847,11 +20045,12 @@ switch ($action) {
             }
             $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
+            $leadPhanLoaiVal = 'databank';
             $stmtIns = $conn->prepare("
-                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?)
+                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, lead_phan_loai, status, pipeline_status, security_expires_at, notes, customer_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?)
             ");
-            $stmtIns->bind_param("iiiisssssssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $sourceVal, $triggerStatus, $secExpiresTime, $noteVal, $typeVal);
+            $stmtIns->bind_param("iiiissssssssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $sourceVal, $leadPhanLoaiVal, $triggerStatus, $secExpiresTime, $noteVal, $typeVal);
             $stmtIns->execute();
             $newContactId = $conn->insert_id;
             $stmtIns->close();

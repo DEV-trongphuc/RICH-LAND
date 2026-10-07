@@ -27,6 +27,8 @@ const SYSTEM_FIELDS = [
   // --- Nguồn Data & Tracking (UTM) ---
   { value: 'source', label: 'Nguồn Data' },
   { value: 'type', label: 'Loại Data' },
+  { value: 'loai_lead', label: 'Hình thức Lead (loai_lead: Zalo / Lead Form / Mess / Hotline)' },
+  { value: 'phan_loai_lead', label: 'Phân loại lead (phan_loai_lead: R3, R3_Fb, R2, Callbot...)' },
   { value: 'platform', label: 'Nền tảng Data (Meta / Google / TikTok / Zalo)' },
   { value: 'utm_campaign', label: 'Tên Chiến dịch Ads (UTM Campaign)' },
   { value: 'utm_medium', label: 'Hình thức Ads (UTM Medium)' },

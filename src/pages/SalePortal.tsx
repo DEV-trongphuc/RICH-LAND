@@ -2514,15 +2514,20 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [showLeaveScheduler, setShowLeaveScheduler] = useState(false);
   const [showNightShiftConfirmModal, setShowNightShiftConfirmModal] = useState(false);
 
-  const getHourLabel = (timeStr: string) => {
+  const formatTimeLabel = (timeStr: string) => {
     if (!timeStr) return '';
-    const parts = timeStr.split(':');
+    const parts = timeStr.trim().split(':');
     const hr = parseInt(parts[0], 10);
-    return isNaN(hr) ? timeStr : `${hr}h`;
+    const min = parseInt(parts[1], 10);
+    if (isNaN(hr)) return timeStr;
+    return (!isNaN(min) && min > 0)
+      ? `${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+      : `${hr}h`;
   };
 
-  const nightStartHour = getHourLabel(sysSettings?.night_shift_start_time || '18:00');
-  const nightEndHour = getHourLabel(sysSettings?.night_shift_end_time || '06:00');
+  const nightStartLabel = formatTimeLabel(sysSettings?.night_shift_start_time || '19:01');
+  const nightEndLabel = formatTimeLabel(sysSettings?.night_shift_end_time || '08:39');
+  const nightTimeRange = `${nightStartLabel} - ${nightEndLabel}`;
 
   // Sliding tab indicator
   const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
@@ -12640,10 +12645,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
                         <div style={{ flex: 1 }}>
                           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-                            {t(`ĐĂNG KÝ TRỰC CA ĐÊM (${nightStartHour}-${nightEndHour})`)}
+                            {t(`ĐĂNG KÝ TRỰC CA ĐÊM (${nightTimeRange})`)}
                           </h3>
                           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                            {t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')}
+                            {t(`Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc ${nightEndLabel} sáng hôm sau.`)}
                           </p>
                           {nightShiftDeadline && (
                             <span style={{
@@ -14019,7 +14024,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {
                   title: 'KHÁCH HÀNG',
                   items: [
-                    { name: 'Nhật ký Data', key: 'data', icon: Database },
+                    { name: 'Quản Lý Lead', key: 'data', icon: Database },
                     { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
                     { name: 'Lịch trình', key: 'calendar', icon: Calendar },
                     { name: 'Chấm công', key: 'attendance-portal', icon: Clock },
@@ -14289,7 +14294,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {
                   title: 'KHÁCH HÀNG',
                   items: [
-                    { name: 'Nhật ký Data', key: 'data', icon: Database },
+                    { name: 'Quản Lý Lead', key: 'data', icon: Database },
                     { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
                     { name: 'Lịch trình', key: 'calendar', icon: Calendar },
                     { name: 'Chấm công', key: 'attendance-portal', icon: Clock },
@@ -15138,7 +15143,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             className={`mobile-bottom-nav-item ${activeTab === 'data' ? 'active' : ''}`}
           >
             <Database />
-            <span className="mobile-bottom-nav-item-label">{t('Nhật ký Data')}</span>
+            <span className="mobile-bottom-nav-item-label">{t('Quản Lý Lead')}</span>
           </button>
           <button
             onClick={() => setActiveTab('tickets')}
@@ -17617,19 +17622,35 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
               {[
-                { label: t("Chưa xác định"), value: dbTimerChuaXacDinh, setter: setDbTimerChuaXacDinh },
+                { 
+                  label: t("Chưa xác định"), 
+                  desc: t("Thời gian tối đa giữ khách sau khi nhận từ Kho Databank trước khi tự động thu hồi về kho"),
+                  value: dbTimerChuaXacDinh, 
+                  setter: setDbTimerChuaXacDinh,
+                  highlight: true
+                },
                 { label: t("Quan tâm"), value: dbTimerQuanTam, setter: setDbTimerQuanTam },
                 { label: t("Thiện chí"), value: dbTimerThienChi, setter: setDbTimerThienChi },
                 { label: t("Đồng ý gặp"), value: dbTimerDongYGap, setter: setDbTimerDongYGap },
                 { label: t("Đã gặp"), value: dbTimerDaGap, setter: setDbTimerDaGap },
                 { label: t("Booking"), value: dbTimerBooking, setter: setDbTimerBooking }
-              ].map((timer, idx) => {
+              ].map((timer: any, idx) => {
                 const parsed = parseTimerString(timer.value);
                 return (
-                  <div key={idx}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', marginBottom: '4px', display: 'block' }}>
-                      {timer.label}
+                  <div key={idx} style={timer.highlight ? { gridColumn: 'span 2', background: 'rgba(217, 119, 6, 0.04)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(217, 119, 6, 0.15)' } : {}}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>{timer.label}</span>
+                      {timer.highlight && (
+                        <span style={{ fontSize: '0.68rem', color: '#d97706', fontWeight: 700, background: 'rgba(217, 119, 6, 0.12)', padding: '2px 8px', borderRadius: '4px' }}>
+                          {t('Quy tắc thu hồi')}
+                        </span>
+                      )}
                     </label>
+                    {timer.desc && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '6px', lineHeight: 1.3 }}>
+                        {timer.desc}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                       <input
                         type="number"
@@ -18481,8 +18502,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         title={nightShiftRegistered ? t('Xác nhận HỦY trực ca đêm') : t('Xác nhận ĐĂNG KÝ trực ca đêm')}
         message={
           nightShiftRegistered
-            ? t('Bạn có chắc chắn muốn HỦY đăng ký trực ca đêm hôm nay (22h - 6h) không?')
-            : t('Bạn có chắc chắn muốn ĐĂNG KÝ trực ca đêm hôm nay (22h - 6h) để tự động nhận lead mới phân bổ trong ca không?')
+            ? t(`Bạn có chắc chắn muốn HỦY đăng ký trực ca đêm hôm nay (${nightTimeRange}) không?`)
+            : t(`Bạn có chắc chắn muốn ĐĂNG KÝ trực ca đêm hôm nay (${nightTimeRange}) để tự động nhận lead mới phân bổ trong ca không?`)
         }
         confirmText={nightShiftRegistered ? t('Hủy trực ca đêm') : t('Xác nhận đăng ký')}
         cancelText={t('Quay lại')}

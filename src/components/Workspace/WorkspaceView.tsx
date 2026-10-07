@@ -415,7 +415,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                   }}>
                     <input
                       type="text"
-                      className="ws-search-input"
+                      className={wsBg ? "ws-search-input ws-search-has-bg" : "ws-search-input"}
                       placeholder={t('Tìm theo tên, mô tả...')}
                       value={wsSearch}
                       onChange={e => setWsSearch(e.target.value)}
@@ -433,15 +433,15 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                         boxSizing: 'border-box',
                         border: isWsSearchFocused 
                           ? '1.5px solid var(--color-primary, #BD1D2D)' 
-                          : (wsBg ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid var(--color-border)'),
+                          : (wsBg ? '1.5px solid rgba(255, 255, 255, 0.55)' : '1px solid var(--color-border)'),
                         background: wsBg 
-                          ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)' 
+                          ? 'rgba(0, 0, 0, 0.42)' 
                           : 'var(--color-surface)',
                         color: wsBg ? '#ffffff' : 'var(--color-text)',
-                        textShadow: wsBg ? '0 1px 4px rgba(0,0,0,0.7)' : 'none',
-                        backdropFilter: wsBg ? 'blur(12px)' : 'none',
-                        WebkitBackdropFilter: wsBg ? 'blur(12px)' : 'none',
-                        boxShadow: wsBg ? '0 4px 16px rgba(0, 0, 0, 0.3)' : 'none',
+                        textShadow: wsBg ? '0 1px 3px rgba(0,0,0,0.85)' : 'none',
+                        backdropFilter: wsBg ? 'blur(16px)' : 'none',
+                        WebkitBackdropFilter: wsBg ? 'blur(16px)' : 'none',
+                        boxShadow: wsBg ? '0 4px 20px rgba(0, 0, 0, 0.45)' : 'none',
                         transition: 'all 0.2s ease',
                         outline: 'none'
                       }}
@@ -507,13 +507,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                   title={t('Báo cáo & Thống kê công việc')}
                   style={{
                     background: wsBg 
-                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)' 
+                      ? 'rgba(0, 0, 0, 0.38)' 
                       : 'rgba(189, 29, 45, 0.06)',
-                    border: wsBg ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(189, 29, 45, 0.25)',
-                    backdropFilter: wsBg ? 'blur(12px)' : 'none',
-                    WebkitBackdropFilter: wsBg ? 'blur(12px)' : 'none',
+                    border: wsBg ? '1.5px solid rgba(255, 255, 255, 0.5)' : '1px solid rgba(189, 29, 45, 0.25)',
+                    backdropFilter: wsBg ? 'blur(14px)' : 'none',
+                    WebkitBackdropFilter: wsBg ? 'blur(14px)' : 'none',
                     color: wsBg ? '#ffffff' : 'var(--color-primary, #BD1D2D)',
-                    textShadow: wsBg ? '0 1px 4px rgba(0,0,0,0.7)' : 'none',
+                    textShadow: wsBg ? '0 1px 3px rgba(0,0,0,0.85)' : 'none',
                     fontWeight: 700,
                     fontSize: '0.82rem',
                     borderRadius: '10px',
@@ -526,11 +526,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                     gap: '6px',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    boxShadow: wsBg ? '0 4px 16px rgba(0, 0, 0, 0.3)' : 'none',
+                    boxShadow: wsBg ? '0 4px 16px rgba(0, 0, 0, 0.35)' : 'none',
                     whiteSpace: 'nowrap'
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = wsBg ? 'rgba(255, 255, 255, 0.32)' : 'rgba(189, 29, 45, 0.12)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = wsBg ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)' : 'rgba(189, 29, 45, 0.06)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = wsBg ? 'rgba(0, 0, 0, 0.55)' : 'rgba(189, 29, 45, 0.12)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = wsBg ? 'rgba(0, 0, 0, 0.38)' : 'rgba(189, 29, 45, 0.06)'; }}
                 >
                   <BarChart3 size={15} style={{ color: wsBg ? '#ffffff' : 'var(--color-primary, #BD1D2D)' }} />
                   {!isMobile && <span>{t('Thống kê')}</span>}
@@ -541,10 +541,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                     className="btn secondary"
                     onClick={handleStartFocusSession}
                     style={{
-                      background: wsBg ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)' : 'rgba(189, 29, 45, 0.06)',
-                      border: wsBg ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(189, 29, 45, 0.25)',
-                      backdropFilter: wsBg ? 'blur(12px)' : 'none',
-                      WebkitBackdropFilter: wsBg ? 'blur(12px)' : 'none',
+                      background: wsBg ? 'rgba(0, 0, 0, 0.38)' : 'rgba(189, 29, 45, 0.06)',
+                      border: wsBg ? '1.5px solid rgba(255, 255, 255, 0.5)' : '1px solid rgba(189, 29, 45, 0.25)',
+                      backdropFilter: wsBg ? 'blur(14px)' : 'none',
+                      WebkitBackdropFilter: wsBg ? 'blur(14px)' : 'none',
                       color: wsBg ? '#ffffff' : 'var(--color-primary, #BD1D2D)',
                       fontWeight: 700,
                       fontSize: '0.82rem',
@@ -558,12 +558,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                       gap: '6px',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
-                      boxShadow: wsBg ? '0 4px 16px rgba(0, 0, 0, 0.3)' : 'none',
-                      textShadow: wsBg ? '0 1px 4px rgba(0,0,0,0.7)' : 'none',
+                      boxShadow: wsBg ? '0 4px 16px rgba(0, 0, 0, 0.35)' : 'none',
+                      textShadow: wsBg ? '0 1px 3px rgba(0,0,0,0.85)' : 'none',
                       whiteSpace: 'nowrap'
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = wsBg ? 'rgba(255, 255, 255, 0.32)' : 'rgba(189, 29, 45, 0.12)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = wsBg ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)' : 'rgba(189, 29, 45, 0.06)'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = wsBg ? 'rgba(0, 0, 0, 0.55)' : 'rgba(189, 29, 45, 0.12)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = wsBg ? 'rgba(0, 0, 0, 0.38)' : 'rgba(189, 29, 45, 0.06)'; }}
                   >
                     <Play size={14} />
                     <span>{t('Chế độ tập trung')}</span>
@@ -609,7 +609,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
               }}>
                 <input
                   type="text"
-                  className="ws-search-input"
+                  className={wsBg ? "ws-search-input ws-search-has-bg" : "ws-search-input"}
                   placeholder={t('Tìm việc theo tên, mô tả...')}
                   value={wsSearch}
                   onChange={e => setWsSearch(e.target.value)}
@@ -617,28 +617,28 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                   onBlur={() => setIsWsSearchFocused(false)}
                   style={{ 
                     height: '36px', 
-                    minHeight: '36px',
-                    maxHeight: '36px',
-                    lineHeight: '36px',
+                    minHeight: '36px', 
+                    maxHeight: '36px', 
+                    lineHeight: '36px', 
                     fontSize: '0.825rem', 
                     padding: wsSearch ? '0 44px 0 14px' : '0 34px 0 14px', 
                     borderRadius: '10px', 
-                    width: '100%',
-                    boxSizing: 'border-box',
+                    width: '100%', 
+                    boxSizing: 'border-box', 
                     border: isWsSearchFocused 
                       ? '1.5px solid var(--color-primary, #BD1D2D)' 
-                      : (wsBg ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid var(--color-border)'),
+                      : (wsBg ? '1.5px solid rgba(255, 255, 255, 0.55)' : '1px solid var(--color-border)'), 
                     background: wsBg 
-                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)' 
-                      : 'var(--color-surface)',
-                    color: wsBg ? '#ffffff' : 'var(--color-text)',
-                    textShadow: wsBg ? '0 1px 4px rgba(0,0,0,0.7)' : 'none',
-                    backdropFilter: wsBg ? 'blur(12px)' : 'none',
-                    WebkitBackdropFilter: wsBg ? 'blur(12px)' : 'none',
-                    boxShadow: wsBg ? '0 4px 16px rgba(0, 0, 0, 0.3)' : 'none',
-                    transition: 'all 0.2s ease',
-                    outline: 'none'
-                  }}
+                      ? 'rgba(0, 0, 0, 0.42)' 
+                      : 'var(--color-surface)', 
+                    color: wsBg ? '#ffffff' : 'var(--color-text)', 
+                    textShadow: wsBg ? '0 1px 3px rgba(0,0,0,0.85)' : 'none', 
+                    backdropFilter: wsBg ? 'blur(16px)' : 'none', 
+                    WebkitBackdropFilter: wsBg ? 'blur(16px)' : 'none', 
+                    boxShadow: wsBg ? '0 4px 16px rgba(0, 0, 0, 0.45)' : 'none', 
+                    transition: 'all 0.2s ease', 
+                    outline: 'none' 
+                  }} 
                 />
                 <Search 
                   size={14} 
@@ -712,7 +712,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
               </div>
             ) : (
               !isMobile && (
-                <p className="page-subtitle" style={{ fontSize: '0.825rem', color: wsBg ? '#e2e8f0' : 'var(--color-text-muted)', margin: 0, textShadow: wsBg ? '0 1px 3px rgba(0,0,0,0.7)' : 'none' }}>
+                <p className="page-subtitle" style={{ 
+                  fontSize: '0.825rem', 
+                  color: wsBg ? '#ffffff' : 'var(--color-text-muted)', 
+                  fontWeight: wsBg ? 600 : 400,
+                  margin: 0, 
+                  textShadow: wsBg ? '0 1px 4px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.7)' : 'none' 
+                }}>
                   {t("Quản lý toàn bộ công việc cần thực hiện, lọc chi tiết theo tiến độ và độ ưu tiên.")}
                 </p>
               )

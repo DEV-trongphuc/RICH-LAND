@@ -256,6 +256,8 @@ const SettingsInner = () => {
     { id: 'night_shift', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Ca trực đêm & Đăng ký trực ca đêm'), desc: t('Cấu hình giờ bắt đầu ca đêm, thời gian đăng ký và tự động duyệt'), keywords: ['trực đêm', 'ca đêm', 'tăng ca', 'đêm', 'duyệt ca đêm'] },
     { id: 'holidays', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Lịch nghỉ lễ & Đăng ký trực lễ'), desc: t('Quản lý danh sách ngày lễ, tự động duyệt trực lễ và yêu cầu chấm công'), keywords: ['nghỉ lễ', 'lịch lễ', 'trực lễ', 'tết', 'chấm công lễ'] },
     { id: 'checkout_req', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Yêu cầu Chấm công Ra ca (Cuối ca)'), desc: t('Bắt buộc chấm công ra ca khi hết giờ làm việc và nhắc nhở tan làm'), keywords: ['ra ca', 'check out', 'cuối ca', 'tan làm', 'về sớm', 'chấm công'] },
+    { id: 'require_checkin_leads', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Bắt buộc chấm công để nhận data'), desc: t('Chỉ chia data (Round-robin & Grab) cho nhân viên đã chấm công ngày'), keywords: ['chấm công', 'nhận data', 'bắt buộc chấm công', 'chia lead', 'grab'] },
+    { id: 'require_ontime_checkin_leads', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Chỉ chia data cho nhân viên chấm công ĐÚNG GIỜ'), desc: t('Loại trừ các nhân viên đi trễ khỏi danh sách nhận lead ban ngày'), keywords: ['đúng giờ', 'đi trễ', 'loại trừ trễ', 'chia data', 'on time'] },
     { id: 'auto_approve_checkin', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Tự động duyệt Chấm công (Bỏ qua trễ & về sớm)'), desc: t('Bỏ qua khâu gửi lý do và quản lý phê duyệt khi đi trễ hoặc về sớm'), keywords: ['tự động duyệt', 'chấm công', 'bỏ qua duyệt', 'trễ', 'muộn', 'về sớm'] },
     { id: 'attendance_report', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Báo cáo Chấm công & Trực ca tự động gửi Sale'), desc: t('Cấu hình ngày gửi và khoảng dữ liệu gửi tổng kết chấm công qua Ma trận thông báo'), keywords: ['báo cáo', 'chấm công', 'trực ca', 'tự động gửi', 'sale', 'tháng'] },
 
@@ -362,6 +364,8 @@ const SettingsInner = () => {
   const [autoApproveHolidayShift, setAutoApproveHolidayShift] = useState<boolean>(false);
   const [shiftHistoryRetentionDays, setShiftHistoryRetentionDays] = useState<number>(90);
   const [allowLeadDistributionOnPendingCheckin, setAllowLeadDistributionOnPendingCheckin] = useState<boolean>(false);
+  const [requireCheckinToReceiveLeads, setRequireCheckinToReceiveLeads] = useState<boolean>(true);
+  const [requireOntimeCheckinToReceiveLeads, setRequireOntimeCheckinToReceiveLeads] = useState<boolean>(false);
   const [globalWorkStartTime, setGlobalWorkStartTime] = useState<string>("08:00");
   const [globalWorkEndTime, setGlobalWorkEndTime] = useState<string>("17:30");
   const [globalScheduleMode, setGlobalScheduleMode] = useState<string>("daily");
@@ -902,6 +906,12 @@ const SettingsInner = () => {
         }
         if (json.data.allow_lead_distribution_on_pending_checkin !== undefined) {
           setAllowLeadDistributionOnPendingCheckin(json.data.allow_lead_distribution_on_pending_checkin === '1' || json.data.allow_lead_distribution_on_pending_checkin === 1);
+        }
+        if (json.data.require_checkin_to_receive_leads !== undefined) {
+          setRequireCheckinToReceiveLeads(json.data.require_checkin_to_receive_leads === '1' || json.data.require_checkin_to_receive_leads === 1);
+        }
+        if (json.data.require_ontime_checkin_to_receive_leads !== undefined) {
+          setRequireOntimeCheckinToReceiveLeads(json.data.require_ontime_checkin_to_receive_leads === '1' || json.data.require_ontime_checkin_to_receive_leads === 1);
         }
         if (json.data.allow_weekend_shift_registration !== undefined) {
           setAllowWeekendShiftRegistration(json.data.allow_weekend_shift_registration === '1' || json.data.allow_weekend_shift_registration === 1);
@@ -1453,6 +1463,8 @@ const SettingsInner = () => {
       weekend_shift_reg_remind_time: weekendShiftRegRemindTime,
       shift_history_retention_days: shiftHistoryRetentionDays,
       allow_lead_distribution_on_pending_checkin: allowLeadDistributionOnPendingCheckin ? 1 : 0,
+      require_checkin_to_receive_leads: requireCheckinToReceiveLeads ? 1 : 0,
+      require_ontime_checkin_to_receive_leads: requireOntimeCheckinToReceiveLeads ? 1 : 0,
       attendance_notification_enabled: attendanceNotificationEnabled ? 1 : 0,
       attendance_notification_lead_minutes: attendanceNotificationLeadMinutes,
       night_duty_notification_enabled: nightDutyNotificationEnabled ? 1 : 0,
@@ -1547,6 +1559,9 @@ const SettingsInner = () => {
 
       if (json.success) {
         toast.success(t('Đã lưu cấu hình "{tabName}" thành công!').replace('{tabName}', currentTabLabel));
+        // Cache invalidation and refetch fresh settings immediately (Issue 6)
+        window.dispatchEvent(new CustomEvent('system_settings_updated', { detail: payload }));
+        await fetchSettings();
       } else {
         toast.error(t('Lỗi khi lưu cấu hình "{tabName}". Vui lòng thử lại.').replace('{tabName}', currentTabLabel));
       }
@@ -5968,6 +5983,42 @@ function doPost(e) {
                         <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Zap size={15} style={{ color: 'var(--color-primary)' }} />
                           {t('Phân phối Lead & Tự động duyệt')}
+                        </div>
+
+                        {/* Bắt buộc điểm danh / chấm công để nhận data (Ca ban ngày) */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {t('Bắt buộc chấm công để nhận data (Ca ban ngày)')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                              {t('Chỉ phân phối lead (vòng quay Round-robin & giỏ Grab lead) cho Sale đã chấm công trong ngày. Nếu tắt, mọi Sale trong giờ làm việc đều có thể nhận data.')}
+                            </div>
+                          </div>
+                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                            <ToggleSwitch
+                              checked={requireCheckinToReceiveLeads}
+                              onChange={setRequireCheckinToReceiveLeads}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Chỉ chia data cho nhân viên chấm công ĐÚNG GIỜ */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {t('Chỉ chia data cho nhân viên chấm công ĐÚNG GIỜ')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                              {t('Loại trừ ngay các nhân viên đi trễ (kể cả đã được duyệt giải trình đi trễ) khỏi danh sách nhận lead ban ngày. Ưu tiên quyền lợi tuyệt đối cho Sale tuân thủ kỷ luật đúng giờ.')}
+                            </div>
+                          </div>
+                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                            <ToggleSwitch
+                              checked={requireOntimeCheckinToReceiveLeads}
+                              onChange={setRequireOntimeCheckinToReceiveLeads}
+                            />
+                          </div>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>

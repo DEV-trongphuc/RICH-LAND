@@ -98,8 +98,8 @@ export const AppIcon: React.FC<AppIconProps> = ({ name, size = 56, className = '
     );
   }
 
-  // 4. KHO DATABANK / NHẬT KÝ DATA (Xanh Cyan / Sky - Kho dữ liệu đa tầng)
-  if (normName.includes('databank') || normName.includes('kho data') || normName.includes('nhật ký data') || normName === 'data') {
+  // 4. KHO DATABANK / NHẬT KÝ DATA / QUẢN LÝ LEAD (Xanh Cyan / Sky - Kho dữ liệu đa tầng)
+  if (normName.includes('databank') || normName.includes('kho data') || normName.includes('nhật ký data') || normName.includes('quản lý lead') || normName.includes('quan ly lead') || normName === 'data') {
     return (
       <svg width={size} height={size} viewBox="0 0 56 56" fill="none" className={className} style={style}>
         <defs>

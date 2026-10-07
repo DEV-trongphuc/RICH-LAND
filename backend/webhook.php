@@ -266,6 +266,100 @@ try {
     error_log("Webhook logs insert error: " . $e->getMessage());
 }
 
+// Check if this is an update request for an existing lead (Issue 2)
+$reqAction = strtolower(trim($data['action'] ?? $_GET['action'] ?? ''));
+$targetLeadId = (int)($data['lead_id'] ?? $_GET['lead_id'] ?? 0);
+if ($targetLeadId > 0 && ($reqAction === 'update_lead' || $reqAction === 'update' || !empty($data['status']) || !empty($data['note']) || !empty($data['pipeline_status']))) {
+    $updFields = [];
+    $updParams = [];
+    $types = '';
+    
+    if (isset($data['name']) && trim($data['name']) !== '') {
+        $updFields[] = "name = ?";
+        $updParams[] = trim($data['name']);
+        $types .= 's';
+    }
+    if (isset($data['phone']) && trim($data['phone']) !== '') {
+        $updFields[] = "phone = ?";
+        $updParams[] = trim($data['phone']);
+        $types .= 's';
+    }
+    if (isset($data['email']) && trim($data['email']) !== '') {
+        $updFields[] = "email = ?";
+        $updParams[] = trim($data['email']);
+        $types .= 's';
+    }
+    if (isset($data['note'])) {
+        $updFields[] = "note = ?";
+        $updParams[] = trim($data['note']);
+        $types .= 's';
+    }
+    if (isset($data['status'])) {
+        $updFields[] = "status = ?";
+        $updParams[] = trim($data['status']);
+        $types .= 's';
+    }
+    if (isset($data['lead_phan_loai']) || isset($data['phan_loai_lead'])) {
+        $updFields[] = "lead_phan_loai = ?";
+        $updParams[] = trim($data['lead_phan_loai'] ?? $data['phan_loai_lead']);
+        $types .= 's';
+    }
+    if (isset($data['loai_lead'])) {
+        $updFields[] = "loai_lead = ?";
+        $updParams[] = trim($data['loai_lead']);
+        $types .= 's';
+    }
+    
+    if (!empty($updFields)) {
+        $updFields[] = "last_interaction_date = NOW()";
+        $sqlUpd = "UPDATE leads SET " . implode(', ', $updFields) . " WHERE id = ?";
+        $updParams[] = $targetLeadId;
+        $types .= 'i';
+        
+        $stmtUp = $conn->prepare($sqlUpd);
+        if ($stmtUp) {
+            $stmtUp->bind_param($types, ...$updParams);
+            $stmtUp->execute();
+            $stmtUp->close();
+        }
+        
+        // Also update contacts where lead_id = ?
+        $cUpd = [];
+        $cParams = [];
+        $cTypes = '';
+        if (isset($data['status']) || isset($data['pipeline_status'])) {
+            $cUpd[] = "pipeline_status = ?";
+            $cParams[] = trim($data['pipeline_status'] ?? $data['status']);
+            $cTypes .= 's';
+        }
+        if (isset($data['note'])) {
+            $cUpd[] = "notes = ?";
+            $cParams[] = trim($data['note']);
+            $cTypes .= 's';
+        }
+        if (isset($data['lead_phan_loai']) || isset($data['phan_loai_lead'])) {
+            $cUpd[] = "lead_phan_loai = ?";
+            $cParams[] = trim($data['lead_phan_loai'] ?? $data['phan_loai_lead']);
+            $cTypes .= 's';
+        }
+        if (!empty($cUpd)) {
+            $sqlC = "UPDATE contacts SET " . implode(', ', $cUpd) . " WHERE lead_id = ?";
+            $cParams[] = $targetLeadId;
+            $cTypes .= 'i';
+            $stmtC = $conn->prepare($sqlC);
+            if ($stmtC) {
+                $stmtC->bind_param($cTypes, ...$cParams);
+                $stmtC->execute();
+                $stmtC->close();
+            }
+        }
+        
+        logWebhookResult($conn, $webhookLogId, $targetLeadId, 'success', 'Cập nhật lead thành công');
+        echo json_encode(["success" => true, "message" => "Cập nhật lead #$targetLeadId thành công", "lead_id" => $targetLeadId]);
+        exit();
+    }
+}
+
 // Load explicit field mappings (if configured)
 $mappings = [];
 $mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
@@ -300,7 +394,7 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
         'gender', 'dob', 'citizen_id', 'address', 'city', 'district', 'company', 'job_title', 'tax_code',
         'budget', 'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
         'utm_campaign', 'utm_medium', 'utm_content', 'utm_term', 'platform', 'form_name',
-        'zalo_phone', 'facebook_link'
+        'zalo_phone', 'facebook_link', 'lead_phan_loai', 'phan_loai_lead', 'loai_lead'
     ];
     if (in_array($systemField, $knownSingleFields) || strpos($systemField, 'cf_') === 0 || strpos($systemField, 'custom_field_') === 0) {
         foreach ($mappingsArray[$systemField] as $mapItem) {
@@ -359,8 +453,11 @@ $email = trim($findSmartField('email', ['email', 'mail', 'contact_email', 'custo
 $note = $findSmartField('note', ['note', 'ghi_chu', 'ghichu', 'message', 'noidung', 'noi_dung', 'content', 'message_content', 'comment', 'description', 'thong_tin_them', 'loi_nhan', 'nhu_cau_chi_tiet', 'yeu_cau', 'nhu_cau', 'chi_tiet', 'remark']);
 $source = $findSmartField('source', ['source', 'nguon', 'utm_source', 'origin', 'channel', 'lead_source', 'nguon_data', 'source_name']);
 $type = $findSmartField('type', ['type', 'loai', 'loai_data', 'lead_type', 'demand', 'loai_khach', 'phan_loai']);
-$loai_lead = $findSmartField('loai_lead', ['loai_lead', 'lead_type']);
-$lead_phan_loai = $findSmartField('lead_phan_loai', ['lead_phan_loai', 'rank', 'lead_rank', 'phan_loai_lead']);
+$loai_lead = $findSmartField('loai_lead', ['loai_lead', 'lead_type', 'hinh_thuc_lead', 'hinh_thuc']);
+$lead_phan_loai = $findSmartField('lead_phan_loai', ['lead_phan_loai', 'rank', 'lead_rank', 'phan_loai_lead', 'phan_loai']);
+if (empty($lead_phan_loai)) {
+    $lead_phan_loai = $findSmartField('phan_loai_lead', ['phan_loai_lead', 'lead_phan_loai', 'rank', 'lead_rank']);
+}
 $platform = $findSmartField('platform', ['platform', 'nen_tang', 'utm_platform', 'ad_platform', 'kenh', 'traffic_source']);
 $utm_campaign = $findSmartField('utm_campaign', ['utm_campaign', 'campaign', 'campaign_name', 'ten_chien_dich', 'chien_dich', 'campaign_id']);
 $utm_medium = $findSmartField('utm_medium', ['utm_medium', 'medium', 'hinh_thuc']);
@@ -885,6 +982,50 @@ if ($isSilent == 1) {
     respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "silent", "message" => "Chỉ đồng bộ check trùng, không định tuyến."], $lockKey, $lockReleased);
 }
 
+// --- Check if Customer/Phone is BANNED (Approved Not Lead) ---
+$isCustomerBanned = false;
+if (!empty($phone)) {
+    $chkBlock = $conn->prepare("SELECT id FROM persons WHERE phone = ? AND is_blocked = 1 LIMIT 1");
+    if ($chkBlock) {
+        $chkBlock->bind_param("s", $phone);
+        $chkBlock->execute();
+        $resBlock = $chkBlock->get_result();
+        if ($resBlock && $resBlock->num_rows > 0) {
+            $isCustomerBanned = true;
+        }
+        $chkBlock->close();
+    }
+}
+
+if ($isCustomerBanned) {
+    $conn->begin_transaction();
+    try {
+        $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connectionId, null, $name);
+        if (!$leadId) {
+            $leadId = insertLead($conn, $data, null, $phone, $email, $name, $source, $type, $note, $connectionId);
+        }
+        $updBlock = $conn->prepare("UPDATE leads SET status = 'blocked', is_accepted = 0, assigned_to = NULL, ai_screener_status = 'failed', ai_evaluation = 'Khách hàng đã bị BAN Not Lead. Chặn phân bổ.' WHERE id = ?");
+        if ($updBlock) {
+            $updBlock->bind_param("i", $leadId);
+            $updBlock->execute();
+            $updBlock->close();
+        }
+        logDistribution($conn, $leadId, null, $targetRoundId, 'blocked', 'Khách hàng nằm trong danh sách Not Lead đã duyệt (BANNED). Hệ thống chặn phân bổ cho Sale.', false);
+        $conn->commit();
+    } catch (Exception $e) {
+        $conn->rollback();
+    }
+    
+    $custData = ['name' => $name, 'phone' => $phone, 'email' => $email, 'source' => $source, 'type' => $type, 'note' => $note];
+    $distData = [
+        'status' => 'blocked',
+        'assigned_to_id' => null,
+        'round_id' => $targetRoundId,
+        'message' => 'Số điện thoại đã bị chặn Not Lead (BANNED). Không phân bổ.'
+    ];
+    respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "blocked", "message" => "Số điện thoại đã bị chặn Not Lead (BANNED). Không phân bổ cho Sale."], $lockKey, $lockReleased);
+}
+
 // --- Intercept Duplicate lead marked as Notlead by MKT ---
 $isMktNotlead = false;
 if (isset($data['notlead']) && ($data['notlead'] == 1 || $data['notlead'] === 'true' || $data['notlead'] === 'notlead' || $data['notlead'] === 'yes')) {
@@ -1174,12 +1315,14 @@ try {
             $cStmt->bind_param("i", $targetRoundId);
             $cStmt->execute();
             $cRes = $cStmt->get_result();
-            $activeConsultants = $cRes->fetch_all(MYSQLI_ASSOC);
+            $activeConsultants = ($cRes && $cRes instanceof mysqli_result) ? $cRes->fetch_all(MYSQLI_ASSOC) : [];
             $cStmt->close();
 
             $currentTime = date('H:i');
+            $nightWindow = getNightShiftWindowInfo($conn, $currentTime);
             foreach ($activeConsultants as $c) {
                 // Check cooldown (grab_cooldown_seconds)
+                $isOnCooldown = false;
                 $cooldownStmt = $conn->prepare("
                     SELECT 1 FROM distribution_logs 
                     WHERE assigned_to = ? 
@@ -1188,16 +1331,32 @@ try {
                       AND received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND) 
                     LIMIT 1
                 ");
-                $cooldownStmt->bind_param("iii", $c['id'], $targetRoundId, $grabCooldownSeconds);
-                $cooldownStmt->execute();
-                $isOnCooldown = $cooldownStmt->get_result()->num_rows > 0;
-                $cooldownStmt->close();
+                if ($cooldownStmt) {
+                    $cooldownStmt->bind_param("iii", $c['id'], $targetRoundId, $grabCooldownSeconds);
+                    $cooldownStmt->execute();
+                    $cdRes = $cooldownStmt->get_result();
+                    if ($cdRes && $cdRes instanceof mysqli_result) {
+                        $isOnCooldown = ($cdRes->num_rows > 0);
+                    }
+                    $cooldownStmt->close();
+                }
 
                 if ($isOnCooldown) {
                     continue;
                 }
 
-                // Check gates
+                // Check active on-duty / shift registration
+                if ($nightWindow['is_night_shift']) {
+                    if (!hasApprovedNightShiftForDate($conn, $c['id'], $nightWindow['shift_date'])) {
+                        continue; // Bỏ qua nếu không đăng ký trực ca đêm
+                    }
+                } else {
+                    if (!isConsultantInWorkHours($currentTime, $c['work_start_time'] ?? '00:00', $c['work_end_time'] ?? '23:59', $c['work_schedule'] ?? null, $c['id'], $conn)) {
+                        continue; // Bỏ qua nếu ngoài giờ làm việc ban ngày
+                    }
+                }
+
+                // Check gates (verifies attendance, on-time, quotas, roster)
                 if (checkConsultantGates($conn, $c['id'], $data, true) === true) {
                     $eligibleConsultants[] = $c;
                 }

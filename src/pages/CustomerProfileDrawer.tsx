@@ -5526,7 +5526,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const handleCreateTicket = async () => {
     if (!ticketForm.subject.trim() || isSubmitting) return;
-    const isSelfEnteredOrDb = ['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim';
+    const isSelfEnteredOrDb = ['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || 
+      (formData.dl_status || contact?.dl_status) === 'databank_claim' ||
+      (formData.lead_phan_loai || contact?.lead_phan_loai) === 'databank' ||
+      (formData.phan_loai_lead || contact?.phan_loai_lead) === 'databank';
     const isNotLeadItem = (formData.pipeline_status || contact?.pipeline_status) === 'not_lead' || (formData.status || contact?.status) === 'not_lead' || Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) === 1;
     if (isNotLeadItem && ticketForm.category === 'lead_error_compensation') {
       addToast('Khách hàng Not Lead không cần tạo ticket Báo lỗi bù data.', 'error');
@@ -5561,6 +5564,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const isNotLeadItem = (formData.pipeline_status || contact?.pipeline_status) === 'not_lead' || (formData.status || contact?.status) === 'not_lead' || Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) === 1;
     if (isNotLeadItem) {
       addToast('Khách hàng Not Lead không cần tạo ticket Báo lỗi bù data.', 'error');
+      return;
+    }
+    const isDbLead = ['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || 
+      (formData.lead_phan_loai || contact?.lead_phan_loai) === 'databank' || 
+      (formData.phan_loai_lead || contact?.phan_loai_lead) === 'databank' || 
+      (formData.source || contact?.source) === 'databank' ||
+      (formData.dl_status || contact?.dl_status) === 'databank_claim';
+    if (isDbLead) {
+      addToast('Khách hàng lấy từ Kho Databank không hỗ trợ báo lỗi bù data.', 'error');
       return;
     }
     const leadId = formData.lead_id || contact?.lead_id;
@@ -6916,6 +6928,63 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         </button>
                                       ))}
                                     </div>
+                                    {group.title === 'Nghiệp vụ & Hỗ trợ' && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                                        {/* Nút Trả về Databank */}
+                                        <button
+                                          type="button"
+                                          onClick={isReleaseBlocked ? undefined : handleReturnToDatabank}
+                                          disabled={isReleaseBlocked}
+                                          style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: '12px 14px',
+                                            borderRadius: '12px',
+                                            background: 'rgba(239, 68, 68, 0.05)',
+                                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                                            color: isReleaseBlocked ? 'var(--color-text-muted)' : '#ef4444',
+                                            fontWeight: 700,
+                                            fontSize: '0.875rem',
+                                            cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
+                                            opacity: isReleaseBlocked ? 0.5 : 1
+                                          }}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <RotateCcw size={18} color="#ef4444" />
+                                            <span>{t('Trả về Databank')}</span>
+                                          </div>
+                                          <ChevronRight size={16} />
+                                        </button>
+
+                                        {/* Nút Báo cáo Not Lead */}
+                                        <button
+                                          type="button"
+                                          onClick={isReleaseBlocked ? undefined : () => setShowNotLeadModal(true)}
+                                          disabled={isReleaseBlocked}
+                                          style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: '12px 14px',
+                                            borderRadius: '12px',
+                                            background: 'rgba(225, 29, 72, 0.05)',
+                                            border: '1px solid rgba(225, 29, 72, 0.2)',
+                                            color: isReleaseBlocked ? 'var(--color-text-muted)' : '#e11d48',
+                                            fontWeight: 700,
+                                            fontSize: '0.875rem',
+                                            cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
+                                            opacity: isReleaseBlocked ? 0.5 : 1
+                                          }}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <UserX size={18} color="#e11d48" />
+                                            <span>{t('Báo cáo Not Lead')}</span>
+                                          </div>
+                                          <ChevronRight size={16} />
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               });
@@ -7012,8 +7081,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     ))}
 
                                     {group.title === 'Nghiệp vụ & Hỗ trợ' && 
-                                     !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
+                                     !['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) && 
                                      (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
+                                     (formData.lead_phan_loai || contact?.lead_phan_loai) !== 'databank' && 
+                                     (formData.phan_loai_lead || contact?.phan_loai_lead) !== 'databank' && 
                                      (formData.pipeline_status || contact?.pipeline_status) !== 'not_lead' &&
                                      (formData.status || contact?.status) !== 'not_lead' &&
                                      Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) !== 1 &&
@@ -11870,7 +11941,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <LifeBuoy size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
                           <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có ticket hỗ trợ</h4>
                           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '340px', margin: '0 auto' }}>
-                            {['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim'
+                            {['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim' || (formData.lead_phan_loai || contact?.lead_phan_loai) === 'databank'
                               ? t('Khách hàng tự nhập hoặc nhận từ Databank không hỗ trợ báo lỗi/yêu cầu bù data. Bạn vẫn có thể gửi ticket hỗ trợ kỹ thuật.')
                               : t('Hiện tại không có yêu cầu hỗ trợ nào đang chờ xử lý cho khách hàng này.')
                             }
@@ -13420,7 +13491,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label className="form-label">Loại hỗ trợ *</label>
                   {(() => {
-                    const isSelfEnteredOrDb = ['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim';
+                    const isSelfEnteredOrDb = ['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || 
+                      (formData.dl_status || contact?.dl_status) === 'databank_claim' ||
+                      (formData.lead_phan_loai || contact?.lead_phan_loai) === 'databank' ||
+                      (formData.phan_loai_lead || contact?.phan_loai_lead) === 'databank';
                     const isNotLeadItem = (formData.pipeline_status || contact?.pipeline_status) === 'not_lead' || (formData.status || contact?.status) === 'not_lead' || Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) === 1;
                     const catOptions = [
                       { value: 'technical_support', label: 'Hỗ trợ kỹ thuật / Yêu cầu chung' },

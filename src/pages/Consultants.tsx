@@ -95,12 +95,28 @@ const cityOptions = ((cityData as any).cities || []).map((c: any) => {
 });
 
 const ConsultantsInner = () => {
+  const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const userRole = user?.role;
   const isSale = userRole === 'sale';
   const isWriteAuthorized = ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes(userRole || '');
+
+  const isCurrentUser = (u: any) => {
+    return Number(u.id) === Number(user?.id) || 
+           Number(u.id) === Number((user as any)?.consultant_id) || 
+           (u.email && user?.email && u.email.toLowerCase() === user.email.toLowerCase());
+  };
+
+  const maskEmail = (email?: string) => {
+    if (!email) return '-';
+    const parts = email.split('@');
+    if (parts.length < 2) return '••••••';
+    const name = parts[0];
+    const domain = parts[1];
+    if (name.length <= 2) return `${name}***@${domain}`;
+    return `${name.slice(0, 2)}***@${domain}`;
+  };
 
   const renderLastLogin = (lastLoginStr: string | null) => {
     if (!lastLoginStr) {
@@ -603,30 +619,34 @@ const ConsultantsInner = () => {
     setModalOpen(true);
   };
 
-  const openEditModal = (user: any) => {
-    setEditingUser(user);
-    const hasCustomSchedule = !!user.work_schedule;
+  const openEditModal = (u: any) => {
+    if (isSale && !isCurrentUser(u)) {
+      toast.error(t('Bạn chỉ có quyền xem thông tin cá nhân của chính mình.'));
+      return;
+    }
+    setEditingUser(u);
+    const hasCustomSchedule = !!u.work_schedule;
     setScheduleMode(hasCustomSchedule ? 'custom' : 'daily');
     setFormData({
-      name: user.name,
-      email: user.email,
-      phone: user.phone || '',
-      status: user.status,
-      leave_start: user.leave_start || '',
-      leave_end: user.leave_end || '',
-      zalo_chat_id: user.zalo_chat_id || '',
-      telegram_chat_id: user.telegram_chat_id || '',
-      work_start_time: user.work_start_time || '00:00',
-      work_end_time: user.work_end_time || '23:59',
-      work_schedule: user.work_schedule || null,
-      avatar: user.avatar || '',
-      team_id: user.team_id || '',
-      dob: user.dob || '',
-      gender: user.gender || '',
-      citizen_id: user.citizen_id || '',
-      address: user.address || '',
-      bank_name: user.bank_name || '',
-      bank_account: user.bank_account || ''
+      name: u.name,
+      email: u.email,
+      phone: u.phone || '',
+      status: u.status,
+      leave_start: u.leave_start || '',
+      leave_end: u.leave_end || '',
+      zalo_chat_id: u.zalo_chat_id || '',
+      telegram_chat_id: u.telegram_chat_id || '',
+      work_start_time: u.work_start_time || '00:00',
+      work_end_time: u.work_end_time || '23:59',
+      work_schedule: u.work_schedule || null,
+      avatar: u.avatar || '',
+      team_id: u.team_id || '',
+      dob: u.dob || '',
+      gender: u.gender || '',
+      citizen_id: u.citizen_id || '',
+      address: u.address || '',
+      bank_name: u.bank_name || '',
+      bank_account: u.bank_account || ''
     });
     setModalOpen(true);
   };
@@ -1418,82 +1438,86 @@ const ConsultantsInner = () => {
           </div>
           {isMobile ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem 0.5rem 6rem 0.5rem' }}>
-              {paginatedUsers.map(u => (
-                <div
-                  key={u.id}
-                  onClick={() => openEditModal(u)}
-                  style={{
-                    padding: '14px 16px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border-light)',
-                    borderRadius: '16px',
-                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-                    <div style={{ flexShrink: 0, position: 'relative' }}>
-                      <Avatar
-                        src={u.avatar}
-                        name={u.name}
-                        size={46}
-                        style={{
-                          filter: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
-                          opacity: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 0.5 : 1
-                        }}
-                      />
-                      <span style={{
-                        position: 'absolute',
-                        bottom: -1,
-                        right: -1,
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        border: '2px solid var(--color-surface)',
-                        background: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? '#94a3b8' : '#10b981'
-                      }} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: '2px', flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {u.name}
-                        </span>
-                        <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontWeight: 600, flexShrink: 0 }}>
-                          #{u.id}
-                        </span>
+              {paginatedUsers.map(u => {
+                const isSelf = isCurrentUser(u);
+                const canViewDetail = isWriteAuthorized || isSelf;
+                return (
+                  <div
+                    key={u.id}
+                    onClick={() => canViewDetail && openEditModal(u)}
+                    style={{
+                      padding: '14px 16px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
+                      cursor: canViewDetail ? 'pointer' : 'default',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                      <div style={{ flexShrink: 0, position: 'relative' }}>
+                        <Avatar
+                          src={u.avatar}
+                          name={u.name}
+                          size={46}
+                          style={{
+                            filter: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                            opacity: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 0.5 : 1
+                          }}
+                        />
+                        <span style={{
+                          position: 'absolute',
+                          bottom: -1,
+                          right: -1,
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          border: '2px solid var(--color-surface)',
+                          background: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? '#94a3b8' : '#10b981'
+                        }} />
                       </div>
-                      
-                      {/* Email display prominently */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        <Mail size={12} style={{ flexShrink: 0, opacity: 0.85 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email || t('Chưa có email')}</span>
-                      </div>
-
-                      {/* Phone & Status info */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                        {u.phone && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                            <Phone size={10} style={{ color: 'var(--color-text-light)' }} />
-                            <span>{u.phone}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: '2px', flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {u.name}
                           </span>
-                        )}
-                        {u.phone && <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-border)' }} />}
-                        <span>{u.status === 'active' ? t('Đang hoạt động') : t('Tạm ngưng')}</span>
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontWeight: 600, flexShrink: 0 }}>
+                            #{u.id}
+                          </span>
+                        </div>
+                        
+                        {/* Email display prominently */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <Mail size={12} style={{ flexShrink: 0, opacity: 0.85 }} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{isSale && !isSelf ? maskEmail(u.email) : (u.email || t('Chưa có email'))}</span>
+                        </div>
+
+                        {/* Phone & Status info */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                          {u.phone && (!isSale || isSelf) && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <Phone size={10} style={{ color: 'var(--color-text-light)' }} />
+                              <span>{u.phone}</span>
+                            </span>
+                          )}
+                          {u.phone && (!isSale || isSelf) && <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-border)' }} />}
+                          <span>{u.status === 'active' ? t('Đang hoạt động') : t('Tạm ngưng')}</span>
+                        </div>
                       </div>
                     </div>
+                    {canViewDetail && isWriteAuthorized && (
+                      <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <ChevronRight size={18} />
+                      </div>
+                    )}
                   </div>
-                  {isWriteAuthorized && (
-                    <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                      <ChevronRight size={18} />
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               {paginatedUsers.length === 0 && (
                 <div style={{ padding: '3rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12 }}>
                   <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa có Tư vấn viên')}</p>
@@ -1530,13 +1554,16 @@ const ConsultantsInner = () => {
                     </td>
                   </tr>
                 ) : paginatedUsers.map((u) => {
+                  const isSelf = isCurrentUser(u);
+                  const canViewDetail = isWriteAuthorized || isSelf;
+
                   return (
                     <tr
                       key={u.id}
                       className="group table-row-hover"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => openEditModal(u)}
-                      title={t("Nhấp để xem chi tiết")}
+                      style={{ cursor: canViewDetail ? 'pointer' : 'default' }}
+                      onClick={() => canViewDetail && openEditModal(u)}
+                      title={canViewDetail ? t("Nhấp để xem chi tiết") : ''}
                     >
                       <td data-label={t('Tên TVV')} style={{ padding: '0.375rem 0.875rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
@@ -1552,8 +1579,8 @@ const ConsultantsInner = () => {
                           <div>
                             <div
                               style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--color-text)', lineHeight: 1.2, transition: 'color 0.15s' }}
-                              onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
-                              onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text)'}
+                              onMouseEnter={e => { if (canViewDetail) e.currentTarget.style.color = 'var(--color-primary)'; }}
+                              onMouseLeave={e => { if (canViewDetail) e.currentTarget.style.color = 'var(--color-text)'; }}
                             >
                               {u.name}
                             </div>
@@ -1595,12 +1622,12 @@ const ConsultantsInner = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.775rem' }}>
                             <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 13, height: 13, objectFit: 'contain', flexShrink: 0 }} />
-                            <span>{u.email}</span>
+                            <span>{isSale && !isSelf ? maskEmail(u.email) : u.email}</span>
                           </div>
                           {u.phone && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.725rem', color: 'var(--color-text)' }}>
                               <Phone size={11} style={{ color: 'var(--color-primary)' }} />
-                              <span>{u.phone}</span>
+                              <span>{isSale && !isSelf ? '••••••••••' : u.phone}</span>
                             </div>
                           )}
                         </div>
@@ -1616,7 +1643,7 @@ const ConsultantsInner = () => {
                             }}>
                               <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 13, height: 13, borderRadius: '2px' }} /> {t('Đã liên kết')}
                             </span>
-                            <CopyButton text={u.zalo_chat_id} />
+                            {(!isSale || isSelf) && <CopyButton text={u.zalo_chat_id} />}
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
@@ -1627,7 +1654,7 @@ const ConsultantsInner = () => {
                             }}>
                               {t('Chưa liên kết')}
                             </span>
-                            {u.email && u.email.toLowerCase() === user?.email?.toLowerCase() ? (
+                            {isSelf ? (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleConnectZalo(); }}
                                 style={{
@@ -1638,7 +1665,7 @@ const ConsultantsInner = () => {
                               >
                                 {t('Liên kết')} <ExternalLink size={11} />
                               </button>
-                            ) : (
+                            ) : isWriteAuthorized ? (
                               u.email && (
                                 zaloRemindedId === u.id ? (
                                   <span style={{ fontSize: '0.675rem', padding: '2px 5px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 600 }}>
@@ -1650,7 +1677,7 @@ const ConsultantsInner = () => {
                                   </button>
                                 )
                               )
-                            )}
+                            ) : null}
                           </div>
                         )}
                         </td>
@@ -1664,7 +1691,7 @@ const ConsultantsInner = () => {
                               }}>
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 13, height: 13, borderRadius: '50%' }} /> {t('Đã liên kết')}
                               </span>
-                              <CopyButton text={u.telegram_chat_id} />
+                              {(!isSale || isSelf) && <CopyButton text={u.telegram_chat_id} />}
                             </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
@@ -1675,7 +1702,7 @@ const ConsultantsInner = () => {
                               }}>
                                 {t('Chưa liên kết')}
                               </span>
-                              {u.email && u.email.toLowerCase() === user?.email?.toLowerCase() ? (
+                              {isSelf ? (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleConnectTelegram(u.id); }}
                                   style={{
@@ -1686,7 +1713,7 @@ const ConsultantsInner = () => {
                                 >
                                   {t('Liên kết')} <ExternalLink size={11} />
                                 </button>
-                              ) : (
+                              ) : isWriteAuthorized ? (
                                 u.email && (
                                   tgRemindedId === u.id ? (
                                     <span style={{ fontSize: '0.675rem', padding: '2px 5px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 600 }}>
@@ -1698,7 +1725,7 @@ const ConsultantsInner = () => {
                                     </button>
                                   )
                                 )
-                              )}
+                              ) : null}
                             </div>
                           )}
                         </td>

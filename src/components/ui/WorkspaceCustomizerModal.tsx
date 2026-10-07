@@ -24,13 +24,7 @@ export const PRESET_WALLPAPERS = [
     preview: '/imgs/myerp_dark_brand_wallpaper.jpg',
     tag: 'Tối giản'
   },
-  {
-    id: 'richland_brand',
-    name: 'RICH LAND Luxury Dark Red (Độc quyền)',
-    url: 'linear-gradient(135deg, #160608 0%, #2a0b10 40%, #110406 100%)',
-    preview: 'linear-gradient(135deg, #160608 0%, #2a0b10 40%, #110406 100%)',
-    tag: 'Tối giản'
-  },
+
   {
     id: 'clean_light',
     name: 'Mặc định phẳng (Không ảnh nền)',

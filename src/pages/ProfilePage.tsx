@@ -72,15 +72,20 @@ export const ProfilePage: React.FC = () => {
     }).catch(err => console.error(err));
   }, []);
 
-  const getHourLabel = (timeStr: string) => {
+  const formatTimeLabel = (timeStr: string) => {
     if (!timeStr) return '';
-    const parts = timeStr.split(':');
+    const parts = timeStr.trim().split(':');
     const hr = parseInt(parts[0], 10);
-    return isNaN(hr) ? timeStr : `${hr}h`;
+    const min = parseInt(parts[1], 10);
+    if (isNaN(hr)) return timeStr;
+    return (!isNaN(min) && min > 0)
+      ? `${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+      : `${hr}h`;
   };
 
-  const nightStartHour = getHourLabel(sysSettings?.night_shift_start_time || '18:00');
-  const nightEndHour = getHourLabel(sysSettings?.night_shift_end_time || '06:00');
+  const nightStartLabel = formatTimeLabel(sysSettings?.night_shift_start_time || '19:01');
+  const nightEndLabel = formatTimeLabel(sysSettings?.night_shift_end_time || '08:39');
+  const nightTimeRange = `${nightStartLabel} - ${nightEndLabel}`;
 
   // Basic Profile State
   const [profileData, setProfileData] = useState({ name: '', email: '', avatar: '' });
@@ -1013,12 +1018,12 @@ export const ProfilePage: React.FC = () => {
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                  {isSales ? t(`ĐĂNG KÝ TRỰC CA ĐÊM (${nightStartHour}-${nightEndHour})`) : t('ĐĂNG KÝ LÀM TĂNG CA / CA ĐÊM')}
+                  {isSales ? t(`ĐĂNG KÝ TRỰC CA ĐÊM (${nightTimeRange})`) : t('ĐĂNG KÝ LÀM TĂNG CA / CA ĐÊM')}
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
                   {isSales
-                    ? t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')
-                    : t(`Đăng ký làm việc ngoài giờ / tăng ca đêm (${nightStartHour} - ${nightEndHour} sáng hôm sau). Bản ghi này phục vụ mục đích chấm công và tính lương tăng ca.`)}
+                    ? t(`Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc ${nightEndLabel} sáng hôm sau.`)
+                    : t(`Đăng ký làm việc ngoài giờ / tăng ca đêm (${nightTimeRange} sáng hôm sau). Bản ghi này phục vụ mục đích chấm công và tính lương tăng ca.`)}
                 </p>
               </div>
             </div>

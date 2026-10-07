@@ -1746,8 +1746,21 @@ if (!function_exists('recallExpiredGrabLeads')) {
                                 continue;
                             }
                             
-                            // Check gates
+                            // Check gates & on-duty status
                             require_once __DIR__ . '/webhook_logic.php';
+                            $currentTime = date('H:i');
+                            $nightWindow = getNightShiftWindowInfo($conn, $currentTime);
+
+                            if ($nightWindow['is_night_shift']) {
+                                if (!hasApprovedNightShiftForDate($conn, $c['id'], $nightWindow['shift_date'])) {
+                                    continue; // Bỏ qua nếu không đăng ký trực ca đêm
+                                }
+                            } else {
+                                if (!isConsultantInWorkHours($currentTime, $c['work_start_time'] ?? '00:00', $c['work_end_time'] ?? '23:59', $c['work_schedule'] ?? null, $c['id'], $conn)) {
+                                    continue; // Bỏ qua nếu ngoài giờ làm việc ban ngày
+                                }
+                            }
+
                             if (checkConsultantGates($conn, $c['id'], $leadData, true) === true) {
                                 $eligible[] = $c;
                             }

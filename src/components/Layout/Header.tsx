@@ -69,6 +69,17 @@ export const Header = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Track dynamic recent routes in localStorage (Issue 5)
+  useEffect(() => {
+    if (!location.pathname || location.pathname === '/login') return;
+    try {
+      const stored = JSON.parse(localStorage.getItem('recent_routes') || '[]');
+      const filtered = Array.isArray(stored) ? stored.filter((p: string) => p !== location.pathname) : [];
+      filtered.unshift(location.pathname);
+      localStorage.setItem('recent_routes', JSON.stringify(filtered.slice(0, 20)));
+    } catch (e) {}
+  }, [location.pathname]);
+
   const [headerVacationMode, setHeaderVacationMode] = useState<boolean>(false);
   const [headerCheckIn, setHeaderCheckIn] = useState<any>(null);
   const [headerNightShiftRegistered, setHeaderNightShiftRegistered] = useState<boolean>(false);
@@ -818,7 +829,7 @@ export const Header = ({
 
   const navItems: Array<{ name: string; path: string; description: string; shortcut: string; adminOnly?: boolean; superAdminOnly?: boolean; action?: () => void }> = [
     { name: t('Dashboard'), path: '/', description: t('Trang tổng quan thống kê hệ thống'), shortcut: 'Alt + D' },
-    { name: t('Nhật ký Lead (Data Log)'), path: '/data', description: t('Xem logs danh sách lead và trạng thái cuộc gọi'), shortcut: 'Alt + L' },
+    { name: t('Quản Lý Lead'), path: '/data', description: t('Xem danh sách lead, trạng thái cao nhất và lịch sử chăm sóc'), shortcut: 'Alt + L' },
     { name: t('Bản tin hoạt động hệ thống'), path: '#feed', description: t('Bản tin các hoạt động và phân bổ lead gần đây'), shortcut: 'Alt + H', action: () => window.dispatchEvent(new CustomEvent('open-activity-feed')) },
     { name: t('Vòng xoay chia số (Rounds)'), path: '/rounds', description: t('Cấu hình danh sách các vòng chia lead cho sale'), adminOnly: true, shortcut: 'Alt + R' },
     { name: t('Quy tắc chia số (Rules)'), path: '/rules', description: t('Thiết lập logic điều phối và skip interval'), adminOnly: true, shortcut: 'Alt + W' },
@@ -1677,6 +1688,7 @@ export const Header = ({
             'Khách hàng': 'Quản lý thông tin khách hàng và nhật ký liên hệ',
             'Pipeline': 'Quy trình giao dịch và phễu chuyển đổi bán hàng',
             'Lịch biểu': 'Xem lịch làm việc và đăng ký ngày phép',
+            'Quản Lý Lead': 'Xem danh sách toàn bộ lead phân bổ và lịch sử chăm sóc',
             'Nhật ký Data': 'Xem danh sách toàn bộ data phân bổ',
             'Vòng phân bổ': 'Tự động phân bổ khách hàng tiềm năng cho nhân viên',
             'Đối soát công bằng': 'Đối soát phân chia dữ liệu khách hàng công bằng',
@@ -1807,20 +1819,43 @@ export const Header = ({
             ];
           };
 
+          // Check dynamic recent routes from localStorage (Issue 5)
+          let dynamicRecentPaths: string[] = [];
+          try {
+            const raw = localStorage.getItem('recent_routes');
+            if (raw) dynamicRecentPaths = JSON.parse(raw);
+          } catch (e) {}
+
           const roleTargets = getRoleRecentTargets(role);
           const maxCount = isMobile ? 9 : 7;
           const matchedRecent: any[] = [];
           const seenNames = new Set<string>();
 
-          for (const targetName of roleTargets) {
-            const found = allVisibleItems.find(item => item.name.toLowerCase() === targetName.toLowerCase());
-            if (found && !seenNames.has(found.name)) {
-              matchedRecent.push(found);
-              seenNames.add(found.name);
-              if (matchedRecent.length >= maxCount) break;
+          // 1. First prioritize routes actually visited recently by user
+          if (Array.isArray(dynamicRecentPaths)) {
+            for (const path of dynamicRecentPaths) {
+              const found = allVisibleItems.find(item => item.href === path || (path !== '/' && item.href !== '/' && path.startsWith(item.href)));
+              if (found && !seenNames.has(found.name)) {
+                matchedRecent.push(found);
+                seenNames.add(found.name);
+                if (matchedRecent.length >= maxCount) break;
+              }
             }
           }
 
+          // 2. Fill remaining slots with role priority targets
+          if (matchedRecent.length < maxCount) {
+            for (const targetName of roleTargets) {
+              const found = allVisibleItems.find(item => item.name.toLowerCase() === targetName.toLowerCase());
+              if (found && !seenNames.has(found.name)) {
+                matchedRecent.push(found);
+                seenNames.add(found.name);
+                if (matchedRecent.length >= maxCount) break;
+              }
+            }
+          }
+
+          // 3. Fallback to any remaining visible items
           if (matchedRecent.length < maxCount) {
             for (const item of allVisibleItems) {
               if (!seenNames.has(item.name)) {

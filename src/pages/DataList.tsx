@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, useMemo } from 'react';
+import { useState, useEffect, Fragment, useMemo, lazy, Suspense } from 'react';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap, Loader2 } from 'lucide-react';
@@ -25,6 +25,7 @@ import { detectCountryFromPhone } from '../utils/phoneHelper';
 import { NotificationPreviewModal } from '../components/ui/NotificationPreviewModal';
 import { RuleSettings } from './RuleSettings';
 
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 
 type Lead = {
   id: number;
@@ -55,6 +56,10 @@ type Lead = {
   accepted_at?: string;
   person_id?: number;
   assigned_to?: number;
+  highest_status?: string;
+  lead_phan_loai?: string;
+  loai_lead?: string;
+  is_blocked?: number;
 
   // Mapped & Extended fields
   gender?: string;
@@ -351,6 +356,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
   const [users, setUsers] = useState<any[]>([]);
   const [teamsList, setTeamsList] = useState<any[]>([]);
+  const [selectedContactForDrawer, setSelectedContactForDrawer] = useState<{ id: number; name?: string } | null>(null);
 
   useEffect(() => {
     if (userRole === 'manager') {
@@ -617,7 +623,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           form_name: item.form_name || '',
           campaign_name: item.campaign_name || '',
           zalo_phone: item.zalo_phone || '',
-          facebook_link: item.facebook_link || ''
+          facebook_link: item.facebook_link || '',
+          highest_status: item.highest_status || item.status || 'chua_xac_dinh',
+          lead_phan_loai: item.lead_phan_loai || '',
+          loai_lead: item.loai_lead || '',
+          is_blocked: item.is_blocked !== undefined ? Number(item.is_blocked) : 0
         }));
         setLeads(mappedLeads);
         setTotalCount(json.total_count ?? mappedLeads.length);
@@ -1407,6 +1417,53 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
   const paginatedLeads = leads;
 
+  const formatDateHeader = (dateStr: string, count: number) => {
+    if (!dateStr || dateStr === 'unknown') return `${t('Không xác định ngày')} (${count} leads)`;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return `${dateStr} (${count} leads)`;
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    const formattedDate = `${d}/${m}/${y}`;
+
+    if (dateStr === todayStr) {
+      return `${t('Hôm nay')} (${formattedDate}) [${count} ${count > 1 ? 'leads' : 'lead'}]`;
+    }
+    if (dateStr === yesterdayStr) {
+      return `${t('Hôm qua')} (${formattedDate}) [${count} ${count > 1 ? 'leads' : 'lead'}]`;
+    }
+    return `${formattedDate} [${count} ${count > 1 ? 'leads' : 'lead'}]`;
+  };
+
+  const groupedLeads = useMemo(() => {
+    const groups: { dateKey: string; items: Lead[] }[] = [];
+    const map = new Map<string, Lead[]>();
+
+    paginatedLeads.forEach(lead => {
+      let dateKey = 'unknown';
+      if (lead.created_at) {
+        const parts = lead.created_at.split(' ')[0].split('T')[0];
+        if (parts) dateKey = parts;
+      }
+      if (!map.has(dateKey)) {
+        const arr: Lead[] = [];
+        map.set(dateKey, arr);
+        groups.push({ dateKey, items: arr });
+      }
+      map.get(dateKey)!.push(lead);
+    });
+
+    return groups;
+  }, [paginatedLeads]);
+
   const getPendingUntilTime = () => {
     if (!sysSettings) return t('Chờ giờ làm');
     const now = new Date();
@@ -1495,6 +1552,82 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
       default: return null;
     }
+  };
+
+  const getHighestStatusBadge = (highestStatus?: string, lead?: Lead) => {
+    const st = highestStatus || lead?.status || 'chua_xac_dinh';
+
+    if (lead?.is_blocked === 1 || st === 'not_lead' || lead?.report_status === 'approved') {
+      return (
+        <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239, 68, 68, 0.12)', color: '#dc2626', border: '1px solid rgba(239, 68, 68, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <Ban size={11} /> Not Lead
+        </span>
+      );
+    }
+
+    switch (st) {
+      case 'dong_deal':
+        return <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', border: '1px solid rgba(16, 185, 129, 0.25)' }}>9. {t('Đã đóng deal')}</span>;
+      case 'dat_coc':
+        return <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(5, 150, 105, 0.12)', color: '#047857', border: '1px solid rgba(5, 150, 105, 0.25)' }}>8. {t('Đặt cọc')}</span>;
+      case 'booking':
+        return <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.25)' }}>7. {t('Booking')}</span>;
+      case 'da_gap':
+        return <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(192, 38, 211, 0.12)', color: '#c026d3', border: '1px solid rgba(192, 38, 211, 0.25)' }}>6. {t('Đã gặp')}</span>;
+      case 'dong_y_gap':
+      case 'thien_chi':
+        return <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(249, 115, 22, 0.12)', color: '#ea580c', border: '1px solid rgba(249, 115, 22, 0.25)' }}>5. {t('Thiện chí')}</span>;
+      case 'quan_tam':
+        return <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(234, 179, 8, 0.12)', color: '#ca8a04', border: '1px solid rgba(234, 179, 8, 0.25)' }}>4. {t('Quan tâm')}</span>;
+      case 'cham_soc_dai_han':
+        return <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(13, 148, 136, 0.12)', color: '#0d9488', border: '1px solid rgba(13, 148, 136, 0.25)' }}>3. {t('Chăm sóc dài hạn')}</span>;
+      case 'chua_xac_dinh':
+        return <span style={{ padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D', border: '1px solid rgba(189, 29, 45, 0.2)' }}>2. {t('Chưa xác định')}</span>;
+      default:
+        return getStatusBadge((lead?.is_public === 1 || Number(lead?.is_public) === 1 || lead?.status === 'released_to_kho' || lead?.status === 'databank_claim') ? 'databank' : (lead?.status || st), lead?.report_status, lead?.ai_screener_status, lead?.created_at, lead?.takers, lead?.is_accepted);
+    }
+  };
+
+  const getPhanLoaiBadge = (lead: Lead) => {
+    const isDb = (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'databank' || lead.status === 'databank_claim' || lead.status === 'released_to_kho' || lead.lead_phan_loai === 'databank');
+    const tag = isDb ? 'databank' : (lead.lead_phan_loai || lead.loai_lead || (lead.type && lead.type !== '-' ? lead.type : ''));
+
+    if (!tag) return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>;
+
+    const isHot = /r[1-3]/i.test(tag) || /hot|nóng/i.test(tag);
+
+    return (
+      <span
+        style={{
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          padding: '2px 7px',
+          borderRadius: '6px',
+          background: isHot
+            ? 'rgba(239, 68, 68, 0.12)'
+            : isDb
+              ? 'rgba(14, 165, 233, 0.12)'
+              : 'var(--color-bg-light)',
+          color: isHot
+            ? '#dc2626'
+            : isDb
+              ? '#0284c7'
+              : 'var(--color-text-muted)',
+          border: `1px solid ${
+            isHot
+              ? 'rgba(239, 68, 68, 0.28)'
+              : isDb
+                ? 'rgba(14, 165, 233, 0.28)'
+                : 'var(--color-border)'
+          }`,
+          display: 'inline-block',
+          whiteSpace: 'nowrap'
+        }}
+        title={`Phân loại lead: ${tag}`}
+      >
+        {tag}
+      </span>
+    );
   };
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -1669,7 +1802,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       <div className="page-header" style={{ marginBottom: '1.25rem', flexShrink: 0 }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Database size={24} color="var(--color-primary)" /> {t('Quản lý Data')}
+            <Database size={24} color="var(--color-primary)" /> {t('Quản Lý Lead')}
             <button
               onClick={() => setShowInfoModal(true)}
               style={{
@@ -2431,7 +2564,25 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
                   ))
                 ) : paginatedLeads.length > 0 ? (
-                  paginatedLeads.map(lead => (
+                  groupedLeads.map(group => (
+                    <Fragment key={`m-group-${group.dateKey}`}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '0.5rem 0.75rem',
+                        background: 'var(--color-bg-light)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)',
+                        marginTop: '0.5rem',
+                        marginBottom: '0.25rem'
+                      }}>
+                        <Calendar size={14} style={{ color: 'var(--color-primary)' }} />
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                          {formatDateHeader(group.dateKey, group.items.length)}
+                        </span>
+                      </div>
+                      {group.items.map(lead => (
                     <div
                       key={lead.id}
                       onClick={() => setSelectedLead(lead)}
@@ -2469,9 +2620,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           </div>
                         </div>
 
-                        {/* Status badge */}
+                        {/* Status badges */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                          {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers, lead.is_accepted)}
+                          {getHighestStatusBadge(lead.highest_status, lead)}
+                          {getPhanLoaiBadge(lead)}
                           {lead.status !== 'assigned' && lead.status !== 'grabbed' && lead.report_status === 'pending' && (
                             <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>
                               {t('Chờ duyệt')}
@@ -2583,8 +2735,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         )}
                       </div>
                     </div>
-                  ))
-                ) : (
+                  ))}
+                </Fragment>
+              ))
+            ) : (
                   <EmptyCard
                     icon={<Database size={48} />}
                     title={t("Không tìm thấy dữ liệu phù hợp")}
@@ -2598,7 +2752,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   <tr>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Khách hàng')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Liên hệ')}</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái cao nhất')}</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Phân loại lead')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>{t('Phân bổ cho')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Thời gian nhận')}</th>
                   </tr>
@@ -2623,6 +2778,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         <div style={{ width: 80, height: 24, background: 'var(--skeleton-base)', borderRadius: 12, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
                       </td>
                       <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div style={{ width: 70, height: 22, background: 'var(--skeleton-base)', borderRadius: 6, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                      </td>
+                      <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--skeleton-base)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
                           <div style={{ width: 90, height: 14, background: 'var(--skeleton-base)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
@@ -2632,14 +2790,24 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         <div style={{ width: 110, height: 14, background: 'var(--skeleton-base)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
                       </td>
                     </tr>
-                  )) : paginatedLeads.length > 0 ? paginatedLeads.map(lead => {
-                    return (
-                      <tr
-                        key={lead.id}
-                        className="lead-row"
-                        onClick={() => setSelectedLead(lead)}
-                        style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
-                      >
+                  )) : paginatedLeads.length > 0 ? (
+                    groupedLeads.map(group => (
+                      <Fragment key={`group-${group.dateKey}`}>
+                        <tr style={{ background: 'var(--color-bg-light)', borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)' }}>
+                          <td colSpan={6} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Calendar size={13} />
+                              <span>{formatDateHeader(group.dateKey, group.items.length)}</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {group.items.map(lead => (
+                          <tr
+                            key={lead.id}
+                            className="lead-row"
+                            onClick={() => setSelectedLead(lead)}
+                            style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
+                          >
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Avatar name={lead.name} size={32} />
@@ -2654,9 +2822,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                            {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers, lead.is_accepted)}
+                            {getHighestStatusBadge(lead.highest_status, lead)}
                             {lead.status !== 'assigned' && lead.status !== 'grabbed' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                           </div>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          {getPhanLoaiBadge(lead)}
                         </td>
                         <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                           {lead.status === 'pending_approval' ? (
@@ -2756,10 +2927,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </td>
                         <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.created_at}</td>
                       </tr>
-                    );
-                  }) : (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                    ))}
+                  </Fragment>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
                         {t('Không tìm thấy dữ liệu phù hợp.')}
                       </td>
                     </tr>
@@ -2835,6 +3008,24 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       >
         {selectedLead && (
           <div className="modal-body-padding">
+            {selectedLead.is_blocked === 1 && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '12px',
+                padding: '0.75rem 1rem',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                color: '#dc2626'
+              }}>
+                <Ban size={18} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                  {t('Khách hàng này đã được MKT duyệt NOT LEAD và bị CHẶN trên toàn hệ thống (không phân bổ, không cho vào kho).')}
+                </span>
+              </div>
+            )}
             <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', alignItems: 'start' }}>
               {/* Cột Trái: Chi Tiết */}
               <div className="sticky-column">
@@ -4520,58 +4711,152 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       </div>
                     </div>
                   </div>
-                ) : (selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim' || selectedLead.status === 'databank') ? (
+                ) : (selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim' || selectedLead.status === 'databank' || (selectedLead.takers && selectedLead.takers.length > 0)) ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>
-                      {t('Danh sách Sale đã nhận')}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid var(--color-border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Users size={16} style={{ color: 'var(--color-primary)' }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                          {t('Khách hàng tiềm năng: Danh sách Sale cùng chăm 1 KH')}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-light)', padding: '2px 8px', borderRadius: '12px' }}>
+                        {selectedLead.takers?.length || 0} {t('Sale')}
+                      </span>
                     </div>
+
                     {selectedLead.takers && selectedLead.takers.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {selectedLead.takers.map((tk: any, idx: number) => (
-                          <div key={tk.id || idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                            <Avatar src={tk.avatar} name={tk.name} size={32} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{tk.name}</div>
-                              {tk.claimed_at && (
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                  <Clock size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                                  {tk.claimed_at}
-                                </div>
-                              )}
-                            </div>
-                            {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                              <button
-                                onClick={() => handleDeletePublicClaim(selectedLead.person_id || selectedLead.id, tk.id, tk.name)}
-                                disabled={isDeletingClaim}
-                                title={t('Xóa lượt nhận của Sale')}
-                                style={{
-                                  background: 'rgba(239, 68, 68, 0.08)',
-                                  border: 'none',
-                                  borderRadius: '50%',
-                                  width: '28px',
-                                  height: '28px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: '#ef4444',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s',
-                                  flexShrink: 0
-                                }}
-                                onMouseOver={e => {
-                                  e.currentTarget.style.background = '#ef4444';
-                                  e.currentTarget.style.color = '#ffffff';
-                                }}
-                                onMouseOut={e => {
-                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
-                                  e.currentTarget.style.color = '#ef4444';
-                                }}
-                              >
-                                <X size={14} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                      <div className="premium-table-container" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', background: 'var(--color-surface)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 620 }}>
+                          <thead>
+                            <tr style={{ background: 'var(--color-border-light)', borderBottom: '1px solid var(--color-border)' }}>
+                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Team / Vòng')}</th>
+                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tư vấn viên (Sale)')}</th>
+                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Trạng thái của Sale')}</th>
+                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Phân loại')}</th>
+                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Ngày nhận')}</th>
+                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', textAlign: 'center' }}>{t('Hồ sơ KH')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedLead.takers.map((tk: any, idx: number) => {
+                              const isTakerDb = (tk.lead_phan_loai === 'databank' || tk.source === 'databank');
+                              const takerRank = isTakerDb ? 'databank' : (tk.lead_phan_loai || selectedLead.lead_phan_loai || 'R3_Fb');
+                              const isTakerHot = /r[1-3]/i.test(takerRank) || /hot|nóng/i.test(takerRank);
+                              const isViewerSale = user?.role === 'sale';
+                              const isSameUser = Number(tk.id) === Number(user?.id) || Number(tk.id) === Number(user?.consultant_id);
+
+                              return (
+                                <tr key={tk.id || idx} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.15s' }}>
+                                  {/* 1. Team / Vòng */}
+                                  <td style={{ padding: '10px 12px', fontSize: '0.8rem', color: 'var(--color-text)' }}>
+                                    <div style={{ fontWeight: 600 }}>{tk.team_name || tk.round_name || (isTakerDb ? 'Kho Databank' : 'Kho chung')}</div>
+                                    {tk.round_name && tk.team_name && tk.round_name !== tk.team_name && (
+                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{tk.round_name}</div>
+                                    )}
+                                  </td>
+
+                                  {/* 2. Tư vấn viên (Sale) */}
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <Avatar src={tk.avatar} name={tk.name} size={28} />
+                                      <div>
+                                        <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                          {tk.name}
+                                          {isSameUser && <span style={{ marginLeft: 6, fontSize: '0.65rem', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>{t('Bạn')}</span>}
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                          {isViewerSale && !isSameUser ? maskPhone(tk.consultant_phone || '') : (tk.consultant_phone || '')}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* 3. Trạng thái của Sale */}
+                                  <td style={{ padding: '10px 12px' }}>
+                                    {getHighestStatusBadge(tk.pipeline_status || tk.contact_status)}
+                                  </td>
+
+                                  {/* 4. Phân loại */}
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <span style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 700,
+                                      padding: '2px 7px',
+                                      borderRadius: '6px',
+                                      background: isTakerHot ? 'rgba(239, 68, 68, 0.12)' : isTakerDb ? 'rgba(14, 165, 233, 0.12)' : 'var(--color-bg-light)',
+                                      color: isTakerHot ? '#dc2626' : isTakerDb ? '#0284c7' : 'var(--color-text-muted)',
+                                      border: `1px solid ${isTakerHot ? 'rgba(239, 68, 68, 0.28)' : isTakerDb ? 'rgba(14, 165, 233, 0.28)' : 'var(--color-border)'}`,
+                                      display: 'inline-block',
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {takerRank}
+                                    </span>
+                                  </td>
+
+                                  {/* 5. Ngày nhận */}
+                                  <td style={{ padding: '10px 12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                                    {tk.claimed_at || tk.created_at || '—'}
+                                  </td>
+
+                                  {/* 6. Thao tác / Hồ sơ KH */}
+                                  <td style={{ padding: '10px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                      {tk.contact_id ? (
+                                        <button
+                                          onClick={() => setSelectedContactForDrawer({ id: Number(tk.contact_id), name: selectedLead.name })}
+                                          className="btn sm"
+                                          style={{
+                                            background: 'var(--color-primary-light)',
+                                            border: '1px solid var(--color-border-light)',
+                                            color: 'var(--color-primary)',
+                                            borderRadius: '8px',
+                                            padding: '4px 10px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            transition: 'all 0.15s'
+                                          }}
+                                          title={t('Xem nhật ký chăm sóc của Sale này')}
+                                        >
+                                          <FileText size={12} />
+                                          <span>{t('Xem CS')}</span>
+                                        </button>
+                                      ) : null}
+
+                                      {(user?.role === 'admin' || user?.role === 'superadmin') && (selectedLead.is_public === 1 || selectedLead.status === 'databank' || selectedLead.status === 'databank_claim') && (
+                                        <button
+                                          onClick={() => handleDeletePublicClaim(selectedLead.person_id || selectedLead.id, tk.id, tk.name)}
+                                          disabled={isDeletingClaim}
+                                          title={t('Xóa lượt nhận của Sale')}
+                                          style={{
+                                            background: 'rgba(239, 68, 68, 0.08)',
+                                            border: 'none',
+                                            borderRadius: '50%',
+                                            width: '26px',
+                                            height: '26px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#ef4444',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            flexShrink: 0
+                                          }}
+                                        >
+                                          <X size={13} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
                       <div style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
@@ -7357,6 +7642,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           color: var(--color-primary) !important;
         }
       `}</style>
+      {selectedContactForDrawer && (
+        <Suspense fallback={null}>
+          <CustomerProfileDrawer
+            isOpen={!!selectedContactForDrawer}
+            onClose={() => setSelectedContactForDrawer(null)}
+            contact={selectedContactForDrawer}
+            zIndex={1000050}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

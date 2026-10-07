@@ -2263,14 +2263,24 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
         </button>
 
-        {/* 4. Kho data */}
-        <button 
-          className={`mobile-bottom-nav-item ${location.pathname === '/databank' ? 'active' : ''}`}
-          onClick={() => navigate('/databank')}
-        >
-          <Database size={20} />
-          <span className="mobile-bottom-nav-item-label">{t('Kho databank')}</span>
-        </button>
+        {/* 4. Kho data / Quản Lý Lead (Cho MKT) */}
+        {(user?.role as string) === 'marketing' || (user?.role as string) === 'mkt' ? (
+          <button 
+            className={`mobile-bottom-nav-item ${location.pathname === '/data' || location.pathname === '/leads' ? 'active' : ''}`}
+            onClick={() => navigate('/data')}
+          >
+            <Database size={20} />
+            <span className="mobile-bottom-nav-item-label">{t('Quản Lý Lead')}</span>
+          </button>
+        ) : (
+          <button 
+            className={`mobile-bottom-nav-item ${location.pathname === '/databank' ? 'active' : ''}`}
+            onClick={() => navigate('/databank')}
+          >
+            <Database size={20} />
+            <span className="mobile-bottom-nav-item-label">{t('Kho databank')}</span>
+          </button>
+        )}
 
         {/* 5. Tôi */}
         <button 
