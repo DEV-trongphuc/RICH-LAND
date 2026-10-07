@@ -2114,13 +2114,13 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           setReassignConsId('');
         }}
         title={t("Chi tiết Khách hàng")}
-        width="1050px"
+        width="1180px"
       >
         {selectedLead && (
-          <div className="modal-body-padding">
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', alignItems: 'start' }}>
+          <div className="modal-body-padding" style={{ overflowX: 'hidden' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 0.95fr)', gap: '1.75rem', alignItems: 'start' }}>
               {/* Cột Trái: Chi Tiết */}
-              <div className="sticky-column">
+              <div className="sticky-column" style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Avatar name={selectedLead.name} size={48} />
@@ -3201,7 +3201,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               </div>
 
               {/* Cột Phải: Phân bổ */}
-              <div className="sticky-column">
+              <div className="sticky-column" style={{ minWidth: 0 }}>
                 {/* AI Screener Evaluation Details */}
                 {selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened' && selectedLead.ai_screener_status !== 'passed' && (
                   <div style={{

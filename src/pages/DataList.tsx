@@ -3004,10 +3004,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           setReassignConsId('');
         }}
         title={t("Chi tiết Khách hàng")}
-        width="1050px"
+        width="1180px"
       >
         {selectedLead && (
-          <div className="modal-body-padding">
+          <div className="modal-body-padding" style={{ overflowX: 'hidden' }}>
             {selectedLead.is_blocked === 1 && (
               <div style={{
                 background: 'rgba(239, 68, 68, 0.08)',
@@ -3026,9 +3026,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 </span>
               </div>
             )}
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', alignItems: 'start' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 0.95fr)', gap: '1.75rem', alignItems: 'start' }}>
               {/* Cột Trái: Chi Tiết */}
-              <div className="sticky-column">
+              <div className="sticky-column" style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Avatar name={selectedLead.name} size={48} />
@@ -4517,7 +4517,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               </div>
 
               {/* Cột Phải: Phân bổ */}
-              <div className="sticky-column">
+              <div className="sticky-column" style={{ minWidth: 0 }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>{t('Thông tin Phân bổ')}</h3>
 
                 {/* Đánh giá AI - Nằm bên trên người tiếp nhận */}
@@ -4726,16 +4726,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
 
                     {selectedLead.takers && selectedLead.takers.length > 0 ? (
-                      <div className="premium-table-container" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', background: 'var(--color-surface)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 620 }}>
+                      <div className="premium-table-container custom-scrollbar" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto', background: 'var(--color-surface)', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 480 }}>
                           <thead>
                             <tr style={{ background: 'var(--color-border-light)', borderBottom: '1px solid var(--color-border)' }}>
-                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Team / Vòng')}</th>
-                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tư vấn viên (Sale)')}</th>
-                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Trạng thái của Sale')}</th>
-                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Phân loại')}</th>
-                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Ngày nhận')}</th>
-                              <th style={{ padding: '10px 12px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', textAlign: 'center' }}>{t('Hồ sơ KH')}</th>
+                              <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('Team / Vòng')}</th>
+                              <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('Tư vấn viên (Sale)')}</th>
+                              <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('Trạng thái')}</th>
+                              <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('Phân loại')}</th>
+                              <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('Ngày nhận')}</th>
+                              <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', textAlign: 'center', whiteSpace: 'nowrap' }}>{t('Hồ sơ')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -4745,27 +4745,31 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               const isTakerHot = /r[1-3]/i.test(takerRank) || /hot|nóng/i.test(takerRank);
                               const isViewerSale = user?.role === 'sale';
                               const isSameUser = Number(tk.id) === Number(user?.id) || Number(tk.id) === Number(user?.consultant_id);
+                              const dtStr = tk.claimed_at || tk.created_at || '';
+                              const dtParts = dtStr.split(' ');
+                              const dPart = dtParts[0] || '—';
+                              const tPart = dtParts[1] || '';
 
                               return (
                                 <tr key={tk.id || idx} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.15s' }}>
                                   {/* 1. Team / Vòng */}
-                                  <td style={{ padding: '10px 12px', fontSize: '0.8rem', color: 'var(--color-text)' }}>
+                                  <td style={{ padding: '8px 10px', fontSize: '0.78rem', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
                                     <div style={{ fontWeight: 600 }}>{tk.team_name || tk.round_name || (isTakerDb ? 'Kho Databank' : 'Kho chung')}</div>
                                     {tk.round_name && tk.team_name && tk.round_name !== tk.team_name && (
-                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{tk.round_name}</div>
+                                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{tk.round_name}</div>
                                     )}
                                   </td>
 
                                   {/* 2. Tư vấn viên (Sale) */}
-                                  <td style={{ padding: '10px 12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <Avatar src={tk.avatar} name={tk.name} size={28} />
+                                  <td style={{ padding: '8px 10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <Avatar src={tk.avatar} name={tk.name} size={26} />
                                       <div>
-                                        <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
                                           {tk.name}
-                                          {isSameUser && <span style={{ marginLeft: 6, fontSize: '0.65rem', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>{t('Bạn')}</span>}
+                                          {isSameUser && <span style={{ marginLeft: 4, fontSize: '0.62rem', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '1px 4px', borderRadius: 4, fontWeight: 700 }}>{t('Bạn')}</span>}
                                         </div>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                                           {isViewerSale && !isSameUser ? maskPhone(tk.consultant_phone || '') : (tk.consultant_phone || '')}
                                         </div>
                                       </div>
@@ -4773,16 +4777,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                   </td>
 
                                   {/* 3. Trạng thái của Sale */}
-                                  <td style={{ padding: '10px 12px' }}>
+                                  <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                                     {getHighestStatusBadge(tk.pipeline_status || tk.contact_status)}
                                   </td>
 
                                   {/* 4. Phân loại */}
-                                  <td style={{ padding: '10px 12px' }}>
+                                  <td style={{ padding: '8px 10px' }}>
                                     <span style={{
-                                      fontSize: '0.7rem',
+                                      fontSize: '0.68rem',
                                       fontWeight: 700,
-                                      padding: '2px 7px',
+                                      padding: '2px 6px',
                                       borderRadius: '6px',
                                       background: isTakerHot ? 'rgba(239, 68, 68, 0.12)' : isTakerDb ? 'rgba(14, 165, 233, 0.12)' : 'var(--color-bg-light)',
                                       color: isTakerHot ? '#dc2626' : isTakerDb ? '#0284c7' : 'var(--color-text-muted)',
@@ -4795,13 +4799,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                   </td>
 
                                   {/* 5. Ngày nhận */}
-                                  <td style={{ padding: '10px 12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                                    {tk.claimed_at || tk.created_at || '—'}
+                                  <td style={{ padding: '8px 10px', fontSize: '0.72rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                                    <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{dPart}</div>
+                                    {tPart && <div style={{ fontSize: '0.68rem', opacity: 0.75 }}>{tPart}</div>}
                                   </td>
 
                                   {/* 6. Thao tác / Hồ sơ KH */}
-                                  <td style={{ padding: '10px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                       {tk.contact_id ? (
                                         <button
                                           onClick={() => setSelectedContactForDrawer({ id: Number(tk.contact_id), name: selectedLead.name })}
@@ -4810,19 +4815,19 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                             background: 'var(--color-primary-light)',
                                             border: '1px solid var(--color-border-light)',
                                             color: 'var(--color-primary)',
-                                            borderRadius: '8px',
-                                            padding: '4px 10px',
-                                            fontSize: '0.75rem',
+                                            borderRadius: '6px',
+                                            padding: '3px 8px',
+                                            fontSize: '0.72rem',
                                             fontWeight: 700,
                                             cursor: 'pointer',
                                             display: 'inline-flex',
                                             alignItems: 'center',
-                                            gap: '4px',
+                                            gap: '3px',
                                             transition: 'all 0.15s'
                                           }}
                                           title={t('Xem nhật ký chăm sóc của Sale này')}
                                         >
-                                          <FileText size={12} />
+                                          <FileText size={11} />
                                           <span>{t('Xem CS')}</span>
                                         </button>
                                       ) : null}
@@ -4836,8 +4841,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                             background: 'rgba(239, 68, 68, 0.08)',
                                             border: 'none',
                                             borderRadius: '50%',
-                                            width: '26px',
-                                            height: '26px',
+                                            width: '24px',
+                                            height: '24px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -4847,7 +4852,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                             flexShrink: 0
                                           }}
                                         >
-                                          <X size={13} />
+                                          <X size={12} />
                                         </button>
                                       )}
                                     </div>

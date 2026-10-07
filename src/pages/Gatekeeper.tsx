@@ -4973,14 +4973,14 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           setSelectedLead(null);
         }}
         title={t("Chi tiết Khách hàng")}
-        width="1050px"
+        width="1180px"
       >
         {selectedLead && (
-          <div className="modal-body-padding">
-            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '2rem', alignItems: 'start' }}>
+          <div className="modal-body-padding" style={{ overflowX: 'hidden' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 0.95fr)', gap: '1.75rem', alignItems: 'start' }}>
 
               {/* Cột Trái: Chi Tiết */}
-              <div className="sticky-column">
+              <div className="sticky-column" style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Avatar name={selectedLead.name} size={48} aiScreened={!!(selectedLead.ai_screener_status && selectedLead.ai_screener_status !== 'not_screened')} />
@@ -5581,7 +5581,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               </div>
 
               {/* Cột Phải: Thao tác Duyệt nhanh hoặc Thông tin Phân bổ */}
-              <div className="sticky-column gatekeeper-detail-right">
+              <div className="sticky-column gatekeeper-detail-right" style={{ minWidth: 0 }}>
                 {activeTab === 'ai_pending' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px dashed var(--color-primary)', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', textAlign: 'center' }}>
                     <RefreshCw className="spin" size={32} style={{ color: 'var(--color-primary)' }} />
