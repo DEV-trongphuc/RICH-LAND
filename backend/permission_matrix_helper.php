@@ -76,7 +76,7 @@ if (!function_exists('getActionModuleAndType')) {
             'add_connection', 'edit_connection', 'delete_connection', 'toggle_connection',
             'toggle_require_both', 'toggle_notify_admin', 'add_mapping', 'edit_mapping',
             'delete_mapping', 'approve_report', 'reject_report', 'compensate_approved_no_comp',
-            'reassign_lead', 'force_sync', 'save_ticket_settings', 'unlink_zalo',
+            'reassign_lead', 'distribute_pending_lead', 'force_sync', 'save_ticket_settings', 'unlink_zalo',
             'test_email', 'block_lead', 'rollback_admin_action', 'update_lead_fields',
             'send_lead_reminder'
         ];

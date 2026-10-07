@@ -3634,6 +3634,8 @@ switch ($action) {
                 c.name as assigned_to_name, 
                 c.avatar as assigned_to_avatar, 
                 dr.round_name, 
+                dl.round_id,
+                l.target_round_id,
                 dl.received_at as created_at,
                 r.status as report_status,
                 r.resolved_by,
@@ -17239,16 +17241,37 @@ switch ($action) {
         ]);
         break;
 
+    case 'distribute_pending_lead':
     case 'reassign_lead':
         require_once __DIR__ . '/webhook_logic.php';
         $input = json_decode(file_get_contents('php://input'), true);
         $log_id = (int) ($input['log_id'] ?? 0);
+        $lead_id = (int) ($input['lead_id'] ?? 0);
+        $target_round_id = !empty($input['round_id']) ? (int) $input['round_id'] : 0;
         $new_consultant_id = (int) ($input['new_consultant_id'] ?? 0);
         $reassignProjectId = !empty($input['project_id']) ? (int)$input['project_id'] : null;
         $compensate_old_sale = isset($input['compensate_old_sale']) ? (bool) $input['compensate_old_sale'] : false;
 
-        if (!$log_id || !$new_consultant_id) {
-            echo json_encode(['success' => false, 'message' => 'Thiếu ID Log hoặc ID TVV mới']);
+        if (!$log_id && $lead_id > 0) {
+            $fStmt = $conn->prepare("SELECT id FROM distribution_logs WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+            if ($fStmt) {
+                $fStmt->bind_param("i", $lead_id);
+                $fStmt->execute();
+                $fRow = $fStmt->get_result()->fetch_assoc();
+                $fStmt->close();
+                if ($fRow) {
+                    $log_id = (int)$fRow['id'];
+                }
+            }
+        }
+
+        if (!$log_id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID Log hoặc ID Khách hàng']);
+            break;
+        }
+
+        if (!$new_consultant_id && !$target_round_id) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng chọn Vòng chia hoặc Tư vấn viên để tiếp tục']);
             break;
         }
 
@@ -17269,9 +17292,261 @@ switch ($action) {
             break;
         }
         $log_data = $res->fetch_assoc();
-        $lead_id = $log_data['lead_id'];
+        $lead_id = (int)$log_data['lead_id'];
         $old_consultant_id = $log_data['old_consultant_id'] ? (int) $log_data['old_consultant_id'] : null;
+        if ($target_round_id <= 0) {
+            $target_round_id = (int)($log_data['round_id'] ?? 0);
+        }
 
+        // ==========================================
+        // CASE A: KHÔNG ÉP SALE -> PHÂN BỔ TỰ ĐỘNG THEO VÒNG (GRAB HOẶC VÒNG XOAY)
+        // ==========================================
+        if ($new_consultant_id <= 0) {
+            if ($target_round_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Vui lòng chọn Vòng chia để hệ thống tiến hành phân bổ']);
+                break;
+            }
+
+            // Fetch round info
+            $stmtR = $conn->prepare("SELECT id, round_name, round_type, grab_countdown_seconds, grab_cooldown_seconds, is_active FROM distribution_rounds WHERE id = ?");
+            $stmtR->bind_param("i", $target_round_id);
+            $stmtR->execute();
+            $round = $stmtR->get_result()->fetch_assoc();
+            $stmtR->close();
+
+            if (!$round) {
+                echo json_encode(['success' => false, 'message' => 'Không tìm thấy thông tin vòng chia được chọn']);
+                break;
+            }
+
+            $roundType = $round['round_type'] ?? 'round_robin';
+            $roundName = $round['round_name'] ?? 'Vòng chia';
+            $leadRowData = [
+                'name' => $log_data['lead_name'] ?? '',
+                'phone' => $log_data['phone'] ?? '',
+                'email' => $log_data['lead_email'] ?? '',
+                'source' => $log_data['source'] ?? '',
+                'type' => $log_data['type'] ?? '',
+                'note' => $log_data['note'] ?? ''
+            ];
+
+            if ($roundType === 'grab') {
+                // Clear old pending offers for this lead
+                $conn->query("UPDATE lead_offers SET status = 'expired' WHERE lead_id = $lead_id AND status = 'pending'");
+
+                // Query active consultants enrolled in this grab round
+                $cStmt = $conn->prepare("
+                    SELECT c.id, c.name, c.email, c.phone, c.work_start_time, c.work_end_time, c.work_schedule,
+                           COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id
+                    FROM round_consultants rc
+                    JOIN consultants c ON rc.consultant_id = c.id
+                    LEFT JOIN users u ON (c.email = u.email OR c.id = u.id)
+                    WHERE rc.round_id = ? AND rc.is_active = 1 AND c.status = 'active' AND c.vacation_mode = 0
+                ");
+                $cStmt->bind_param("i", $target_round_id);
+                $cStmt->execute();
+                $activeConsultants = $cStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                $cStmt->close();
+
+                $grabCountdownSeconds = (int)($round['grab_countdown_seconds'] ?: 300);
+                $grabCooldownSeconds = (int)($round['grab_cooldown_seconds'] ?: 3600);
+
+                $eligibleGrabConsultants = [];
+                $competingNames = [];
+                foreach ($activeConsultants as $c) {
+                    $chkCd = $conn->prepare("SELECT 1 FROM distribution_logs WHERE assigned_to = ? AND round_id = ? AND status = 'grabbed' AND received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND) LIMIT 1");
+                    $chkCd->bind_param("iii", $c['id'], $target_round_id, $grabCooldownSeconds);
+                    $chkCd->execute();
+                    $inCd = $chkCd->get_result()->num_rows > 0;
+                    $chkCd->close();
+                    if ($inCd) continue;
+
+                    if (checkConsultantGates($conn, $c['id'], $leadRowData, true) === true) {
+                        $eligibleGrabConsultants[] = $c;
+                        $competingNames[] = $c['name'] ?? 'TVV';
+                    }
+                }
+
+                $conn->begin_transaction();
+                try {
+                    if (!empty($eligibleGrabConsultants)) {
+                        $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending_claim', target_round_id = ?, last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL WHERE id = ?");
+                        $upLead->bind_param("ii", $target_round_id, $lead_id);
+                        $upLead->execute();
+                        $upLead->close();
+
+                        $offerStmt = $conn->prepare("
+                            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
+                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+                        ");
+                        foreach ($eligibleGrabConsultants as $ec) {
+                            $offerStmt->bind_param("iiii", $lead_id, $ec['id'], $target_round_id, $grabCountdownSeconds);
+                            $offerStmt->execute();
+                        }
+                        $offerStmt->close();
+
+                        $logMsgAppend = "\n[Phát tín hiệu tranh nhận vòng " . $roundName . " cho " . count($eligibleGrabConsultants) . " Sale lúc " . date('Y-m-d H:i:s') . "]";
+                        $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'pending_claim', round_id = ?, assigned_to = NULL, message = CONCAT(COALESCE(message, ''), ?) WHERE id = ?");
+                        $upLog->bind_param("isi", $target_round_id, $logMsgAppend, $log_id);
+                        $upLog->execute();
+                        $upLog->close();
+
+                        $conn->commit();
+
+                        require_once __DIR__ . '/telegram_bot.php';
+                        if (function_exists('sendBatchGrabTelegramSync')) {
+                            sendBatchGrabTelegramSync($conn, $lead_id, $eligibleGrabConsultants, $target_round_id, $grabCountdownSeconds, $competingNames);
+                        }
+                        foreach ($eligibleGrabConsultants as $ec) {
+                            sendGrabOfferNotification($conn, $lead_id, $ec['id'], $target_round_id, $grabCountdownSeconds, $competingNames);
+                        }
+
+                        logAdminAction($conn, $decodedUser['id'], 'DISTRIBUTE_LEAD_GRAB', [
+                            'log_id' => $log_id,
+                            'lead_id' => $lead_id,
+                            'round_id' => $target_round_id,
+                            'round_name' => $roundName,
+                            'eligible_count' => count($eligibleGrabConsultants)
+                        ]);
+
+                        triggerTwoWaySync($conn, $lead_id);
+
+                        echo json_encode([
+                            'success' => true,
+                            'message' => "Đã phát tín hiệu tranh nhận thành công cho " . count($eligibleGrabConsultants) . " Sale trong vòng \"" . $roundName . "\"!"
+                        ]);
+                    } else {
+                        $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending_work_hours', target_round_id = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                        $upLead->bind_param("ii", $target_round_id, $lead_id);
+                        $upLead->execute();
+                        $upLead->close();
+
+                        $logMsgAppend = "\n[Chuyển vòng " . $roundName . ": Không có Sale trực ca / ngoài giờ làm. Tạm giữ lúc " . date('Y-m-d H:i:s') . "]";
+                        $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'pending_work_hours', round_id = ?, assigned_to = NULL, message = CONCAT(COALESCE(message, ''), ?) WHERE id = ?");
+                        $upLog->bind_param("isi", $target_round_id, $logMsgAppend, $log_id);
+                        $upLog->execute();
+                        $upLog->close();
+
+                        $conn->commit();
+
+                        echo json_encode([
+                            'success' => true,
+                            'message' => "Vòng \"" . $roundName . "\" hiện không có Sale nào trực ca hoặc đang ngoài giờ làm. Khách hàng đã được chuyển sang trạng thái Chờ giờ làm!"
+                        ]);
+                    }
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Lỗi khi phát tín hiệu tranh nhận: ' . $e->getMessage()]);
+                }
+                break;
+            } else {
+                // Round Robin / Rotation
+                $conn->query("UPDATE lead_offers SET status = 'expired' WHERE lead_id = $lead_id AND status = 'pending'");
+
+                $assignResult = getNextConsultantInRound($conn, $target_round_id, $leadRowData);
+
+                $conn->begin_transaction();
+                try {
+                    if ($assignResult && !empty($assignResult['id'])) {
+                        $assignedConsultantId = (int)$assignResult['id'];
+                        
+                        $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule, name, email FROM consultants WHERE id = ?");
+                        $whStmt->bind_param("i", $assignedConsultantId);
+                        $whStmt->execute();
+                        $whRes = $whStmt->get_result();
+                        $whRow = $whRes ? $whRes->fetch_assoc() : null;
+                        $whStmt->close();
+
+                        $whStart = $whRow['work_start_time'] ?? '00:00';
+                        $whEnd = $whRow['work_end_time'] ?? '23:59';
+                        $workSchedule = $whRow['work_schedule'] ?? null;
+                        $currentTime = date('H:i');
+
+                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
+                            $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending_work_hours', target_round_id = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                            $upLead->bind_param("ii", $target_round_id, $lead_id);
+                            $upLead->execute();
+                            $upLead->close();
+
+                            $logMsgAppend = "\n[Phân bổ vòng xoay " . $roundName . ": TVV " . ($whRow['name'] ?? '') . " ngoài giờ làm việc. Tạm giữ lúc " . date('Y-m-d H:i:s') . "]";
+                            $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'pending_work_hours', round_id = ?, assigned_to = NULL, message = CONCAT(COALESCE(message, ''), ?) WHERE id = ?");
+                            $upLog->bind_param("isi", $target_round_id, $logMsgAppend, $log_id);
+                            $upLog->execute();
+                            $upLog->close();
+
+                            $conn->commit();
+
+                            echo json_encode([
+                                'success' => true,
+                                'message' => "Khách hàng được đưa vào vòng xoay \"" . $roundName . "\", nhưng TVV tiếp theo đang ngoài khung giờ làm việc nên hệ thống tạm giữ (Chờ giờ làm)!"
+                            ]);
+                        } else {
+                            $isComp = !empty($assignResult['is_compensation']);
+                            $logStatus = $isComp ? 'compensation' : 'assigned';
+
+                            $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = 'active', target_round_id = ?, is_accepted = 1, accepted_at = NOW(), last_interaction_date = NOW() WHERE id = ?");
+                            $upLead->bind_param("iii", $assignedConsultantId, $target_round_id, $lead_id);
+                            $upLead->execute();
+                            $upLead->close();
+
+                            $logMsgAppend = "\n[Phân bổ tự động qua vòng xoay " . $roundName . " cho TVV " . ($whRow['name'] ?? '') . " lúc " . date('Y-m-d H:i:s') . "]";
+                            $upLog = $conn->prepare("UPDATE distribution_logs SET status = ?, round_id = ?, assigned_to = ?, message = CONCAT(COALESCE(message, ''), ?) WHERE id = ?");
+                            $upLog->bind_param("siisi", $logStatus, $target_round_id, $assignedConsultantId, $logMsgAppend, $log_id);
+                            $upLog->execute();
+                            $upLog->close();
+
+                            ensurePersonAndContact($conn, $lead_id, $old_consultant_id);
+
+                            $conn->commit();
+
+                            sendDirectSaleLeadNotification($conn, $lead_id, $assignedConsultantId, $target_round_id);
+
+                            logAdminAction($conn, $decodedUser['id'], 'DISTRIBUTE_LEAD_ROTATION', [
+                                'log_id' => $log_id,
+                                'lead_id' => $lead_id,
+                                'round_id' => $target_round_id,
+                                'round_name' => $roundName,
+                                'assigned_to' => $assignedConsultantId,
+                                'assigned_name' => $whRow['name'] ?? ''
+                            ]);
+
+                            triggerTwoWaySync($conn, $lead_id);
+
+                            echo json_encode([
+                                'success' => true,
+                                'message' => "Đã phân bổ thành công cho TVV " . ($whRow['name'] ?? 'Mới') . " qua vòng xoay \"" . $roundName . "\"!"
+                            ]);
+                        }
+                    } else {
+                        $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending_work_hours', target_round_id = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                        $upLead->bind_param("ii", $target_round_id, $lead_id);
+                        $upLead->execute();
+                        $upLead->close();
+
+                        $logMsgAppend = "\n[Chuyển vòng xoay " . $roundName . ": Không có TVV khả dụng. Tạm giữ lúc " . date('Y-m-d H:i:s') . "]";
+                        $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'pending_work_hours', round_id = ?, assigned_to = NULL, message = CONCAT(COALESCE(message, ''), ?) WHERE id = ?");
+                        $upLog->bind_param("isi", $target_round_id, $logMsgAppend, $log_id);
+                        $upLog->execute();
+                        $upLog->close();
+
+                        $conn->commit();
+
+                        echo json_encode([
+                            'success' => true,
+                            'message' => "Vòng xoay \"" . $roundName . "\" hiện không có TVV khả dụng. Khách hàng đã được chuyển sang trạng thái Chờ giờ làm!"
+                        ]);
+                    }
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Lỗi khi phân bổ vòng xoay: ' . $e->getMessage()]);
+                }
+                break;
+            }
+        }
+
+        // ==========================================
+        // CASE B: CÓ ÉP SALE -> GIAO TRỰC TIẾP CHO TƯ VẤN VIÊN ĐƯỢC CHỌN
+        // ==========================================
         $userId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
         $userRole = $decodedUser['role'] ?? '';
         
@@ -17391,15 +17666,28 @@ switch ($action) {
             // 2. Perform updates
             $newLogStatus = $isDuplicateLead ? 'reminder' : 'assigned';
 
+            // Clear any pending offers
+            $conn->query("UPDATE lead_offers SET status = 'expired' WHERE lead_id = $lead_id AND status = 'pending'");
+
             // Update distribution_logs
-            $stmtU1 = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, status = ? WHERE id = ?");
-            $stmtU1->bind_param("isi", $new_consultant_id, $newLogStatus, $log_id);
+            if ($target_round_id > 0) {
+                $stmtU1 = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, round_id = ?, status = ? WHERE id = ?");
+                $stmtU1->bind_param("iisi", $new_consultant_id, $target_round_id, $newLogStatus, $log_id);
+            } else {
+                $stmtU1 = $conn->prepare("UPDATE distribution_logs SET assigned_to = ?, status = ? WHERE id = ?");
+                $stmtU1->bind_param("isi", $new_consultant_id, $newLogStatus, $log_id);
+            }
             $stmtU1->execute();
             $stmtU1->close();
 
             // Update leads (Direct assignment automatically accepts lead and activates it)
-            $stmtU2 = $conn->prepare("UPDATE leads SET assigned_to = ?, is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW() WHERE id = ?");
-            $stmtU2->bind_param("ii", $new_consultant_id, $lead_id);
+            if ($target_round_id > 0) {
+                $stmtU2 = $conn->prepare("UPDATE leads SET assigned_to = ?, target_round_id = ?, is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW() WHERE id = ?");
+                $stmtU2->bind_param("iii", $new_consultant_id, $target_round_id, $lead_id);
+            } else {
+                $stmtU2 = $conn->prepare("UPDATE leads SET assigned_to = ?, is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW() WHERE id = ?");
+                $stmtU2->bind_param("ii", $new_consultant_id, $lead_id);
+            }
             $stmtU2->execute();
             $stmtU2->close();
 
@@ -17684,7 +17972,10 @@ switch ($action) {
             error_log("Outer notification error in reassign_lead: " . $notifyOuterEx->getMessage());
         }
 
-        echo json_encode(['success' => true]);
+        echo json_encode([
+            'success' => true,
+            'message' => "Đã giao khách hàng thành công cho TVV " . $new_cons_name . "!"
+        ]);
         break;
 
     case 'update_lead_fields':

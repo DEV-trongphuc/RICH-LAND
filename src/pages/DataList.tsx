@@ -38,6 +38,8 @@ type Lead = {
   assigned_to_name: string;
   assigned_to_avatar?: string;
   round_name: string;
+  round_id?: number;
+  target_round_id?: number;
   created_at: string;
   type?: string;
   note?: string;
@@ -561,7 +563,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   }, [searchInput, searchTerm]);
 
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [rounds, setRounds] = useState<{ id: number; round_name: string }[]>([]);
+  const [rounds, setRounds] = useState<{ id: number; round_name: string; round_type?: string; is_active?: number; is_currently_active?: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -585,6 +587,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           assigned_to_name: item.assigned_to_name || '-',
           assigned_to_avatar: item.assigned_to_avatar,
           round_name: item.round_name || '-',
+          round_id: item.round_id ? Number(item.round_id) : (item.target_round_id ? Number(item.target_round_id) : undefined),
+          target_round_id: item.target_round_id ? Number(item.target_round_id) : (item.round_id ? Number(item.round_id) : undefined),
           created_at: item.created_at,
           report_status: item.report_status,
           last_activity_at: item.last_activity_at,
@@ -919,12 +923,28 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       });
       setIsAdminEditingLead(false);
       fetchLeadDistributionLogs(selectedLead.lead_id || selectedLead.id);
+
+      const targetRId = (selectedLead as any).round_id || (selectedLead as any).target_round_id;
+      const matchedRound = rounds.find(r => 
+        (targetRId && Number(r.id) === Number(targetRId)) ||
+        (selectedLead.round_name && r.round_name === selectedLead.round_name)
+      );
+      if (matchedRound) {
+        setReassignRoundId(matchedRound.id.toString());
+      } else if (targetRId) {
+        setReassignRoundId(targetRId.toString());
+      } else {
+        setReassignRoundId('');
+      }
+      setReassignConsId('');
     } else {
       setNotificationStatus(null);
       setIsAdminEditingLead(false);
       setDistributionLogs([]);
+      setReassignRoundId('');
+      setReassignConsId('');
     }
-  }, [selectedLead]);
+  }, [selectedLead, rounds]);
 
   const handleSendReminder = async () => {
     if (!selectedLead) return;
@@ -999,6 +1019,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [allAccounts, setAllAccounts] = useState<any[]>([]);
   const [projectsList, setProjectsList] = useState<any[]>([]);
   const [reassignProjectId, setReassignProjectId] = useState<string>('');
+  const [reassignRoundId, setReassignRoundId] = useState<string>('');
   const [reassignConsId, setReassignConsId] = useState<string>('');
   const [isReassigning, setIsReassigning] = useState<boolean>(false);
   const [confirmReassignOpen, setConfirmReassignOpen] = useState<boolean>(false);
@@ -1199,32 +1220,39 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
 
   const handleReassign = async (compensate: boolean = false) => {
-    if (!selectedLead || !reassignConsId) return;
+    if (!selectedLead) return;
+    if (!reassignRoundId && !reassignConsId) {
+      toast.error(t('Vui lòng chọn Vòng chia hoặc Tư vấn viên.'));
+      return;
+    }
     setIsReassigning(true);
     try {
       const res = await fetchAPI('reassign_lead', {
         method: 'POST',
         body: JSON.stringify({
           log_id: selectedLead.id,
-          new_consultant_id: Number(reassignConsId),
+          lead_id: selectedLead.lead_id || selectedLead.id,
+          round_id: reassignRoundId ? Number(reassignRoundId) : undefined,
+          new_consultant_id: reassignConsId ? Number(reassignConsId) : 0,
           compensate_old_sale: compensate
         })
       });
       if (res.success) {
-        toast.success(compensate
-          ? t('Giao lại Tư vấn viên & Đền bù thành công!')
-          : t('Giao lại Tư vấn viên thành công!')
-        );
+        toast.success(res.message || (reassignConsId
+          ? (compensate ? t('Giao lại Tư vấn viên & Đền bù thành công!') : t('Giao lại Tư vấn viên thành công!'))
+          : t('Phân bổ khách hàng thành công!')
+        ));
         setSelectedLead(null);
         setReassignConsId('');
+        setReassignRoundId('');
         setConfirmReassignOpen(false);
         fetchLeads();
         window.dispatchEvent(new CustomEvent('lead-added'));
       } else {
-        toast.error(t('Lỗi: ') + (res.message || t('Không thể giao lại'))); // BUG-03 fix
+        toast.error(t('Lỗi: ') + (res.message || t('Không thể phân bổ')));
       }
     } catch (err: any) {
-      toast.error(t('Đã xảy ra lỗi: ') + err.message); // BUG-03 fix
+      toast.error(t('Đã xảy ra lỗi: ') + err.message);
     }
     setIsReassigning(false);
   };
@@ -4932,46 +4960,129 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     {t('Chưa có thông tin phân bổ cho Khách hàng này.')}
                   </div>
                 )}
-                {/* Reassignment section */}
-                <div style={{ marginTop: '1.5rem', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <User size={16} color="var(--color-primary)" /> {t('Giao lại Tư vấn viên')}
-                  </h4>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
-                    {t('Thay đổi người tiếp nhận (Không ảnh hưởng lượt chia).')}
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <CustomSelect
-                      options={[
-                        { value: '', label: t('-- Chọn Tư vấn viên --') },
-                        ...consultants
-                          .filter(c => c.name !== selectedLead?.assigned_to_name)
-                          .map(c => ({
-                            value: c.id.toString(),
-                            label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
-                            avatar: c.avatar,
-                            disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
-                            disabledType: 'sale' as const
-                          }))
-                      ]}
-                      value={reassignConsId}
-                      onChange={val => setReassignConsId(val.toString())}
-                      showAvatars={true}
-                      searchable={true}
-                      width="100%"
-                      direction="up"
-                    />
-                    <button
-                      className="btn primary"
-                      onClick={() => setConfirmReassignOpen(true)}
-                      disabled={isReassigning || !reassignConsId}
-                      style={{ height: 38, background: 'var(--color-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, padding: '0 1rem', fontSize: '0.875rem', fontWeight: 700, width: '100%' }}
-                    >
-                      {isReassigning ? <RefreshCw size={14} className="spin" /> : null}
-                      {t('Xác nhận giao')}
-                    </button>
-                  </div>
-                </div>
+                {/* Reassignment / Distribution section */}
+                {(() => {
+                  const isPendingLead = selectedLead.status === 'pending' || 
+                                        selectedLead.status === 'pending_work_hours' || 
+                                        selectedLead.status === 'pending_claim' || 
+                                        selectedLead.status === 'unassigned' ||
+                                        !selectedLead.assigned_to_name || 
+                                        selectedLead.assigned_to_name === '-' || 
+                                        selectedLead.assigned_to_name === 'Bot Hệ Thống';
+                  
+                  const selectedRoundObj = rounds.find(r => r.id.toString() === reassignRoundId);
+                  const isGrabRound = selectedRoundObj ? (selectedRoundObj as any).round_type === 'grab' : false;
+
+                  const targetRId = (selectedLead as any).round_id || (selectedLead as any).target_round_id;
+                  const availableRounds = rounds.filter(r => 
+                    Number(r.is_active) === 1 || 
+                    (targetRId && Number(r.id) === Number(targetRId)) ||
+                    (selectedLead.round_name && r.round_name === selectedLead.round_name)
+                  );
+
+                  return (
+                    <div style={{ marginTop: '1.5rem', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {isPendingLead ? <Share2 size={16} color="var(--color-primary)" /> : <User size={16} color="var(--color-primary)" />} 
+                        {isPendingLead ? t('Phân bổ Khách hàng') : t('Giao lại Tư vấn viên')}
+                      </h4>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.4 }}>
+                        {isPendingLead 
+                          ? t('Chọn vòng chia để tự động phân bổ (Grab / Vòng xoay), hoặc chọn Sale để ép nhận trực tiếp.')
+                          : t('Thay đổi người tiếp nhận (Không ảnh hưởng lượt chia).')}
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Tag size={12} /> {t('Vòng chia')} <span style={{ color: '#ef4444' }}>*</span>
+                          </div>
+                          <CustomSelect
+                            options={[
+                              { value: '', label: t('-- Chọn Vòng chia --') },
+                              ...availableRounds.map(r => ({
+                                value: r.id.toString(),
+                                label: `${r.round_name} (${(r as any).round_type === 'grab' ? t('Tranh nhận - Grab') : t('Vòng xoay')})${Number(r.is_active) !== 1 ? ` (${t('Tạm dừng')})` : ''}`
+                              }))
+                            ]}
+                            value={reassignRoundId}
+                            onChange={val => setReassignRoundId(val.toString())}
+                            searchable={true}
+                            width="100%"
+                            direction="up"
+                          />
+                        </div>
+
+                        <div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <User size={12} /> {t('Tư vấn viên')} {isPendingLead && <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>({t('Tùy chọn - Ép Sale')})</span>}
+                          </div>
+                          <CustomSelect
+                            options={[
+                              { 
+                                value: '', 
+                                label: isPendingLead 
+                                  ? (reassignRoundId 
+                                      ? (isGrabRound ? t('⚡ Để hệ thống phát tín hiệu tranh nhận (Grab)') : t('🔄 Để hệ thống tự động phân bổ vòng xoay'))
+                                      : t('-- Phân bổ tự động theo vòng (Không ép Sale) --'))
+                                  : t('-- Chọn Tư vấn viên --') 
+                              },
+                              ...consultants
+                                .filter(c => c.name !== selectedLead?.assigned_to_name)
+                                .map(c => ({
+                                  value: c.id.toString(),
+                                  label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
+                                  avatar: c.avatar,
+                                  disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
+                                  disabledType: 'sale' as const
+                                }))
+                            ]}
+                            value={reassignConsId}
+                            onChange={val => setReassignConsId(val.toString())}
+                            showAvatars={true}
+                            searchable={true}
+                            width="100%"
+                            direction="up"
+                          />
+                        </div>
+
+                        <button
+                          className="btn primary"
+                          onClick={() => setConfirmReassignOpen(true)}
+                          disabled={isReassigning || (!reassignRoundId && !reassignConsId)}
+                          style={{
+                            height: 38,
+                            background: isPendingLead && !reassignConsId 
+                              ? (isGrabRound ? '#d97706' : 'var(--color-primary)')
+                              : 'var(--color-primary)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '0 1rem',
+                            fontSize: '0.875rem',
+                            fontWeight: 700,
+                            width: '100%',
+                            transition: 'background 0.2s ease'
+                          }}
+                        >
+                          {isReassigning ? (
+                            <RefreshCw size={14} className="spin" />
+                          ) : isPendingLead ? (
+                            reassignConsId ? (
+                              <><CheckCircle size={14} /> {t('Xác nhận ép Sale này')}</>
+                            ) : isGrabRound ? (
+                              <><Zap size={14} /> {t('Phát tín hiệu tranh nhận (Grab)')}</>
+                            ) : (
+                              <><RefreshCw size={14} /> {t('Phân bổ theo vòng xoay')}</>
+                            )
+                          ) : (
+                            t('Xác nhận giao')
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -4982,64 +5093,116 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       <CustomModal
         isOpen={confirmReassignOpen}
         onClose={() => setConfirmReassignOpen(false)}
-        title={t("Xác nhận Giao lại Lead")}
+        title={(() => {
+          const isPendingLead = selectedLead?.status === 'pending' || 
+                                selectedLead?.status === 'pending_work_hours' || 
+                                selectedLead?.status === 'pending_claim' || 
+                                selectedLead?.status === 'unassigned' ||
+                                !selectedLead?.assigned_to_name || 
+                                selectedLead?.assigned_to_name === '-' || 
+                                selectedLead?.assigned_to_name === 'Bot Hệ Thống';
+          const selectedRoundObj = rounds.find(r => r.id.toString() === reassignRoundId);
+          const isGrabRound = selectedRoundObj ? (selectedRoundObj as any).round_type === 'grab' : false;
+          if (isPendingLead && !reassignConsId) {
+            return isGrabRound ? t('Xác nhận Phát tín hiệu Tranh nhận (Grab)') : t('Xác nhận Phân bổ Vòng xoay');
+          }
+          return t('Xác nhận Giao lại Lead');
+        })()}
         width={500}
       >
-        {confirmReassignOpen && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)',
-                color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-              }}>
-                <AlertTriangle size={20} />
+        {confirmReassignOpen && (() => {
+          const isPendingLead = selectedLead?.status === 'pending' || 
+                                selectedLead?.status === 'pending_work_hours' || 
+                                selectedLead?.status === 'pending_claim' || 
+                                selectedLead?.status === 'unassigned' ||
+                                !selectedLead?.assigned_to_name || 
+                                selectedLead?.assigned_to_name === '-' || 
+                                selectedLead?.assigned_to_name === 'Bot Hệ Thống';
+          const selectedRoundObj = rounds.find(r => r.id.toString() === reassignRoundId);
+          const isGrabRound = selectedRoundObj ? (selectedRoundObj as any).round_type === 'grab' : false;
+          const assignedConsObj = consultants.find(c => Number(c.id) === Number(reassignConsId));
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%',
+                  background: reassignConsId ? 'rgba(59, 130, 246, 0.1)' : (isGrabRound ? 'rgba(217, 119, 6, 0.1)' : 'rgba(163, 20, 34, 0.1)'),
+                  color: reassignConsId ? '#3b82f6' : (isGrabRound ? '#d97706' : 'var(--color-primary)'),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                }}>
+                  {reassignConsId ? <AlertTriangle size={20} /> : (isGrabRound ? <Zap size={20} /> : <RefreshCw size={20} />)}
+                </div>
+                <div>
+                  {reassignConsId ? (
+                    <>
+                      <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
+                        {isPendingLead 
+                          ? <>{t('Bạn có chắc chắn muốn ép giao khách hàng')} <strong>"{selectedLead?.name}"</strong> {t('trực tiếp cho Tư vấn viên')} <strong>"{assignedConsObj?.name}"</strong> {selectedRoundObj ? `(${t('Vòng')} ${selectedRoundObj.round_name})` : ''}?</>
+                          : <>{t('Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead')} <strong>"{selectedLead?.name}"</strong> {t('sang cho Tư vấn viên')} <strong>"{assignedConsObj?.name}"</strong> {selectedRoundObj ? `(${t('Vòng')} ${selectedRoundObj.round_name})` : ''}?</>
+                        }
+                      </p>
+                      {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && selectedLead.assigned_to_name !== 'Bot Hệ Thống' && (
+                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
+                          {t('Tư vấn viên hiện tại:')} <strong>{selectedLead.assigned_to_name}</strong>. {t('Chọn hình thức giao lại:')}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
+                      {isGrabRound 
+                        ? <>{t('Bạn có chắc chắn muốn phát tín hiệu tranh nhận cho khách hàng')} <strong>"{selectedLead?.name}"</strong> {t('vào vòng')} <strong>"{selectedRoundObj?.round_name}"</strong> {t('để các Sale đủ điều kiện tham gia tranh nhận')}?</>
+                        : <>{t('Bạn có chắc chắn muốn đẩy phân bổ khách hàng')} <strong>"{selectedLead?.name}"</strong> {t('vào vòng')} <strong>"{selectedRoundObj?.round_name}"</strong> {t('theo cơ chế vòng xoay tự động (Round Robin)')}?</>
+                      }
+                    </p>
+                  )}
+                </div>
               </div>
-              <div>
-                <p style={{ color: 'var(--color-text)', lineHeight: 1.6, fontSize: '0.9375rem', margin: 0 }}>
-                  {t('Bạn có chắc chắn muốn chuyển quyền chăm sóc Lead')} <strong>"{selectedLead?.name}"</strong> {t('sang cho Tư vấn viên')} <strong>"{consultants.find(c => Number(c.id) === Number(reassignConsId))?.name}"</strong>?
-                </p>
-                {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && (
-                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>
-                    {t('Tư vấn viên hiện tại:')} <strong>{selectedLead.assigned_to_name}</strong>. {t('Chọn hình thức giao lại:')}
-                  </p>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>{t('Hủy')}</button>
+
+                {reassignConsId && selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' && selectedLead.assigned_to_name !== 'Bot Hệ Thống' ? (
+                  <>
+                    <button
+                      className="btn secondary"
+                      onClick={() => handleReassign(false)}
+                      style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
+                      disabled={isReassigning}
+                    >
+                      {t('Giao lại luôn')}
+                    </button>
+                    <button
+                      className="btn success"
+                      onClick={() => handleReassign(true)}
+                      style={{ background: '#10b981', color: '#fff', border: 'none' }}
+                      disabled={isReassigning}
+                    >
+                      {t('Giao lại và bù vòng cho TVV')}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="btn primary"
+                    onClick={() => handleReassign(false)}
+                    disabled={isReassigning}
+                    style={{
+                      background: isPendingLead && !reassignConsId && isGrabRound ? '#d97706' : 'var(--color-primary)'
+                    }}
+                  >
+                    {isReassigning ? (
+                      <RefreshCw size={14} className="spin" />
+                    ) : isPendingLead ? (
+                      reassignConsId ? t('Xác nhận ép giao') : (isGrabRound ? t('Phát tín hiệu ngay') : t('Bắt đầu phân bổ'))
+                    ) : (
+                      t('Xác nhận chuyển')
+                    )}
+                  </button>
                 )}
               </div>
             </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-              <button className="btn outline" onClick={() => setConfirmReassignOpen(false)}>{t('Hủy')}</button>
-
-              {selectedLead?.assigned_to_name && selectedLead.assigned_to_name !== '-' ? (
-                <>
-                  <button
-                    className="btn secondary"
-                    onClick={() => handleReassign(false)}
-                    style={{ background: '#f59e0b', color: '#fff', border: 'none' }}
-                    disabled={isReassigning}
-                  >
-                    {t('Giao lại luôn')}
-                  </button>
-                  <button
-                    className="btn success"
-                    onClick={() => handleReassign(true)}
-                    style={{ background: '#10b981', color: '#fff', border: 'none' }}
-                    disabled={isReassigning}
-                  >
-                    {t('Giao lại và bù vòng cho TVV')}
-                  </button>
-                </>
-              ) : (
-                <button
-                  className="btn primary"
-                  onClick={() => handleReassign(false)}
-                  disabled={isReassigning}
-                >
-                  {t('Xác nhận chuyển')}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </CustomModal>
 
       <CustomModal
