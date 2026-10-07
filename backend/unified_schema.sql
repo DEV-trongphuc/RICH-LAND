@@ -227,6 +227,7 @@ CREATE TABLE IF NOT EXISTS `contacts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_id` int(11) NOT NULL DEFAULT 1,
   `person_id` int(11) DEFAULT NULL, -- FK to Persons (Chống trùng lặp)
+  `lead_id` int(11) DEFAULT NULL,   -- FK to Leads (Intake lead)
   `nguoi_gioi_thieu_id` int(11) DEFAULT NULL, -- FK to referrer contact
   `project_id` int(11) DEFAULT NULL, -- FK to Projects
   `company_id` int(11) DEFAULT NULL,

@@ -3706,7 +3706,14 @@ switch ($action) {
                         cons.avatar, 
                         cons.phone as consultant_phone,
                         tm.name as team_name,
-                        dr.round_name,
+                        COALESCE(dr.round_name, (
+                            SELECT dr2.round_name 
+                            FROM distribution_logs dl2 
+                            JOIN distribution_rounds dr2 ON dl2.round_id = dr2.id 
+                            JOIN leads ld2 ON dl2.lead_id = ld2.id 
+                            WHERE ld2.person_id = c.person_id AND dl2.assigned_to = c.owner_id 
+                            ORDER BY dl2.id DESC LIMIT 1
+                        )) as round_name,
                         c.pipeline_status, 
                         c.status as contact_status, 
                         c.lead_phan_loai, 

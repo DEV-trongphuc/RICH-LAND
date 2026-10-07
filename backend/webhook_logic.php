@@ -4685,22 +4685,24 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     lead_phan_loai = COALESCE(?, lead_phan_loai),
                     project_id = COALESCE(?, project_id),
                     facebook_link = COALESCE(?, facebook_link),
-                    link_video_ads = COALESCE(?, link_video_ads)
+                    link_video_ads = COALESCE(?, link_video_ads),
+                    lead_id = COALESCE(lead_id, ?)
                 WHERE person_id = ? AND deleted_at IS NULL
             ");
             if ($stmtUpContact) {
-                $stmtUpContact->bind_param("sssssssssssssssissi", 
+                $stmtUpContact->bind_param("sssssssssssssssiisi", 
                     $firstName, $firstName, 
                     $lastName, $lastName, 
                     $email, $email, 
                     $phone, $phone, 
-                    $note, $note, $note,
+                    $note, $note, $note, 
                     $type, $type, 
                     $loaiLead,
                     $leadPhanLoai,
                     $projectId,
                     $facebookLink,
                     $linkVideoAds,
+                    $leadId,
                     $person_id
                 );
                 $stmtUpContact->execute();
@@ -4749,7 +4751,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
 
             $stmtContact = $conn->prepare("
                 INSERT INTO contacts (
-                    tenant_id, person_id, project_id, owner_id, created_by, 
+                    tenant_id, person_id, lead_id, project_id, owner_id, created_by, 
                     first_name, last_name, email, phone, source, 
                     status, pipeline_status, stage_id, security_expires_at, notes, 
                     customer_type, loai_lead, lead_phan_loai, temperature, suggested_temperature, phone2, gender, 
@@ -4758,7 +4760,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     utm_campaign, utm_medium, utm_content, utm_term, platform, 
                     form_name, zalo_phone, facebook_link, link_video_ads
                 ) VALUES (
-                    1, ?, ?, ?, ?, 
+                    1, ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
                     'lead', ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, ?, ?, 
@@ -4771,8 +4773,8 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             if ($stmtContact) {
                 $createdBy = 1;
                 $stmtContact->bind_param(
-                    "iiiissssssissssssssssssssdsssssssssssss",
-                    $person_id, $projectId, $ownerUserId, $createdBy,
+                    "iiiiissssssissssssssssssssdsssssssssssss",
+                    $person_id, $leadId, $projectId, $ownerUserId, $createdBy,
                     $firstName, $lastName, $email, $phone, $source,
                     $triggerStatus, $stageId, $secExpiresTime, $note,
                     $type, $loaiLead, $leadPhanLoai, $initTemp, $initTemp, $phone2, $gender,
