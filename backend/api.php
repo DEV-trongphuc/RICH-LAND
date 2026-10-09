@@ -786,6 +786,18 @@ function notifyNightShiftChange($conn, $userId, $shiftDate, $register = true) {
         $formattedDate = date('d/m/Y', strtotime($shiftDate));
         $timeStr = date('Y-m-d H:i:s');
 
+        // Dynamic night shift hours from settings
+        $nightShiftStart = '';
+        $nightShiftEnd = '';
+        $stRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('night_shift_start_time', 'night_shift_end_time')");
+        if ($stRes) {
+            while ($sRow = $stRes->fetch_assoc()) {
+                if ($sRow['setting_key'] === 'night_shift_start_time') $nightShiftStart = substr(trim($sRow['setting_value']), 0, 5);
+                if ($sRow['setting_key'] === 'night_shift_end_time') $nightShiftEnd = substr(trim($sRow['setting_value']), 0, 5);
+            }
+        }
+        $shiftTimeLabel = ($nightShiftStart && $nightShiftEnd) ? " ({$nightShiftStart} - {$nightShiftEnd})" : "";
+
         require_once __DIR__ . '/zalo_bot.php';
         $allAdmins = getTicketNotifyAdmins($conn);
 
@@ -818,13 +830,13 @@ function notifyNightShiftChange($conn, $userId, $shiftDate, $register = true) {
                 if ($register) {
                     $zaloMsg = "🌙 [ ĐĂNG KÝ TRỰC ĐÊM ]\n\n"
                         . "Tư vấn viên $saleName vừa ĐĂNG KÝ trực ca đêm:\n"
-                        . "  • Ngày trực: $formattedDate (18h-6h)\n"
+                        . "  • Ngày trực: $formattedDate$shiftTimeLabel\n"
                         . "  • Ghi nhận lúc: $timeStr\n\n"
                         . "Hệ thống sẽ tự động điều phối lead mới phát sinh vào ca đêm cho TVV này.";
                 } else {
                     $zaloMsg = "🌙 [ HỦY ĐĂNG KÝ TRỰC ĐÊM ]\n\n"
                         . "Tư vấn viên $saleName vừa HỦY đăng ký trực ca đêm:\n"
-                        . "  • Ngày trực: $formattedDate (18h-6h)\n"
+                        . "  • Ngày trực: $formattedDate$shiftTimeLabel\n"
                         . "  • Thực hiện lúc: $timeStr";
                 }
                 try {
@@ -871,13 +883,13 @@ function notifyNightShiftChange($conn, $userId, $shiftDate, $register = true) {
                 if ($register) {
                     $tgMsg = "🌙 <b>[ ĐĂNG KÝ TRỰC ĐÊM ]</b>\n\n"
                         . "Tư vấn viên <b>$saleName</b> vừa <b>ĐĂNG KÝ</b> trực ca đêm:\n"
-                        . "  • Ngày trực: <code>$formattedDate</code> (18h-6h)\n"
+                        . "  • Ngày trực: <code>$formattedDate</code>$shiftTimeLabel\n"
                         . "  • Ghi nhận lúc: <i>$timeStr</i>\n\n"
                         . "Hệ thống sẽ tự động điều phối lead mới phát sinh vào ca đêm cho TVV này.";
                 } else {
                     $tgMsg = "🌙 <b>[ HỦY ĐĂNG KÝ TRỰC ĐÊM ]</b>\n\n"
                         . "Tư vấn viên <b>$saleName</b> vừa <b>HỦY</b> đăng ký trực ca đêm:\n"
-                        . "  • Ngày trực: <code>$formattedDate</code> (18h-6h)\n"
+                        . "  • Ngày trực: <code>$formattedDate</code>$shiftTimeLabel\n"
                         . "  • Thực hiện lúc: <i>$timeStr</i>";
                 }
                 foreach (array_unique($tgNotifyChatIds) as $chatId) {
@@ -4503,6 +4515,11 @@ switch ($action) {
             'registered' => ($res !== null),
             'approved' => ($res !== null ? (int)$res['approved'] : 0),
             'shift_date' => $shiftDate,
+            'start_time' => $nightWindow['start_time'],
+            'end_time' => $nightWindow['end_time'],
+            'allow_late' => $allowLate,
+            'late_minutes' => $lateMinutes,
+            'advance_minutes' => $advanceMinutes,
             'can_toggle' => $canToggle,
             'deadline_time' => date('H:i', $deadline),
             'registration_mode' => $regMode,
@@ -4694,8 +4711,9 @@ switch ($action) {
                     // Gửi chuông báo cho Quản lý & Admins
                     $saleName = !empty($decodedUser['name']) ? $decodedUser['name'] : 'Nhân viên';
                     $formattedDate = date('d/m/Y', strtotime($shiftDate));
+                    $nightShiftWindowStr = (!empty($nightShiftStart) && !empty($nightWindow['end_time'])) ? " ({$nightShiftStart} - {$nightWindow['end_time']})" : "";
                     $title = "Đăng ký trực ca đêm tự động duyệt";
-                    $body = "Sale {$saleName} đã đăng ký trực ca đêm ngày {$formattedDate} (được hệ thống tự động duyệt).";
+                    $body = "Sale {$saleName} đã đăng ký trực ca đêm{$nightShiftWindowStr} ngày {$formattedDate} (được hệ thống tự động duyệt).";
                     $link = "/attendance";
 
                     $notifyUserIds = [];
@@ -4742,8 +4760,10 @@ switch ($action) {
             } else {
                 // Send notification to admins for manual approval
                 $saleName = !empty($decodedUser['name']) ? $decodedUser['name'] : 'Nhân viên';
+                $formattedDate = date('d/m/Y', strtotime($shiftDate));
+                $nightShiftWindowStr = (!empty($nightShiftStart) && !empty($nightWindow['end_time'])) ? " ({$nightShiftStart} - {$nightWindow['end_time']})" : "";
                 $title = "Đăng ký trực ca đêm chờ duyệt";
-                $body = "Sale {$saleName} đã đăng ký trực ca đêm ngày {$shiftDate}. Vui lòng phê duyệt.";
+                $body = "Sale {$saleName} đã đăng ký trực ca đêm{$nightShiftWindowStr} ngày {$formattedDate}. Vui lòng phê duyệt.";
                 $link = "/attendance";
                 
                 $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND is_active = 1")->fetch_all(MYSQLI_ASSOC);

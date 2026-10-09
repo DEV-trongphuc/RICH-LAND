@@ -2457,6 +2457,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [nightShiftLoading, setNightShiftLoading] = useState(true);
   const [nightShiftCanToggle, setNightShiftCanToggle] = useState(true);
   const [nightShiftDate, setNightShiftDate] = useState('');
+  const [nightShiftStartTime, setNightShiftStartTime] = useState('');
+  const [nightShiftEndTime, setNightShiftEndTime] = useState('');
   const isTodayWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
   const [nightShiftDeadline, setNightShiftDeadline] = useState('');
   const [togglingNightShift, setTogglingNightShift] = useState(false);
@@ -2525,9 +2527,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       : `${hr}h`;
   };
 
-  const nightStartLabel = formatTimeLabel(sysSettings?.night_shift_start_time || '19:01');
-  const nightEndLabel = formatTimeLabel(sysSettings?.night_shift_end_time || '08:39');
-  const nightTimeRange = `${nightStartLabel} - ${nightEndLabel}`;
+  const rawNightStart = nightShiftStartTime || sysSettings?.night_shift_start_time || '';
+  const rawNightEnd = nightShiftEndTime || sysSettings?.night_shift_end_time || '';
+  const nightStartLabel = formatTimeLabel(rawNightStart);
+  const nightEndLabel = formatTimeLabel(rawNightEnd);
+  const nightTimeRange = (nightStartLabel && nightEndLabel) ? `${nightStartLabel} - ${nightEndLabel}` : '';
 
   // Sliding tab indicator
   const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
@@ -4514,6 +4518,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         setNightShiftCanToggle(res.can_toggle || isUserAdminRole || isUserManagerRole);
         setNightShiftDate(res.shift_date);
         setNightShiftDeadline(res.deadline_time || '');
+        if (res.start_time) setNightShiftStartTime(res.start_time);
+        if (res.end_time) setNightShiftEndTime(res.end_time);
       }
     } catch (e) {
       console.error("Error loading night shift status:", e);
@@ -9949,13 +9955,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     );
 
     const cardContainerStyle = (isMobile: boolean, customBorderRadius?: string): React.CSSProperties => (isMobile ? {
-      padding: '0',
+      padding: '1.25rem 1rem 1.75rem 1rem',
       display: 'flex',
       flexDirection: 'column',
       gap: '1.25rem',
-      background: 'transparent',
-      borderRadius: '0',
-      boxShadow: 'none'
+      background: 'var(--color-surface)',
+      borderRadius: customBorderRadius || '14px',
+      border: '1px solid var(--color-border-light)',
+      boxShadow: 'var(--shadow-sm)',
+      boxSizing: 'border-box',
+      width: '100%'
     } : {
       padding: '2rem',
       display: 'flex',
@@ -10076,12 +10085,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
         {/* Responsive flex container with sidebar tabs */}
         <div className={styles.drawerBody} style={{
-          background: isMobile ? 'transparent' : 'var(--color-surface)',
+          background: 'transparent',
           borderRadius: isMobile ? '0' : '16px',
           border: isMobile ? 'none' : '1px solid var(--color-border-light)',
           boxShadow: isMobile ? 'none' : '0 4px 20px rgba(0,0,0,0.02)',
           display: 'flex',
-          flexDirection: isMobile ? 'row' : 'row',
+          flexDirection: 'row',
           overflow: isMobile ? 'hidden' : 'visible',
           minHeight: isMobile ? 'auto' : '650px',
           margin: '0',
@@ -10090,21 +10099,20 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           transition: isMobile ? 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)' : 'none'
         }}>
           {/* LEFT SIDEBAR: Avatar & Tabs */}
-          {/* LEFT SIDEBAR: Avatar & Tabs */}
           {(!isMobile || true) && (
             <div
               style={isMobile ? {
-                width: 'calc(50% - 8px)',
-                marginRight: '8px',
+                width: '50%',
+                marginRight: 0,
                 flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '1.25rem',
-                padding: '1.25rem 1.25rem',
-                background: 'var(--color-surface)',
-                borderRadius: '16px',
-                border: '1px solid var(--color-border-light)',
-                boxShadow: 'var(--shadow-sm)',
+                gap: '1rem',
+                padding: '0.25rem 0.25rem calc(100px + env(safe-area-inset-bottom, 0px)) 0.25rem',
+                background: 'transparent',
+                borderRadius: '0',
+                border: 'none',
+                boxShadow: 'none',
                 boxSizing: 'border-box'
               } : {
                 width: '250px',
@@ -10542,6 +10550,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </button>
                     <button
                       type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'contact' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('contact')}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      {renderColoredIcon(Server, '#007af5')}
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin liên hệ')}</span>
+                    </button>
+                    <button
+                      type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'erp' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('erp')}
                       style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
@@ -10617,45 +10634,46 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               className={styles.contentArea}
               style={{
                 flex: isMobile ? 'none' : 1,
-                width: isMobile ? 'calc(50% - 8px)' : 'auto',
-                marginLeft: isMobile ? '8px' : '0',
+                width: isMobile ? '50%' : 'auto',
+                marginLeft: 0,
                 flexShrink: isMobile ? 0 : 1,
-                padding: isMobile ? '1.25rem' : '2rem',
-                background: 'var(--color-surface)',
-                borderRadius: '16px',
-                border: isMobile ? '1px solid var(--color-border-light)' : 'none',
-                boxShadow: isMobile ? 'var(--shadow-sm)' : 'none',
-                overflowY: 'auto',
+                padding: isMobile ? '0.25rem 0.25rem calc(100px + env(safe-area-inset-bottom, 0px)) 0.25rem' : '2rem',
+                background: isMobile ? 'transparent' : 'var(--color-surface)',
+                borderRadius: isMobile ? '0' : '16px',
+                border: 'none',
+                boxShadow: 'none',
+                overflowY: isMobile ? 'visible' : 'auto',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '1.5rem',
-                borderTopRightRadius: '16px',
-                borderBottomRightRadius: '16px',
-                borderTopLeftRadius: '16px',
-                borderBottomLeftRadius: '16px'
+                gap: isMobile ? '0.875rem' : '1.5rem',
+                boxSizing: 'border-box'
               }}
             >
               {/* Mobile Sticky Header block inside Content Area */}
               {isMobile && (profileActiveTab || renderedTab) && (
                 <div style={{
                   position: 'sticky',
-                  top: '-1.25rem',
+                  top: '-0.25rem',
                   zIndex: 100,
                   background: 'var(--color-surface)',
-                  padding: '1.25rem 0 0.75rem 0',
+                  padding: '10px 14px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  borderBottom: '1px solid var(--color-border)',
-                  margin: '-1.25rem 0 1.25rem 0',
-                  gap: '12px'
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '14px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+                  margin: '0 0 0.5rem 0',
+                  gap: '12px',
+                  boxSizing: 'border-box',
+                  width: '100%'
                 }}>
                   <button 
                     onClick={() => setProfileActiveTab('')} 
                     style={{
                       border: 'none',
                       background: 'transparent',
-                      padding: '4px 12px 4px 4px',
+                      padding: '4px 8px 4px 0',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -10664,10 +10682,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       textAlign: 'left'
                     }}
                   >
-                    <ChevronLeft size={20} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                    <ChevronLeft size={22} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                       <h2 style={{ 
-                        fontSize: '1.1rem', 
+                        fontSize: '1.05rem', 
                         fontWeight: 800, 
                         color: 'var(--color-text)', 
                         margin: 0,
@@ -10683,32 +10701,37 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <button
                     className="btn primary"
                     style={{ 
-                      height: '36px', 
-                      width: '44px', 
-                      borderRadius: '10px', 
-                      padding: '0', 
+                      height: '34px', 
+                      borderRadius: '8px', 
+                      padding: '0 12px', 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center', 
-                      flexShrink: 0
+                      gap: '6px',
+                      flexShrink: 0,
+                      fontSize: '0.8125rem',
+                      fontWeight: 700
                     }}
                     onClick={handleSaveProfile}
                     disabled={savingProfile || isUploadingAvatar}
                   >
                     {savingProfile ? (
-                      <RefreshCw size={16} className="spin" />
+                      <RefreshCw size={14} className="spin" />
                     ) : (
-                      <Save size={16} />
+                      <Save size={14} />
                     )}
+                    <span>{savingProfile ? t('Lưu...') : t('Lưu')}</span>
                   </button>
                 </div>
               )}
             {/* 1. PERSONAL INFO */}
             {renderedTab === 'personal' && (
               <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <User size={16} color="var(--color-primary)" /> {t('Thông tin cá nhân')}
-                </h3>
+                {!isMobile && (
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <User size={16} color="var(--color-primary)" /> {t('Thông tin cá nhân')}
+                  </h3>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
@@ -11128,6 +11151,291 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
                       )}
                     </div>
+
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={handleSaveProfile}
+                      disabled={savingProfile || isUploadingAvatar}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        fontSize: '0.9375rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        marginTop: '0.5rem'
+                      }}
+                    >
+                      {savingProfile ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
+                      <span>{savingProfile ? t('Đang lưu thông tin...') : t('Lưu thông tin cá nhân')}</span>
+                    </button>
+                </div>
+              </div>
+            )}
+
+            {/* CONTACT INFO TAB */}
+            {renderedTab === 'contact' && (
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
+                {!isMobile && (
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Server size={16} color="var(--color-primary)" /> {t('Thông tin liên hệ')}
+                  </h3>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* Phone & Work Email */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Email công ty')}</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={profile.email || ''}
+                        disabled
+                        style={{
+                          opacity: 0.7,
+                          cursor: 'not-allowed',
+                          background: 'var(--color-bg)',
+                          borderColor: 'var(--color-border-light)',
+                          fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                          height: isMobile ? '36px' : '40px'
+                        }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Email cá nhân')}</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={editPersonalEmail}
+                        onChange={(e) => setEditPersonalEmail(e.target.value)}
+                        placeholder="VD: email@gmail.com"
+                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Số điện thoại cá nhân')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editPersonalPhone}
+                        onChange={(e) => setEditPersonalPhone(e.target.value)}
+                        placeholder="09xx..."
+                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Số máy nhánh (Ext)')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editExtNumber}
+                        onChange={(e) => setEditExtNumber(e.target.value)}
+                        placeholder="VD: 104"
+                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Social Chat IDs */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Zalo Chat ID')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editZaloChatId}
+                        onChange={(e) => setEditZaloChatId(e.target.value)}
+                        placeholder="Nhập Zalo Chat ID để nhận OTP/Thông báo..."
+                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 14, height: 14, borderRadius: '50%' }} />
+                        {t('Telegram Chat ID')}
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editTelegramChatId}
+                        onChange={(e) => setEditTelegramChatId(e.target.value)}
+                        placeholder="Nhập Telegram Chat ID..."
+                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Social Networks */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Liên kết Facebook')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editFacebookLink}
+                        onChange={(e) => setEditFacebookLink(e.target.value)}
+                        placeholder="https://facebook.com/username..."
+                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Liên kết TikTok')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editTiktokLink}
+                        onChange={(e) => setEditTiktokLink(e.target.value)}
+                        placeholder="https://tiktok.com/@username..."
+                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
+                    <div className="form-group">
+                      <AddressSelect
+                        label={t('Địa chỉ thường trú')}
+                        value={editAddress}
+                        onChange={(val) => setEditAddress(val)}
+                        placeholder={t('Chọn địa chỉ thường trú...')}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <AddressSelect
+                        label={t('Địa chỉ tạm trú')}
+                        value={editAddressTemporary}
+                        onChange={(val) => setEditAddressTemporary(val)}
+                        placeholder={t('Chọn địa chỉ tạm trú...')}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Emergency contacts */}
+                  <div style={{ marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.75rem 0', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Users size={15} /> {t('Liên hệ khẩn cấp / Người thân')}
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {emergencyContacts.map((contact, index) => (
+                        <div key={index} style={{
+                          padding: '0.875rem',
+                          background: 'var(--color-bg-alt)',
+                          borderRadius: '8px',
+                          border: '1px solid var(--color-border-light)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem',
+                          position: 'relative'
+                        }}>
+                          {emergencyContacts.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEmergencyContacts(emergencyContacts.filter((_, i) => i !== index));
+                              }}
+                              style={{
+                                position: 'absolute', top: '8px', right: '8px',
+                                background: 'transparent', border: 'none',
+                                color: 'var(--color-danger)', cursor: 'pointer',
+                                padding: '4px', borderRadius: '4px'
+                              }}
+                              className="hover-bg-danger-light"
+                              title={t('Xóa liên hệ')}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Người liên hệ')}</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={contact.name || ''}
+                                onChange={(e) => {
+                                  const updated = [...emergencyContacts];
+                                  updated[index] = { ...updated[index], name: e.target.value };
+                                  setEmergencyContacts(updated);
+                                }}
+                                placeholder="Họ tên người liên hệ"
+                                style={{ fontSize: '0.8125rem', height: '36px' }}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Mối quan hệ')}</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={contact.relationship || ''}
+                                onChange={(e) => {
+                                  const updated = [...emergencyContacts];
+                                  updated[index] = { ...updated[index], relationship: e.target.value };
+                                  setEmergencyContacts(updated);
+                                }}
+                                placeholder="VD: Bố, Mẹ, Vợ..."
+                                style={{ fontSize: '0.8125rem', height: '36px' }}
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Số điện thoại khẩn cấp')}</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={contact.phone || ''}
+                              onChange={(e) => {
+                                const updated = [...emergencyContacts];
+                                updated[index] = { ...updated[index], phone: e.target.value };
+                                setEmergencyContacts(updated);
+                              }}
+                              placeholder="SĐT người liên hệ"
+                              style={{ fontSize: '0.8125rem', height: '36px' }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn outline sm"
+                      onClick={() => setEmergencyContacts([...emergencyContacts, { name: '', relationship: '', phone: '' }])}
+                      style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Plus size={14} />
+                      {t('Thêm người liên hệ')}
+                    </button>
+                  </div>
+
+                  {/* Save button */}
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={handleSaveProfile}
+                    disabled={savingProfile || isUploadingAvatar}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.9375rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      marginTop: '0.5rem'
+                    }}
+                  >
+                    {savingProfile ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
+                    <span>{savingProfile ? t('Đang lưu thông tin...') : t('Lưu thông tin liên hệ')}</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -11135,9 +11443,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* 2. ERP PROFILE */}
             {renderedTab === 'erp' && (
               <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Layers size={16} color="var(--color-primary)" /> {t('Thông tin nhân sự & ERP')}
-                </h3>
+                {!isMobile && (
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Layers size={16} color="var(--color-primary)" /> {t('Thông tin nhân sự & ERP')}
+                  </h3>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
@@ -11271,6 +11581,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         />
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={handleSaveProfile}
+                      disabled={savingProfile || isUploadingAvatar}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        fontSize: '0.9375rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        marginTop: '0.5rem'
+                      }}
+                    >
+                      {savingProfile ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
+                      <span>{savingProfile ? t('Đang lưu thông tin...') : t('Lưu hồ sơ nhân sự & ERP')}</span>
+                    </button>
                 </div>
               </div>
             )}
@@ -11285,22 +11617,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {renderedTab === 'certificates' && (
-              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile, '20px')}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile, '16px')}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '250px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Award size={18} color="var(--color-primary)" />
-                      {t('BẰNG CẤP & CHỨNG CHỈ HÀNH NGHỀ')}
-                    </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: isMobile ? '100%' : '250px' }}>
+                    {!isMobile && (
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Award size={18} color="var(--color-primary)" />
+                        {t('BẰNG CẤP & CHỨNG CHỈ HÀNH NGHỀ')}
+                      </h3>
+                    )}
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
                       {t('Cập nhật các bằng cấp, chứng chỉ chuyên môn của bạn để phục vụ công tác thẩm định hồ sơ nhân sự.')}
                     </p>
                   </div>
                   
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
                     {isEditingCertificates && (
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                        {t('(Bấm "Lưu thiết lập" ở góc trên bên phải để lưu thay đổi)')}
+                        {t('(Bấm "Lưu" ở thanh trên để lưu)')}
                       </span>
                     )}
                     <button
@@ -11327,7 +11661,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {!isEditingCertificates ? (
                   /* --- VIEW MODE --- */
                   profileCertificates.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem 2rem', background: 'var(--color-bg)', borderRadius: '16px', border: '1px dashed var(--color-border-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ textAlign: 'center', padding: isMobile ? '1.75rem 1rem' : '3rem 2rem', background: 'var(--color-bg)', borderRadius: '16px', border: '1px dashed var(--color-border-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                       <Award size={36} style={{ color: 'var(--color-text-muted)', opacity: 0.3 }} />
                       <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
                         {t('Chưa có chứng chỉ hoặc bằng cấp nào được thêm.')}
@@ -11799,23 +12133,25 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {renderedTab === 'hr_records' && (
-              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile, '20px')}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile, '16px')}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '250px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <AlertCircle size={18} color="var(--color-primary)" />
-                      {t('KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT')}
-                    </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: isMobile ? '100%' : '250px' }}>
+                    {!isMobile && (
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <AlertCircle size={18} color="var(--color-primary)" />
+                        {t('KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT')}
+                      </h3>
+                    )}
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
                       {t('Lịch sử ghi nhận thành tích, nhắc nhở hoặc các quyết định kỷ luật từ phòng Nhân sự.')}
                     </p>
                   </div>
                   
                   {['admin', 'superadmin', 'manager', 'assistant'].includes(String(user?.role).toLowerCase()) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
                       {isEditingHRRecords && (
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                          {t('(Bấm "Lưu thiết lập" ở góc trên bên phải để lưu thay đổi)')}
+                          {t('(Bấm "Lưu" ở thanh trên để lưu)')}
                         </span>
                       )}
                       <button
@@ -11953,7 +12289,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {!isEditingHRRecords ? (
                   /* --- VIEW MODE --- */
                   profileHRRecords.filter(r => r.type === activeHRSubTab).length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem 2rem', background: 'var(--color-bg)', borderRadius: '16px', border: '1px dashed var(--color-border-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ textAlign: 'center', padding: isMobile ? '1.75rem 1rem' : '3rem 2rem', background: 'var(--color-bg)', borderRadius: '16px', border: '1px dashed var(--color-border-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontSize: '1.5rem' }}>
                         {activeHRSubTab === 'award' ? '🏆' : (activeHRSubTab === 'warning' ? '🔔' : '🛡️')}
                       </span>
@@ -12259,9 +12595,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* SECURITY & ACCOUNT TAB (TÀI KHOẢN & BẢO MẬT) */}
             {renderedTab === 'security' && (
               <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ShieldCheck size={16} color="var(--color-primary)" /> {t('Tài khoản & Bảo mật')}
-                </h3>
+                {!isMobile && (
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ShieldCheck size={16} color="var(--color-primary)" /> {t('Tài khoản & Bảo mật')}
+                  </h3>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {/* Change Password Section */}
@@ -12308,7 +12646,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       type="submit"
                       className="btn primary sm"
                       disabled={changingPass || !oldPass || !newPass || !confirmPass}
-                      style={{ width: 'fit-content', alignSelf: 'flex-start' }}
+                      style={{ width: isMobile ? '100%' : 'fit-content', alignSelf: isMobile ? 'stretch' : 'flex-start', justifyContent: 'center', height: '38px', borderRadius: '8px', fontWeight: 700 }}
                     >
                       {changingPass ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
                       {t('Lưu mật khẩu mới')}
@@ -12463,9 +12801,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* 4. BANKING & PAYMENTS */}
             {renderedTab === 'payment' && (
               <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Receipt size={16} color="var(--color-primary)" /> {t('Thanh toán & Thuế')}
-                </h3>
+                {!isMobile && (
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Receipt size={16} color="var(--color-primary)" /> {t('Thanh toán & Thuế')}
+                  </h3>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem' }}>
                       <div className="form-group">
@@ -12522,6 +12862,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         />
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={handleSaveProfile}
+                      disabled={savingProfile || isUploadingAvatar}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        fontSize: '0.9375rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        marginTop: '0.5rem'
+                      }}
+                    >
+                      {savingProfile ? <RefreshCw size={16} className="spin" /> : <Save size={16} />}
+                      <span>{savingProfile ? t('Đang lưu thông tin...') : t('Lưu thông tin thanh toán & thuế')}</span>
+                    </button>
                 </div>
               </div>
             )}
@@ -12530,15 +12892,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* 6. WORK SCHEDULE & DATA ROTATION */}
             {renderedTab === 'schedule' && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1.5rem' }}>
                 {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                   <>
                     {/* Vacation Status Card */}
                     <div className="card" style={{
-                      padding: '1.5rem',
+                      padding: isMobile ? '1.25rem 1rem' : '1.5rem',
                       background: 'var(--color-surface)',
                       border: '1px solid var(--color-border-light)',
-                      borderRadius: '16px',
+                      borderRadius: '14px',
                       boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -12621,10 +12983,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                     {/* Night Shift Registration Card */}
                     <div className="card" style={{
-                      padding: '1.5rem',
+                      padding: isMobile ? '1.25rem 1rem' : '1.5rem',
                       background: 'var(--color-surface)',
                       border: '1px solid var(--color-border-light)',
-                      borderRadius: '16px',
+                      borderRadius: '14px',
                       boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -12645,10 +13007,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
                         <div style={{ flex: 1 }}>
                           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-                            {t(`ĐĂNG KÝ TRỰC CA ĐÊM (${nightTimeRange})`)}
+                            {t(`ĐĂNG KÝ TRỰC CA ĐÊM ${nightTimeRange ? `(${nightTimeRange})` : ''}`)}
                           </h3>
                           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                            {t(`Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc ${nightEndLabel} sáng hôm sau.`)}
+                            {t(`Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc ${nightEndLabel || 'hết ca'} sáng hôm sau.`)}
                           </p>
                           {nightShiftDeadline && (
                             <span style={{
@@ -12805,10 +13167,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     {/* Weekend Shift Registration Card */}
                     {weekendShiftAllow && (
                       <div className="card" style={{
-                        padding: '1.5rem',
+                        padding: isMobile ? '1.25rem 1rem' : '1.5rem',
                         background: 'var(--color-surface)',
                         border: '1px solid var(--color-border-light)',
-                        borderRadius: '16px',
+                        borderRadius: '14px',
                         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
                         display: 'flex',
                         flexDirection: 'column',
@@ -13098,10 +13460,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     {/* Holiday Shift Registration Card */}
                     {holidayShifts.length > 0 && (
                       <div className="card" style={{
-                        padding: '1.5rem',
+                        padding: isMobile ? '1.25rem 1rem' : '1.5rem',
                         background: 'var(--color-surface)',
                         border: '1px solid var(--color-border-light)',
-                        borderRadius: '16px',
+                        borderRadius: '14px',
                         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
                         display: 'flex',
                         flexDirection: 'column',
@@ -13200,10 +13562,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                     {/* Weekly Shift Grid Scheduler Card */}
                     <div className="card" style={{
-                      padding: '1.25rem',
+                      padding: isMobile ? '1.25rem 1rem' : '1.25rem',
                       background: 'var(--color-surface)',
                       border: '1px solid var(--color-border-light)',
-                      borderRadius: '16px',
+                      borderRadius: '14px',
                       boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -13799,10 +14161,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {renderedTab === 'documents' && (
               <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile, '16px')}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FileText size={18} color="var(--color-primary)" />
-                    {t('HỒ SƠ & TÀI LIỆU NHÂN SỰ')}
-                  </h3>
+                  {!isMobile && (
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <FileText size={18} color="var(--color-primary)" />
+                      {t('HỒ SƠ & TÀI LIỆU NHÂN SỰ')}
+                    </h3>
+                  )}
                   {/* Admin/Manager upload button */}
                   {(['admin', 'superadmin', 'manager', 'assistant'].includes(user?.role as any)) && (
                     <label style={{
@@ -18502,8 +18866,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         title={nightShiftRegistered ? t('Xác nhận HỦY trực ca đêm') : t('Xác nhận ĐĂNG KÝ trực ca đêm')}
         message={
           nightShiftRegistered
-            ? t(`Bạn có chắc chắn muốn HỦY đăng ký trực ca đêm hôm nay (${nightTimeRange}) không?`)
-            : t(`Bạn có chắc chắn muốn ĐĂNG KÝ trực ca đêm hôm nay (${nightTimeRange}) để tự động nhận lead mới phân bổ trong ca không?`)
+            ? t(`Bạn có chắc chắn muốn HỦY đăng ký trực ca đêm hôm nay ${nightTimeRange ? `(${nightTimeRange}) ` : ''}không?`)
+            : t(`Bạn có chắc chắn muốn ĐĂNG KÝ trực ca đêm hôm nay ${nightTimeRange ? `(${nightTimeRange}) ` : ''}để tự động nhận lead mới phân bổ trong ca không?`)
         }
         confirmText={nightShiftRegistered ? t('Hủy trực ca đêm') : t('Xác nhận đăng ký')}
         cancelText={t('Quay lại')}

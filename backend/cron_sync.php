@@ -3490,6 +3490,9 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
         'night_shift_reg_reminder_enabled',
         'night_shift_reg_remind_lead_minutes',
         'night_shift_registration_mode',
+        'allow_late_night_shift_registration',
+        'late_night_shift_registration_minutes',
+        'advance_night_shift_registration_minutes',
         'weekend_shift_reg_reminder_enabled',
         'weekend_shift_reg_remind_time',
         'zalo_bot_token',
@@ -3719,8 +3722,8 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
 
     // B. Night shift reminders
     if ($nightDutyEnabled === 1) {
-        $nightShiftStart = $settings['night_shift_start_time'] ?? '18:00';
-        $nightShiftEnd = $settings['night_shift_end_time'] ?? '06:00';
+        $nightShiftStart = !empty($settings['night_shift_start_time']) ? substr(trim($settings['night_shift_start_time']), 0, 5) : '19:00';
+        $nightShiftEnd = !empty($settings['night_shift_end_time']) ? substr(trim($settings['night_shift_end_time']), 0, 5) : '07:00';
         
         $nightStartParts = explode(':', $nightShiftStart);
         if (count($nightStartParts) >= 2) {
@@ -3833,13 +3836,31 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
     $nightShiftRegMode = $settings['night_shift_registration_mode'] ?? 'free';
 
     if ($nightShiftRegRemindEnabled === 1) {
-        $nightShiftStart = $settings['night_shift_start_time'] ?? '18:00';
-        $nightShiftEnd = $settings['night_shift_end_time'] ?? '08:40';
+        $nightShiftStart = !empty($settings['night_shift_start_time']) ? substr(trim($settings['night_shift_start_time']), 0, 5) : '19:00';
+        $nightShiftEnd = !empty($settings['night_shift_end_time']) ? substr(trim($settings['night_shift_end_time']), 0, 5) : '07:00';
         $nightStartParts = explode(':', $nightShiftStart);
         if (count($nightStartParts) >= 2) {
             try {
+                $allowLate = isset($settings['allow_late_night_shift_registration']) ? (int)$settings['allow_late_night_shift_registration'] : 0;
+                $lateMinutes = isset($settings['late_night_shift_registration_minutes']) ? (int)$settings['late_night_shift_registration_minutes'] : 0;
+                $advanceMinutes = isset($settings['advance_night_shift_registration_minutes']) ? (int)$settings['advance_night_shift_registration_minutes'] : 0;
+
                 $regReminderTime = new DateTime($todayStr . ' ' . $nightShiftStart);
                 $regReminderTime->modify("-{$nightShiftRegLeadMinutes} minutes");
+
+                $deadlineTime = new DateTime($todayStr . ' ' . $nightShiftStart);
+                if ($allowLate === 1 && $lateMinutes > 0) {
+                    $deadlineTime->modify("+{$lateMinutes} minutes");
+                } else if ($advanceMinutes > 0) {
+                    $deadlineTime->modify("-{$advanceMinutes} minutes");
+                }
+                $deadlineStr = $deadlineTime->format('H:i');
+                $deadlineNote = "hạn chót đăng ký: {$deadlineStr}";
+                if ($allowLate === 1 && $lateMinutes > 0) {
+                    $deadlineNote = "hạn chót đăng ký: {$deadlineStr} (cho phép trễ {$lateMinutes}p)";
+                } else if ($advanceMinutes > 0) {
+                    $deadlineNote = "hạn chót đăng ký: {$deadlineStr} (yêu cầu trước {$advanceMinutes}p)";
+                }
 
                 $nowTs = $now->getTimestamp();
                 $regRemindTs = $regReminderTime->getTimestamp();
@@ -3894,7 +3915,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                             $chk->close();
 
                             if (!$hasSent) {
-                                $msg = "Mời đăng ký ca trực đêm: Ca trực đêm từ {$nightShiftStart} đến {$nightShiftEnd} đã mở đăng ký. Vui lòng đăng ký sớm để tham gia phân bổ lead ca đêm!";
+                                $msg = "Mời đăng ký ca trực đêm: Ca trực đêm từ {$nightShiftStart} đến {$nightShiftEnd} đã mở đăng ký ({$deadlineNote}). Vui lòng đăng ký sớm để tham gia phân bổ lead ca đêm!";
 
                                 // 1. Chuông thông báo web in-app
                                 try {
@@ -3918,7 +3939,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                 // 3. Telegram
                                 if (!empty($telegramBotToken) && !empty($cand['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
                                     try {
-                                        $tgText = "<b>[ MỜI ĐĂNG KÝ CA TRỰC ĐÊM HÔM NAY ]</b>\n\nXin chào <b>" . htmlspecialchars($cand['full_name']) . "</b>,\nCa trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b> đã mở đăng ký.\nVui lòng vào hệ thống đăng ký trước giờ bắt đầu để nhận phân bổ lead đêm!";
+                                        $tgText = "<b>[ MỜI ĐĂNG KÝ CA TRỰC ĐÊM HÔM NAY ]</b>\n\nXin chào <b>" . htmlspecialchars($cand['full_name']) . "</b>,\nCa trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b> đã mở đăng ký (<b>{$deadlineNote}</b>).\nVui lòng vào hệ thống đăng ký trước {$deadlineStr} để nhận phân bổ lead đêm!";
                                         sendTelegramMessage($telegramBotToken, $cand['telegram_chat_id'], $tgText);
                                     } catch (Throwable $eT) {}
                                 }
@@ -3928,8 +3949,8 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                     try {
                                         $emailSub = "[RICH LAND] Mời đăng ký ca trực đêm hôm nay";
                                         $emailBody = "Chào <strong>" . htmlspecialchars($cand['full_name']) . "</strong>,<br/><br/>" .
-                                                     "Hệ thống đã mở đăng ký ca trực đêm hôm nay (khung giờ từ " . htmlspecialchars($nightShiftStart) . " đến " . htmlspecialchars($nightShiftEnd) . ").<br/>" .
-                                                     "Vui lòng truy cập hệ thống để đăng ký trực đêm nếu bạn muốn tham gia nhận phân bổ khách hàng ca đêm.<br/><br/>" .
+                                                     "Hệ thống đã mở đăng ký ca trực đêm hôm nay (khung giờ từ " . htmlspecialchars($nightShiftStart) . " đến " . htmlspecialchars($nightShiftEnd) . ", " . htmlspecialchars($deadlineNote) . ").<br/>" .
+                                                     "Vui lòng truy cập hệ thống để đăng ký trực đêm trước <strong>" . htmlspecialchars($deadlineStr) . "</strong> nếu bạn muốn tham gia nhận phân bổ khách hàng ca đêm.<br/><br/>" .
                                                      "Trân trọng!";
                                         sendEmailNotification($cand['email'], $emailSub, "MỜI ĐĂNG KÝ CA TRỰC ĐÊM", $emailBody, 'Đăng ký trực đêm ngay', true);
                                     } catch (Throwable $eM) {}

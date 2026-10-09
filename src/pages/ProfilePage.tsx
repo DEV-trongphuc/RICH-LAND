@@ -83,9 +83,9 @@ export const ProfilePage: React.FC = () => {
       : `${hr}h`;
   };
 
-  const nightStartLabel = formatTimeLabel(sysSettings?.night_shift_start_time || '19:01');
-  const nightEndLabel = formatTimeLabel(sysSettings?.night_shift_end_time || '08:39');
-  const nightTimeRange = `${nightStartLabel} - ${nightEndLabel}`;
+  const nightStartLabel = formatTimeLabel(sysSettings?.night_shift_start_time || '');
+  const nightEndLabel = formatTimeLabel(sysSettings?.night_shift_end_time || '');
+  const nightTimeRange = (nightStartLabel && nightEndLabel) ? `${nightStartLabel} - ${nightEndLabel}` : '';
 
   // Basic Profile State
   const [profileData, setProfileData] = useState({ name: '', email: '', avatar: '' });

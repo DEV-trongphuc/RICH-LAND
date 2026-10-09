@@ -2393,32 +2393,36 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           {(() => {
                             const displayTakers = filterVisibleTakers(lead.takers);
                             if (displayTakers.length > 0) {
-                              return (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  {displayTakers.map((tk: any) => (
-                                    <div 
-                                      key={tk.id} 
-                                      title={tk.name}
-                                      style={{
-                                        width: '26px', height: '26px', borderRadius: '50%',
-                                        background: 'var(--color-primary-light)',
-                                        color: 'var(--color-primary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontWeight: 700, fontSize: '0.75rem', border: '2px solid var(--color-surface)',
-                                        overflow: 'hidden', cursor: 'help'
-                                      }}
-                                    >
-                                      {tk.avatar ? (
-                                        <img src={tk.avatar} alt={tk.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                      ) : (
-                                        tk.name.charAt(0).toUpperCase()
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              );
+                              if (displayTakers.length === 1) {
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Avatar 
+                                      name={displayTakers[0].name} 
+                                      src={displayTakers[0].avatar} 
+                                      size={28} 
+                                      title={`${displayTakers[0].name}${displayTakers[0].claimed_at ? ` (Nhận lúc: ${displayTakers[0].claimed_at})` : ''}`} 
+                                    />
+                                    <span style={{ fontSize: '0.875rem', fontWeight: 550, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{displayTakers[0].name}</span>
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {displayTakers.map((tk: any) => (
+                                      <Avatar 
+                                        key={tk.id} 
+                                        name={tk.name} 
+                                        src={tk.avatar} 
+                                        size={28} 
+                                        title={`${tk.name}${tk.claimed_at ? ` (Nhận lúc: ${tk.claimed_at})` : ''}`} 
+                                        style={{ border: '2px solid var(--color-surface)', cursor: 'help' }}
+                                      />
+                                    ))}
+                                  </div>
+                                );
+                              }
                             } else {
-                              return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{t('Chưa ai nhận')}</span>;
+                              return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa ai nhận')}</span>;
                             }
                           })()}
                         </td>

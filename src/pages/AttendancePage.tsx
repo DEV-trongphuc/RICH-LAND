@@ -2735,7 +2735,9 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                 ? `🎉 ${t('Trực lễ')} ${row.holiday_name ? `(${row.holiday_name})` : ''}`
                                 : row.shift_type === 'weekend'
                                 ? `📅 ${t('Trực cuối tuần')}`
-                                : `🌙 ${t('Trực đêm')} (${sysSettings?.night_shift_start_time || '18:00'} - ${sysSettings?.night_shift_end_time || '06:00'})`}
+                                : (sysSettings?.night_shift_start_time && sysSettings?.night_shift_end_time
+                                    ? `🌙 ${t('Trực đêm')} (${sysSettings.night_shift_start_time} - ${sysSettings.night_shift_end_time})`
+                                    : `🌙 ${t('Trực đêm')}`)}
                             </span>
                             <span style={{
                               fontSize: '0.65rem',

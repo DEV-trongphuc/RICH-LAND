@@ -1,0 +1,495 @@
+{
+  "exactCounts": {
+    "accounts": 64,
+    "active_compensation_logs": 0,
+    "activities": 50,
+    "activity_comments": 3,
+    "activity_dependencies": 0,
+    "admin_logs": 243,
+    "ai_rag_search_cache": 9,
+    "ai_training_chunks": 20,
+    "ai_training_docs": 5,
+    "ai_vector_cache": 28,
+    "audit_logs": 1353,
+    "batches": 0,
+    "blocked_leads": 0,
+    "capi_logs": 12,
+    "check_ins": 154,
+    "cloud_files": 8,
+    "comments": 2,
+    "communication_logs": 2406,
+    "companies": 0,
+    "consultant_leaves": 0,
+    "consultants": 64,
+    "contact_emails": 0,
+    "contact_phones": 0,
+    "contacts": 93,
+    "cooperation_slips": 0,
+    "custom_field_values": 0,
+    "custom_fields": 0,
+    "data_reports": 20,
+    "deal_stage_history": 0,
+    "deals": 0,
+    "deposit_milestones": 3,
+    "deposits": 3,
+    "distribution_logs": 202,
+    "distribution_rounds": 7,
+    "duplicate_log": 0,
+    "email_otps": 3,
+    "entity_tags": 0,
+    "expense_entities": 0,
+    "expenses": 0,
+    "field_mappings": 17,
+    "file_categories": 9,
+    "files": 0,
+    "form_submissions": 0,
+    "forms": 0,
+    "holiday_shift_registrations": 0,
+    "import_jobs": 0,
+    "inventory_logs": 0,
+    "invoice_items": 0,
+    "invoices": 0,
+    "lead_offers": 283,
+    "leads": 53,
+    "login_attempts": 322,
+    "mail_queue": 423,
+    "marketing_campaigns": 2,
+    "night_shift_registrations": 45,
+    "note_mentions": 0,
+    "notes": 1,
+    "notifications": 2809,
+    "persons": 49,
+    "pipeline_stages": 6,
+    "product_categories": 0,
+    "products": 0,
+    "project_documents": 0,
+    "project_roster": 108,
+    "projects": 4,
+    "purchase_order_items": 0,
+    "purchase_orders": 0,
+    "quote_items": 0,
+    "quotes": 0,
+    "quyen_truy_cap": 5,
+    "refresh_tokens": 380,
+    "returned_databank_leads": 9,
+    "round_consultants": 167,
+    "routing_rules": 4,
+    "schema_migrations": 5,
+    "segments": 0,
+    "sent_notifications": 1210,
+    "sheet_connections": 4,
+    "sheet_sync_records": 13,
+    "suppliers": 0,
+    "sync_queue": 0,
+    "system_settings": 135,
+    "tags": 1,
+    "task_focus_logs": 0,
+    "task_groups": 0,
+    "task_hidden_users": 0,
+    "task_muted_notifications": 1,
+    "teams": 1,
+    "telegram_queue": 804,
+    "tenants": 1,
+    "ticket_comments": 2,
+    "ticket_notify_settings": 0,
+    "tickets": 2,
+    "user_notification_settings": 4,
+    "users": 64,
+    "webhook_logs": 14,
+    "weekend_shift_registrations": 34,
+    "workflow_task_templates": 0,
+    "workflows": 0,
+    "zalo_queue": 108
+  },
+  "differences": [
+    {
+      "table": "accounts",
+      "innoDbEstimate": 0,
+      "exactCount": 64
+    },
+    {
+      "table": "activity_comments",
+      "innoDbEstimate": 2,
+      "exactCount": 3
+    },
+    {
+      "table": "ai_rag_search_cache",
+      "innoDbEstimate": 0,
+      "exactCount": 9
+    },
+    {
+      "table": "ai_training_chunks",
+      "innoDbEstimate": 18,
+      "exactCount": 20
+    },
+    {
+      "table": "ai_vector_cache",
+      "innoDbEstimate": 26,
+      "exactCount": 28
+    },
+    {
+      "table": "audit_logs",
+      "innoDbEstimate": 1339,
+      "exactCount": 1353
+    },
+    {
+      "table": "capi_logs",
+      "innoDbEstimate": 8,
+      "exactCount": 12
+    },
+    {
+      "table": "cloud_files",
+      "innoDbEstimate": 7,
+      "exactCount": 8
+    },
+    {
+      "table": "consultants",
+      "innoDbEstimate": 0,
+      "exactCount": 64
+    },
+    {
+      "table": "email_otps",
+      "innoDbEstimate": 0,
+      "exactCount": 3
+    },
+    {
+      "table": "file_categories",
+      "innoDbEstimate": 8,
+      "exactCount": 9
+    },
+    {
+      "table": "login_attempts",
+      "innoDbEstimate": 136,
+      "exactCount": 322
+    },
+    {
+      "table": "mail_queue",
+      "innoDbEstimate": 312,
+      "exactCount": 423
+    },
+    {
+      "table": "notes",
+      "innoDbEstimate": 0,
+      "exactCount": 1
+    },
+    {
+      "table": "notifications",
+      "innoDbEstimate": 2732,
+      "exactCount": 2809
+    },
+    {
+      "table": "projects",
+      "innoDbEstimate": 3,
+      "exactCount": 4
+    },
+    {
+      "table": "quyen_truy_cap",
+      "innoDbEstimate": 2,
+      "exactCount": 5
+    },
+    {
+      "table": "sent_notifications",
+      "innoDbEstimate": 489,
+      "exactCount": 1210
+    },
+    {
+      "table": "sheet_connections",
+      "innoDbEstimate": 3,
+      "exactCount": 4
+    },
+    {
+      "table": "system_settings",
+      "innoDbEstimate": 133,
+      "exactCount": 135
+    },
+    {
+      "table": "tags",
+      "innoDbEstimate": 0,
+      "exactCount": 1
+    },
+    {
+      "table": "task_muted_notifications",
+      "innoDbEstimate": 0,
+      "exactCount": 1
+    },
+    {
+      "table": "teams",
+      "innoDbEstimate": 2,
+      "exactCount": 1
+    },
+    {
+      "table": "telegram_queue",
+      "innoDbEstimate": 798,
+      "exactCount": 804
+    },
+    {
+      "table": "tenants",
+      "innoDbEstimate": 0,
+      "exactCount": 1
+    },
+    {
+      "table": "user_notification_settings",
+      "innoDbEstimate": 3,
+      "exactCount": 4
+    },
+    {
+      "table": "webhook_logs",
+      "innoDbEstimate": 0,
+      "exactCount": 14
+    },
+    {
+      "table": "weekend_shift_registrations",
+      "innoDbEstimate": 32,
+      "exactCount": 34
+    }
+  ],
+  "triggers": [],
+  "routines": [],
+  "events": [],
+  "views": {
+    "accounts": "CREATE ALGORITHM=UNDEFINED DEFINER=`zccqvhhh_crm-rlvn`@`localhost` SQL SECURITY DEFINER VIEW `accounts` AS select `users`.`id` AS `id`,`users`.`tenant_id` AS `tenant_id`,`users`.`username` AS `username`,`users`.`password_hash` AS `password_hash`,`users`.`password_hash` AS `password`,`users`.`full_name` AS `name`,`users`.`job_title` AS `job_title`,`users`.`email` AS `email`,`users`.`role` AS `role`,`users`.`status` AS `status`,`users`.`is_confirmed` AS `is_confirmed`,`users`.`confirm_token` AS `confirm_token`,`users`.`last_login_at` AS `last_login`,`users`.`avatar_url` AS `avatar`,`users`.`signature_url` AS `signature_url`,`users`.`zalo_chat_id` AS `zalo_chat_id`,`users`.`telegram_chat_id` AS `telegram_chat_id`,`users`.`created_at` AS `created_at`,`users`.`dob` AS `dob`,`users`.`gender` AS `gender`,`users`.`citizen_id` AS `citizen_id`,`users`.`address` AS `address`,`users`.`bank_name` AS `bank_name`,`users`.`bank_account` AS `bank_account`,`users`.`phone` AS `phone`,`users`.`is_active` AS `is_active`,`users`.`team_id` AS `team_id` from `users`",
+    "consultants": "CREATE ALGORITHM=UNDEFINED DEFINER=`zccqvhhh_crm-rlvn`@`localhost` SQL SECURITY DEFINER VIEW `consultants` AS select `users`.`id` AS `id`,`users`.`tenant_id` AS `tenant_id`,`users`.`full_name` AS `name`,`users`.`job_title` AS `job_title`,`users`.`email` AS `email`,`users`.`role` AS `role`,`users`.`status` AS `status`,`users`.`leave_start` AS `leave_start`,`users`.`leave_end` AS `leave_end`,`users`.`work_start_time` AS `work_start_time`,`users`.`work_end_time` AS `work_end_time`,`users`.`work_schedule` AS `work_schedule`,`users`.`avatar_url` AS `avatar`,`users`.`signature_url` AS `signature_url`,`users`.`zalo_chat_id` AS `zalo_chat_id`,`users`.`telegram_chat_id` AS `telegram_chat_id`,`users`.`vacation_mode` AS `vacation_mode`,`users`.`overtime_mode` AS `overtime_mode`,`users`.`team_id` AS `team_id`,`users`.`dob` AS `dob`,`users`.`gender` AS `gender`,`users`.`citizen_id` AS `citizen_id`,`users`.`address` AS `address`,`users`.`bank_name` AS `bank_name`,`users`.`bank_account` AS `bank_account`,`users`.`extra_fields_json` AS `extra_fields_json`,`users`.`use_custom_work_hours` AS `use_custom_work_hours`,`users`.`created_at` AS `created_at`,`users`.`phone` AS `phone`,`users`.`is_active` AS `is_active` from `users`"
+  },
+  "implicitRelations": [
+    {
+      "fromTable": "accounts",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "accounts",
+      "fromColumn": "team_id",
+      "targetTable": "teams",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "activities",
+      "fromColumn": "task_group_id",
+      "targetTable": "task_groups",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "activities",
+      "fromColumn": "contact_id",
+      "targetTable": "contacts",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "ai_training_chunks",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "ai_training_docs",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "audit_logs",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "batches",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "batches",
+      "fromColumn": "supplier_id",
+      "targetTable": "suppliers",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "blocked_leads",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "capi_logs",
+      "fromColumn": "lead_id",
+      "targetTable": "leads",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "capi_logs",
+      "fromColumn": "contact_id",
+      "targetTable": "contacts",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "cloud_files",
+      "fromColumn": "project_id",
+      "targetTable": "projects",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "cloud_files",
+      "fromColumn": "contact_id",
+      "targetTable": "contacts",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "comments",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "companies",
+      "fromColumn": "stage_id",
+      "targetTable": "pipeline_stages",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "consultants",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "consultants",
+      "fromColumn": "team_id",
+      "targetTable": "teams",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "contacts",
+      "fromColumn": "lead_id",
+      "targetTable": "leads",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "contacts",
+      "fromColumn": "stage_id",
+      "targetTable": "pipeline_stages",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "distribution_rounds",
+      "fromColumn": "project_id",
+      "targetTable": "projects",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "email_otps",
+      "fromColumn": "user_id",
+      "targetTable": "users",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "inventory_logs",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "lead_offers",
+      "fromColumn": "round_id",
+      "targetTable": "distribution_rounds",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "leads",
+      "fromColumn": "project_id",
+      "targetTable": "projects",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "marketing_campaigns",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "projects",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "quyen_truy_cap",
+      "fromColumn": "contact_id",
+      "targetTable": "contacts",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "quyen_truy_cap",
+      "fromColumn": "user_id",
+      "targetTable": "users",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "sent_notifications",
+      "fromColumn": "user_id",
+      "targetTable": "users",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "task_focus_logs",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "task_groups",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "task_groups",
+      "fromColumn": "user_id",
+      "targetTable": "users",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "task_muted_notifications",
+      "fromColumn": "user_id",
+      "targetTable": "users",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "user_notification_settings",
+      "fromColumn": "user_id",
+      "targetTable": "users",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "user_notification_settings",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "webhook_logs",
+      "fromColumn": "lead_id",
+      "targetTable": "leads",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "workflow_task_templates",
+      "fromColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "workflow_task_templates",
+      "fromColumn": "stage_id",
+      "targetTable": "pipeline_stages",
+      "targetColumn": "id"
+    },
+    {
+      "fromTable": "workflow_task_templates",
+      "fromColumn": "team_id",
+      "targetTable": "teams",
+      "targetColumn": "id"
+    }
+  ]
+}
