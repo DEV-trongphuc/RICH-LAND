@@ -1386,8 +1386,8 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
 
                             // Check active on-duty / shift registration
                             if ($nightWindow['is_night_shift']) {
-                                if (!hasApprovedNightShiftForDate($conn, $c['id'], $nightWindow['shift_date'])) {
-                                    continue; // Bỏ qua nếu không đăng ký trực ca đêm
+                                if (!hasApprovedShiftForDate($conn, $c['id'], $nightWindow['shift_date'])) {
+                                    continue; // Bỏ qua nếu không có ca trực đã duyệt (đêm/cuối tuần/lễ)
                                 }
                             } else {
                                 if (!isConsultantInWorkHours($currentTime, $c['work_start_time'] ?? '00:00', $c['work_end_time'] ?? '23:59', $c['work_schedule'] ?? null, $c['id'], $conn)) {

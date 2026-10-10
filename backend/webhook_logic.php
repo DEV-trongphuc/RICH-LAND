@@ -1136,6 +1136,22 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
  */
 function hasApprovedShiftForDate($conn, $userId, $date)
 {
+    if (!$userId) return false;
+    $cId = (int)$userId;
+    $targetUserId = $cId;
+
+    // Map consultant_id sang users.id qua email nếu có khác biệt
+    $stmtU = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+    if ($stmtU) {
+        $stmtU->bind_param("i", $cId);
+        $stmtU->execute();
+        $row = $stmtU->get_result()->fetch_assoc();
+        $stmtU->close();
+        if ($row && !empty($row['id'])) {
+            $targetUserId = (int)$row['id'];
+        }
+    }
+
     // 1. Check if date is a holiday
     $holidayName = '';
     $holidaySchedulesJson = '[]';
@@ -1154,12 +1170,12 @@ function hasApprovedShiftForDate($conn, $userId, $date)
     }
 
     $isHoliday = !empty($holidayName);
-    $isRestDay = isRestDayForUser($conn, $userId, $date);
+    $isRestDay = isRestDayForUser($conn, $targetUserId, $date);
 
     // Check night_shift_registrations first - if registered for night shift, it's valid regardless of holiday or rest day
-    $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+    $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE (user_id = ? OR user_id = ?) AND shift_date = ? AND approved = 1 LIMIT 1");
     if ($stmt) {
-        $stmt->bind_param("is", $userId, $date);
+        $stmt->bind_param("iis", $targetUserId, $cId, $date);
         $stmt->execute();
         $res = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -1170,9 +1186,9 @@ function hasApprovedShiftForDate($conn, $userId, $date)
 
     // If it's a holiday, we check holiday_shift_registrations
     if ($isHoliday) {
-        $stmt = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+        $stmt = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE (user_id = ? OR user_id = ?) AND shift_date = ? AND approved = 1 LIMIT 1");
         if ($stmt) {
-            $stmt->bind_param("is", $userId, $date);
+            $stmt->bind_param("iis", $targetUserId, $cId, $date);
             $stmt->execute();
             $res = $stmt->get_result()->fetch_assoc();
             $stmt->close();
@@ -1184,9 +1200,9 @@ function hasApprovedShiftForDate($conn, $userId, $date)
 
     // If it's a rest day (weekend), we check weekend_shift_registrations
     if ($isRestDay) {
-        $stmt = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+        $stmt = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE (user_id = ? OR user_id = ?) AND shift_date = ? AND approved = 1 LIMIT 1");
         if ($stmt) {
-            $stmt->bind_param("is", $userId, $date);
+            $stmt->bind_param("iis", $targetUserId, $cId, $date);
             $stmt->execute();
             $res = $stmt->get_result()->fetch_assoc();
             $stmt->close();
@@ -1274,13 +1290,57 @@ if (!function_exists('hasApprovedNightShiftForDate')) {
             }
         }
 
+        // 1. Kiểm tra trực đêm trong bảng night_shift_registrations
         $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE (user_id = ? OR user_id = ?) AND shift_date = ? AND approved = 1 LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("iis", $targetUserId, $cId, $shiftDate);
             $stmt->execute();
             $hasShift = (bool)$stmt->get_result()->fetch_assoc();
             $stmt->close();
-            return $hasShift;
+            if ($hasShift) {
+                return true;
+            }
+        }
+
+        // 2. Nếu ngày đó là ngày nghỉ (cuối tuần): TVV có ca trực cuối tuần đã duyệt cũng được tính là đang trực ca hợp lệ
+        if (function_exists('isRestDayForUser') && isRestDayForUser($conn, $targetUserId, $shiftDate)) {
+            $stmtW = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE (user_id = ? OR user_id = ?) AND shift_date = ? AND approved = 1 LIMIT 1");
+            if ($stmtW) {
+                $stmtW->bind_param("iis", $targetUserId, $cId, $shiftDate);
+                $stmtW->execute();
+                $hasWeekend = (bool)$stmtW->get_result()->fetch_assoc();
+                $stmtW->close();
+                if ($hasWeekend) {
+                    return true;
+                }
+            }
+        }
+
+        // 3. Nếu ngày đó là ngày lễ: TVV có ca trực lễ đã duyệt cũng được tính là đang trực ca hợp lệ
+        $holidayName = '';
+        $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+        if ($resHol && $hRow = $resHol->fetch_assoc()) {
+            $holidays = json_decode($hRow['setting_value'] ?? '[]', true);
+            if (is_array($holidays)) {
+                foreach ($holidays as $h) {
+                    if ($shiftDate >= $h['start'] && $shiftDate <= $h['end']) {
+                        $holidayName = $h['name'];
+                        break;
+                    }
+                }
+            }
+        }
+        if (!empty($holidayName)) {
+            $stmtH = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE (user_id = ? OR user_id = ?) AND shift_date = ? AND approved = 1 LIMIT 1");
+            if ($stmtH) {
+                $stmtH->bind_param("iis", $targetUserId, $cId, $shiftDate);
+                $stmtH->execute();
+                $hasHoliday = (bool)$stmtH->get_result()->fetch_assoc();
+                $stmtH->close();
+                if ($hasHoliday) {
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -1288,8 +1348,7 @@ if (!function_exists('hasApprovedNightShiftForDate')) {
 }
 
 /**
- * Kiểm tra xem Tư vấn viên có đăng ký trực ca đêm và ca đêm đang hoạt động hay không.
- * Nếu đang trong khung giờ ca đêm, Sale bắt buộc phải đăng ký trực đêm mới nhận được data.
+ * Kiểm tra xem Tư vấn viên có ca trực hợp lệ (đêm / cuối tuần / lễ) trong khung giờ trực đêm hay không.
  */
 function checkNightShiftAvailability($conn, $consultantId, $currentTime)
 {
@@ -2843,9 +2902,9 @@ function checkConsultantGates($conn, $consultantId, $lead = null, $bypassBackpre
 
     if ($nightShiftWindow['is_night_shift']) {
         // Trong khung giờ trực đêm: Bắt buộc TVV phải có đăng ký trực đêm đã được duyệt (approved = 1)
-        $isApprovedNight = hasApprovedNightShiftForDate($conn, $targetUserId, $nightShiftWindow['shift_date']);
-        if (!$isApprovedNight) {
-            return "Failed Gate 2: Đang trong khung giờ ca trực đêm ({$nightShiftWindow['start_time']} - {$nightShiftWindow['end_time']}) nhưng TVV chưa đăng ký hoặc chưa được duyệt trực ca đêm ngày {$nightShiftWindow['shift_date']}";
+        $isApprovedShift = hasApprovedShiftForDate($conn, $targetUserId, $nightShiftWindow['shift_date']);
+        if (!$isApprovedShift) {
+            return "Failed Gate 2: Đang trong khung giờ ca trực đêm ({$nightShiftWindow['start_time']} - {$nightShiftWindow['end_time']}) nhưng TVV chưa đăng ký hoặc chưa được duyệt ca trực (đêm/cuối tuần/lễ) ngày {$nightShiftWindow['shift_date']}";
         }
         // TVV trực ca đêm hợp lệ -> Vượt qua Gate 2 thành công!
     } else {

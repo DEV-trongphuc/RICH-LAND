@@ -2,33 +2,39 @@ const https = require('https');
 
 function queryDb(sql) {
   return new Promise((resolve, reject) => {
-    const url = 'https://crm.richland.city/backend/exec_db_query.php?key=richland2026&sql=' + encodeURIComponent(sql);
-    const options = {
+    const postData = new URLSearchParams({
+      key: 'richland2026',
+      sql: sql
+    }).toString();
+
+    const req = https.request('https://crm.richland.city/backend/exec_db_query.php', {
+      method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*'
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(postData)
       }
-    };
-    https.get(url, options, (res) => {
+    }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try {
           resolve(JSON.parse(data));
         } catch (e) {
-          resolve({ raw: data.substring(0, 300), error: e.message });
+          resolve(data);
         }
       });
-    }).on('error', reject);
+    });
+
+    req.on('error', reject);
+    req.write(postData);
+    req.end();
   });
 }
 
-const sql = process.argv.slice(2).join(' ');
-if (!sql) {
-  console.log("Please provide SQL query");
-  process.exit(1);
+async function run() {
+  const sql = process.argv[2] || 'SELECT id, round_name, is_active, round_type, active_hours_enabled, active_hours_start, active_hours_end FROM distribution_rounds';
+  const result = await queryDb(sql);
+  console.log(JSON.stringify(result, null, 2));
 }
 
-queryDb(sql).then(res => {
-  console.log(JSON.stringify(res, null, 2));
-}).catch(console.error);
+run();
