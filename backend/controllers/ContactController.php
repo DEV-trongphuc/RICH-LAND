@@ -476,11 +476,22 @@ class ContactController {
         $birthday = empty($b['birthday']) ? null : $b['birthday'];
         $last_contact = empty($b['last_contact']) ? null : $b['last_contact'];
 
+        $projectId = !empty($b['project_id']) ? (int)$b['project_id'] : null;
+        $campaignId = !empty($b['campaign_id']) ? (int)$b['campaign_id'] : null;
+        if ($campaignId && !$projectId) {
+            $stmtCampProj = $this->db->prepare("SELECT project_id FROM marketing_campaigns WHERE id = ?");
+            $stmtCampProj->execute([$campaignId]);
+            $campProjId = $stmtCampProj->fetchColumn();
+            if ($campProjId) {
+                $projectId = (int)$campProjId;
+            }
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO contacts (tenant_id,company_id,owner_id,created_by,first_name,last_name,
                 email,phone,mobile,job_title,department,source,status,tags,notes,stage_id,
-                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score,person_id,collaborator_ids,nguoi_gioi_thieu_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score,person_id,collaborator_ids,nguoi_gioi_thieu_id,project_id,campaign_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
             $auth['tenant_id'],
@@ -495,7 +506,9 @@ class ContactController {
             $last_contact, $b['lead_score'] ?? 0,
             $personId,
             $b['collaborator_ids'] ?? null,
-            !empty($b['nguoi_gioi_thieu_id']) ? (int)$b['nguoi_gioi_thieu_id'] : null
+            !empty($b['nguoi_gioi_thieu_id']) ? (int)$b['nguoi_gioi_thieu_id'] : null,
+            $projectId,
+            $campaignId
         ]);
         $id = (int)$this->db->lastInsertId();
         if ($duplicateFlag) {
@@ -828,7 +841,7 @@ class ContactController {
             'utm_campaign', 'utm_medium', 'utm_content', 'utm_term', 'platform',
             'form_name', 'zalo_phone', 'facebook_link', 'nguoi_gioi_thieu_id',
             'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai',
-            'loai_hinh', 'app_lienhe'
+            'loai_hinh', 'app_lienhe', 'donvi_chay'
         ];
         $sets = []; $params = [];
         
@@ -857,7 +870,7 @@ class ContactController {
 
         $isSaleRole = in_array($auth['role'] ?? '', ['sale', 'sales', 'consultant'], true);
         if ($isSaleRole) {
-            unset($b['project_id'], $b['campaign_id']);
+            unset($b['owner_id']); // Sales cannot arbitrarily reassign ownership, but can set project_id and campaign_id
         }
 
         foreach ($fields as $f) {

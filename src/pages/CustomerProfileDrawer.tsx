@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video, UserX, ArrowLeft } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video, UserX, ArrowLeft, MoreVertical } from 'lucide-react';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -3038,6 +3038,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const [subTaskTitle, setSubTaskTitle] = useState('');
   const [subTaskAssignee, setSubTaskAssignee] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 
   const [drawerTaskFilter, setDrawerTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
@@ -3906,10 +3907,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }).catch(() => {});
       api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
       api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });
-      const isRosterRestricted = ['sale', 'sales', 'manager', 'director'].includes(currentUser?.role || '');
-      const bypassProj = isRosterRestricted ? '' : '?bypass_roster=1';
-      api.get(`/projects${bypassProj}`).then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
-      api.get('/marketing-campaigns').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
+      api.get('/projects?bypass_roster=1').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
+      api.get('/marketing-campaigns?bypass_roster=1').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
       api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
 
       // Fetch dynamic business configurations (decay days & pipeline status hierarchy)
@@ -6215,30 +6214,164 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       ) : null}
                     </h3>
                   </div>
-                  <button
-                    disabled={isSubmitting}
-                    onClick={handleSave}
-                    className="btn success sm"
-                    style={{
-                      padding: isMobileOrTablet ? '6px 12px' : '6px 14px',
-                      borderRadius: '10px',
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      height: isMobileOrTablet ? '36px' : '32px',
-                      width: isMobileOrTablet ? '44px' : undefined,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: isMobileOrTablet ? '0' : '6px',
-                      background: 'var(--color-primary)',
-                      borderColor: 'var(--color-primary)',
-                      color: 'white',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Save size={isMobileOrTablet ? 16 : 14} />
-                    {!isMobileOrTablet && <span>Lưu</span>}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      disabled={isSubmitting}
+                      onClick={handleSave}
+                      className="btn success sm"
+                      style={{
+                        padding: isMobileOrTablet ? '6px 12px' : '6px 14px',
+                        borderRadius: '10px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        height: isMobileOrTablet ? '36px' : '32px',
+                        width: isMobileOrTablet ? '44px' : undefined,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: isMobileOrTablet ? '0' : '6px',
+                        background: 'var(--color-primary)',
+                        borderColor: 'var(--color-primary)',
+                        color: 'white',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Save size={isMobileOrTablet ? 16 : 14} />
+                      {!isMobileOrTablet && <span>Lưu</span>}
+                    </button>
+
+                    {isMobileOrTablet && isOwnerOrAdmin && (
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          type="button"
+                          onClick={() => setMobileMenuOpen(prev => !prev)}
+                          style={{
+                            background: mobileMenuOpen ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                            border: '1px solid var(--color-border)',
+                            color: 'var(--color-text)',
+                            cursor: 'pointer',
+                            padding: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '10px',
+                            height: '36px',
+                            width: '36px'
+                          }}
+                          title="Tùy chọn thao tác"
+                        >
+                          <MoreVertical size={18} />
+                        </button>
+                        {mobileMenuOpen && (
+                          <>
+                            <div
+                              style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'transparent' }}
+                              onClick={() => setMobileMenuOpen(false)}
+                            />
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: '42px',
+                                right: 0,
+                                background: 'var(--color-surface)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '10px',
+                              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                              minWidth: '200px',
+                              zIndex: 1000,
+                              padding: '6px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '4px'
+                            }}
+                          >
+                            {isDatabankLead ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMobileMenuOpen(false);
+                                  handleReturnToDatabank();
+                                }}
+                                disabled={isReleaseBlocked}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 10px',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: isReleaseBlocked ? 'var(--color-text-muted)' : '#ef4444',
+                                  fontWeight: 600,
+                                  fontSize: '0.8rem',
+                                  cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
+                                  textAlign: 'left',
+                                  width: '100%'
+                                }}
+                              >
+                                <RotateCcw size={15} />
+                                <span>{t('Trả về Databank')}</span>
+                              </button>
+                            ) : isSelfCreated ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMobileMenuOpen(false);
+                                  handleDeleteCustomer();
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 10px',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#ef4444',
+                                  fontWeight: 600,
+                                  fontSize: '0.8rem',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  width: '100%'
+                                }}
+                              >
+                                <Trash2 size={15} />
+                                <span>{t('Xóa khách hàng')}</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMobileMenuOpen(false);
+                                  setShowNotLeadModal(true);
+                                }}
+                                disabled={isReleaseBlocked}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 10px',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: isReleaseBlocked ? 'var(--color-text-muted)' : '#e11d48',
+                                  fontWeight: 600,
+                                  fontSize: '0.8rem',
+                                  cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
+                                  textAlign: 'left',
+                                  width: '100%'
+                                }}
+                              >
+                                <UserX size={15} />
+                                <span>{t('Báo Not Lead')}</span>
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 /* ── Desktop Profile Header ── */
@@ -6842,6 +6975,84 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               </div>
                             </div>
+
+                            {/* Mobile Quick Action Buttons (Trả về Databank / Báo Not Lead / Xóa) */}
+                            {isOwnerOrAdmin && (
+                              <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', width: '100%' }}>
+                                {isDatabankLead ? (
+                                  <button
+                                    type="button"
+                                    onClick={isReleaseBlocked ? undefined : handleReturnToDatabank}
+                                    disabled={isReleaseBlocked}
+                                    style={{
+                                      flex: 1,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                      padding: '10px 12px',
+                                      borderRadius: '10px',
+                                      background: 'rgba(239, 68, 68, 0.08)',
+                                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                                      color: isReleaseBlocked ? 'var(--color-text-muted)' : '#ef4444',
+                                      fontWeight: 700,
+                                      fontSize: '0.8rem',
+                                      cursor: isReleaseBlocked ? 'not-allowed' : 'pointer'
+                                    }}
+                                  >
+                                    <RotateCcw size={15} />
+                                    <span>{t('Trả về Databank')}</span>
+                                  </button>
+                                ) : isSelfCreated ? (
+                                  <button
+                                    type="button"
+                                    onClick={handleDeleteCustomer}
+                                    style={{
+                                      flex: 1,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                      padding: '10px 12px',
+                                      borderRadius: '10px',
+                                      background: 'rgba(239, 68, 68, 0.08)',
+                                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                                      color: '#ef4444',
+                                      fontWeight: 700,
+                                      fontSize: '0.8rem',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <Trash2 size={15} />
+                                    <span>{t('Xóa khách hàng')}</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={isReleaseBlocked ? undefined : () => setShowNotLeadModal(true)}
+                                    disabled={isReleaseBlocked}
+                                    style={{
+                                      flex: 1,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                      padding: '10px 12px',
+                                      borderRadius: '10px',
+                                      background: 'rgba(225, 29, 72, 0.08)',
+                                      border: '1px solid rgba(225, 29, 72, 0.25)',
+                                      color: isReleaseBlocked ? 'var(--color-text-muted)' : '#e11d48',
+                                      fontWeight: 700,
+                                      fontSize: '0.8rem',
+                                      cursor: isReleaseBlocked ? 'not-allowed' : 'pointer'
+                                    }}
+                                  >
+                                    <UserX size={15} />
+                                    <span>{t('Báo Not Lead')}</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
 
                             {/* Mobile Tab Groups */}
                             {(() => {

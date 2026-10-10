@@ -1765,18 +1765,67 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
         $note = empty(trim($note ?? '')) ? $sourceUpdateNote : $note . "\n" . $sourceUpdateNote;
     }
 
-    $stmt = $conn->prepare("INSERT INTO leads (phone, email, name, source, type, note, last_interaction_date, assigned_to, connection_id) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            ON DUPLICATE KEY UPDATE 
-                                name = IF(VALUES(name) IS NOT NULL AND VALUES(name) != '' AND (name = '' OR name IS NULL), VALUES(name), name),
-                                email = IF(VALUES(email) IS NOT NULL AND VALUES(email) != '' AND (email = '' OR email IS NULL), VALUES(email), email),
-                                source = VALUES(source),
-                                type = VALUES(type),
-                                note = IF(TRIM(VALUES(note)) = '', note, IF(IFNULL(note, '') = '', VALUES(note), CONCAT(note, '\n___\n[Ngày ', DATE_FORMAT(NOW(), '%d/%m/%Y'), ']\n', VALUES(note)))),
-                                last_interaction_date = VALUES(last_interaction_date),
-                                assigned_to = IF(assigned_to IS NULL OR assigned_to = 0, VALUES(assigned_to), assigned_to),
-                                connection_id = IF(VALUES(connection_id) IS NOT NULL, VALUES(connection_id), connection_id)");
-    $stmt->bind_param("sssssssii", $phone, $email, $name, $source, $type, $note, $dateVal, $assignedConsultantId, $connectionId);
+    $leadPhanLoai = $data['lead_phan_loai'] ?? $data['phan_loai_lead'] ?? null;
+    $donviChay = $data['donvi_chay'] ?? null;
+    $adName = $data['ad_name'] ?? null;
+    $formName = $data['form_name'] ?? null;
+    $loaiLead = $data['loai_lead'] ?? null;
+    $utmCampaign = $data['utm_campaign'] ?? null;
+    $utmMedium = $data['utm_medium'] ?? null;
+    $utmContent = $data['utm_content'] ?? null;
+    $utmTerm = $data['utm_term'] ?? null;
+    $platform = $data['platform'] ?? null;
+    $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
+    $preferredLocation = $data['preferred_location'] ?? null;
+    $budget = isset($data['budget']) && is_numeric($data['budget']) ? (float)$data['budget'] : null;
+    $demandType = $data['demand_type'] ?? null;
+    $propertyType = $data['property_type'] ?? null;
+    $loaiHinh = $data['loai_hinh'] ?? null;
+    $bedroomCount = $data['bedroom_count'] ?? null;
+    $phone2 = $data['phone2'] ?? null;
+    $zaloPhone = $data['zalo_phone'] ?? null;
+    $facebookLink = $data['facebook_link'] ?? null;
+    $linkVideoAds = $data['link_video_ads'] ?? null;
+    $appLienhe = $data['app_lienhe'] ?? null;
+
+    $stmt = $conn->prepare("INSERT INTO leads (
+        phone, email, name, source, type, note, last_interaction_date, assigned_to, connection_id,
+        lead_phan_loai, donvi_chay, ad_name, form_name, loai_lead,
+        utm_campaign, utm_medium, utm_content, utm_term, platform,
+        project_id, preferred_location, budget, demand_type, property_type, loai_hinh,
+        bedroom_count, phone2, zalo_phone, facebook_link, link_video_ads, app_lienhe
+    ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?
+    ) ON DUPLICATE KEY UPDATE 
+        name = IF(VALUES(name) IS NOT NULL AND VALUES(name) != '' AND (name = '' OR name IS NULL), VALUES(name), name),
+        email = IF(VALUES(email) IS NOT NULL AND VALUES(email) != '' AND (email = '' OR email IS NULL), VALUES(email), email),
+        source = VALUES(source),
+        type = VALUES(type),
+        note = IF(TRIM(VALUES(note)) = '', note, IF(IFNULL(note, '') = '', VALUES(note), CONCAT(note, '\n___\n[Ngày ', DATE_FORMAT(NOW(), '%d/%m/%Y'), ']\n', VALUES(note)))),
+        last_interaction_date = VALUES(last_interaction_date),
+        assigned_to = IF(assigned_to IS NULL OR assigned_to = 0, VALUES(assigned_to), assigned_to),
+        connection_id = IF(VALUES(connection_id) IS NOT NULL, VALUES(connection_id), connection_id),
+        lead_phan_loai = IF(VALUES(lead_phan_loai) IS NOT NULL AND VALUES(lead_phan_loai) != '', VALUES(lead_phan_loai), lead_phan_loai),
+        donvi_chay = IF(VALUES(donvi_chay) IS NOT NULL AND VALUES(donvi_chay) != '', VALUES(donvi_chay), donvi_chay),
+        ad_name = IF(VALUES(ad_name) IS NOT NULL AND VALUES(ad_name) != '', VALUES(ad_name), ad_name),
+        form_name = IF(VALUES(form_name) IS NOT NULL AND VALUES(form_name) != '', VALUES(form_name), form_name),
+        loai_lead = IF(VALUES(loai_lead) IS NOT NULL AND VALUES(loai_lead) != '', VALUES(loai_lead), loai_lead),
+        utm_campaign = IF(VALUES(utm_campaign) IS NOT NULL AND VALUES(utm_campaign) != '', VALUES(utm_campaign), utm_campaign),
+        project_id = IF(VALUES(project_id) IS NOT NULL, VALUES(project_id), project_id),
+        preferred_location = IF(VALUES(preferred_location) IS NOT NULL AND VALUES(preferred_location) != '', VALUES(preferred_location), preferred_location)");
+    
+    $stmt->bind_param(
+        "sssssssii" . "sssss" . "sssss" . "isdsss" . "ssssss",
+        $phone, $email, $name, $source, $type, $note, $dateVal, $assignedConsultantId, $connectionId,
+        $leadPhanLoai, $donviChay, $adName, $formName, $loaiLead,
+        $utmCampaign, $utmMedium, $utmContent, $utmTerm, $platform,
+        $projectId, $preferredLocation, $budget, $demandType, $propertyType, $loaiHinh,
+        $bedroomCount, $phone2, $zaloPhone, $facebookLink, $linkVideoAds, $appLienhe
+    );
     $stmt->execute();
     $id = $stmt->insert_id;
     $stmt->close();
@@ -4670,6 +4719,9 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
 
         $facebookLink = !empty($lead['facebook_link']) ? $lead['facebook_link'] : null;
         $linkVideoAds = !empty($lead['link_video_ads']) ? $lead['link_video_ads'] : null;
+        $adName = !empty($lead['ad_name']) ? $lead['ad_name'] : null;
+        $donviChay = !empty($lead['donvi_chay']) ? $lead['donvi_chay'] : null;
+        $appLienhe = !empty($lead['app_lienhe']) ? $lead['app_lienhe'] : null;
 
         if (!empty($existingContacts)) {
             // Update existing active contacts with latest info
@@ -4686,11 +4738,14 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     project_id = COALESCE(?, project_id),
                     facebook_link = COALESCE(?, facebook_link),
                     link_video_ads = COALESCE(?, link_video_ads),
+                    ad_name = COALESCE(?, ad_name),
+                    donvi_chay = COALESCE(?, donvi_chay),
+                    app_lienhe = COALESCE(?, app_lienhe),
                     lead_id = COALESCE(lead_id, ?)
                 WHERE person_id = ? AND deleted_at IS NULL
             ");
             if ($stmtUpContact) {
-                $stmtUpContact->bind_param("sssssssssssssssiisi", 
+                $stmtUpContact->bind_param("sssssssssssssssisssssii", 
                     $firstName, $firstName, 
                     $lastName, $lastName, 
                     $email, $email, 
@@ -4702,6 +4757,9 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     $projectId,
                     $facebookLink,
                     $linkVideoAds,
+                    $adName,
+                    $donviChay,
+                    $appLienhe,
                     $leadId,
                     $person_id
                 );
@@ -4758,7 +4816,8 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     dob, citizen_id, district, company, tax_code, 
                     budget, demand_type, property_type, bedroom_count, preferred_location, 
                     utm_campaign, utm_medium, utm_content, utm_term, platform, 
-                    form_name, zalo_phone, facebook_link, link_video_ads
+                    form_name, zalo_phone, facebook_link, link_video_ads,
+                    ad_name, donvi_chay, app_lienhe
                 ) VALUES (
                     1, ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
@@ -4767,13 +4826,14 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
-                    ?, ?, ?, ?
+                    ?, ?, ?, ?,
+                    ?, ?, ?
                 )
             ");
             if ($stmtContact) {
                 $createdBy = 1;
                 $stmtContact->bind_param(
-                    "iiiiissssssissssssssssssssdsssssssssssss",
+                    "iiiiissssssissssssssssssssdssssssssssssssssss",
                     $person_id, $leadId, $projectId, $ownerUserId, $createdBy,
                     $firstName, $lastName, $email, $phone, $source,
                     $triggerStatus, $stageId, $secExpiresTime, $note,
@@ -4781,7 +4841,8 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     $dob, $citizenId, $district, $company, $taxCode,
                     $budget, $demandType, $propertyType, $bedroomCount, $preferredLocation,
                     $utmCampaign, $utmMedium, $utmContent, $utmTerm, $platform,
-                    $formName, $zaloPhone, $facebookLink, $linkVideoAds
+                    $formName, $zaloPhone, $facebookLink, $linkVideoAds,
+                    $adName, $donviChay, $appLienhe
                 );
                 $stmtContact->execute();
                 $stmtContact->close();

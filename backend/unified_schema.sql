@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS `contacts` (
   -- TTL1 data
   `ttl1_completed` tinyint(1) DEFAULT 0,
   `ttl1_data` longtext DEFAULT NULL, -- JSON containing the 5 groups of TTL1
+  `donvi_chay` varchar(100) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -288,6 +289,7 @@ CREATE TABLE IF NOT EXISTS `leads` (
   `campaign_id` varchar(255) DEFAULT NULL,
   `campaign_name` varchar(255) DEFAULT NULL,
   `ad_id` varchar(255) DEFAULT NULL,
+  `donvi_chay` varchar(100) DEFAULT NULL,
   `raw_payload` longtext DEFAULT NULL, -- JSON payload from Meta/Google
   `assigned_to` int(11) DEFAULT NULL, -- FK to users
   `last_assigned_at` datetime DEFAULT NULL,
@@ -1781,7 +1783,11 @@ INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES
 ('ai_screener_model', 'gemini-2.5-flash-lite'),
 ('gemini_model', 'gemini-2.5-flash-lite'),
 ('report_error_reasons', '[\"Sai số điện thoại / Số ảo\", \"Trùng của tôi (Trùng Saleperson)\", \"Trùng của người khác (Saleperson khác đã chăm)\", \"Spam ảo / Junk lead\", \"Khác (Vui lòng ghi rõ ở phần ghi chú)\"]'),
-('pipeline_status_hierarchy', '[\"chua_xac_dinh\", \"quan_tam\", \"dong_y_gap\", \"da_gap\", \"booking\", \"dat_coc\", \"dong_deal\"]')
+('pipeline_status_hierarchy', '[\"chua_xac_dinh\", \"quan_tam\", \"dong_y_gap\", \"da_gap\", \"booking\", \"dat_coc\", \"dong_deal\"]'),
+('weekend_shift_days', '6,7'),
+('weekend_shift_min_checkin_days', '0'),
+('weekend_shift_round_id', '0'),
+('databank_claim_recall_hours', '24')
 ON DUPLICATE KEY UPDATE `setting_value` = VALUES(`setting_value`);
 
 -- Table: comments (Generic Comments for Projects, Campaigns, etc.)

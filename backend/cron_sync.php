@@ -1813,6 +1813,71 @@ if (!function_exists('recallExpiredGrabLeads')) {
     }
 }
 
+if (!function_exists('recallUnprocessedDatabankClaimedLeads')) {
+    function recallUnprocessedDatabankClaimedLeads($conn) {
+        // Issue 8: Rule vận hành nhận khách Databank - nếu vẫn chưa xác định khoảng x tiếng sẽ thu hồi, ngoài ra sẽ giữ lại cho Sale
+        $recallHours = (int) get_system_setting($conn, 'databank_claim_recall_hours');
+        if ($recallHours <= 0) {
+            $recallHours = 24; // Mặc định 24 tiếng nếu chưa cấu hình
+        }
+
+        $stmt = $conn->prepare("
+            SELECT c.id as contact_id, c.owner_id, c.first_name, c.last_name, c.phone, c.person_id, c.lead_id, c.created_at
+            FROM contacts c
+            WHERE (c.lead_phan_loai = 'databank' OR c.source = 'databank')
+              AND c.deleted_at IS NULL
+              AND c.pipeline_status IN ('chua_xac_dinh', 'not_lead_pending')
+              AND c.created_at <= DATE_SUB(NOW(), INTERVAL ? HOUR)
+        ");
+        if (!$stmt) return;
+        $stmt->bind_param("i", $recallHours);
+        $stmt->execute();
+        $contactsToRecall = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        if (empty($contactsToRecall)) return;
+
+        logSync("Found " . count($contactsToRecall) . " unprocessed Databank contacts to recall (exceeded {$recallHours}h in chua_xac_dinh).");
+
+        foreach ($contactsToRecall as $cRow) {
+            $contactId = (int)$cRow['contact_id'];
+            $ownerId = (int)$cRow['owner_id'];
+            $fullName = trim(($cRow['first_name'] ?? '') . ' ' . ($cRow['last_name'] ?? ''));
+            $leadId = $cRow['lead_id'] ? (int)$cRow['lead_id'] : null;
+
+            $conn->begin_transaction();
+            try {
+                // Soft delete contact for this sale
+                $stmtDel = $conn->prepare("UPDATE contacts SET deleted_at = NOW() WHERE id = ?");
+                $stmtDel->bind_param("i", $contactId);
+                $stmtDel->execute();
+                $stmtDel->close();
+
+                // Distribution log
+                if ($leadId) {
+                    logDistribution($conn, $leadId, $ownerId, null, 'recalled_to_databank', "Tự động thu hồi khách nhận từ Databank do quá hạn {$recallHours} tiếng chưa chuyển trạng thái / chưa CSKH", false);
+                }
+
+                // Send notification to sale
+                $title = "Thu hồi khách hàng Databank";
+                $body = "Khách hàng {$fullName} ({$cRow['phone']}) nhận từ Databank đã tự động thu hồi do quá hạn {$recallHours} giờ ở trạng thái Chưa xác định.";
+                $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'databank_recalled', '/databank')");
+                if ($insNotif) {
+                    $insNotif->bind_param("iss", $ownerId, $title, $body);
+                    $insNotif->execute();
+                    $insNotif->close();
+                }
+
+                $conn->commit();
+                logSync("Successfully recalled Databank contact ID {$contactId} from user {$ownerId}");
+            } catch (Exception $e) {
+                $conn->rollback();
+                logSync("Error recalling Databank contact ID {$contactId}: " . $e->getMessage());
+            }
+        }
+    }
+}
+
 
 logSync("Starting Google Sheets Sync Cronjob...");
 if (!isset($argv[1])) {
@@ -1821,6 +1886,7 @@ if (!isset($argv[1])) {
     recallInactiveLeads($conn);
     recallExpiredGrabLeads($conn);
     redistributePendingLeads($conn);
+    recallUnprocessedDatabankClaimedLeads($conn);
 }
 
 // Get active connections

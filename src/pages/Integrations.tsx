@@ -29,6 +29,10 @@ const SYSTEM_FIELDS = [
   { value: 'type', label: 'Loại Data' },
   { value: 'loai_lead', label: 'Hình thức Lead (loai_lead: Zalo / Lead Form / Mess / Hotline)' },
   { value: 'phan_loai_lead', label: 'Phân loại lead (phan_loai_lead: R3, R3_Fb, R2, Callbot...)' },
+  { value: 'donvi_chay', label: 'Đơn vị chạy Ads (donvi_chay)' },
+  { value: 'ad_name', label: 'Tên mẫu Quảng cáo (ad_name)' },
+  { value: 'link_video_ads', label: 'Link Video Quảng cáo (link_video_ads)' },
+  { value: 'app_lienhe', label: 'Ứng dụng liên hệ (app_lienhe: Zalo / Mess / Call)' },
   { value: 'platform', label: 'Nền tảng Data (Meta / Google / TikTok / Zalo)' },
   { value: 'utm_campaign', label: 'Tên Chiến dịch Ads (UTM Campaign)' },
   { value: 'utm_medium', label: 'Hình thức Ads (UTM Medium)' },
@@ -40,9 +44,12 @@ const SYSTEM_FIELDS = [
   { value: 'budget', label: 'Ngân sách tài chính / Doanh thu dự kiến' },
   { value: 'demand_type', label: 'Mục đích nhu cầu (Ở / Đầu tư / Cho thuê)' },
   { value: 'property_type', label: 'Loại BĐS quan tâm (Căn hộ / Nhà phố / Biệt thự)' },
+  { value: 'loai_hinh', label: 'Loại hình căn hộ quan tâm (loai_hinh: 1PN, 2PN, Duplex...)' },
   { value: 'bedroom_count', label: 'Số phòng ngủ mong muốn' },
   { value: 'preferred_location', label: 'Khu vực / Dự án quan tâm' },
   { value: 'project_id', label: 'Dự án (Project ID / Tên dự án)' },
+  { value: 'time_lienhe', label: 'Thời gian liên hệ thuận tiện (time_lienhe)' },
+  { value: 'hinh_thuc_tt', label: 'Hình thức thanh toán (hinh_thuc_tt)' },
 
   // --- Mạng Xã Hội & Khác ---
   { value: 'zalo_phone', label: 'Số Zalo / Link Zalo' },

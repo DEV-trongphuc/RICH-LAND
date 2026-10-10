@@ -3488,7 +3488,10 @@ switch ($action) {
 
         $dateConditionSubQuery = str_replace('dl.received_at', 'received_at', $dateCondition);
 
-        $extraCondition = "(p.is_public IS NULL OR p.is_public = 0) AND dl.status != 'released_to_kho' AND dl.status != 'databank'";
+        $extraCondition = "1=1";
+        if (isset($_GET['exclude_public']) && $_GET['exclude_public'] == '1') {
+            $extraCondition .= " AND (p.is_public IS NULL OR p.is_public = 0) AND dl.status != 'released_to_kho' AND dl.status != 'databank'";
+        }
         $isFilteringActive = false;
 
         if (isset($_GET['status']) && $_GET['status'] !== 'all') {
@@ -3541,8 +3544,8 @@ switch ($action) {
             $isFilteringActive = true;
         }
 
-        // Apply silent exclusion rule if no filters active
-        if (!$isFilteringActive) {
+        // Apply silent exclusion rule only if explicitly requested
+        if (isset($_GET['exclude_silent']) && $_GET['exclude_silent'] == '1') {
             $extraCondition .= " AND dl.status != 'silent'";
         }
 
@@ -3589,7 +3592,7 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
-                WHERE status != 'silent' AND $dateConditionSubQuery
+                WHERE $dateConditionSubQuery
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             $joinLeads 
@@ -3675,7 +3678,7 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
-                WHERE status != 'silent' AND $dateConditionSubQuery
+                WHERE $dateConditionSubQuery
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             LEFT JOIN leads l ON dl.lead_id = l.id
@@ -4849,16 +4852,43 @@ switch ($action) {
         // Get weekend registration settings
         $allowWeekend = 1;
         $leadHours = 0;
-        $setSettings = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_weekend_shift_registration', 'weekend_shift_registration_lead_hours')");
+        $weekendShiftDays = '6,7';
+        $weekendMinCheckinDays = 0;
+        $weekendRoundId = 0;
+        $setSettings = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_weekend_shift_registration', 'weekend_shift_registration_lead_hours', 'weekend_shift_days', 'weekend_shift_min_checkin_days', 'weekend_shift_round_id')");
         if ($setSettings) {
             while ($sRow = $setSettings->fetch_assoc()) {
                 if ($sRow['setting_key'] === 'allow_weekend_shift_registration') {
                     $allowWeekend = (int)$sRow['setting_value'];
                 } else if ($sRow['setting_key'] === 'weekend_shift_registration_lead_hours') {
                     $leadHours = (int)$sRow['setting_value'];
+                } else if ($sRow['setting_key'] === 'weekend_shift_days') {
+                    $weekendShiftDays = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '6,7';
+                } else if ($sRow['setting_key'] === 'weekend_shift_min_checkin_days') {
+                    $weekendMinCheckinDays = (int)$sRow['setting_value'];
+                } else if ($sRow['setting_key'] === 'weekend_shift_round_id') {
+                    $weekendRoundId = (int)$sRow['setting_value'];
                 }
             }
         }
+
+        // Count approved/pending check-ins in the current week (Monday - Friday)
+        $startOfWeek = date('Y-m-d', strtotime('monday this week', strtotime($satDate)));
+        $endOfWeek = date('Y-m-d', strtotime('friday this week', strtotime($satDate)));
+        $userCheckinDays = 0;
+        $stmtChk = $conn->prepare("SELECT COUNT(DISTINCT check_in_date) as cnt FROM check_ins WHERE user_id = ? AND check_in_date BETWEEN ? AND ? AND status IN ('approved', 'pending_approval')");
+        if ($stmtChk) {
+            $stmtChk->bind_param("iss", $dbUserId, $startOfWeek, $endOfWeek);
+            $stmtChk->execute();
+            $chkRow = $stmtChk->get_result()->fetch_assoc();
+            $stmtChk->close();
+            $userCheckinDays = (int)($chkRow['cnt'] ?? 0);
+        }
+
+        $activeWeekendDays = array_map('trim', explode(',', $weekendShiftDays));
+        $satEnabledByRule = in_array('6', $activeWeekendDays);
+        $sunEnabledByRule = in_array('7', $activeWeekendDays);
+        $isCheckinEligible = $isAdminOrMgr || ($weekendMinCheckinDays <= 0) || ($userCheckinDays >= $weekendMinCheckinDays);
 
         // Query registrations
         $satRegistered = false;
@@ -4886,17 +4916,23 @@ switch ($action) {
         $sunDeadline = strtotime($sunDate . ' 00:00:00') - ($leadHours * 3600);
 
         // Admin/Manager can ALWAYS toggle without registration cutoff restrictions
-        $satCanToggle = $isAdminOrMgr ? true : (time() < $satDeadline);
-        $sunCanToggle = $isAdminOrMgr ? true : (time() < $sunDeadline);
+        $satCanToggle = $isAdminOrMgr ? true : ($satEnabledByRule && $isCheckinEligible && time() < $satDeadline);
+        $sunCanToggle = $isAdminOrMgr ? true : ($sunEnabledByRule && $isCheckinEligible && time() < $sunDeadline);
 
         echo json_encode([
             'success' => true,
             'allow_weekend_registration' => $isAdminOrMgr ? true : ($allowWeekend === 1),
+            'weekend_shift_days' => $weekendShiftDays,
+            'weekend_shift_min_checkin_days' => $weekendMinCheckinDays,
+            'weekend_shift_round_id' => $weekendRoundId,
+            'user_checkin_days' => $userCheckinDays,
+            'is_checkin_eligible' => $isCheckinEligible,
             'saturday' => [
                 'date' => $satDate,
                 'registered' => $satRegistered,
                 'approved' => $satApproved,
                 'can_toggle' => $satCanToggle,
+                'enabled_by_rule' => $satEnabledByRule,
                 'deadline_time' => date('Y-m-d H:i', $satDeadline)
             ],
             'sunday' => [
@@ -4904,6 +4940,7 @@ switch ($action) {
                 'registered' => $sunRegistered,
                 'approved' => $sunApproved,
                 'can_toggle' => $sunCanToggle,
+                'enabled_by_rule' => $sunEnabledByRule,
                 'deadline_time' => date('Y-m-d H:i', $sunDeadline)
             ]
         ]);
@@ -4943,30 +4980,63 @@ switch ($action) {
         }
 
         // Validate if it is weekend day
-        $dayNum = date('N', strtotime($targetDate));
+        $dayNum = (int)date('N', strtotime($targetDate));
         if ($dayNum != 6 && $dayNum != 7) {
             echo json_encode(['success' => false, 'message' => 'Chỉ được phép đăng ký trực cuối tuần cho Thứ 7 hoặc Chủ Nhật.']);
             break;
         }
 
+        // Fetch settings
+        $allowWeekend = 1;
+        $leadHours = 0;
+        $weekendShiftDays = '6,7';
+        $weekendMinCheckinDays = 0;
+        $setSettings = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_weekend_shift_registration', 'weekend_shift_registration_lead_hours', 'weekend_shift_days', 'weekend_shift_min_checkin_days')");
+        if ($setSettings) {
+            while ($sRow = $setSettings->fetch_assoc()) {
+                if ($sRow['setting_key'] === 'allow_weekend_shift_registration') {
+                    $allowWeekend = (int)$sRow['setting_value'];
+                } else if ($sRow['setting_key'] === 'weekend_shift_registration_lead_hours') {
+                    $leadHours = (int)$sRow['setting_value'];
+                } else if ($sRow['setting_key'] === 'weekend_shift_days') {
+                    $weekendShiftDays = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '6,7';
+                } else if ($sRow['setting_key'] === 'weekend_shift_min_checkin_days') {
+                    $weekendMinCheckinDays = (int)$sRow['setting_value'];
+                }
+            }
+        }
+
         // ONLY check registration cutoff deadline and system setting for regular sales (Admin/Manager bypasses all)
         if (!$isAdminOrMgr) {
-            $allowWeekend = 1;
-            $leadHours = 0;
-            $setSettings = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_weekend_shift_registration', 'weekend_shift_registration_lead_hours')");
-            if ($setSettings) {
-                while ($sRow = $setSettings->fetch_assoc()) {
-                    if ($sRow['setting_key'] === 'allow_weekend_shift_registration') {
-                        $allowWeekend = (int)$sRow['setting_value'];
-                    } else if ($sRow['setting_key'] === 'weekend_shift_registration_lead_hours') {
-                        $leadHours = (int)$sRow['setting_value'];
-                    }
-                }
+            $allowedDays = array_map('trim', explode(',', $weekendShiftDays));
+            if (!in_array((string)$dayNum, $allowedDays)) {
+                $dayLabel = $dayNum == 6 ? 'Thứ Bảy' : 'Chủ Nhật';
+                echo json_encode(['success' => false, 'message' => "Quản lý hiện chưa thiết lập mở ca trực cuối tuần cho {$dayLabel}."]);
+                break;
             }
 
             if ($allowWeekend !== 1) {
                 echo json_encode(['success' => false, 'message' => 'Hệ thống hiện không cho phép đăng ký trực cuối tuần.']);
                 break;
+            }
+
+            // Check minimum checkin days in the week
+            if ($register && $weekendMinCheckinDays > 0) {
+                $startOfWeek = date('Y-m-d', strtotime('monday this week', strtotime($targetDate)));
+                $endOfWeek = date('Y-m-d', strtotime('friday this week', strtotime($targetDate)));
+                $stmtChk = $conn->prepare("SELECT COUNT(DISTINCT check_in_date) as cnt FROM check_ins WHERE user_id = ? AND check_in_date BETWEEN ? AND ? AND status IN ('approved', 'pending_approval')");
+                $userCheckinDays = 0;
+                if ($stmtChk) {
+                    $stmtChk->bind_param("iss", $dbUserId, $startOfWeek, $endOfWeek);
+                    $stmtChk->execute();
+                    $chkRow = $stmtChk->get_result()->fetch_assoc();
+                    $stmtChk->close();
+                    $userCheckinDays = (int)($chkRow['cnt'] ?? 0);
+                }
+                if ($userCheckinDays < $weekendMinCheckinDays) {
+                    echo json_encode(['success' => false, 'message' => "Bạn chưa đủ điều kiện đăng ký trực cuối tuần: Cần tối thiểu {$weekendMinCheckinDays} ngày chấm công hợp lệ trong tuần (hiện tại bạn có {$userCheckinDays}/{$weekendMinCheckinDays} ngày)."]);
+                    break;
+                }
             }
 
             // Compute deadline and check if expired
@@ -16469,6 +16539,93 @@ switch ($action) {
             }
         }
 
+        // Query Don vi chay (Marketing Partner) Stats
+        $donviSql = "SELECT COALESCE(NULLIF(TRIM(l.donvi_chay), ''), 'Chưa phân loại') as donvi, COUNT(dl.id) as count 
+                     FROM distribution_logs dl 
+                     INNER JOIN (
+                         SELECT lead_id, MAX(id) as max_id 
+                         FROM distribution_logs 
+                         WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
+                         GROUP BY lead_id
+                     ) dl_max ON dl.id = dl_max.max_id
+                     JOIN leads l ON dl.lead_id = l.id
+                     WHERE $dateConditionDl $managerFilterDl
+                     GROUP BY COALESCE(NULLIF(TRIM(l.donvi_chay), ''), 'Chưa phân loại') 
+                     ORDER BY count DESC";
+        $donviResRaw = $conn->query($donviSql);
+        $donviStats = [];
+        if ($donviResRaw) {
+            $colors = ['#BD1D2D', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
+            $i = 0;
+            while ($row = $donviResRaw->fetch_assoc()) {
+                $donviStats[] = [
+                    'name' => $row['donvi'] ?: 'Chưa phân loại',
+                    'value' => (int) $row['count'],
+                    'color' => $colors[$i % count($colors)]
+                ];
+                $i++;
+            }
+        }
+
+        // Query Campaign Performance Stats
+        $campSql = "SELECT COALESCE(mc.name, NULLIF(TRIM(l.utm_campaign), ''), 'Chiến dịch mặc định') as campaign_name, COUNT(dl.id) as count 
+                    FROM distribution_logs dl 
+                    INNER JOIN (
+                        SELECT lead_id, MAX(id) as max_id 
+                        FROM distribution_logs 
+                        WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
+                        GROUP BY lead_id
+                    ) dl_max ON dl.id = dl_max.max_id
+                    JOIN leads l ON dl.lead_id = l.id
+                    LEFT JOIN marketing_campaigns mc ON l.campaign_id = mc.id
+                    WHERE $dateConditionDl $managerFilterDl
+                    GROUP BY COALESCE(mc.name, NULLIF(TRIM(l.utm_campaign), ''), 'Chiến dịch mặc định') 
+                    ORDER BY count DESC";
+        $campResRaw = $conn->query($campSql);
+        $campaignStats = [];
+        if ($campResRaw) {
+            $colors = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#BD1D2D', '#06b6d4'];
+            $i = 0;
+            while ($row = $campResRaw->fetch_assoc()) {
+                $campaignStats[] = [
+                    'name' => $row['campaign_name'] ?: 'Chiến dịch mặc định',
+                    'value' => (int) $row['count'],
+                    'color' => $colors[$i % count($colors)]
+                ];
+                $i++;
+            }
+        }
+
+        // Query BI Funnel progression
+        $funnelLeads = (int) $statsRes['distributed'];
+        $funnelQualified = 0;
+        $funnelMeeting = 0;
+        $funnelBooking = 0;
+        $funnelDeposited = 0;
+        $funnelRes = $conn->query("
+            SELECT 
+                COUNT(DISTINCT CASE WHEN c.stage_id >= 2 THEN c.id END) as qualified,
+                COUNT(DISTINCT CASE WHEN c.stage_id IN (3, 4, 5, 6) THEN c.id END) as meeting,
+                COUNT(DISTINCT CASE WHEN c.stage_id >= 5 THEN c.id END) as booking,
+                COUNT(DISTINCT CASE WHEN c.stage_id = 6 OR EXISTS(SELECT 1 FROM deposits dp WHERE dp.contact_id = c.id AND dp.status = 'approved') THEN c.id END) as deposited
+            FROM leads l
+            JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.deleted_at IS NULL
+            JOIN distribution_logs dl ON dl.lead_id = l.id AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
+            WHERE $dateConditionDl $managerFilterDl
+        ");
+        if ($funnelRes && $fRow = $funnelRes->fetch_assoc()) {
+            $funnelQualified = (int) $fRow['qualified'];
+            $funnelMeeting = (int) $fRow['meeting'];
+            $funnelBooking = (int) $fRow['booking'];
+            $funnelDeposited = (int) $fRow['deposited'];
+        }
+        $funnelStats = [
+            ['stage' => 'Lead nhận', 'count' => $funnelLeads, 'rate' => 100],
+            ['stage' => 'Quan tâm', 'count' => $funnelQualified, 'rate' => $funnelLeads > 0 ? round(($funnelQualified / $funnelLeads) * 100, 1) : 0],
+            ['stage' => 'Đã gặp', 'count' => $funnelMeeting, 'rate' => $funnelLeads > 0 ? round(($funnelMeeting / $funnelLeads) * 100, 1) : 0],
+            ['stage' => 'Booking', 'count' => $funnelBooking, 'rate' => $funnelLeads > 0 ? round(($funnelBooking / $funnelLeads) * 100, 1) : 0],
+            ['stage' => 'Đặt cọc', 'count' => $funnelDeposited, 'rate' => $funnelLeads > 0 ? round(($funnelDeposited / $funnelLeads) * 100, 1) : 0]
+        ];
 
         // Query Error Stats by Consultant (Approved tickets)
         $dateConditionCreated = str_replace('received_at', 'dr.created_at', $dateCondition);
@@ -16590,7 +16747,10 @@ switch ($action) {
                 'roundRatio' => $roundRatio,
                 'sourceStats' => $sourceStats,
                 'leadSourceStats' => $leadSourceStats,
-                'errorStats' => $errorStats
+                'errorStats' => $errorStats,
+                'donviStats' => $donviStats,
+                'campaignStats' => $campaignStats,
+                'funnelStats' => $funnelStats
             ]
         ]);
         } catch (Throwable $e) {

@@ -80,8 +80,8 @@ const SortableRuleItem = ({ rule, idx, connections, projects = [], onEdit, onDel
         </div>
 
         {/* Content */}
-        <div className="mobile-flex-wrap" style={{ flex: 1, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ flex: 1 }}>
+        <div className="mobile-flex-wrap" style={{ flex: 1, minWidth: 0, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
               {(() => {
                 if (rule.connection_id === null || rule.connection_id === 'all' || rule.connection_id === '') {
@@ -233,7 +233,7 @@ const SortableRuleItem = ({ rule, idx, connections, projects = [], onEdit, onDel
             <ArrowRight className="mobile-rotate-90" size={24} strokeWidth={1.5} style={{ transition: 'transform 0.2s' }} />
           </div>
 
-          <div style={{ flex: '0 0 250px' }}>
+          <div style={{ flex: '0 1 250px', minWidth: '220px' }}>
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>{t("Hành động xử lý")}</p>
             <div style={{
               background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.05), rgba(163, 20, 34, 0.15))',
@@ -767,7 +767,7 @@ const RuleSettingsInner = () => {
   });
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s' }}>
+    <div style={{ animation: 'fadeIn 0.3s', maxWidth: '100%', overflowX: 'hidden' }}>
       <div className="page-header" style={{ marginBottom: '2rem' }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

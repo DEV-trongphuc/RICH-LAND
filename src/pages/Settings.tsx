@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import dbSchemaJson from '../assets/db_schema.json';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -358,6 +359,10 @@ const SettingsInner = () => {
   const [weekendShiftRegReminderEnabled, setWeekendShiftRegReminderEnabled] = useState<boolean>(true);
   const [weekendShiftRegRemindTime, setWeekendShiftRegRemindTime] = useState<string>("15:00");
   const [weekendShiftRegistrationLeadHours, setWeekendShiftRegistrationLeadHours] = useState<number>(0);
+  const [weekendShiftDays, setWeekendShiftDays] = useState<string>("6,7");
+  const [weekendShiftMinCheckinDays, setWeekendShiftMinCheckinDays] = useState<number>(0);
+  const [weekendShiftRoundId, setWeekendShiftRoundId] = useState<number>(0);
+  const [databankClaimRecallHours, setDatabankClaimRecallHours] = useState<number>(24);
   const [requireCheckinWeekendLead, setRequireCheckinWeekendLead] = useState<boolean>(false);
   const [requireCheckinHolidayLead, setRequireCheckinHolidayLead] = useState<boolean>(false);
   const [holidaySchedules, setHolidaySchedules] = useState<any[]>([]);
@@ -925,6 +930,18 @@ const SettingsInner = () => {
         if (json.data.weekend_shift_registration_lead_hours !== undefined) {
           setWeekendShiftRegistrationLeadHours(Number(json.data.weekend_shift_registration_lead_hours));
         }
+        if (json.data.weekend_shift_days !== undefined) {
+          setWeekendShiftDays(json.data.weekend_shift_days || "6,7");
+        }
+        if (json.data.weekend_shift_min_checkin_days !== undefined) {
+          setWeekendShiftMinCheckinDays(Number(json.data.weekend_shift_min_checkin_days) || 0);
+        }
+        if (json.data.weekend_shift_round_id !== undefined) {
+          setWeekendShiftRoundId(Number(json.data.weekend_shift_round_id) || 0);
+        }
+        if (json.data.databank_claim_recall_hours !== undefined) {
+          setDatabankClaimRecallHours(Number(json.data.databank_claim_recall_hours) || 24);
+        }
         if (json.data.allow_pipeline_backward !== undefined) {
           setAllowPipelineBackward(json.data.allow_pipeline_backward === '1' || json.data.allow_pipeline_backward === 1);
         }
@@ -1138,6 +1155,28 @@ const SettingsInner = () => {
     }
     setLoading(false);
   };
+
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.pathname === '/settings') {
+      fetchSettings();
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible' && location.pathname === '/settings') {
+        fetchSettings();
+      }
+    };
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    return () => {
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     fetchSettings();
@@ -1510,6 +1549,10 @@ const SettingsInner = () => {
       coop_eligible_statuses: coopEligibleStatuses,
       coop_default_files: coopDefaultFiles,
       databank_applicable_sources: databankApplicableSources,
+      databank_claim_recall_hours: databankClaimRecallHours,
+      weekend_shift_days: weekendShiftDays,
+      weekend_shift_min_checkin_days: weekendShiftMinCheckinDays,
+      weekend_shift_round_id: weekendShiftRoundId,
       allow_pipeline_backward: allowPipelineBackward ? 1 : 0,
       allow_pipeline_skip: allowPipelineSkip ? 1 : 0,
       standard_commission_rate: standardCommissionRate,
@@ -5167,6 +5210,24 @@ function doPost(e) {
                           {t('Số lượng Sale tối đa được claim trùng chăm sóc song song.')}
                         </span>
                       </div>
+
+                      <div>
+                        <label className="form-label">{t('Thời gian thu hồi lead Chưa xác định (tiếng)')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '4.5rem' }}
+                            value={databankClaimRecallHours}
+                            onChange={e => setDatabankClaimRecallHours(Math.max(1, Number(e.target.value)))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Tự động thu hồi khách nhận từ Databank nếu vẫn ở trạng thái Chưa xác định quá số giờ này (mặc định 24h).')}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -5912,7 +5973,7 @@ function doPost(e) {
                             </div>
                           </div>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.75rem' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.75rem' }}>
                             <div>
                               <label className="form-label">{t('Yêu cầu đăng ký trước ngày trực (tiếng)')}</label>
                               <input
@@ -5926,7 +5987,69 @@ function doPost(e) {
                                 {t('Mặc định 0 tiếng (có thể đăng ký bất cứ lúc nào trước ngày trực).')}
                               </div>
                             </div>
-                            <div />
+
+                            <div>
+                              <label className="form-label">{t('Số ngày chấm công tối thiểu trong tuần (T2 - T6)')}</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="5"
+                                className="form-input"
+                                value={weekendShiftMinCheckinDays}
+                                onChange={e => setWeekendShiftMinCheckinDays(Math.min(5, Math.max(0, Number(e.target.value))))}
+                              />
+                              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                {t('Điều kiện: Sale phải có ít nhất số ngày đi làm hợp lệ trong tuần để được đăng ký trực ca cuối tuần (0 = không giới hạn).')}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="form-label">{t('Vòng phân bổ Lead áp dụng cho ca trực cuối tuần')}</label>
+                              <CustomSelect
+                                value={weekendShiftRoundId}
+                                onChange={(val: any) => setWeekendShiftRoundId(Number(val))}
+                                options={[
+                                  { value: 0, label: t('Mặc định theo quy tắc định tuyến thông thường') },
+                                  ...rounds.map((r: any) => ({ value: Number(r.id), label: `${r.round_name} (${r.round_type === 'grab' ? 'Tranh nhận' : 'Tuần tự'})` }))
+                                ]}
+                              />
+                              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                {t('Lead phát sinh trong ngày trực cuối tuần sẽ ưu tiên áp dụng vòng này cho các Sale trực đã duyệt.')}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="form-label">{t('Cấu hình các ngày tính là cuối tuần')}</label>
+                              <div style={{ display: 'flex', gap: '8px', marginTop: 4 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const current = weekendShiftDays.split(',').map(s => s.trim()).filter(Boolean);
+                                    const next = current.includes('6') ? current.filter(x => x !== '6') : [...current, '6'];
+                                    setWeekendShiftDays(next.join(',') || '7');
+                                  }}
+                                  className={`btn btn-sm ${weekendShiftDays.includes('6') ? 'btn-primary' : 'btn-outline'}`}
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '6px' }}
+                                >
+                                  {weekendShiftDays.includes('6') ? '✓ ' : ''}{t('Thứ Bảy')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const current = weekendShiftDays.split(',').map(s => s.trim()).filter(Boolean);
+                                    const next = current.includes('7') ? current.filter(x => x !== '7') : [...current, '7'];
+                                    setWeekendShiftDays(next.join(',') || '6');
+                                  }}
+                                  className={`btn btn-sm ${weekendShiftDays.includes('7') ? 'btn-primary' : 'btn-outline'}`}
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '6px' }}
+                                >
+                                  {weekendShiftDays.includes('7') ? '✓ ' : ''}{t('Chủ Nhật')}
+                                </button>
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                {t('Chỉ áp dụng chế độ trực cuối tuần cho các ngày được chọn.')}
+                              </div>
+                            </div>
                           </div>
 
                           {/* Thông báo nhắc ĐĂNG KÝ ca trực cuối tuần */}

@@ -148,7 +148,7 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
 
     if (availableProjects.length === 0) {
       try {
-        const pRes = await fetchAPI('projects');
+        const pRes = await fetchAPI('projects?bypass_roster=1');
         if (pRes?.data && Array.isArray(pRes.data)) setAvailableProjects(pRes.data);
         else if (Array.isArray(pRes)) setAvailableProjects(pRes);
       } catch (e) {}

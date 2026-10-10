@@ -309,6 +309,36 @@ if ($targetLeadId > 0 && ($reqAction === 'update_lead' || $reqAction === 'update
         $updParams[] = trim($data['loai_lead']);
         $types .= 's';
     }
+    if (isset($data['donvi_chay'])) {
+        $updFields[] = "donvi_chay = ?";
+        $updParams[] = trim($data['donvi_chay']);
+        $types .= 's';
+    }
+    if (isset($data['ad_name'])) {
+        $updFields[] = "ad_name = ?";
+        $updParams[] = trim($data['ad_name']);
+        $types .= 's';
+    }
+    if (isset($data['form_name'])) {
+        $updFields[] = "form_name = ?";
+        $updParams[] = trim($data['form_name']);
+        $types .= 's';
+    }
+    if (isset($data['campaign_id'])) {
+        $updFields[] = "campaign_id = ?";
+        $updParams[] = trim($data['campaign_id']);
+        $types .= 's';
+    }
+    if (isset($data['project_id']) && is_numeric($data['project_id'])) {
+        $updFields[] = "project_id = ?";
+        $updParams[] = (int)$data['project_id'];
+        $types .= 'i';
+    }
+    if (isset($data['budget']) && is_numeric($data['budget'])) {
+        $updFields[] = "budget = ?";
+        $updParams[] = (float)$data['budget'];
+        $types .= 'd';
+    }
     
     if (!empty($updFields)) {
         $updFields[] = "last_interaction_date = NOW()";
@@ -341,6 +371,41 @@ if ($targetLeadId > 0 && ($reqAction === 'update_lead' || $reqAction === 'update
             $cUpd[] = "lead_phan_loai = ?";
             $cParams[] = trim($data['lead_phan_loai'] ?? $data['phan_loai_lead']);
             $cTypes .= 's';
+        }
+        if (isset($data['loai_lead'])) {
+            $cUpd[] = "loai_lead = ?";
+            $cParams[] = trim($data['loai_lead']);
+            $cTypes .= 's';
+        }
+        if (isset($data['donvi_chay'])) {
+            $cUpd[] = "donvi_chay = ?";
+            $cParams[] = trim($data['donvi_chay']);
+            $cTypes .= 's';
+        }
+        if (isset($data['ad_name'])) {
+            $cUpd[] = "ad_name = ?";
+            $cParams[] = trim($data['ad_name']);
+            $cTypes .= 's';
+        }
+        if (isset($data['form_name'])) {
+            $cUpd[] = "form_name = ?";
+            $cParams[] = trim($data['form_name']);
+            $cTypes .= 's';
+        }
+        if (isset($data['campaign_id']) && is_numeric($data['campaign_id'])) {
+            $cUpd[] = "campaign_id = ?";
+            $cParams[] = (int)$data['campaign_id'];
+            $cTypes .= 'i';
+        }
+        if (isset($data['project_id']) && is_numeric($data['project_id'])) {
+            $cUpd[] = "project_id = ?";
+            $cParams[] = (int)$data['project_id'];
+            $cTypes .= 'i';
+        }
+        if (isset($data['budget']) && is_numeric($data['budget'])) {
+            $cUpd[] = "budget = ?";
+            $cParams[] = (float)$data['budget'];
+            $cTypes .= 'd';
         }
         if (!empty($cUpd)) {
             $sqlC = "UPDATE contacts SET " . implode(', ', $cUpd) . " WHERE lead_id = ?";
@@ -452,12 +517,15 @@ $name = $findSmartField('name', ['name', 'full_name', 'fullname', 'ho_ten', 'hot
 $email = trim($findSmartField('email', ['email', 'mail', 'contact_email', 'customer_email', 'gmail', 'e_mail', 'dia_chi_email', 'client_email', 'email_address']));
 $note = $findSmartField('note', ['note', 'ghi_chu', 'ghichu', 'message', 'noidung', 'noi_dung', 'content', 'message_content', 'comment', 'description', 'thong_tin_them', 'loi_nhan', 'nhu_cau_chi_tiet', 'yeu_cau', 'nhu_cau', 'chi_tiet', 'remark']);
 $source = $findSmartField('source', ['source', 'nguon', 'utm_source', 'origin', 'channel', 'lead_source', 'nguon_data', 'source_name']);
-$type = $findSmartField('type', ['type', 'loai', 'loai_data', 'lead_type', 'demand', 'loai_khach', 'phan_loai']);
+$type = $findSmartField('type', ['type', 'loai', 'loai_data', 'lead_type', 'demand', 'loai_khach']);
 $loai_lead = $findSmartField('loai_lead', ['loai_lead', 'lead_type', 'hinh_thuc_lead', 'hinh_thuc']);
-$lead_phan_loai = $findSmartField('lead_phan_loai', ['lead_phan_loai', 'rank', 'lead_rank', 'phan_loai_lead', 'phan_loai']);
+$lead_phan_loai = $findSmartField('lead_phan_loai', ['lead_phan_loai', 'phan_loai_lead', 'phan_loai', 'rank', 'lead_rank']);
 if (empty($lead_phan_loai)) {
-    $lead_phan_loai = $findSmartField('phan_loai_lead', ['phan_loai_lead', 'lead_phan_loai', 'rank', 'lead_rank']);
+    $lead_phan_loai = $findSmartField('phan_loai_lead', ['phan_loai_lead', 'lead_phan_loai', 'phan_loai', 'rank', 'lead_rank']);
 }
+$donvi_chay = $findSmartField('donvi_chay', ['donvi_chay', 'don_vi_chay', 'agency', 'unit', 'donvi', 'kenh_chay']);
+$ad_name = $findSmartField('ad_name', ['ad_name', 'ten_quang_cao', 'adname', 'ad']);
+$link_video_ads = $findSmartField('link_video_ads', ['link_video_ads', 'video_link', 'link_video']);
 $platform = $findSmartField('platform', ['platform', 'nen_tang', 'utm_platform', 'ad_platform', 'kenh', 'traffic_source']);
 $utm_campaign = $findSmartField('utm_campaign', ['utm_campaign', 'campaign', 'campaign_name', 'ten_chien_dich', 'chien_dich', 'campaign_id']);
 $utm_medium = $findSmartField('utm_medium', ['utm_medium', 'medium', 'hinh_thuc']);
@@ -670,7 +738,13 @@ if (!empty($utm_content)) $data['utm_content'] = $utm_content;
 if (!empty($utm_term)) $data['utm_term'] = $utm_term;
 if (!empty($form_name)) $data['form_name'] = $form_name;
 if (!empty($loai_lead)) $data['loai_lead'] = $loai_lead;
-if (!empty($lead_phan_loai)) $data['lead_phan_loai'] = $lead_phan_loai;
+if (!empty($lead_phan_loai)) {
+    $data['lead_phan_loai'] = $lead_phan_loai;
+    $data['phan_loai_lead'] = $lead_phan_loai;
+}
+if (!empty($donvi_chay)) $data['donvi_chay'] = $donvi_chay;
+if (!empty($ad_name)) $data['ad_name'] = $ad_name;
+if (!empty($link_video_ads)) $data['link_video_ads'] = $link_video_ads;
 if (!empty($property_type)) {
     $data['property_type'] = $property_type;
     $data['loai_hinh'] = $property_type;

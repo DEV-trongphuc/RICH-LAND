@@ -585,6 +585,180 @@ class DashboardController {
         ]);
     }
 
+    public function donviStats(array $auth): void {
+        $scope = $this->resolveUserScope($auth);
+        $tid = $scope['tid'];
+        $from = ($_GET['from'] ?? date('Y-m-01')) . ' 00:00:00';
+        $to   = ($_GET['to']   ?? date('Y-m-t')) . ' 23:59:59';
+
+        $filter = "";
+        $params = [$tid, $from, $to];
+        if ($scope['isSale']) {
+            $filter = " AND (c.owner_id = ? OR l.assigned_to = ?)";
+            $params[] = $scope['uid'];
+            $params[] = $scope['uid'];
+        } else if ($scope['isManager']) {
+            $placeholders = implode(',', array_fill(0, count($scope['userIds']), '?'));
+            $filter = " AND (c.owner_id IN ($placeholders) OR l.assigned_to IN ($placeholders))";
+            $params = array_merge($params, $scope['userIds'], $scope['userIds']);
+        }
+
+        $sql = "
+            SELECT 
+                COALESCE(NULLIF(TRIM(l.donvi_chay), ''), NULLIF(TRIM(c.donvi_chay), ''), 'Chưa phân loại') as donvi_chay,
+                COUNT(DISTINCT l.id) as total_leads,
+                COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.stage_id > 1 THEN c.id END) as qualified_leads,
+                COUNT(DISTINCT dp.id) as deposit_count,
+                COALESCE(SUM(dp.amount), 0) as total_deposit_value,
+                ROUND(
+                    (COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.stage_id > 1 THEN c.id END) * 100.0) / 
+                    NULLIF(COUNT(DISTINCT l.id), 0), 1
+                ) as conversion_rate
+            FROM leads l
+            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.deleted_at IS NULL
+            LEFT JOIN deposits dp ON dp.contact_id = c.id AND dp.status = 'approved'
+            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ?
+            $filter
+            GROUP BY donvi_chay
+            ORDER BY total_leads DESC
+        ";
+
+        $rows = $this->queryAll($sql, $params);
+        respond(200, $rows);
+    }
+
+    public function campaignStats(array $auth): void {
+        $scope = $this->resolveUserScope($auth);
+        $tid = $scope['tid'];
+        $from = ($_GET['from'] ?? date('Y-m-01')) . ' 00:00:00';
+        $to   = ($_GET['to']   ?? date('Y-m-t')) . ' 23:59:59';
+
+        $filter = "";
+        $params = [$tid, $from, $to];
+        if ($scope['isSale']) {
+            $filter = " AND (c.owner_id = ? OR l.assigned_to = ?)";
+            $params[] = $scope['uid'];
+            $params[] = $scope['uid'];
+        } else if ($scope['isManager']) {
+            $placeholders = implode(',', array_fill(0, count($scope['userIds']), '?'));
+            $filter = " AND (c.owner_id IN ($placeholders) OR l.assigned_to IN ($placeholders))";
+            $params = array_merge($params, $scope['userIds'], $scope['userIds']);
+        }
+
+        $sql = "
+            SELECT 
+                COALESCE(mc.name, NULLIF(TRIM(l.utm_campaign), ''), 'Chiến dịch mặc định') as campaign_name,
+                COUNT(DISTINCT l.id) as total_leads,
+                COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.stage_id > 1 THEN c.id END) as qualified_leads,
+                COUNT(DISTINCT dp.id) as deposit_count,
+                COALESCE(SUM(dp.amount), 0) as total_deposit_value,
+                ROUND(
+                    (COUNT(DISTINCT dp.id) * 100.0) / NULLIF(COUNT(DISTINCT l.id), 0), 1
+                ) as deposit_conversion_rate
+            FROM leads l
+            LEFT JOIN marketing_campaigns mc ON l.campaign_id = mc.id
+            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.deleted_at IS NULL
+            LEFT JOIN deposits dp ON dp.contact_id = c.id AND dp.status = 'approved'
+            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ?
+            $filter
+            GROUP BY campaign_name
+            ORDER BY total_leads DESC
+        ";
+
+        $rows = $this->queryAll($sql, $params);
+        respond(200, $rows);
+    }
+
+    public function biFunnel(array $auth): void {
+        $scope = $this->resolveUserScope($auth);
+        $tid = $scope['tid'];
+        $from = ($_GET['from'] ?? date('Y-m-01')) . ' 00:00:00';
+        $to   = ($_GET['to']   ?? date('Y-m-t')) . ' 23:59:59';
+
+        $filter = "";
+        $params = [$tid, $from, $to];
+        if ($scope['isSale']) {
+            $filter = " AND (c.owner_id = ? OR l.assigned_to = ?)";
+            $params[] = $scope['uid'];
+            $params[] = $scope['uid'];
+        } else if ($scope['isManager']) {
+            $placeholders = implode(',', array_fill(0, count($scope['userIds']), '?'));
+            $filter = " AND (c.owner_id IN ($placeholders) OR l.assigned_to IN ($placeholders))";
+            $params = array_merge($params, $scope['userIds'], $scope['userIds']);
+        }
+
+        // Funnel 5 standard milestones
+        $totalLeads = (int)$this->queryScalar("
+            SELECT COUNT(DISTINCT l.id) FROM leads l 
+            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone)
+            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? $filter
+        ", $params);
+
+        $qualified = (int)$this->queryScalar("
+            SELECT COUNT(DISTINCT c.id) FROM contacts c 
+            JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
+            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? AND c.stage_id >= 2 $filter
+        ", $params);
+
+        $meeting = (int)$this->queryScalar("
+            SELECT COUNT(DISTINCT c.id) FROM contacts c 
+            JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
+            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? AND c.stage_id IN (3, 4, 5, 6) $filter
+        ", $params);
+
+        $booking = (int)$this->queryScalar("
+            SELECT COUNT(DISTINCT c.id) FROM contacts c 
+            JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
+            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? AND c.stage_id >= 5 $filter
+        ", $params);
+
+        $deposited = (int)$this->queryScalar("
+            SELECT COUNT(DISTINCT c.id) FROM contacts c 
+            JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
+            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? AND (c.stage_id = 6 OR EXISTS(SELECT 1 FROM deposits dp WHERE dp.contact_id = c.id AND dp.status = 'approved')) $filter
+        ", $params);
+
+        $funnel = [
+            [
+                'step' => 1,
+                'name' => 'Lead Tiếp nhận',
+                'count' => $totalLeads,
+                'rate_from_previous' => 100.0,
+                'rate_overall' => 100.0
+            ],
+            [
+                'step' => 2,
+                'name' => 'Quan tâm / Khách nét',
+                'count' => $qualified,
+                'rate_from_previous' => $totalLeads > 0 ? round(($qualified / $totalLeads) * 100, 1) : 0,
+                'rate_overall' => $totalLeads > 0 ? round(($qualified / $totalLeads) * 100, 1) : 0
+            ],
+            [
+                'step' => 3,
+                'name' => 'Gặp trực tiếp / Xem nhà',
+                'count' => $meeting,
+                'rate_from_previous' => $qualified > 0 ? round(($meeting / $qualified) * 100, 1) : 0,
+                'rate_overall' => $totalLeads > 0 ? round(($meeting / $totalLeads) * 100, 1) : 0
+            ],
+            [
+                'step' => 4,
+                'name' => 'Booking giữ chỗ',
+                'count' => $booking,
+                'rate_from_previous' => $meeting > 0 ? round(($booking / $meeting) * 100, 1) : 0,
+                'rate_overall' => $totalLeads > 0 ? round(($booking / $totalLeads) * 100, 1) : 0
+            ],
+            [
+                'step' => 5,
+                'name' => 'Đặt cọc thành công (Won)',
+                'count' => $deposited,
+                'rate_from_previous' => $booking > 0 ? round(($deposited / $booking) * 100, 1) : 0,
+                'rate_overall' => $totalLeads > 0 ? round(($deposited / $totalLeads) * 100, 1) : 0
+            ]
+        ];
+
+        respond(200, $funnel);
+    }
+
     private function resolveUserScope(array $auth): array {
         $role = $auth['role'] ?? '';
         $uid = (int)($auth['user_id'] ?? 0);

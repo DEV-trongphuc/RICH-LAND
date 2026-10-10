@@ -107,8 +107,23 @@ if (!function_exists('get_system_setting')) {
 if (!function_exists('isRestDayForUser')) {
     function isRestDayForUser($conn, $userId, $date) {
         $dayOfWeek = (int)date('N', strtotime($date));
+        if ($dayOfWeek < 6) {
+            return false;
+        }
+
+        // Check if day is configured as weekend day by manager
+        $weekendDaysStr = '6,7';
+        $resW = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'weekend_shift_days' LIMIT 1");
+        if ($resW && $wRow = $resW->fetch_assoc()) {
+            if (!empty($wRow['setting_value'])) $weekendDaysStr = $wRow['setting_value'];
+        }
+        $configuredWeekend = array_map('trim', explode(',', $weekendDaysStr));
+        if (!in_array((string)$dayOfWeek, $configuredWeekend)) {
+            return false;
+        }
+
         if ($dayOfWeek == 7) {
-            return true; // Sunday is always rest day
+            return true; // Sunday is rest day if in configured weekend
         }
         if ($dayOfWeek == 6) { // Saturday
             // 1. Check user's individual schedule if use_custom_work_hours is enabled

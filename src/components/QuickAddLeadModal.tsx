@@ -982,7 +982,7 @@ export const QuickAddLeadModal = () => {
   // Load projects list for project_id select
   const fetchProjects = async () => {
     try {
-      const res = await fetchAPI('projects?limit=1000');
+      const res = await fetchAPI('projects?bypass_roster=1&limit=1000');
       if (res && res.success) {
         const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
         setProjectsList(list);

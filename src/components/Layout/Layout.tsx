@@ -2263,8 +2263,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
         </button>
 
-        {/* 4. Kho data / Quản Lý Lead (Cho MKT) */}
-        {(user?.role as string) === 'marketing' || (user?.role as string) === 'mkt' ? (
+        {/* 4. Kho data / Quản Lý Lead */}
+        {['marketing', 'mkt', 'admin', 'superadmin', 'manager', 'director'].includes(user?.role as string) ? (
           <button 
             className={`mobile-bottom-nav-item ${location.pathname === '/data' || location.pathname === '/leads' ? 'active' : ''}`}
             onClick={() => navigate('/data')}

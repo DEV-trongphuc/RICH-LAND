@@ -2503,6 +2503,217 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               </div>
             </div>
 
+            {/* ── BI Analytics & Real Estate Funnel (Sheet 2) ── */}
+            <div style={{
+              gridColumn: '1 / -1',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+              gap: '1.25rem',
+              marginTop: '0.5rem'
+            }}>
+              {/* 1. Real Estate Conversion Funnel */}
+              <div className="card hover-lift" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: 320 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8,
+                      background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <Filter size={16} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                        {t('Phễu Chuyển Đổi Bất Động Sản')}
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                        {t('Tiến trình Lead -> Quan tâm -> Gặp -> Booking -> Cọc')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, justifyContent: 'center' }}>
+                  {stats?.funnelStats && stats.funnelStats.length > 0 ? (
+                    stats.funnelStats.map((item: any, idx: number) => {
+                      const stepColors = ['#BD1D2D', '#d97706', '#2563eb', '#8b5cf6', '#059669'];
+                      const color = stepColors[idx % stepColors.length];
+                      return (
+                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                            <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{
+                                width: 18, height: 18, borderRadius: '50%', background: `${color}15`,
+                                color: color, fontSize: '0.68rem', fontWeight: 800,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                              }}>
+                                {idx + 1}
+                              </span>
+                              {t(item.stage)}
+                            </span>
+                            <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>
+                              {item.count} <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>({item.rate}%)</span>
+                            </span>
+                          </div>
+                          <div style={{ width: '100%', height: 7, background: 'var(--color-bg)', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${Math.min(100, Math.max(item.count > 0 ? 3 : 0, item.rate))}%`,
+                              height: '100%',
+                              background: color,
+                              borderRadius: 4,
+                              transition: 'width 0.4s ease'
+                            }} />
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '2rem 1rem' }}>
+                      {t('Chưa có dữ liệu phễu chuyển đổi cho khoảng thời gian này')}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Marketing Partner Breakdown (donvi_chay) */}
+              <div className="card hover-lift" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: 320 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8,
+                      background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <BarChart2 size={16} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                        {t('Đơn Vị Chạy Quảng Cáo')}
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                        {t('Phân phối và hiệu suất theo đối tác MKT')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', overflowY: 'auto', flex: 1, maxHeight: 250, paddingRight: 4 }}>
+                  {stats?.donviStats && stats.donviStats.length > 0 ? (
+                    stats.donviStats.map((item: any, idx: number) => {
+                      const totalD = Math.max(1, stats?.distributed_today || 1);
+                      const pct = Math.round((item.value / totalD) * 100);
+                      return (
+                        <div key={idx} style={{
+                          background: theme === 'dark' ? 'rgba(255, 255, 255, 0.015)' : 'var(--color-bg)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: 8,
+                          padding: '8px 12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color || '#2563eb' }} />
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {item.name}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                              {item.value} <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>lead</span>
+                            </span>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              background: 'var(--color-primary-light)',
+                              color: 'var(--color-primary)'
+                            }}>
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '2rem 1rem' }}>
+                      {t('Chưa có thông tin đơn vị chạy cho khoảng thời gian này')}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. Campaign Performance */}
+              <div className="card hover-lift" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: 320 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8,
+                      background: 'rgba(16, 185, 129, 0.1)', color: '#10b981',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <Zap size={16} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                        {t('Chiến Dịch Marketing')}
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                        {t('Lưu lượng Lead theo chiến dịch')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', overflowY: 'auto', flex: 1, maxHeight: 250, paddingRight: 4 }}>
+                  {stats?.campaignStats && stats.campaignStats.length > 0 ? (
+                    stats.campaignStats.map((item: any, idx: number) => {
+                      const totalD = Math.max(1, stats?.distributed_today || 1);
+                      const pct = Math.round((item.value / totalD) * 100);
+                      return (
+                        <div key={idx} style={{
+                          background: theme === 'dark' ? 'rgba(255, 255, 255, 0.015)' : 'var(--color-bg)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: 8,
+                          padding: '8px 12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color || '#10b981', flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {item.name}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                              {item.value} <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>lead</span>
+                            </span>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              background: 'rgba(16, 185, 129, 0.1)',
+                              color: '#059669'
+                            }}>
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '2rem 1rem' }}>
+                      {t('Chưa có dữ liệu chiến dịch trong giai đoạn này')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
           </div>
         </>
       )}{/* end stats ternary */}

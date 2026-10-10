@@ -540,6 +540,9 @@ switch ($resource) {
         elseif ($resourceId === 'lead-sources')       $ctrl->leadSources($auth);
         elseif ($resourceId === 'sales-leaderboard')  $ctrl->salesLeaderboard($auth);
         elseif ($resourceId === 'my-stats')           $ctrl->myStats($auth);
+        elseif ($resourceId === 'donvi-stats')        $ctrl->donviStats($auth);
+        elseif ($resourceId === 'campaign-stats')     $ctrl->campaignStats($auth);
+        elseif ($resourceId === 'bi-funnel')          $ctrl->biFunnel($auth);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 

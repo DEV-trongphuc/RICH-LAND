@@ -4813,7 +4813,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                       {tk.contact_id ? (
                                         <button
-                                          onClick={() => setSelectedContactForDrawer({ id: Number(tk.contact_id), name: selectedLead.name })}
+                                          onClick={() => {
+                                            setSelectedContactForDrawer({ id: Number(tk.contact_id), name: selectedLead.name });
+                                            setSelectedLead(null);
+                                          }}
                                           className="btn sm"
                                           style={{
                                             background: 'var(--color-primary-light)',
