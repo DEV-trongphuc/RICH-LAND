@@ -7885,6 +7885,33 @@ switch ($action) {
             }
         }
 
+        require_once __DIR__ . '/webhook_logic.php';
+        $currentTime = date('H:i');
+        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '22:00';
+        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+        $isNightShiftNow = false;
+        if ($nightShiftStart < $nightShiftEnd) {
+            $isNightShiftNow = ($currentTime >= $nightShiftStart && $currentTime <= $nightShiftEnd);
+        } else {
+            $isNightShiftNow = ($currentTime >= $nightShiftStart || $currentTime <= $nightShiftEnd);
+        }
+
+        $holidayName = '';
+        $holidaySchedulesJson = '[]';
+        $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+        if ($resHol && $hRow = $resHol->fetch_assoc()) {
+            $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+        }
+        $holidays = json_decode($holidaySchedulesJson, true);
+        if (is_array($holidays)) {
+            foreach ($holidays as $h) {
+                if ($todayStr >= $h['start'] && $todayStr <= $h['end']) {
+                    $holidayName = $h['name'];
+                    break;
+                }
+            }
+        }
+
         $inactiveOrVacationIds = [];
         $ivRes = $conn->query("SELECT id FROM consultants WHERE status != 'active' OR vacation_mode = 1");
         if ($ivRes) {
@@ -7911,11 +7938,22 @@ switch ($action) {
             $readyIndices = [];
             $readyConsultantIds = [];
             if (!empty($cIds)) {
-                // Filter only consultants who are currently ready (active, not on vacation, checked-in or on approved shift)
+                // Filter only consultants who are currently ready based on Gate 2 (active, not on vacation, checked-in or on approved shift)
                 foreach ($cIds as $idx => $cid) {
                     $cidInt = (int)$cid;
-                    $isReady = (!in_array($cidInt, $inactiveOrVacationIds, true)) && 
-                               (in_array($cidInt, $checkedInIds, true) || in_array($cidInt, $approvedShiftIds, true));
+                    if (in_array($cidInt, $inactiveOrVacationIds, true)) {
+                        continue;
+                    }
+
+                    $isRestDay = function_exists('isRestDayForUser') ? isRestDayForUser($conn, $cidInt, $todayStr) : false;
+                    $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
+
+                    if ($isNightShiftNow || $isWeekendOrHoliday) {
+                        $isReady = in_array($cidInt, $approvedShiftIds, true);
+                    } else {
+                        $isReady = in_array($cidInt, $checkedInIds, true);
+                    }
+
                     if ($isReady) {
                         $readyIndices[] = $idx;
                         $readyConsultantIds[] = $cidInt;
