@@ -8283,7 +8283,7 @@ switch ($action) {
                 $stmt->bind_param("siissssiisiiiii", $name, $status, $is_schedule_active, $active_time_start, $active_time_end, $active_days, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
             } else {
                 $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, is_schedule_active=?, active_time_start=?, active_time_end=?, active_days=?, cc_emails=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=?, grab_max_attempts=? WHERE id=?");
-                $stmt->bind_param("siisssssisiiiii", $name, $status, $is_schedule_active, $active_time_start, $active_time_end, $active_days, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
+                $stmt->bind_param("siissssiisiiii", $name, $status, $is_schedule_active, $active_time_start, $active_time_end, $active_days, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
             }
             $stmt->execute();
             $stmt->close();

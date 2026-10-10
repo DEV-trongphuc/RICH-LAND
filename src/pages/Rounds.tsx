@@ -2633,13 +2633,9 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                 <div key={user.id} style={{
                                   display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem',
                                   background: 'var(--color-bg)', 
-                                  border: info.isReady 
-                                    ? (theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(16, 185, 129, 0.35)') 
-                                    : '1px solid var(--color-border)', 
-                                  borderLeft: info.isReady ? '3.5px solid #10b981' : '1px solid var(--color-border)',
+                                  border: '1px solid var(--color-border)', 
                                   borderRadius: 10,
-                                  transition: 'all 0.2s',
-                                  boxShadow: info.isReady ? '0 1px 4px rgba(16, 185, 129, 0.08)' : 'none'
+                                  transition: 'all 0.2s'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                     <div style={{ position: 'relative' }}>

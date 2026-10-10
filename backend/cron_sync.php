@@ -1578,7 +1578,7 @@ if (!function_exists('recallInactiveLeads')) {
                 } else if (!$newConsultantId) {
                     $nextAttemptDate = !empty($excludeIds) ? date('Y-m-d 08:00:00', strtotime('+1 day')) : null;
                     $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending', target_round_id = ?, next_attempt_date = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
-                    $upLead->bind_param("isii", $roundId, $nextAttemptDate, $leadId);
+                    $upLead->bind_param("isi", $roundId, $nextAttemptDate, $leadId);
                     $upLead->execute();
                     $upLead->close();
                     
@@ -3273,7 +3273,7 @@ function assignParallelLeads($conn) {
             // Insert matching lead record with assigned_to set to second sale
             $stmtLead = $conn->prepare("INSERT INTO leads (id, person_id, phone, email, name, source, status, assigned_to, is_accepted, last_assigned_at, last_interaction_date) VALUES (?, ?, ?, ?, ?, ?, 'assigned', ?, 0, NOW(), NOW()) ON DUPLICATE KEY UPDATE assigned_to = VALUES(assigned_to), last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0");
             $leadName = trim($row['first_name'] . ' ' . $row['last_name']);
-            $stmtLead->bind_param("iisssssi", $secondContactId, $personId, $row['phone'], $row['email'], $leadName, $row['source'], $secondSaleId);
+            $stmtLead->bind_param("iissssi", $secondContactId, $personId, $row['phone'], $row['email'], $leadName, $row['source'], $secondSaleId);
             $stmtLead->execute();
             $stmtLead->close();
             

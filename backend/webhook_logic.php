@@ -1878,7 +1878,7 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
         preferred_location = IF(VALUES(preferred_location) IS NOT NULL AND VALUES(preferred_location) != '', VALUES(preferred_location), preferred_location)");
     
     $stmt->bind_param(
-        "sssssssii" . "sssss" . "sssss" . "isdsss" . "ssssss",
+        "sssssssiissssssssssisdsssssssss",
         $phone, $email, $name, $source, $type, $note, $dateVal, $assignedConsultantId, $connectionId,
         $leadPhanLoai, $donviChay, $adName, $formName, $loaiLead,
         $utmCampaign, $utmMedium, $utmContent, $utmTerm, $platform,
@@ -4892,7 +4892,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             if ($stmtContact) {
                 $createdBy = 1;
                 $stmtContact->bind_param(
-                    "iiiiissssssissssssssssssssdssssssssssssssssss",
+                    "iiiiissssssissssssssssssssdssssssssssssssss",
                     $person_id, $leadId, $projectId, $ownerUserId, $createdBy,
                     $firstName, $lastName, $email, $phone, $source,
                     $triggerStatus, $stageId, $secExpiresTime, $note,
