@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
@@ -202,6 +202,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   }, [roundCooldowns]);
 
   const [searchUser, setSearchUser] = useState('');
+  const [selectedUserFilter, setSelectedUserFilter] = useState<'all' | 'ready' | 'not_ready'>('all');
+  const [selectedUserSearch, setSelectedUserSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [showStartSaleDropdown, setShowStartSaleDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -239,6 +241,115 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     if (index >= 75) return { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)' };
     return { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)' };
   };
+
+  const getConsultantStatusInfo = (userId: number) => {
+    const cool = roundCooldowns[userId];
+    if (cool && cool.on_cooldown) {
+      const totalSecs = cool.remaining_seconds;
+      const mins = Math.floor(totalSecs / 60);
+      const secs = totalSecs % 60;
+      const timeText = mins > 0 ? `${mins} phút ${secs}s` : `${secs}s`;
+      return {
+        isReady: false,
+        status: 'cooldown',
+        label: t("Đang chờ {time}").replace('{time}', timeText),
+        color: '#d97706',
+        bgLight: '#fef3c7',
+        bgDark: 'rgba(217, 119, 6, 0.15)'
+      };
+    }
+
+    const cStat = consultantStatuses[userId];
+    if (cStat) {
+      if (cStat.status === 'no_checkin') {
+        return { isReady: false, status: 'no_checkin', label: t("Chưa chấm công"), color: '#d97706', bgLight: '#fef3c7', bgDark: 'rgba(217, 119, 6, 0.15)' };
+      }
+      if (cStat.status === 'pending_checkin') {
+        return { isReady: false, status: 'pending_checkin', label: t("Chờ duyệt check-in"), color: '#b45309', bgLight: '#fef3c7', bgDark: 'rgba(245, 158, 11, 0.15)' };
+      }
+      if (cStat.status === 'rejected_checkin') {
+        return { isReady: false, status: 'rejected_checkin', label: t("Check-in bị từ chối"), color: '#dc2626', bgLight: '#fee2e2', bgDark: 'rgba(220, 38, 38, 0.15)' };
+      }
+      if (cStat.status === 'no_night_shift') {
+        return { isReady: false, status: 'no_night_shift', label: t("Chưa trực đêm"), color: '#7c3aed', bgLight: '#ede9fe', bgDark: 'rgba(124, 58, 237, 0.15)' };
+      }
+      if (cStat.status === 'no_weekend_shift') {
+        return { isReady: false, status: 'no_weekend_shift', label: t("Chưa trực cuối tuần"), color: '#7c3aed', bgLight: '#ede9fe', bgDark: 'rgba(124, 58, 237, 0.15)' };
+      }
+      if (cStat.status === 'no_holiday_shift') {
+        return { isReady: false, status: 'no_holiday_shift', label: t("Chưa trực lễ"), color: '#7c3aed', bgLight: '#ede9fe', bgDark: 'rgba(124, 58, 237, 0.15)' };
+      }
+      if (cStat.status === 'out_of_hours') {
+        return { isReady: false, status: 'out_of_hours', label: t("Ngoài giờ làm"), color: '#6b7280', bgLight: '#f3f4f6', bgDark: 'rgba(107, 114, 128, 0.15)' };
+      }
+      if (cStat.status === 'on_leave') {
+        return { isReady: false, status: 'on_leave', label: t("Nghỉ phép"), color: '#dc2626', bgLight: '#fee2e2', bgDark: 'rgba(220, 38, 38, 0.15)' };
+      }
+      if (cStat.status === 'vacation') {
+        return { isReady: false, status: 'vacation', label: t("Tạm ngưng"), color: '#dc2626', bgLight: '#fee2e2', bgDark: 'rgba(220, 38, 38, 0.15)' };
+      }
+      if (cStat.status === 'inactive') {
+        return { isReady: false, status: 'inactive', label: t("Nghỉ việc"), color: '#dc2626', bgLight: '#fee2e2', bgDark: 'rgba(220, 38, 38, 0.15)' };
+      }
+      if (cStat.status === 'ready') {
+        return { isReady: true, status: 'ready', label: t("Sẵn sàng"), color: '#059669', bgLight: '#d1fae5', bgDark: 'rgba(5, 150, 105, 0.15)' };
+      }
+    }
+
+    return {
+      isReady: true,
+      status: 'ready',
+      label: t("Sẵn sàng"),
+      color: '#059669',
+      bgLight: '#d1fae5',
+      bgDark: 'rgba(5, 150, 105, 0.15)'
+    };
+  };
+
+  const selectedUsersStatusStats = useMemo(() => {
+    let ready = 0;
+    let cooldown = 0;
+    let notReady = 0;
+    formData.selected_users.forEach(id => {
+      const info = getConsultantStatusInfo(id);
+      if (info.isReady) ready++;
+      else if (info.status === 'cooldown') cooldown++;
+      else notReady++;
+    });
+    return { ready, cooldown, notReady, total: formData.selected_users.length };
+  }, [formData.selected_users, roundCooldowns, consultantStatuses]);
+
+  const processedSelectedUsers = useMemo(() => {
+    // 1. Sort: Ready first, then cooldown, then others
+    const sorted = [...formData.selected_users].sort((a, b) => {
+      const aInfo = getConsultantStatusInfo(a);
+      const bInfo = getConsultantStatusInfo(b);
+      if (aInfo.isReady && !bInfo.isReady) return -1;
+      if (!aInfo.isReady && bInfo.isReady) return 1;
+      if (aInfo.status === 'cooldown' && bInfo.status !== 'cooldown') return -1;
+      if (aInfo.status !== 'cooldown' && bInfo.status === 'cooldown') return 1;
+      return 0;
+    });
+
+    // 2. Filter by status tab
+    let filtered = sorted;
+    if (selectedUserFilter === 'ready') {
+      filtered = filtered.filter(id => getConsultantStatusInfo(id).isReady);
+    } else if (selectedUserFilter === 'not_ready') {
+      filtered = filtered.filter(id => !getConsultantStatusInfo(id).isReady);
+    }
+
+    // 3. Search query filter
+    if (selectedUserSearch.trim()) {
+      const q = selectedUserSearch.toLowerCase().trim();
+      filtered = filtered.filter(id => {
+        const u = consultants.find(c => Number(c.id) === id);
+        return u && (u.name.toLowerCase().includes(q) || (u.email && u.email.toLowerCase().includes(q)));
+      });
+    }
+
+    return filtered;
+  }, [formData.selected_users, selectedUserFilter, selectedUserSearch, roundCooldowns, consultantStatuses, consultants]);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -363,6 +474,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     setSelectedAdmins([]);
     setEnableExternalCc(false);
     setExternalCcEmails('');
+    setSelectedUserFilter('all');
+    setSelectedUserSearch('');
     setModalOpen(true);
   };
 
@@ -452,6 +565,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     setSelectedAdmins(matchedAdmins);
     setEnableExternalCc(externalEmails.length > 0);
     setExternalCcEmails(externalEmails.join(', '));
+    setSelectedUserFilter('all');
+    setSelectedUserSearch('');
 
     setModalOpen(true);
     fetchReports(r.id);
@@ -1119,45 +1234,97 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
                   <div style={{ flex: 1, marginBottom: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '1rem', flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: 0, minWidth: 95 }}>
-                          {t('{count} Thành viên').replace('{count}', String(consList.length))}
-                        </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: 0, minWidth: 95 }}>
+                            {t('{count} Thành viên').replace('{count}', String(consList.length))}
+                          </p>
+                          {typeof r.ready_count === 'number' && (
+                            <span style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              color: r.ready_count > 0 ? '#059669' : '#d97706',
+                              background: r.ready_count > 0 
+                                ? (theme === 'dark' ? 'rgba(5, 150, 105, 0.2)' : '#d1fae5') 
+                                : (theme === 'dark' ? 'rgba(217, 119, 6, 0.15)' : '#fef3c7'),
+                              border: `1px solid ${r.ready_count > 0 ? 'rgba(5, 150, 105, 0.3)' : 'rgba(217, 119, 6, 0.3)'}`,
+                              padding: '2px 8px',
+                              borderRadius: 12,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5
+                            }}>
+                              <span style={{ 
+                                width: 6, 
+                                height: 6, 
+                                borderRadius: '50%', 
+                                background: r.ready_count > 0 ? '#10b981' : '#f59e0b',
+                                boxShadow: r.ready_count > 0 ? '0 0 6px #10b981' : 'none'
+                              }} />
+                              {r.ready_count} {t("Sẵn sàng")}
+                            </span>
+                          )}
+                        </div>
                         {consList.length > 0 ? (
                           <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center' }}>
-                            {consList.slice(0, 4).map((c: string, i: number) => {
-                              const matchedCons = consultants.find(x => x.name === c);
-                              return (
-                                <span
-                                  key={i}
-                                  className="avatar-stack-item"
-                                  data-tooltip={(() => {
-                                    const cId = consIds[consList.indexOf(c)];
-                                    const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
-                                    return `${c} • ${leadCount}`;
-                                  })()}
-                                  style={{
-                                    marginLeft: i === 0 ? 0 : -8,
-                                    position: 'relative',
-                                    zIndex: 10 - i,
-                                    display: 'inline-block',
-                                    borderRadius: '50%'
-                                  }}
-                                >
-                                  <Avatar
-                                    src={matchedCons?.avatar}
-                                    name={c}
-                                    size={32}
+                            {(() => {
+                              const readySet = new Set((r.ready_consultant_ids || []).map((id: any) => Number(id)));
+                              const sortedConsList = [...consList].sort((a: string, b: string) => {
+                                const aId = consIds[consList.indexOf(a)];
+                                const bId = consIds[consList.indexOf(b)];
+                                const aReady = readySet.has(Number(aId));
+                                const bReady = readySet.has(Number(bId));
+                                if (aReady && !bReady) return -1;
+                                if (!aReady && bReady) return 1;
+                                return 0;
+                              });
+
+                              return sortedConsList.slice(0, 4).map((c: string, i: number) => {
+                                const matchedCons = consultants.find(x => x.name === c);
+                                const cId = consIds[consList.indexOf(c)];
+                                const isReady = readySet.has(Number(cId));
+                                const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
+                                return (
+                                  <span
+                                    key={i}
+                                    className="avatar-stack-item"
+                                    data-tooltip={`${c} • ${leadCount} data${isReady ? ' • ' + t('Sẵn sàng') : ''}`}
                                     style={{
-                                      border: '2px solid var(--color-surface)',
-                                      boxShadow: 'var(--shadow-sm)',
-                                      filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
-                                      opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
+                                      marginLeft: i === 0 ? 0 : -8,
+                                      position: 'relative',
+                                      zIndex: 10 - i,
+                                      display: 'inline-block',
+                                      borderRadius: '50%'
                                     }}
-                                  />
-                                </span>
-                              );
-                            })}
+                                  >
+                                    <Avatar
+                                      src={matchedCons?.avatar}
+                                      name={c}
+                                      size={32}
+                                      style={{
+                                        border: isReady ? '2px solid #10b981' : '2px solid var(--color-surface)',
+                                        boxShadow: isReady ? '0 0 6px rgba(16, 185, 129, 0.4)' : 'var(--shadow-sm)',
+                                        filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                                        opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
+                                      }}
+                                    />
+                                    {isReady && (
+                                      <span style={{
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        right: 0,
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: '50%',
+                                        background: '#10b981',
+                                        border: '1.5px solid var(--color-surface)',
+                                        boxShadow: '0 0 4px #10b981'
+                                      }} />
+                                    )}
+                                  </span>
+                                );
+                              });
+                            })()}
                             {consList.length > 4 && (
                               <div style={{
                                 width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)',
@@ -1407,42 +1574,94 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
                 <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: '0.5rem', minWidth: 90 }}>
-                      {t('{count} Thành viên').replace('{count}', String(consList.length))}
-                    </p>
-                    {consList.slice(0, 4).map((c: string, i: number) => {
-                      const matchedCons = consultants.find(cons => cons.name === c);
-                      return (
-                        <span
-                          key={i}
-                          className="avatar-stack-item"
-                          data-tooltip={(() => {
-                            const cId = consIds[consList.indexOf(c)];
-                            const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
-                            return `${c} • ${leadCount}`;
-                          })()}
-                          style={{
-                            marginLeft: i > 0 ? -12 : 0,
-                            position: 'relative',
-                            zIndex: 10 - i,
-                            display: 'inline-block',
-                            borderRadius: '50%'
-                          }}
-                        >
-                          <Avatar
-                            src={matchedCons?.avatar}
-                            name={c}
-                            size={32}
-                            style={{
-                              border: '2px solid var(--color-surface)',
-                              boxShadow: 'var(--shadow-sm)',
-                              filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
-                              opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
-                            }}
-                          />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: '0.5rem', minWidth: 90 }}>
+                        {t('{count} Thành viên').replace('{count}', String(consList.length))}
+                      </p>
+                      {typeof r.ready_count === 'number' && (
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          color: r.ready_count > 0 ? '#059669' : '#d97706',
+                          background: r.ready_count > 0 
+                            ? (theme === 'dark' ? 'rgba(5, 150, 105, 0.2)' : '#d1fae5') 
+                            : (theme === 'dark' ? 'rgba(217, 119, 6, 0.15)' : '#fef3c7'),
+                          border: `1px solid ${r.ready_count > 0 ? 'rgba(5, 150, 105, 0.3)' : 'rgba(217, 119, 6, 0.3)'}`,
+                          padding: '2px 8px',
+                          borderRadius: 12,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5
+                        }}>
+                          <span style={{ 
+                            width: 6, 
+                            height: 6, 
+                            borderRadius: '50%', 
+                            background: r.ready_count > 0 ? '#10b981' : '#f59e0b',
+                            boxShadow: r.ready_count > 0 ? '0 0 6px #10b981' : 'none'
+                          }} />
+                          {r.ready_count} {t("Sẵn sàng")}
                         </span>
-                      );
-                    })}
+                      )}
+                    </div>
+                    {(() => {
+                      const readySet = new Set((r.ready_consultant_ids || []).map((id: any) => Number(id)));
+                      const sortedConsList = [...consList].sort((a: string, b: string) => {
+                        const aId = consIds[consList.indexOf(a)];
+                        const bId = consIds[consList.indexOf(b)];
+                        const aReady = readySet.has(Number(aId));
+                        const bReady = readySet.has(Number(bId));
+                        if (aReady && !bReady) return -1;
+                        if (!aReady && bReady) return 1;
+                        return 0;
+                      });
+
+                      return sortedConsList.slice(0, 4).map((c: string, i: number) => {
+                        const matchedCons = consultants.find(cons => cons.name === c);
+                        const cId = consIds[consList.indexOf(c)];
+                        const isReady = readySet.has(Number(cId));
+                        const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
+                        return (
+                          <span
+                            key={i}
+                            className="avatar-stack-item"
+                            data-tooltip={`${c} • ${leadCount} data${isReady ? ' • ' + t('Sẵn sàng') : ''}`}
+                            style={{
+                              marginLeft: i > 0 ? -12 : 0,
+                              position: 'relative',
+                              zIndex: 10 - i,
+                              display: 'inline-block',
+                              borderRadius: '50%'
+                            }}
+                          >
+                            <Avatar
+                              src={matchedCons?.avatar}
+                              name={c}
+                              size={32}
+                              style={{
+                                border: isReady ? '2px solid #10b981' : '2px solid var(--color-surface)',
+                                boxShadow: isReady ? '0 0 6px rgba(16, 185, 129, 0.4)' : 'var(--shadow-sm)',
+                                filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                                opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
+                              }}
+                            />
+                            {isReady && (
+                              <span style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                right: 0,
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                background: '#10b981',
+                                border: '1.5px solid var(--color-surface)',
+                                boxShadow: '0 0 4px #10b981'
+                              }} />
+                            )}
+                          </span>
+                        );
+                      });
+                    })()}
                     {consList.length > 4 && (
                       <div style={{
                         width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)', color: 'var(--color-text-muted)',
@@ -2287,18 +2506,158 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                         {/* Selected Consultants List Block */}
                         {formData.selected_users.length > 0 && (
                           <div className="custom-scrollbar modal-form-selected-list" style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', paddingRight: 4, minHeight: 0 }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>{t("Tư vấn viên đã chọn ({count}):").replace('{count}', String(formData.selected_users.length))}</div>
-                            {formData.selected_users.map(userId => {
+                            {/* Header with Total & Ready Count */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2, flexWrap: 'wrap', gap: 6 }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                                {t("Tư vấn viên đã chọn ({count}):").replace('{count}', String(formData.selected_users.length))}
+                              </span>
+                              {selectedUsersStatusStats.ready > 0 ? (
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  color: '#059669',
+                                  background: theme === 'dark' ? 'rgba(5, 150, 105, 0.2)' : '#d1fae5',
+                                  border: '1px solid rgba(5, 150, 105, 0.3)',
+                                  padding: '2px 8px',
+                                  borderRadius: 12,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5
+                                }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 6px #10b981' }} />
+                                  {selectedUsersStatusStats.ready} {t("Sẵn sàng")}
+                                </span>
+                              ) : (
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  color: '#d97706',
+                                  background: theme === 'dark' ? 'rgba(217, 119, 6, 0.15)' : '#fef3c7',
+                                  border: '1px solid rgba(217, 119, 6, 0.3)',
+                                  padding: '2px 8px',
+                                  borderRadius: 12,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5
+                                }}>
+                                  ⚠️ 0 {t("Sẵn sàng")}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Filter Pills & Quick Search */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                              <div style={{ display: 'inline-flex', gap: 2, background: 'var(--color-bg)', padding: '2px', borderRadius: 8, border: '1px solid var(--color-border-light)' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedUserFilter('all')}
+                                  style={{
+                                    padding: '3px 8px',
+                                    borderRadius: 6,
+                                    fontSize: '0.7rem',
+                                    fontWeight: selectedUserFilter === 'all' ? 700 : 500,
+                                    border: 'none',
+                                    background: selectedUserFilter === 'all' ? 'var(--color-surface)' : 'transparent',
+                                    color: selectedUserFilter === 'all' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                    boxShadow: selectedUserFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {t("Tất cả")} ({selectedUsersStatusStats.total})
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedUserFilter('ready')}
+                                  style={{
+                                    padding: '3px 8px',
+                                    borderRadius: 6,
+                                    fontSize: '0.7rem',
+                                    fontWeight: selectedUserFilter === 'ready' ? 700 : 500,
+                                    border: 'none',
+                                    background: selectedUserFilter === 'ready' ? (theme === 'dark' ? 'rgba(5, 150, 105, 0.25)' : '#d1fae5') : 'transparent',
+                                    color: selectedUserFilter === 'ready' ? '#059669' : 'var(--color-text-muted)',
+                                    boxShadow: selectedUserFilter === 'ready' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                >
+                                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10b981' }} />
+                                  {t("Sẵn sàng")} ({selectedUsersStatusStats.ready})
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedUserFilter('not_ready')}
+                                  style={{
+                                    padding: '3px 8px',
+                                    borderRadius: 6,
+                                    fontSize: '0.7rem',
+                                    fontWeight: selectedUserFilter === 'not_ready' ? 700 : 500,
+                                    border: 'none',
+                                    background: selectedUserFilter === 'not_ready' ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.2)' : '#fee2e2') : 'transparent',
+                                    color: selectedUserFilter === 'not_ready' ? '#dc2626' : 'var(--color-text-muted)',
+                                    boxShadow: selectedUserFilter === 'not_ready' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {t("Chưa sẵn sàng")} ({selectedUsersStatusStats.total - selectedUsersStatusStats.ready})
+                                </button>
+                              </div>
+
+                              <div style={{ flex: 1, minWidth: 120 }}>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  style={{ padding: '3px 8px', fontSize: '0.7rem', height: 26, borderRadius: 6, background: 'var(--color-bg)' }}
+                                  placeholder={t("Lọc theo tên TVV...")}
+                                  value={selectedUserSearch}
+                                  onChange={e => setSelectedUserSearch(e.target.value)}
+                                />
+                              </div>
+                            </div>
+
+                            {processedSelectedUsers.length === 0 && (
+                              <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.775rem', background: 'var(--color-bg)', borderRadius: 10, border: '1px dashed var(--color-border)' }}>
+                                {selectedUserFilter === 'ready' 
+                                  ? t("Không có tư vấn viên nào đang ở trạng thái sẵn sàng trong vòng này.")
+                                  : t("Không tìm thấy tư vấn viên nào phù hợp bộ lọc.")}
+                              </div>
+                            )}
+
+                            {processedSelectedUsers.map(userId => {
                               const user = consultants.find(c => Number(c.id) === userId);
                               if (!user) return null;
+                              const info = getConsultantStatusInfo(user.id);
                               return (
                                 <div key={user.id} style={{
                                   display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem',
-                                  background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10,
-                                  transition: 'all 0.2s'
+                                  background: 'var(--color-bg)', 
+                                  border: info.isReady 
+                                    ? (theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(16, 185, 129, 0.35)') 
+                                    : '1px solid var(--color-border)', 
+                                  borderLeft: info.isReady ? '3.5px solid #10b981' : '1px solid var(--color-border)',
+                                  borderRadius: 10,
+                                  transition: 'all 0.2s',
+                                  boxShadow: info.isReady ? '0 1px 4px rgba(16, 185, 129, 0.08)' : 'none'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <Avatar src={user.avatar} name={user.name} size={28} style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.12)' }} />
+                                    <div style={{ position: 'relative' }}>
+                                      <Avatar src={user.avatar} name={user.name} size={28} style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.12)' }} />
+                                      {info.isReady && (
+                                        <span style={{
+                                          position: 'absolute',
+                                          bottom: -1,
+                                          right: -1,
+                                          width: 8,
+                                          height: 8,
+                                          borderRadius: '50%',
+                                          background: '#10b981',
+                                          border: '1.5px solid var(--color-surface)',
+                                          boxShadow: '0 0 4px #10b981'
+                                        }} />
+                                      )}
+                                    </div>
                                     <div style={{ flex: 1 }}>
                                       <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}>
                                         {user.name}
@@ -2321,120 +2680,20 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                         )}
                                       </div>
                                       <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        {(() => {
-                                          const cool = roundCooldowns[user.id];
-                                          if (cool && cool.on_cooldown) {
-                                            const totalSecs = cool.remaining_seconds;
-                                            const mins = Math.floor(totalSecs / 60);
-                                            const secs = totalSecs % 60;
-                                            const timeText = mins > 0 ? `${mins} phút ${secs}s` : `${secs}s`;
-                                            return (
-                                              <span style={{ 
-                                                fontSize: '0.7rem', 
-                                                fontWeight: 700, 
-                                                color: '#d97706', 
-                                                background: theme === 'dark' ? 'rgba(217, 119, 6, 0.15)' : '#fef3c7', 
-                                                padding: '2px 8px', 
-                                                borderRadius: 6,
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: 4
-                                              }}>
-                                                {t("Đang chờ {time}").replace('{time}', timeText)}
-                                              </span>
-                                            );
-                                          }
-
-                                          const cStat = consultantStatuses[user.id];
-                                          if (cStat) {
-                                            if (cStat.status === 'no_checkin') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#d97706', background: theme === 'dark' ? 'rgba(217, 119, 6, 0.15)' : '#fef3c7', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Chưa chấm công")}
-                                                </span>
-                                              );
-                                            }
-                                            if (cStat.status === 'pending_checkin') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#b45309', background: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Chờ duyệt check-in")}
-                                                </span>
-                                              );
-                                            }
-                                            if (cStat.status === 'rejected_checkin') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Check-in bị từ chối")}
-                                                </span>
-                                              );
-                                            }
-                                            if (cStat.status === 'no_night_shift') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', background: theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : '#ede9fe', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Chưa trực đêm")}
-                                                </span>
-                                              );
-                                            }
-                                            if (cStat.status === 'no_weekend_shift') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', background: theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : '#ede9fe', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Chưa trực cuối tuần")}
-                                                </span>
-                                              );
-                                            }
-                                            if (cStat.status === 'no_holiday_shift') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#7c3aed', background: theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : '#ede9fe', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Chưa trực lễ")}
-                                                </span>
-                                              );
-                                            }
-                                            if (cStat.status === 'out_of_hours') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', background: theme === 'dark' ? 'rgba(107, 114, 128, 0.15)' : '#f3f4f6', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Ngoài giờ làm")}
-                                                </span>
-                                              );
-                                            }
-                                            if (cStat.status === 'on_leave') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Nghỉ phép")}
-                                                </span>
-                                              );
-                                            }
-                                            if (cStat.status === 'vacation') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Tạm ngưng")}
-                                                </span>
-                                              );
-                                            }
-                                            if (cStat.status === 'inactive') {
-                                              return (
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', background: theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : '#fee2e2', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                  {t("Nghỉ việc")}
-                                                </span>
-                                              );
-                                            }
-                                          }
-
-                                          return (
-                                            <span style={{ 
-                                              fontSize: '0.7rem', 
-                                              fontWeight: 700, 
-                                              color: '#059669', 
-                                              background: theme === 'dark' ? 'rgba(5, 150, 105, 0.15)' : '#d1fae5', 
-                                              padding: '2px 8px', 
-                                              borderRadius: 6,
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: 4
-                                            }}>
-                                              {t("Sẵn sàng")}
-                                            </span>
-                                          );
-                                        })()}
+                                        <span style={{ 
+                                          fontSize: '0.7rem', 
+                                          fontWeight: 700, 
+                                          color: info.color, 
+                                          background: theme === 'dark' ? info.bgDark : info.bgLight, 
+                                          padding: '2px 8px', 
+                                          borderRadius: 6,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4
+                                        }}>
+                                          {info.isReady && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 5px #10b981' }} />}
+                                          {info.label}
+                                        </span>
                                       </div>
                                     </div>
                                     <button

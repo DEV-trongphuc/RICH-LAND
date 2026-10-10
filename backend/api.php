@@ -7871,6 +7871,28 @@ switch ($action) {
             }
         }
 
+        $approvedShiftIds = [];
+        $sRes = $conn->query("
+            SELECT DISTINCT user_id FROM weekend_shift_registrations WHERE shift_date = '$todayStr' AND approved = 1
+            UNION
+            SELECT DISTINCT user_id FROM night_shift_registrations WHERE shift_date = '$todayStr' AND approved = 1
+            UNION
+            SELECT DISTINCT user_id FROM holiday_shift_registrations WHERE shift_date = '$todayStr' AND approved = 1
+        ");
+        if ($sRes) {
+            while ($sr = $sRes->fetch_assoc()) {
+                $approvedShiftIds[] = (int)$sr['user_id'];
+            }
+        }
+
+        $inactiveOrVacationIds = [];
+        $ivRes = $conn->query("SELECT id FROM consultants WHERE status != 'active' OR vacation_mode = 1");
+        if ($ivRes) {
+            while ($ivr = $ivRes->fetch_assoc()) {
+                $inactiveOrVacationIds[] = (int)$ivr['id'];
+            }
+        }
+
         $data = [];
         $roundIds = [];
         while ($row = $res->fetch_assoc()) {
@@ -7886,16 +7908,21 @@ switch ($action) {
 
             $nextName = null;
             $nextId = null;
+            $readyIndices = [];
+            $readyConsultantIds = [];
             if (!empty($cIds)) {
-                // Filter only consultants who are currently checked-in today
-                $readyIndices = [];
+                // Filter only consultants who are currently ready (active, not on vacation, checked-in or on approved shift)
                 foreach ($cIds as $idx => $cid) {
-                    if (in_array((int)$cid, $checkedInIds, true)) {
+                    $cidInt = (int)$cid;
+                    $isReady = (!in_array($cidInt, $inactiveOrVacationIds, true)) && 
+                               (in_array($cidInt, $checkedInIds, true) || in_array($cidInt, $approvedShiftIds, true));
+                    if ($isReady) {
                         $readyIndices[] = $idx;
+                        $readyConsultantIds[] = $cidInt;
                     }
                 }
 
-                // If some consultants are checked in, pick the next checked-in consultant after last_assigned
+                // If some consultants are ready, pick the next ready consultant after last_assigned
                 $candidatePool = !empty($readyIndices) ? $readyIndices : array_keys($cIds);
                 
                 $lastAssignedIdx = $row['last_assigned_consultant_id'] ? array_search($row['last_assigned_consultant_id'], $cIds) : false;
@@ -7913,6 +7940,8 @@ switch ($action) {
                 $nextName = $cNames[$chosenIdx] ?? null;
                 $nextId = $cIds[$chosenIdx] ?? null;
             }
+            $row['ready_consultant_ids'] = $readyConsultantIds;
+            $row['ready_count'] = count($readyConsultantIds);
             $row['next_assigned_name'] = $nextName;
             $row['next_consultant_id'] = $nextId;
             $row['ratios'] = [];
