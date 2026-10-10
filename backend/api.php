@@ -2809,6 +2809,7 @@ switch ($action) {
         $sqlLeads = "
             SELECT dl.id as log_id, dl.received_at, dl.status, dl.message, dl.round_id, dl.assigned_to,
                    l.id as lead_id, l.name as lead_name, l.phone, l.email as lead_email, l.source, l.type, l.note,
+                   COALESCE(l.created_at, dl.received_at) as created_at,
                    l.is_accepted, l.accepted_at, l.last_interaction_date, l.person_id,
                    r.round_name,
                    c.name as sale_name, c.email as sale_email, c.avatar as sale_avatar,
@@ -2837,7 +2838,7 @@ switch ($action) {
                 ) dr2 ON dr1.id = dr2.max_dr_id
             ) dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
             WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent')) OR (l.is_accepted = 1 AND $dateConditionDl) )
-            ORDER BY dl.received_at DESC
+            ORDER BY COALESCE(l.created_at, dl.received_at) DESC, l.id DESC
             $limitStr
         ";
 
@@ -3666,7 +3667,8 @@ switch ($action) {
                 dr.round_name, 
                 dl.round_id,
                 l.target_round_id,
-                dl.received_at as created_at,
+                COALESCE(l.created_at, dl.received_at) as created_at,
+                dl.received_at as received_at,
                 r.status as report_status,
                 r.resolved_by,
                 r.resolved_at,
@@ -3694,7 +3696,7 @@ switch ($action) {
                 ) r2 ON r1.id = r2.max_r_id
             ) r ON r.lead_id = dl.lead_id AND r.consultant_id = dl.assigned_to AND r.round_id = dl.round_id
             WHERE $dateCondition AND $extraCondition
-            ORDER BY dl.received_at DESC 
+            ORDER BY COALESCE(l.created_at, dl.received_at) DESC, l.id DESC 
             $limitStr
         ");
         $data = [];
@@ -4380,13 +4382,13 @@ switch ($action) {
         $res = $conn->query("
             SELECT 
                 dl.id, l.name, l.phone, l.email, dr.round_name, c.name as assigned_to_name, 
-                dl.status, l.source, l.note, dl.received_at
+                dl.status, l.source, l.note, COALESCE(l.created_at, dl.received_at) as created_at
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
             WHERE $dateCondition $sqlFilters
-            ORDER BY dl.received_at DESC
+            ORDER BY COALESCE(l.created_at, dl.received_at) DESC, l.id DESC
         ", MYSQLI_USE_RESULT);
 
         if ($res) {
