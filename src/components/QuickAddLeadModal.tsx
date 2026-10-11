@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { RefreshCw, Upload, Trash2, Lightbulb, Download, Loader2 } from 'lucide-react';
+import { RefreshCw, Upload, Trash2, Lightbulb, Download, Loader2, AlertCircle } from 'lucide-react';
 import { CustomModal } from './ui/CustomModal';
 import { CustomSelect } from './ui/CustomSelect';
 import { Avatar } from './ui/Avatar';
@@ -139,6 +139,8 @@ export const QuickAddLeadModal = () => {
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [overrideConsId, setOverrideConsId] = useState<string>('');
   const [showOverrideSelector, setShowOverrideSelector] = useState(false);
+  const [rounds, setRounds] = useState<{ id: number; round_name: string; round_type?: string; is_active?: number }[]>([]);
+  const [overrideRoundId, setOverrideRoundId] = useState<string>('');
   const [compensateSkipped, setCompensateSkipped] = useState(true);
   const [existingSources, setExistingSources] = useState<string[]>([]);
   const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
@@ -166,6 +168,7 @@ export const QuickAddLeadModal = () => {
     let name = '';
     let source = '';
     let type = '';
+    let leadPhanLoai = '';
     let note = '';
     let detectedFbUrl = '';
     let detectedDataUrl = '';
@@ -405,6 +408,8 @@ export const QuickAddLeadModal = () => {
           email = valStr;
         } else if (/^(nguồn|nguon|source|kênh|kenh)$/i.test(keyLower)) {
           source = normalizeSource(valStr);
+        } else if (/^(phân loại|phan loai|lead_phan_loai|phan_loai_lead|rank)$/i.test(keyLower)) {
+          leadPhanLoai = valStr;
         } else if (/^(loại|loai|type|nhu cầu|nhu cau)$/i.test(keyLower)) {
           type = valStr;
         } else if (/^(ghi chú|ghi chu|note|nội dung)$/i.test(keyLower)) {
@@ -422,6 +427,7 @@ export const QuickAddLeadModal = () => {
         email: email || prev.email,
         source: source || prev.source,
         type: type || prev.type,
+        lead_phan_loai: leadPhanLoai || prev.lead_phan_loai,
         note: note || prev.note,
       }));
       return;
@@ -480,6 +486,8 @@ export const QuickAddLeadModal = () => {
                 email = v;
               } else if (/^(nguồn|nguon|source|kênh|kenh)$/i.test(kLower)) {
                 source = normalizeSource(v);
+              } else if (/^(phân loại|phan loai|lead_phan_loai|phan_loai_lead|rank)$/i.test(kLower)) {
+                leadPhanLoai = v;
               } else if (/^(loại|loai|type|nhu cầu|nhu cau|lớp|lop|khóa học|khoa hoc|chương trình|chuong trinh)$/i.test(kLower)) {
                 type = v;
               } else if (/^(ghi chú|ghi chu|note|nội dung|tình trạng|tinh trang)$/i.test(kLower)) {
@@ -501,6 +509,7 @@ export const QuickAddLeadModal = () => {
             email: email.trim() || prev.email,
             source: source.trim() || prev.source,
             type: type.trim() || prev.type,
+            lead_phan_loai: leadPhanLoai.trim() || prev.lead_phan_loai,
             note: note.trim() || prev.note,
           }));
           return;
@@ -537,6 +546,8 @@ export const QuickAddLeadModal = () => {
               email = cellVal;
             } else if (/^(nguồn|nguon|source|kênh|kenh)$/.test(h)) {
               source = normalizeSource(cellVal);
+            } else if (/^(phân loại|phan loai|lead_phan_loai|phan_loai_lead|rank)$/.test(h)) {
+              leadPhanLoai = cellVal;
             } else if (/^(loại|loai|type|nhu cầu|nhu cau|lớp|lop|khóa học|khoa hoc)$/.test(h)) {
               type = cellVal;
             } else if (/^(ghi chú|ghi chu|note|nội dung|tình trạng|tinh trang)$/.test(h)) {
@@ -581,6 +592,7 @@ export const QuickAddLeadModal = () => {
           email: email || prev.email,
           source: source || prev.source,
           type: type || prev.type,
+          lead_phan_loai: leadPhanLoai || prev.lead_phan_loai,
           note: note || prev.note,
         }));
         return;
@@ -602,6 +614,8 @@ export const QuickAddLeadModal = () => {
           email = value;
         } else if (/^(nguồn|nguon|source|kênh|kenh)$/.test(label)) {
           source = normalizeSource(value);
+        } else if (/^(phân loại|phan loai|lead_phan_loai|phan_loai_lead|rank)$/.test(label)) {
+          leadPhanLoai = value;
         } else if (/^(loại|loai|type|nhu cầu|nhu cau)$/.test(label)) {
           type = value;
         } else if (/^(ghi chú|ghi chu|note|nội dung)$/.test(label)) {
@@ -634,6 +648,7 @@ export const QuickAddLeadModal = () => {
         email: email || prev.email,
         source: source || prev.source,
         type: type || prev.type,
+        lead_phan_loai: leadPhanLoai || prev.lead_phan_loai,
         note: note || prev.note,
       }));
       return;
@@ -664,6 +679,8 @@ export const QuickAddLeadModal = () => {
             email = value;
           } else if (/^(nguồn|nguon|source|kênh|kenh)$/.test(label)) {
             source = normalizeSource(value);
+          } else if (/^(phân loại|phan loai|lead_phan_loai|phan_loai_lead|rank)$/.test(label)) {
+            leadPhanLoai = value;
           } else if (/^(loại|loai|type|nhu cầu|nhu cau)$/.test(label)) {
             type = value;
           } else if (/^(ghi chú|ghi chu|note|nội dung)$/.test(label)) {
@@ -745,6 +762,23 @@ export const QuickAddLeadModal = () => {
         if (!nameAssigned && isLikelyName(seg)) {
           name = seg;
           nameAssigned = true;
+          return;
+        }
+
+        const labeledPhanLoai = seg.match(/^(?:phân loại|phan loai|lead_phan_loai|rank)\s*[:=]\s*(.+)$/i);
+        if (labeledPhanLoai) {
+          leadPhanLoai = labeledPhanLoai[1].trim();
+          return;
+        }
+        if (/^(?:khách\s*)?(nét|tiềm năng|lạnh|nóng|ấm|spam|rác)$/i.test(seg.trim())) {
+          const m = seg.trim().toLowerCase();
+          if (m.includes('nét')) leadPhanLoai = 'Khách Nét';
+          else if (m.includes('tiềm năng')) leadPhanLoai = 'Khách Tiềm Năng';
+          else if (m.includes('nóng')) leadPhanLoai = 'Khách Nóng';
+          else if (m.includes('ấm')) leadPhanLoai = 'Khách Ấm';
+          else if (m.includes('lạnh')) leadPhanLoai = 'Khách Lạnh';
+          else if (m.includes('spam')) leadPhanLoai = 'Khách Spam';
+          else if (m.includes('rác')) leadPhanLoai = 'Khách Rác';
           return;
         }
 
@@ -1028,6 +1062,21 @@ export const QuickAddLeadModal = () => {
     return () => window.removeEventListener('open-quick-add-lead', handleOpen);
   }, [isSale]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const loadRounds = async () => {
+      try {
+        const res = await fetchAPI('get_rounds');
+        if (res && res.success && Array.isArray(res.data)) {
+          setRounds(res.data.filter((r: any) => Number(r.is_active) === 1));
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    loadRounds();
+  }, [isOpen]);
+
   // Debounce routing preview
   useEffect(() => {
     if (!isOpen) return;
@@ -1045,7 +1094,10 @@ export const QuickAddLeadModal = () => {
       try {
         const json = await fetchAPI('preview_routing', {
           method: 'POST',
-          body: JSON.stringify({ data: manualData })
+          body: JSON.stringify({ 
+            data: manualData,
+            override_round_id: overrideRoundId ? Number(overrideRoundId) : null
+          })
         });
         if (json.success) {
           setPreviewCons(json);
@@ -1056,7 +1108,7 @@ export const QuickAddLeadModal = () => {
       setIsPreviewing(false);
     }, 500);
 
-  }, [manualData, isOpen]);
+  }, [manualData, isOpen, overrideRoundId]);
 
   const parseBulkData = (text: string) => {
     if (!text.trim()) return [];
@@ -1206,7 +1258,7 @@ export const QuickAddLeadModal = () => {
         
         const payload = {
           data: manualData,
-          override_round_id: distributionMode === 'auto_round' ? previewCons?.round_id : null,
+          override_round_id: overrideRoundId ? Number(overrideRoundId) : (distributionMode === 'auto_round' ? previewCons?.round_id : null),
           override_consultant_id: distributionMode === 'auto_round' && overrideConsId ? Number(overrideConsId) : null,
           compensate_skipped: compensateSkipped,
           skipped_consultant_id: distributionMode === 'auto_round' ? previewCons?.consultant?.consultant_id : null,
@@ -1416,20 +1468,67 @@ export const QuickAddLeadModal = () => {
                   <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{t('Đang kiểm tra...')}</div>
                 ) : !previewCons ? (
                   <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{t('Nhập SĐT hoặc Email để xem trước vòng chia.')}</div>
-                ) : previewCons.round_id === null ? (
-                  <div style={{ color: 'var(--color-danger)', fontSize: '0.8125rem', fontWeight: 600 }}>{t('Không khớp với luật chia nào. (Data sẽ lưu trạng thái Chưa phân bổ)')}</div>
+                ) : previewCons.round_id === null && !overrideRoundId ? (
+                  <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ color: '#dc2626', fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <AlertCircle size={16} />
+                      {t('Không khớp với luật chia nào. Vui lòng chọn vòng phân bổ:')}
+                    </div>
+                    <CustomSelect
+                      options={[
+                        { value: '', label: t('-- Chọn vòng phân bổ cho data này --') },
+                        ...rounds.map(r => ({ value: r.id.toString(), label: r.round_name }))
+                      ]}
+                      value={overrideRoundId}
+                      onChange={val => setOverrideRoundId(val.toString())}
+                      width="100%"
+                    />
+                  </div>
                 ) : (
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                       <div style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                        {t('Sẽ rơi vào Vòng:')} <strong style={{ color: 'var(--color-primary)', marginLeft: 4 }}>{previewCons.consultant?.round_name || t('Vòng ') + previewCons.round_id}</strong>
+                        {t('Sẽ rơi vào Vòng:')} <strong style={{ color: 'var(--color-primary)', marginLeft: 4 }}>{previewCons.consultant?.round_name || (previewCons.round_id ? t('Vòng ') + previewCons.round_id : t('Chưa chọn'))}</strong>
                         {previewCons.is_fallback && (
                           <span style={{ marginLeft: 8, fontSize: '0.75rem', background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2', color: theme === 'dark' ? '#f87171' : '#ef4444', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
                             Vòng mặc định (Fallback)
                           </span>
                         )}
+                        {overrideRoundId && (
+                          <span style={{ marginLeft: 8, fontSize: '0.75rem', background: 'rgba(14, 165, 233, 0.15)', color: '#0284c7', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
+                            {t('Đã chọn thủ công')}
+                          </span>
+                        )}
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setOverrideRoundId(overrideRoundId ? '' : String(previewCons.round_id || ''))}
+                        style={{
+                          background: 'transparent',
+                          border: '1px dashed var(--color-border)',
+                          borderRadius: '6px',
+                          padding: '3px 8px',
+                          fontSize: '0.75rem',
+                          color: 'var(--color-text-muted)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {overrideRoundId ? t('Khôi phục vòng tự động') : t('Đổi vòng khác')}
+                      </button>
                     </div>
+                    {overrideRoundId && (
+                      <div style={{ marginTop: 10 }}>
+                        <CustomSelect
+                          options={[
+                            { value: '', label: t('-- Khôi phục vòng chia tự động --') },
+                            ...rounds.map(r => ({ value: r.id.toString(), label: r.round_name }))
+                          ]}
+                          value={overrideRoundId}
+                          onChange={val => setOverrideRoundId(val.toString())}
+                          width="100%"
+                        />
+                      </div>
+                    )}
 
                     {previewCons?.round_type === 'grab' ? (
                       <div style={{ 
@@ -1669,6 +1768,8 @@ export const QuickAddLeadModal = () => {
                     { value: '', label: t('Chọn phân loại') },
                     { value: 'Khách Nét', label: '🔥 ' + t('Khách Nét') },
                     { value: 'Khách Tiềm Năng', label: '⭐ ' + t('Khách Tiềm Năng') },
+                    { value: 'Khách Nóng', label: '⚡ ' + t('Khách Nóng') },
+                    { value: 'Khách Ấm', label: '☀️ ' + t('Khách Ấm') },
                     { value: 'Khách Lạnh', label: '❄️ ' + t('Khách Lạnh') },
                     { value: 'Khách Spam', label: '⚠️ ' + t('Khách Spam') },
                     { value: 'Khách Rác', label: '🗑️ ' + t('Khách Rác') },

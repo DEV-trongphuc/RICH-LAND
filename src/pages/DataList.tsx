@@ -1550,6 +1550,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         }
       }
       case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
+      case 'unassigned': return <span className="badge" style={{ background: 'rgba(100, 116, 139, 0.12)', color: '#64748b', border: '1px solid rgba(100, 116, 139, 0.25)' }}>{t('Chưa phân bổ')}</span>;
       default: return null;
     }
   };
@@ -1589,24 +1590,25 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
 
   const getPhanLoaiBadge = (lead: Lead) => {
-    // Ưu tiên phân loại gốc từ nguồn về (R3_Fb, R1, R2, R3, Nóng, Lead Form...)
-    const sourceTag = (lead.lead_phan_loai && lead.lead_phan_loai.toLowerCase() !== 'databank')
-      ? lead.lead_phan_loai
-      : (lead.loai_lead && lead.loai_lead.toLowerCase() !== 'databank')
-        ? lead.loai_lead
-        : (lead.type && lead.type !== '-' && lead.type.toLowerCase() !== 'databank')
-          ? lead.type
-          : (lead.source && lead.source !== '-' && lead.source.toLowerCase() !== 'website' && lead.source.toLowerCase() !== 'databank')
-            ? lead.source
-            : '';
+    // Chỉ lấy phân loại chất lượng khách hàng thực tế (Khách Nét, Khách Tiềm Năng, Khách Nóng, Khách Ấm, Khách Lạnh, Khách Spam, Khách Rác)
+    const validRanks = ['khách nét', 'khách tiềm năng', 'khách nóng', 'khách ấm', 'khách lạnh', 'khách spam', 'khách rác'];
+    let rawTag = lead.lead_phan_loai?.trim() || '';
+    if (!rawTag && lead.loai_lead && validRanks.includes(lead.loai_lead.toLowerCase())) {
+      rawTag = lead.loai_lead.trim();
+    }
+    if (!rawTag && lead.type && validRanks.includes(lead.type.toLowerCase())) {
+      rawTag = lead.type.trim();
+    }
 
-    const isDb = (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'databank' || lead.status === 'databank_claim' || lead.status === 'released_to_kho' || lead.lead_phan_loai === 'databank');
-    const tag = sourceTag || (isDb ? 'databank' : '');
+    // Nếu là mã nguồn (R3_Fb, R2, R3...) hoặc databank hoặc rỗng thì không hiển thị làm phân loại
+    if (!rawTag || /^(?:r[0-9]+(?:_[a-z0-9]+)?|fbads|databank|-)$/i.test(rawTag)) {
+      return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>;
+    }
 
-    if (!tag) return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>;
-
-    const isHot = /r[1-3]/i.test(tag) || /hot|nóng/i.test(tag);
-    const isDatabank = tag.toLowerCase() === 'databank';
+    const isHot = /nét|nóng|hot/i.test(rawTag);
+    const isCold = /lạnh|cold/i.test(rawTag);
+    const isSpam = /spam|rác/i.test(rawTag);
+    const isPotential = /tiềm năng/i.test(rawTag);
 
     return (
       <span
@@ -1617,27 +1619,39 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           borderRadius: '6px',
           background: isHot
             ? 'rgba(239, 68, 68, 0.12)'
-            : isDatabank
-              ? 'rgba(14, 165, 233, 0.12)'
-              : 'var(--color-bg-light)',
+            : isPotential
+              ? 'rgba(234, 179, 8, 0.12)'
+              : isCold
+                ? 'rgba(14, 165, 233, 0.12)'
+                : isSpam
+                  ? 'rgba(100, 116, 139, 0.12)'
+                  : 'var(--color-bg-light)',
           color: isHot
             ? '#dc2626'
-            : isDatabank
-              ? '#0284c7'
-              : 'var(--color-text-muted)',
+            : isPotential
+              ? '#ca8a04'
+              : isCold
+                ? '#0284c7'
+                : isSpam
+                  ? '#64748b'
+                  : 'var(--color-text)',
           border: `1px solid ${
             isHot
               ? 'rgba(239, 68, 68, 0.28)'
-              : isDatabank
-                ? 'rgba(14, 165, 233, 0.28)'
-                : 'var(--color-border)'
+              : isPotential
+                ? 'rgba(234, 179, 8, 0.28)'
+                : isCold
+                  ? 'rgba(14, 165, 233, 0.28)'
+                  : isSpam
+                    ? 'rgba(100, 116, 139, 0.28)'
+                    : 'var(--color-border)'
           }`,
           display: 'inline-block',
           whiteSpace: 'nowrap'
         }}
-        title={`Phân loại lead: ${tag}`}
+        title={`Phân loại lead: ${rawTag}`}
       >
-        {tag}
+        {rawTag}
       </span>
     );
   };
@@ -2855,7 +2869,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           </div>
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          {getPhanLoaiBadge(lead)}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                            {getPhanLoaiBadge(lead)}
+                            {lead.source && lead.source !== '-' && lead.source !== '—' && (
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                Nguồn: <strong style={{ color: 'var(--color-text)' }}>{lead.source}</strong>
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                           {lead.status === 'pending_approval' ? (

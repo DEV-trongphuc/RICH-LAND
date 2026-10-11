@@ -523,6 +523,16 @@ $lead_phan_loai = $findSmartField('lead_phan_loai', ['lead_phan_loai', 'phan_loa
 if (empty($lead_phan_loai)) {
     $lead_phan_loai = $findSmartField('phan_loai_lead', ['phan_loai_lead', 'lead_phan_loai', 'phan_loai', 'rank', 'lead_rank']);
 }
+// Normalize source vs lead_phan_loai: nếu lead_phan_loai là mã nguồn marketing (R3_Fb, R2, R3, FbAds...)
+if (!empty($lead_phan_loai)) {
+    $cleanRank = strtolower(trim($lead_phan_loai));
+    if (preg_match('/^(?:r[0-9]+(?:_[a-z0-9]+)?|fbads|facebook|google|zalo|broadcast|landing_page)$/i', $cleanRank)) {
+        if (empty($source) || in_array(strtolower(trim($source)), ['website', 'other', 'default', ''])) {
+            $source = $lead_phan_loai;
+        }
+        $lead_phan_loai = null;
+    }
+}
 $donvi_chay = $findSmartField('donvi_chay', ['donvi_chay', 'don_vi_chay', 'agency', 'unit', 'donvi', 'kenh_chay']);
 $ad_name = $findSmartField('ad_name', ['ad_name', 'ten_quang_cao', 'adname', 'ad']);
 $link_video_ads = $findSmartField('link_video_ads', ['link_video_ads', 'video_link', 'link_video']);

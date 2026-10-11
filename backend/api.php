@@ -1239,11 +1239,36 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                 }
             }
 
-            return ['success' => true, 'message' => 'Trùng khách cũ trong vòng ' . $dupCheckMonths . ' tháng. Đã gán lại cho Sale cũ: ' . ($cRow ? $cRow['name'] : 'Không rõ')];
         } else if (!$override_consultant_id && !$assignedRoundId && !$isFallbackAdmin) {
-            // Cannot assign
-            $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
-            return ['success' => true, 'message' => 'Data đã được thêm nhưng không rơi vào vòng nào.'];
+            // Cannot assign - DO NOT LOSE LEAD! Create unassigned lead & distribution log
+            $leadPayload = [
+                'phone' => $phone,
+                'email' => $email,
+                'name' => $name,
+                'source' => $source,
+                'type' => $type,
+                'note' => $note,
+                'lead_phan_loai' => $lead_phan_loai,
+                'project_id' => $project_id,
+                'facebook_link' => $facebook_link,
+                'link_video_ads' => $link_video_ads,
+                'loai_lead' => $type
+            ];
+            if ($crmCheckResult['leadExists']) {
+                $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
+            } else {
+                $leadId = insertLead($conn, $leadPayload, null, $phone, $email, $name, $source, $type, $note);
+            }
+            if ($leadId) {
+                $updExtra = $conn->prepare("UPDATE leads SET lead_phan_loai = ?, project_id = ?, facebook_link = ?, link_video_ads = ?, loai_lead = ?, status = 'unassigned' WHERE id = ?");
+                if ($updExtra) {
+                    $updExtra->bind_param("sisssi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $type, $leadId);
+                    $updExtra->execute();
+                    $updExtra->close();
+                }
+                logDistribution($conn, $leadId, null, null, 'unassigned', 'Nhập thủ công: Chưa có vòng phân bổ phù hợp. Đang chờ phân bổ.', false);
+            }
+            return ['success' => true, 'message' => 'Data đã được thêm vào hệ thống ở trạng thái Chưa phân bổ (Chưa có vòng phù hợp).'];
         } else {
             // Check if we need to run AI Screener
             $aiScreenerResult = null;
@@ -1644,10 +1669,23 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         $note = "[CẢNH BÁO RỬA NGUỒN]: Khách hàng cá nhân tự nhập trùng SĐT active với lead MKT (" . $oldMktSource . ") cách đây " . round($daysSinceMkt) . " ngày.\n" . $note;
                     }
 
+                    $leadPayload = [
+                        'phone' => $phone,
+                        'email' => $email,
+                        'name' => $name,
+                        'source' => $source,
+                        'type' => $type,
+                        'note' => $note,
+                        'lead_phan_loai' => $lead_phan_loai,
+                        'project_id' => $project_id,
+                        'facebook_link' => $facebook_link,
+                        'link_video_ads' => $link_video_ads,
+                        'loai_lead' => $type
+                    ];
                     if ($crmCheckResult['leadExists']) {
                         $leadId = updateLead($conn, $phone, $email, $consultantId, $source, $type, $note, null, null, $name);
                     } else {
-                        $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
+                        $leadId = insertLead($conn, $leadPayload, $consultantId, $phone, $email, $name, $source, $type, $note);
                     }
 
                     if ($leadId) {
@@ -19316,7 +19354,17 @@ switch ($action) {
             ];
         }
 
-        foreach ($rules as $index => $rule) {
+        $overrideRoundId = isset($input['override_round_id']) && is_numeric($input['override_round_id']) ? (int) $input['override_round_id'] : null;
+        if ($overrideRoundId && $overrideRoundId > 0) {
+            $assignedRoundId = $overrideRoundId;
+            $trace[] = [
+                'rule_id' => 0,
+                'description' => 'Chỉ định vòng thủ công',
+                'status' => 'matched',
+                'reason' => "Người dùng đã chọn trực tiếp vòng phân bổ ID #$overrideRoundId."
+            ];
+        } else {
+            foreach ($rules as $index => $rule) {
             $ruleNum = $index + 1;
             $ruleDesc = "Quy tắc #$ruleNum: " . ($rule['round_name'] ?? 'Không rõ');
 
@@ -19472,6 +19520,7 @@ switch ($action) {
                     'conditions' => $conditionsDetail
                 ];
             }
+        }
         }
 
         // Fallback checks
