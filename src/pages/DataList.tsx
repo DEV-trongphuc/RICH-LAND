@@ -1590,18 +1590,27 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
 
   const getPhanLoaiBadge = (lead: Lead) => {
-    // Ưu tiên phân loại gốc từ nguồn về (R3_Fb, R1, R2, R3, Nóng, Lead Form...)
-    const sourceTag = (lead.lead_phan_loai && lead.lead_phan_loai.toLowerCase() !== 'databank')
-      ? lead.lead_phan_loai
-      : (lead.loai_lead && lead.loai_lead.toLowerCase() !== 'databank')
-        ? lead.loai_lead
-        : (lead.type && lead.type !== '-' && lead.type.toLowerCase() !== 'databank')
-          ? lead.type
-          : (lead.source && lead.source !== '-' && lead.source.toLowerCase() !== 'website' && lead.source.toLowerCase() !== 'databank')
-            ? lead.source
-            : '';
+    // Phân loại lead: Ưu tiên mã nguồn / phân loại marketing (R3_Fb, R1, R2, R3, ca_nhan, gioi_thieu...)
+    // Tuyệt đối bỏ qua các định dạng kỹ thuật (như 'lead_form', 'website', '-', 'databank')
+    const isIgnored = (val?: string | null) => {
+      if (!val) return true;
+      const v = val.trim().toLowerCase();
+      return v === '' || v === '-' || v === '—' || v === 'lead_form' || v === 'website' || v === 'databank' || v === 'other' || v === 'default';
+    };
 
-    const isDb = (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'databank' || lead.status === 'databank_claim' || lead.status === 'released_to_kho' || lead.lead_phan_loai === 'databank');
+    let sourceTag = '';
+    // 1. Ưu tiên source trước nếu có mã cụ thể (R3_Fb, R2, R3, ca_nhan, FB_Ads...)
+    if (!isIgnored(lead.source)) {
+      sourceTag = lead.source!.trim();
+    } else if (!isIgnored(lead.lead_phan_loai)) {
+      sourceTag = lead.lead_phan_loai!.trim();
+    } else if (!isIgnored(lead.loai_lead)) {
+      sourceTag = lead.loai_lead!.trim();
+    } else if (!isIgnored(lead.type)) {
+      sourceTag = lead.type!.trim();
+    }
+
+    const isDb = (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'databank' || lead.status === 'databank_claim' || lead.status === 'released_to_kho' || lead.lead_phan_loai === 'databank' || lead.source === 'databank');
     const tag = sourceTag || (isDb ? 'databank' : '');
 
     if (!tag) return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>;
