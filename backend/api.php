@@ -957,6 +957,32 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $managerBehaviorMode = $decodedUser['manager_behavior_mode'] ?? 'combined';
     $canSelfAssign = ($decodedUser['role'] === 'sale') || ($decodedUser['role'] === 'manager' && $managerBehaviorMode === 'sale');
 
+    // Mapping phân loại lead cho data nhập tay:
+    // Phân biệt rõ giữa Marketing Classification/Source (R3_Fb, R2, R3, ca_nhan, gioi_thieu)
+    // và Phân loại chất lượng khách hàng (Khách Nét, Khách Nóng, Khách Lạnh, Khách Ấm, Khách Tiềm Năng, Khách Spam, Khách Rác).
+    $loai_lead = !empty($leadData['loai_lead']) ? trim($leadData['loai_lead']) : null;
+    if (!empty($lead_phan_loai)) {
+        if (preg_match('/^(?:khách\s*)?(nét|tiềm năng|nóng|ấm|lạnh|spam|rác)$/i', $lead_phan_loai)) {
+            // Đây là chất lượng khách hàng -> map sang loai_lead
+            $loai_lead = $lead_phan_loai;
+            // lead_phan_loai hiển thị trên bảng sẽ lấy theo source nếu source là mã nguồn marketing (R3_Fb...)
+            $lead_phan_loai = (!empty($source) && strtolower($source) !== 'databank') ? $source : null;
+        } else if (preg_match('/^(?:r[0-9]+(?:_[a-z0-9]+)?|fbads|facebook|google|zalo|broadcast|landing_page)$/i', $lead_phan_loai)) {
+            if (empty($source) || in_array(strtolower($source), ['website', 'other', 'default', ''])) {
+                $source = $lead_phan_loai;
+            }
+        }
+    }
+    // Nếu source là mã nguồn marketing (R3_Fb, R2, R3, ca_nhan...) mà lead_phan_loai đang rỗng -> kế thừa source vào lead_phan_loai
+    if (empty($lead_phan_loai) && !empty($source) && strtolower($source) !== 'databank' && strtolower($source) !== 'website') {
+        $lead_phan_loai = $source;
+    }
+    // Nếu loai_lead rỗng mà type là nhãn chất lượng (Khách Nét, Khách Lạnh...) -> chuyển sang loai_lead
+    if (empty($loai_lead) && !empty($type) && preg_match('/^(?:khách\s*)?(nét|tiềm năng|nóng|ấm|lạnh|spam|rác)$/i', $type)) {
+        $loai_lead = $type;
+        $type = '';
+    }
+
     if ($distribution_mode === 'self_assign' && !$canSelfAssign) {
         return ['success' => false, 'message' => 'Chỉ có Sale hoặc Manager dạng Sale mới được phép tự nhận chăm sóc (Self-assign) data.'];
     }
@@ -999,9 +1025,9 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
             }
 
             if ($leadId) {
-                $updExtra = $conn->prepare("UPDATE leads SET lead_phan_loai = ?, project_id = ?, facebook_link = ?, link_video_ads = ? WHERE id = ?");
+                $updExtra = $conn->prepare("UPDATE leads SET lead_phan_loai = ?, project_id = ?, facebook_link = ?, link_video_ads = ?, loai_lead = ? WHERE id = ?");
                 if ($updExtra) {
-                    $updExtra->bind_param("sissi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $leadId);
+                    $updExtra->bind_param("sisssi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $loai_lead, $leadId);
                     $updExtra->execute();
                     $updExtra->close();
                 }
@@ -1252,7 +1278,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                 'project_id' => $project_id,
                 'facebook_link' => $facebook_link,
                 'link_video_ads' => $link_video_ads,
-                'loai_lead' => $type
+                'loai_lead' => $loai_lead
             ];
             if ($crmCheckResult['leadExists']) {
                 $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
@@ -1262,7 +1288,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
             if ($leadId) {
                 $updExtra = $conn->prepare("UPDATE leads SET lead_phan_loai = ?, project_id = ?, facebook_link = ?, link_video_ads = ?, loai_lead = ?, status = 'unassigned' WHERE id = ?");
                 if ($updExtra) {
-                    $updExtra->bind_param("sisssi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $type, $leadId);
+                    $updExtra->bind_param("sisssi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $loai_lead, $leadId);
                     $updExtra->execute();
                     $updExtra->close();
                 }
@@ -1680,7 +1706,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         'project_id' => $project_id,
                         'facebook_link' => $facebook_link,
                         'link_video_ads' => $link_video_ads,
-                        'loai_lead' => $type
+                        'loai_lead' => $loai_lead
                     ];
                     if ($crmCheckResult['leadExists']) {
                         $leadId = updateLead($conn, $phone, $email, $consultantId, $source, $type, $note, null, null, $name);
@@ -1691,13 +1717,13 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                     if ($leadId) {
                         $updExtra = $conn->prepare("UPDATE leads SET lead_phan_loai = ?, project_id = ?, facebook_link = ?, link_video_ads = ?, loai_lead = ? WHERE id = ?");
                         if ($updExtra) {
-                            $updExtra->bind_param("sisssi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $type, $leadId);
+                            $updExtra->bind_param("sisssi", $lead_phan_loai, $project_id, $facebook_link, $link_video_ads, $loai_lead, $leadId);
                             $updExtra->execute();
                             $updExtra->close();
                         }
                         $updCtExtra = $conn->prepare("UPDATE contacts SET project_id = COALESCE(?, project_id), facebook_link = COALESCE(?, facebook_link), link_video_ads = COALESCE(?, link_video_ads), lead_phan_loai = COALESCE(?, lead_phan_loai), loai_lead = COALESCE(?, loai_lead), customer_type = COALESCE(?, customer_type) WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR phone = ?");
                         if ($updCtExtra) {
-                            $updCtExtra->bind_param("isssssis", $project_id, $facebook_link, $link_video_ads, $lead_phan_loai, $type, $type, $leadId, $phone);
+                            $updCtExtra->bind_param("isssssis", $project_id, $facebook_link, $link_video_ads, $lead_phan_loai, $loai_lead, $type, $leadId, $phone);
                             $updCtExtra->execute();
                             $updCtExtra->close();
                         }
@@ -1756,7 +1782,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
 
                         $updCtPost = $conn->prepare("UPDATE contacts SET project_id = COALESCE(?, project_id), facebook_link = COALESCE(?, facebook_link), link_video_ads = COALESCE(?, link_video_ads), lead_phan_loai = COALESCE(?, lead_phan_loai), loai_lead = COALESCE(?, loai_lead), customer_type = COALESCE(?, customer_type) WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR phone = ?");
                         if ($updCtPost) {
-                            $updCtPost->bind_param("isssssis", $project_id, $facebook_link, $link_video_ads, $lead_phan_loai, $type, $type, $leadId, $phone);
+                            $updCtPost->bind_param("isssssis", $project_id, $facebook_link, $link_video_ads, $lead_phan_loai, $loai_lead, $type, $leadId, $phone);
                             $updCtPost->execute();
                             $updCtPost->close();
                         }
@@ -20435,9 +20461,11 @@ switch ($action) {
             if (empty($sourceVal)) {
                 $sourceVal = 'databank';
             }
-            // If lead_phan_loai is still empty, fallback to loai_lead, then typeVal, or null
+            // If lead_phan_loai is still empty, preserve sourceVal, then loai_lead, then typeVal
             if (empty($leadPhanLoaiVal)) {
-                if (!empty($loaiLeadVal)) {
+                if (!empty($sourceVal) && strtolower($sourceVal) !== 'databank') {
+                    $leadPhanLoaiVal = $sourceVal;
+                } elseif (!empty($loaiLeadVal)) {
                     $leadPhanLoaiVal = $loaiLeadVal;
                 } elseif (!empty($typeVal) && $typeVal !== '-' && strtolower($typeVal) !== 'databank') {
                     $leadPhanLoaiVal = $typeVal;
@@ -20459,7 +20487,7 @@ switch ($action) {
                 INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, lead_phan_loai, loai_lead, status, pipeline_status, security_expires_at, notes, customer_type, campaign_id, donvi_chay, ad_name, form_name, link_video_ads, facebook_link, zalo_phone, app_lienhe)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmtIns->bind_param("iiiisssssssssssissssssss", 
+            $stmtIns->bind_param("iiiisssssssssssisssssss", 
                 $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, 
                 $person['email'], $person['phone'], $sourceVal, $leadPhanLoaiVal, $loaiLeadVal, 
                 $triggerStatus, $secExpiresTime, $noteVal, $typeVal, $campaignIdVal, 

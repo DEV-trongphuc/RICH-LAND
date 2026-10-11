@@ -699,6 +699,7 @@ export const QuickAddLeadModal = () => {
         email: email || prev.email,
         source: source || prev.source,
         type: type || prev.type,
+        lead_phan_loai: leadPhanLoai || prev.lead_phan_loai,
         note: note || prev.note,
       }));
       return;
@@ -983,6 +984,7 @@ export const QuickAddLeadModal = () => {
       email: email.trim() || prev.email,
       source: source.trim() || prev.source,
       type: type.trim() || prev.type,
+      lead_phan_loai: leadPhanLoai.trim() || prev.lead_phan_loai,
       note: note.trim() || prev.note,
       ...(detectedFbUrl ? { facebook_link: detectedFbUrl } : {}),
       ...(detectedDataUrl ? { link_video_ads: detectedDataUrl } : {})
@@ -1257,7 +1259,10 @@ export const QuickAddLeadModal = () => {
         }
         
         const payload = {
-          data: manualData,
+          data: {
+            ...manualData,
+            loai_lead: manualData.lead_phan_loai || ''
+          },
           override_round_id: overrideRoundId ? Number(overrideRoundId) : (distributionMode === 'auto_round' ? previewCons?.round_id : null),
           override_consultant_id: distributionMode === 'auto_round' && overrideConsId ? Number(overrideConsId) : null,
           compensate_skipped: compensateSkipped,
