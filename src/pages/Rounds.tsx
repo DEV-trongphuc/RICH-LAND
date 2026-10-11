@@ -1156,342 +1156,404 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 overflow: 'hidden', 
                 display: 'flex', 
                 flexDirection: 'column',
-                borderRadius: '12px',
-                borderTop: `4px solid ${color}`,
-                borderLeft: Number(r.is_active) !== 1 ? '1px solid var(--color-border)' : undefined,
-                borderRight: Number(r.is_active) !== 1 ? '1px solid var(--color-border)' : undefined,
-                borderBottom: Number(r.is_active) !== 1 ? '1px solid var(--color-border)' : undefined,
+                borderRadius: '14px',
+                border: '1px solid var(--color-border)',
+                borderTop: `4px solid ${Number(r.is_active) === 1 ? color : '#9ca3af'}`,
                 opacity: Number(r.is_active) !== 1 ? 0.75 : 1,
                 filter: Number(r.is_active) !== 1 ? 'grayscale(0.95)' : 'none',
-                background: Number(r.is_active) !== 1 ? (theme === 'dark' ? '#1f2937' : '#f9fafb') : undefined
+                background: Number(r.is_active) !== 1 
+                  ? (theme === 'dark' ? '#1f2937' : '#f9fafb') 
+                  : (theme === 'dark' ? 'var(--color-surface)' : '#ffffff'),
+                boxShadow: '0 2px 8px -2px rgba(0,0,0,0.05)',
+                transition: 'all 0.2s ease-in-out'
               }}>
-                <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ padding: '1.125rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {/* 1. Header: Icon + Title & Project Subtitle + Type / Score */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
+                      <div style={{ 
+                        width: 38, 
+                        height: 38, 
+                        borderRadius: 10, 
+                        background: `${color}14`, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        flexShrink: 0 
+                      }}>
                         <Zap size={18} color={color} />
                       </div>
-                      <div>
-                        <h3 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          {r.round_name}
-                          {r.round_type === 'grab' ? (
-                            <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.15)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <Zap size={10} /> {t("Tranh Lead")}
-                            </span>
-                          ) : (
-                            <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <RefreshCw size={10} /> {t("Xoay vòng")}
-                            </span>
-                          )}
-                          {r.project_name && (
-                            <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
-                              {r.project_name}
-                            </span>
-                          )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <h3 style={{ 
+                            fontWeight: 700, 
+                            fontSize: '0.9375rem', 
+                            color: 'var(--color-text)', 
+                            margin: 0,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {r.round_name}
+                          </h3>
                           {r.is_fallback && (
-                            <span className="badge danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                            <span style={{ 
+                              fontSize: '0.625rem', 
+                              padding: '1px 5px', 
+                              borderRadius: 4, 
+                              background: 'rgba(239, 68, 68, 0.1)', 
+                              color: '#ef4444', 
+                              fontWeight: 600,
+                              flexShrink: 0
+                            }}>
                               {t("Mặc định")}
                             </span>
                           )}
-                        </h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-                          <span 
-                            className={`pulse-dot ${Number(r.is_active) === 1 ? 'active' : 'inactive'}`} 
-                            style={{ width: 6, height: 6, display: 'inline-block' }} 
-                          />
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                            {Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')}
-                          </span>
-                          {Number(r.is_active) === 1 && (
-                            r.is_schedule_active ? (
-                              <span style={{ 
-                                fontSize: '0.675rem', 
-                                padding: '1px 6px', 
-                                borderRadius: 4, 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: 4, 
-                                background: r.is_currently_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.12)', 
-                                color: r.is_currently_active ? '#059669' : '#d97706', 
-                                fontWeight: 600,
-                                border: r.is_currently_active ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(245, 158, 11, 0.25)'
-                              }}>
-                                <Clock size={10} /> {r.active_time_start} - {r.active_time_end} ({r.is_currently_active ? t("Trong ca") : t("Ngoài ca")})
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500 }}>
-                                <Clock size={10} /> 24/7
-                              </span>
-                            )
-                          )}
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Fairness score badge */}
-                    {r.fairness_index !== undefined && (
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/fair-share?round_id=${r.id}`);
-                        }}
-                        style={{ 
-                          cursor: 'pointer', 
-                          display: 'flex', 
-                          flexDirection: 'column',
-                          alignItems: 'flex-end',
-                          gap: 2 
-                        }}
-                        title={t("Click để xem chi tiết đối soát công bằng")}
-                      >
-                        <span style={{ 
-                          fontSize: '0.65rem', 
-                          fontWeight: 700, 
-                          color: 'var(--color-text-muted)', 
-                          textTransform: 'uppercase', 
-                          letterSpacing: '0.05em' 
-                        }}>
-                          {t("Điểm đối soát")}
-                        </span>
+                        
+                        {/* Subtitle: Project name with icon (clean typography, no noisy pill border) */}
                         <div style={{ 
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: 4, 
-                          padding: '3px 8px', 
-                          borderRadius: 8, 
-                          background: getFairnessColor(r.fairness_index).bg,
-                          color: getFairnessColor(r.fairness_index).color,
-                          fontWeight: 700,
-                          fontSize: '0.8125rem',
-                          border: `1px solid ${getFairnessColor(r.fairness_index).color}25`,
-                          transition: 'all 0.2s ease-out'
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.transform = 'none';
-                          e.currentTarget.style.boxShadow = 'none';
-                        }}
-                        >
-                          <Scale size={12} />
-                          {r.fairness_index}%
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ flex: 1, marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '1rem', flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: 0, minWidth: 95 }}>
-                            {t('{count} Thành viên').replace('{count}', String(consList.length))}
-                          </p>
-                          {typeof r.ready_count === 'number' && (
-                            <span style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              color: r.ready_count > 0 ? '#059669' : '#d97706',
-                              background: r.ready_count > 0 
-                                ? (theme === 'dark' ? 'rgba(5, 150, 105, 0.2)' : '#d1fae5') 
-                                : (theme === 'dark' ? 'rgba(217, 119, 6, 0.15)' : '#fef3c7'),
-                              border: `1px solid ${r.ready_count > 0 ? 'rgba(5, 150, 105, 0.3)' : 'rgba(217, 119, 6, 0.3)'}`,
-                              padding: '2px 8px',
-                              borderRadius: 12,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 5
-                            }}>
-                              <span style={{ 
-                                width: 6, 
-                                height: 6, 
-                                borderRadius: '50%', 
-                                background: r.ready_count > 0 ? '#10b981' : '#f59e0b',
-                                boxShadow: r.ready_count > 0 ? '0 0 6px #10b981' : 'none'
-                              }} />
-                              {r.ready_count} {t("Sẵn sàng")}
-                            </span>
+                          marginTop: 2, 
+                          fontSize: '0.75rem', 
+                          color: 'var(--color-text-muted)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {r.project_name ? (
+                            <>
+                              <Building2 size={12} style={{ flexShrink: 0, opacity: 0.7, color: 'var(--color-primary)' }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500, color: 'var(--color-text-light)' }}>
+                                {r.project_name}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Globe size={12} style={{ flexShrink: 0, opacity: 0.5 }} />
+                              <span style={{ fontStyle: 'italic', opacity: 0.8 }}>{t("Tất cả dự án")}</span>
+                            </>
                           )}
                         </div>
-                        {consList.length > 0 ? (
-                          <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center' }}>
-                            {(() => {
-                              const readySet = new Set((r.ready_consultant_ids || []).map((id: any) => Number(id)));
-                              const sortedConsList = [...consList].sort((a: string, b: string) => {
-                                const aId = consIds[consList.indexOf(a)];
-                                const bId = consIds[consList.indexOf(b)];
-                                const aReady = readySet.has(Number(aId));
-                                const bReady = readySet.has(Number(bId));
-                                if (aReady && !bReady) return -1;
-                                if (!aReady && bReady) return 1;
-                                return 0;
-                              });
-
-                              return sortedConsList.slice(0, 4).map((c: string, i: number) => {
-                                const matchedCons = consultants.find(x => x.name === c);
-                                const cId = consIds[consList.indexOf(c)];
-                                const isReady = readySet.has(Number(cId));
-                                const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
-                                return (
-                                  <span
-                                    key={i}
-                                    className="avatar-stack-item"
-                                    data-tooltip={`${c} • ${leadCount} data${isReady ? ' • ' + t('Sẵn sàng') : ''}`}
-                                    style={{
-                                      marginLeft: i === 0 ? 0 : -8,
-                                      position: 'relative',
-                                      zIndex: 10 - i,
-                                      display: 'inline-block',
-                                      borderRadius: '50%'
-                                    }}
-                                  >
-                                    <Avatar
-                                      src={matchedCons?.avatar}
-                                      name={c}
-                                      size={32}
-                                      style={{
-                                        border: isReady ? '2px solid #10b981' : '2px solid var(--color-surface)',
-                                        boxShadow: isReady ? '0 0 6px rgba(16, 185, 129, 0.4)' : 'var(--shadow-sm)',
-                                        filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
-                                        opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
-                                      }}
-                                    />
-                                    {isReady && (
-                                      <span style={{
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        right: 0,
-                                        width: 8,
-                                        height: 8,
-                                        borderRadius: '50%',
-                                        background: '#10b981',
-                                        border: '1.5px solid var(--color-surface)',
-                                        boxShadow: '0 0 4px #10b981'
-                                      }} />
-                                    )}
-                                  </span>
-                                );
-                              });
-                            })()}
-                            {consList.length > 4 && (
-                              <div style={{
-                                width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)',
-                                color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '0.75rem', fontWeight: 700, border: '2px solid var(--color-surface)',
-                                marginLeft: -8, position: 'relative', zIndex: 5, boxShadow: 'var(--shadow-sm)'
-                              }}>
-                                +{consList.length - 4}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>{t("Chưa có")}</p>
-                        )}
-                      </div>
-
-                      {/* Total Leads count */}
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '6px', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 600, 
-                        color: 'var(--color-text-light)',
-                        background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--color-border-light)'
-                      }}>
-                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Tổng data:")}</span>
-                        <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{r.total_leads || 0}</span>
                       </div>
                     </div>
 
+                    {/* Top-right: Round type tag & Fairness score */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                      {r.round_type === 'grab' ? (
+                        <span style={{ 
+                          fontSize: '0.675rem', 
+                          padding: '2px 7px', 
+                          borderRadius: 6, 
+                          background: 'rgba(245, 158, 11, 0.1)', 
+                          color: '#d97706', 
+                          fontWeight: 600, 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: 3 
+                        }}>
+                          <Zap size={10} /> {t("Tranh Lead")}
+                        </span>
+                      ) : (
+                        <span style={{ 
+                          fontSize: '0.675rem', 
+                          padding: '2px 7px', 
+                          borderRadius: 6, 
+                          background: 'rgba(59, 130, 246, 0.1)', 
+                          color: '#2563eb', 
+                          fontWeight: 600, 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: 3 
+                        }}>
+                          <RefreshCw size={10} /> {t("Xoay vòng")}
+                        </span>
+                      )}
+
+                      {r.fairness_index !== undefined && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/fair-share?round_id=${r.id}`);
+                          }}
+                          title={t("Điểm đối soát công bằng: {val}%. Click để xem chi tiết").replace('{val}', String(r.fairness_index))}
+                          style={{ 
+                            cursor: 'pointer', 
+                            border: `1px solid ${getFairnessColor(r.fairness_index).color}30`, 
+                            background: getFairnessColor(r.fairness_index).bg,
+                            color: getFairnessColor(r.fairness_index).color,
+                            padding: '2px 6px',
+                            borderRadius: 6,
+                            fontSize: '0.675rem',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            lineHeight: 1.2
+                          }}
+                        >
+                          <Scale size={10} />
+                          {r.fairness_index}%
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. Status & Shift Bar (Clean, subtle unified strip) */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '5px 10px',
+                    borderRadius: 7,
+                    background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
+                    border: '1px solid var(--color-border-light)',
+                    marginBottom: '0.875rem',
+                    fontSize: '0.725rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span 
+                        className={`pulse-dot ${Number(r.is_active) === 1 ? 'active' : 'inactive'}`} 
+                        style={{ width: 6, height: 6, display: 'inline-block' }} 
+                      />
+                      <span style={{ 
+                        fontWeight: 600, 
+                        color: Number(r.is_active) === 1 ? 'var(--color-text)' : 'var(--color-text-muted)' 
+                      }}>
+                        {Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)' }}>
+                      {Number(r.is_active) === 1 ? (
+                        r.is_schedule_active ? (
+                          <span style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: 4, 
+                            color: r.is_currently_active ? '#059669' : '#d97706',
+                            fontWeight: 600 
+                          }}>
+                            <Clock size={11} /> {r.active_time_start} - {r.active_time_end} ({r.is_currently_active ? t("Trong ca") : t("Ngoài ca")})
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500 }}>
+                            <Clock size={11} /> 24/7
+                          </span>
+                        )
+                      ) : (
+                        <span style={{ fontStyle: 'italic', opacity: 0.7 }}>{t("Tạm ngắt")}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3. Members & Total Data Row */}
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    marginBottom: '0.75rem',
+                    gap: '0.5rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minWidth: 0 }}>
+                      {/* Avatar Stack */}
+                      {consList.length > 0 ? (
+                        <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center' }}>
+                          {(() => {
+                            const readySet = new Set((r.ready_consultant_ids || []).map((id: any) => Number(id)));
+                            const sortedConsList = [...consList].sort((a: string, b: string) => {
+                              const aId = consIds[consList.indexOf(a)];
+                              const bId = consIds[consList.indexOf(b)];
+                              const aReady = readySet.has(Number(aId));
+                              const bReady = readySet.has(Number(bId));
+                              if (aReady && !bReady) return -1;
+                              if (!aReady && bReady) return 1;
+                              return 0;
+                            });
+
+                            return sortedConsList.slice(0, 3).map((c: string, i: number) => {
+                              const matchedCons = consultants.find(x => x.name === c);
+                              const cId = consIds[consList.indexOf(c)];
+                              const isReady = readySet.has(Number(cId));
+                              const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
+                              return (
+                                <span
+                                  key={i}
+                                  className="avatar-stack-item"
+                                  data-tooltip={`${c} • ${leadCount} data${isReady ? ' • ' + t('Sẵn sàng') : ''}`}
+                                  style={{
+                                    marginLeft: i === 0 ? 0 : -6,
+                                    position: 'relative',
+                                    zIndex: 10 - i,
+                                    display: 'inline-block',
+                                    borderRadius: '50%'
+                                  }}
+                                >
+                                  <Avatar
+                                    src={matchedCons?.avatar}
+                                    name={c}
+                                    size={26}
+                                    style={{
+                                      border: isReady ? '1.5px solid #10b981' : '1.5px solid var(--color-surface)',
+                                      filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                                      opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
+                                    }}
+                                  />
+                                </span>
+                              );
+                            });
+                          })()}
+                          {consList.length > 3 && (
+                            <div style={{
+                              width: 26, height: 26, borderRadius: '50%', background: theme === 'dark' ? '#374151' : '#e2e8f0',
+                              color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '0.675rem', fontWeight: 700, border: '1.5px solid var(--color-surface)',
+                              marginLeft: -6, position: 'relative', zIndex: 5
+                            }}>
+                              +{consList.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+
+                      {/* Clean text: "9 / 32 sẵn sàng" */}
+                      <div style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
+                        {typeof r.ready_count === 'number' ? (
+                          <span>
+                            <strong style={{ color: r.ready_count > 0 ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
+                              {r.ready_count}
+                            </strong>
+                            {' / '}{consList.length} {t("sẵn sàng")}
+                          </span>
+                        ) : (
+                          <span>{consList.length} {t("thành viên")}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Total data */}
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      color: 'var(--color-text-muted)',
+                      whiteSpace: 'nowrap',
+                      textAlign: 'right'
+                    }}>
+                      {t("Đã chia:")} <strong style={{ color: 'var(--color-text)', fontWeight: 700 }}>{r.total_leads || 0}</strong>
+                    </div>
+                  </div>
+
+                  {/* 4. Rules / Next Turn Info (Subtle single container) */}
+                  <div style={{ flex: 1, marginBottom: '0.875rem' }}>
                     {r.round_type === 'grab' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <div style={{ padding: '0.375rem 0.5rem', background: theme === 'dark' ? '#374151' : 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Clock size={14} color="var(--color-text-muted)" />
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                            {t("Hạn nhận: {countdown} phút").replace('{countdown}', String(Math.round((r.grab_countdown_seconds || 300) / 60)))}
-                          </span>
-                        </div>
-                        <div style={{ padding: '0.375rem 0.5rem', background: theme === 'dark' ? '#374151' : 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Clock size={14} color="var(--color-text-muted)" />
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                      <div style={{ 
+                        padding: '6px 10px', 
+                        background: theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#f8fafc', 
+                        border: '1px dashed var(--color-border-light)', 
+                        borderRadius: 6, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        fontSize: '0.725rem',
+                        color: 'var(--color-text-muted)'
+                      }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <Clock size={11} style={{ opacity: 0.7 }} />
+                          {t("Hạn nhận:")} <strong style={{ color: 'var(--color-text)', fontWeight: 600 }}>{Math.round((r.grab_countdown_seconds || 300) / 60)} {t("phút")}</strong>
+                        </span>
+                        <span style={{ opacity: 0.3 }}>•</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          {t("Giãn cách:")} <strong style={{ color: 'var(--color-text)', fontWeight: 600 }}>
                             {Number(r.grab_cooldown_seconds || 3600) < 3600
-                              ? t("Chờ: {cooldown} phút").replace('{cooldown}', String(Math.round(Number(r.grab_cooldown_seconds || 3600) / 60)))
-                              : t("Chờ: {cooldown} giờ").replace('{cooldown}', (Number(r.grab_cooldown_seconds || 3600) / 3600) % 1 === 0 ? String(Number(r.grab_cooldown_seconds || 3600) / 3600) : String(parseFloat((Number(r.grab_cooldown_seconds || 3600) / 3600).toFixed(1))))}
-                          </span>
-                        </div>
+                              ? `${Math.round(Number(r.grab_cooldown_seconds || 3600) / 60)} ${t("phút")}`
+                              : `${(Number(r.grab_cooldown_seconds || 3600) / 3600) % 1 === 0 ? Number(r.grab_cooldown_seconds || 3600) / 3600 : parseFloat((Number(r.grab_cooldown_seconds || 3600) / 3600).toFixed(1))} ${t("giờ")}`}
+                          </strong>
+                        </span>
                       </div>
                     ) : compensatedConsultants.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                        <div style={{ padding: '0.375rem 0.5rem', background: 'var(--color-warning-light)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Zap size={14} color="var(--color-warning)" style={{ fill: 'var(--color-warning)', flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, lineHeight: 1.4 }}>
-                            {t('Đang bù data:')}{' '}
-                            <span 
-                              style={{ 
-                                fontWeight: 700, 
-                                cursor: 'help' 
-                              }} 
-                              title={t('Đang được bù ưu tiên tiếp theo')}
-                            >
-                              {compensatedConsultants[0].name}
-                            </span>
-                            {compensatedConsultants.length > 1 && (
-                              <>
-                                {' '}{t('và')}{' '}
-                                <span 
-                                  style={{ 
-                                    fontWeight: 700, 
-                                    borderBottom: '1px dashed currentColor', 
-                                    cursor: 'help' 
-                                  }} 
-                                  title={compensatedConsultants.slice(1).map(c => c.name).join('\n')}
-                                >
-                                  {t('{count} người khác').replace('{count}', String(compensatedConsultants.length - 1))}
-                                </span>
-                              </>
-                            )}
+                      <div style={{ 
+                        padding: '6px 10px', 
+                        background: 'rgba(245, 158, 11, 0.08)', 
+                        border: '1px solid rgba(245, 158, 11, 0.2)', 
+                        borderRadius: 6, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        gap: 6,
+                        fontSize: '0.725rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+                          <Zap size={12} color="#d97706" style={{ flexShrink: 0, fill: '#d97706' }} />
+                          <span style={{ color: '#d97706', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {t("Đang bù:")} <strong>{compensatedConsultants[0].name}</strong>
+                            {compensatedConsultants.length > 1 && ` (+${compensatedConsultants.length - 1})`}
                           </span>
                         </div>
                         {r.next_assigned_name && (
-                          <div style={{ paddingLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              {t('Lượt xoay tiếp theo:')}
-                              <Avatar src={nextCons?.avatar} name={r.next_assigned_name} size={16} />
-                              <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{r.next_assigned_name}</span>
-                            </span>
-                          </div>
+                          <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                            {t("Kế:")} {r.next_assigned_name}
+                          </span>
                         )}
                       </div>
                     ) : (
                       r.next_assigned_name && (
-                        <div style={{ padding: '0.375rem 0.5rem', background: 'var(--color-primary-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Zap size={14} color="var(--color-primary)" />
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-primary-dark)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            {t('Sale lượt tới:')}
-                            <Avatar src={nextCons?.avatar} name={r.next_assigned_name} size={18} />
-                            <span style={{ fontWeight: 700 }}>{r.next_assigned_name}</span>
-                          </span>
+                        <div style={{ 
+                          padding: '6px 10px', 
+                          background: 'rgba(59, 130, 246, 0.06)', 
+                          border: '1px solid rgba(59, 130, 246, 0.15)', 
+                          borderRadius: 6, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 6,
+                          fontSize: '0.725rem'
+                        }}>
+                          <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t('Sale lượt tới:')}</span>
+                          <Avatar src={nextCons?.avatar} name={r.next_assigned_name} size={16} />
+                          <strong style={{ color: 'var(--color-primary-dark, #1d4ed8)', fontWeight: 700 }}>{r.next_assigned_name}</strong>
                         </div>
                       )
                     )}
                   </div>
-                  <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.375rem 0.5rem', justifyContent: 'center' }}>
+
+                  {/* 5. Action Buttons */}
+                  <div style={{ 
+                    borderTop: '1px solid var(--color-border-light)', 
+                    paddingTop: '0.75rem', 
+                    display: 'flex', 
+                    gap: '0.5rem', 
+                    alignItems: 'center' 
+                  }}>
+                    <button 
+                      className="btn outline sm" 
+                      onClick={() => openEditModal(r)} 
+                      style={{ 
+                        flex: 1, 
+                        padding: '0.4rem 0.5rem', 
+                        justifyContent: 'center',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600
+                      }}
+                    >
                       <Info size={14} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                     </button>
                     {!isReadOnly && (
-                      <button className="btn secondary sm" onClick={() => openCompModal(r)} title={t("Bù Data")} style={{ padding: '0.375rem', width: 34, height: 32, flexShrink: 0, justifyContent: 'center' }}>
+                      <button 
+                        className="btn secondary sm" 
+                        onClick={() => openCompModal(r)} 
+                        title={t("Bù Data")} 
+                        style={{ padding: '0.375rem', width: 34, height: 32, flexShrink: 0, justifyContent: 'center' }}
+                      >
                         <Zap size={14} />
                       </button>
                     )}
                     {!isReadOnly && (
-                      <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} title={t("Xóa vòng")} style={{ padding: '0.375rem', width: 34, height: 32, flexShrink: 0, justifyContent: 'center', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
+                      <button 
+                        className="btn outline sm" 
+                        onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} 
+                        title={t("Xóa vòng")} 
+                        style={{ padding: '0.375rem', width: 34, height: 32, flexShrink: 0, justifyContent: 'center', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}
+                      >
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -1500,69 +1562,87 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
               </div>
             ) : (
               <div key={r.id} className="card hover-glow responsive-flex-row responsive-height-auto" style={{
-                display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '1rem 1.5rem',
+                display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '0.875rem 1.25rem',
                 borderRadius: '12px',
                 borderLeft: `4px solid ${Number(r.is_active) !== 1 ? '#9ca3af' : color}`,
                 opacity: Number(r.is_active) !== 1 ? 0.75 : 1,
                 filter: Number(r.is_active) !== 1 ? 'grayscale(0.95)' : 'none',
                 background: Number(r.is_active) !== 1 ? (theme === 'dark' ? '#1f2937' : '#f9fafb') : undefined
               }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Zap size={20} color={color} />
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Zap size={18} color={color} />
                 </div>
 
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {r.round_name}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)', margin: 0 }}>
+                      {r.round_name}
+                    </h3>
                     {r.round_type === 'grab' ? (
-                      <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.15)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                         <Zap size={10} /> {t("Tranh Lead")}
                       </span>
                     ) : (
-                      <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                         <RefreshCw size={10} /> {t("Xoay vòng")}
                       </span>
                     )}
-                    {r.project_name && (
-                      <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
-                        {r.project_name}
-                      </span>
-                    )}
                     {r.is_fallback && (
-                      <span className="badge danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                      <span style={{ fontSize: '0.625rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 600 }}>
                         {t("Mặc định")}
                       </span>
                     )}
-                  </h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                    <span 
-                      className={`pulse-dot ${Number(r.is_active) === 1 ? 'active' : 'inactive'}`} 
-                      style={{ width: 8, height: 8, display: 'inline-block' }} 
-                    />
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                      {Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')}
-                    </span>
-                    {Number(r.is_active) === 1 && (
-                      r.is_schedule_active ? (
-                        <span style={{ 
-                          fontSize: '0.675rem', 
-                          padding: '1px 6px', 
-                          borderRadius: 4, 
-                          display: 'inline-flex', 
-                          alignItems: 'center', 
-                          gap: 4, 
-                          background: r.is_currently_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.12)', 
-                          color: r.is_currently_active ? '#059669' : '#d97706', 
-                          fontWeight: 600,
-                          border: r.is_currently_active ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(245, 158, 11, 0.25)'
-                        }}>
-                          <Clock size={10} /> {r.active_time_start} - {r.active_time_end} ({r.is_currently_active ? t("Trong ca") : t("Ngoài ca")})
-                        </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap', fontSize: '0.75rem' }}>
+                    {/* Project subtitle */}
+                    <span style={{ color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {r.project_name ? (
+                        <>
+                          <Building2 size={11} style={{ opacity: 0.7, color: 'var(--color-primary)' }} />
+                          <span style={{ fontWeight: 500, color: 'var(--color-text-light)' }}>{r.project_name}</span>
+                        </>
                       ) : (
-                        <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500 }}>
-                          <Clock size={10} /> 24/7
-                        </span>
-                      )
+                        <>
+                          <Globe size={11} style={{ opacity: 0.5 }} />
+                          <span style={{ fontStyle: 'italic', opacity: 0.8 }}>{t("Tất cả dự án")}</span>
+                        </>
+                      )}
+                    </span>
+
+                    <span style={{ opacity: 0.3 }}>•</span>
+
+                    {/* Status dot */}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <span 
+                        className={`pulse-dot ${Number(r.is_active) === 1 ? 'active' : 'inactive'}`} 
+                        style={{ width: 6, height: 6, display: 'inline-block' }} 
+                      />
+                      <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                        {Number(r.is_active) === 1 ? t('Đang hoạt động') : t('Tạm dừng')}
+                      </span>
+                    </span>
+
+                    {Number(r.is_active) === 1 && (
+                      <>
+                        <span style={{ opacity: 0.3 }}>•</span>
+                        {r.is_schedule_active ? (
+                          <span style={{ 
+                            fontSize: '0.7rem', 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: 3, 
+                            color: r.is_currently_active ? '#059669' : '#d97706', 
+                            fontWeight: 600
+                          }}>
+                            <Clock size={10} /> {r.active_time_start} - {r.active_time_end} ({r.is_currently_active ? t("Trong ca") : t("Ngoài ca")})
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <Clock size={10} /> 24/7
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -1580,13 +1660,13 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: 2,
-                      minWidth: 100,
+                      minWidth: 80,
                       flexShrink: 0
                     }}
                     title={t("Click để xem chi tiết đối soát công bằng")}
                   >
                     <span style={{ 
-                      fontSize: '0.65rem', 
+                      fontSize: '0.625rem', 
                       fontWeight: 700, 
                       color: 'var(--color-text-muted)', 
                       textTransform: 'uppercase', 
@@ -1597,234 +1677,156 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                     <div style={{ 
                       display: 'flex', 
                       alignItems: 'center', 
-                      gap: 4, 
-                      padding: '3px 8px', 
-                      borderRadius: 8, 
+                      gap: 3, 
+                      padding: '2px 7px', 
+                      borderRadius: 6, 
                       background: getFairnessColor(r.fairness_index).bg,
                       color: getFairnessColor(r.fairness_index).color,
                       fontWeight: 700,
                       fontSize: '0.75rem',
-                      border: `1px solid ${getFairnessColor(r.fairness_index).color}25`,
-                      transition: 'all 0.2s ease-out'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'none';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                    >
-                      <Scale size={11} />
+                      border: `1px solid ${getFairnessColor(r.fairness_index).color}25`
+                    }}>
+                      <Scale size={10} />
                       {r.fairness_index}%
                     </div>
                   </div>
                 )}
 
-                <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                   <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginRight: '0.5rem', minWidth: 90 }}>
-                        {t('{count} Thành viên').replace('{count}', String(consList.length))}
-                      </p>
-                      {typeof r.ready_count === 'number' && (
-                        <span style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          color: r.ready_count > 0 ? '#059669' : '#d97706',
-                          background: r.ready_count > 0 
-                            ? (theme === 'dark' ? 'rgba(5, 150, 105, 0.2)' : '#d1fae5') 
-                            : (theme === 'dark' ? 'rgba(217, 119, 6, 0.15)' : '#fef3c7'),
-                          border: `1px solid ${r.ready_count > 0 ? 'rgba(5, 150, 105, 0.3)' : 'rgba(217, 119, 6, 0.3)'}`,
-                          padding: '2px 8px',
-                          borderRadius: 12,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5
-                        }}>
-                          <span style={{ 
-                            width: 6, 
-                            height: 6, 
-                            borderRadius: '50%', 
-                            background: r.ready_count > 0 ? '#10b981' : '#f59e0b',
-                            boxShadow: r.ready_count > 0 ? '0 0 6px #10b981' : 'none'
-                          }} />
-                          {r.ready_count} {t("Sẵn sàng")}
-                        </span>
-                      )}
-                    </div>
-                    {(() => {
-                      const readySet = new Set((r.ready_consultant_ids || []).map((id: any) => Number(id)));
-                      const sortedConsList = [...consList].sort((a: string, b: string) => {
-                        const aId = consIds[consList.indexOf(a)];
-                        const bId = consIds[consList.indexOf(b)];
-                        const aReady = readySet.has(Number(aId));
-                        const bReady = readySet.has(Number(bId));
-                        if (aReady && !bReady) return -1;
-                        if (!aReady && bReady) return 1;
-                        return 0;
-                      });
-
-                      return sortedConsList.slice(0, 4).map((c: string, i: number) => {
-                        const matchedCons = consultants.find(cons => cons.name === c);
-                        const cId = consIds[consList.indexOf(c)];
-                        const isReady = readySet.has(Number(cId));
-                        const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
-                        return (
-                          <span
-                            key={i}
-                            className="avatar-stack-item"
-                            data-tooltip={`${c} • ${leadCount} data${isReady ? ' • ' + t('Sẵn sàng') : ''}`}
-                            style={{
-                              marginLeft: i > 0 ? -12 : 0,
-                              position: 'relative',
-                              zIndex: 10 - i,
-                              display: 'inline-block',
-                              borderRadius: '50%'
-                            }}
-                          >
-                            <Avatar
-                              src={matchedCons?.avatar}
-                              name={c}
-                              size={32}
-                              style={{
-                                border: isReady ? '2px solid #10b981' : '2px solid var(--color-surface)',
-                                boxShadow: isReady ? '0 0 6px rgba(16, 185, 129, 0.4)' : 'var(--shadow-sm)',
-                                filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
-                                opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
-                              }}
-                            />
-                            {isReady && (
-                              <span style={{
-                                position: 'absolute',
-                                bottom: 0,
-                                right: 0,
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                background: '#10b981',
-                                border: '1.5px solid var(--color-surface)',
-                                boxShadow: '0 0 4px #10b981'
-                              }} />
-                            )}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {typeof r.ready_count === 'number' ? (
+                          <span>
+                            <strong style={{ color: r.ready_count > 0 ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
+                              {r.ready_count}
+                            </strong>
+                            {' / '}{consList.length} {t("sẵn sàng")}
                           </span>
-                        );
-                      });
-                    })()}
-                    {consList.length > 4 && (
-                      <div style={{
-                        width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)', color: 'var(--color-text-muted)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700,
-                        border: '2px solid var(--color-surface)', marginLeft: -12, boxShadow: 'var(--shadow-sm)'
-                      }}>
-                        +{consList.length - 4}
+                        ) : (
+                          <span>{consList.length} {t("thành viên")}</span>
+                        )}
+                      </span>
+                    </div>
+
+                    {consList.length > 0 && (
+                      <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center' }}>
+                        {(() => {
+                          const readySet = new Set((r.ready_consultant_ids || []).map((id: any) => Number(id)));
+                          const sortedConsList = [...consList].sort((a: string, b: string) => {
+                            const aId = consIds[consList.indexOf(a)];
+                            const bId = consIds[consList.indexOf(b)];
+                            const aReady = readySet.has(Number(aId));
+                            const bReady = readySet.has(Number(bId));
+                            if (aReady && !bReady) return -1;
+                            if (!aReady && bReady) return 1;
+                            return 0;
+                          });
+
+                          return sortedConsList.slice(0, 3).map((c: string, i: number) => {
+                            const matchedCons = consultants.find(cons => cons.name === c);
+                            const cId = consIds[consList.indexOf(c)];
+                            const isReady = readySet.has(Number(cId));
+                            const leadCount = (cId && r.consultant_lead_counts) ? (r.consultant_lead_counts[cId] || 0) : 0;
+                            return (
+                              <span
+                                key={i}
+                                className="avatar-stack-item"
+                                data-tooltip={`${c} • ${leadCount} data${isReady ? ' • ' + t('Sẵn sàng') : ''}`}
+                                style={{
+                                  marginLeft: i > 0 ? -6 : 0,
+                                  position: 'relative',
+                                  zIndex: 10 - i,
+                                  display: 'inline-block',
+                                  borderRadius: '50%'
+                                }}
+                              >
+                                <Avatar
+                                  src={matchedCons?.avatar}
+                                  name={c}
+                                  size={24}
+                                  style={{
+                                    border: isReady ? '1.5px solid #10b981' : '1.5px solid var(--color-surface)',
+                                    filter: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                                    opacity: (matchedCons?.status === 'inactive' || matchedCons?.status === 'leave' || Number(matchedCons?.vacation_mode) === 1) ? 0.5 : 1
+                                  }}
+                                />
+                              </span>
+                            );
+                          });
+                        })()}
+                        {consList.length > 3 && (
+                          <div style={{
+                            width: 24, height: 24, borderRadius: '50%', background: 'var(--color-bg)', color: 'var(--color-text-muted)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.675rem', fontWeight: 700,
+                            border: '1.5px solid var(--color-surface)', marginLeft: -6
+                          }}>
+                            +{consList.length - 3}
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {/* Total Leads count */}
                     <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '4px', 
-                      fontSize: '0.7rem', 
-                      fontWeight: 600, 
-                      color: 'var(--color-text-light)',
-                      background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--color-border-light)',
+                      fontSize: '0.725rem', 
+                      color: 'var(--color-text-muted)',
                       marginLeft: 'auto'
                     }}>
-                      <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Tổng data:")}</span>
-                      <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{r.total_leads || 0}</span>
+                      {t("Đã chia:")} <strong style={{ color: 'var(--color-text)', fontWeight: 700 }}>{r.total_leads || 0}</strong>
                     </div>
                   </div>
 
                   {r.round_type === 'grab' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={12} color="var(--color-text-muted)" />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                          {t("Hạn nhận: {countdown}m").replace('{countdown}', String(Math.round((r.grab_countdown_seconds || 300) / 60)))}
-                        </span>
-                      </div>
-                      <span style={{ color: 'var(--color-border)' }}>|</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={12} color="var(--color-text-muted)" />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                          {Number(r.grab_cooldown_seconds || 3600) < 3600
-                            ? t("Cooldown: {cooldown}m").replace('{cooldown}', String(Math.round(Number(r.grab_cooldown_seconds || 3600) / 60)))
-                            : t("Cooldown: {cooldown}h").replace('{cooldown}', (Number(r.grab_cooldown_seconds || 3600) / 3600) % 1 === 0 ? String(Number(r.grab_cooldown_seconds || 3600) / 3600) : String(parseFloat((Number(r.grab_cooldown_seconds || 3600) / 3600).toFixed(1))))}
-                        </span>
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        <Clock size={11} style={{ opacity: 0.7 }} />
+                        {t("Hạn nhận: {countdown}m").replace('{countdown}', String(Math.round((r.grab_countdown_seconds || 300) / 60)))}
+                      </span>
+                      <span style={{ opacity: 0.3 }}>•</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        {t("Giãn cách: {cooldown}").replace('{cooldown}', Number(r.grab_cooldown_seconds || 3600) < 3600
+                          ? `${Math.round(Number(r.grab_cooldown_seconds || 3600) / 60)}m`
+                          : `${(Number(r.grab_cooldown_seconds || 3600) / 3600) % 1 === 0 ? Number(r.grab_cooldown_seconds || 3600) / 3600 : parseFloat((Number(r.grab_cooldown_seconds || 3600) / 3600).toFixed(1))}h`)}
+                      </span>
                     </div>
                   ) : compensatedConsultants.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Zap size={12} color="var(--color-warning)" style={{ fill: 'var(--color-warning)', flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, lineHeight: 1.4 }}>
-                          {t('Đang bù data:')}{' '}
-                          <span 
-                            style={{ 
-                              fontWeight: 700, 
-                              cursor: 'help' 
-                            }} 
-                            title={t('Đang được bù ưu tiên tiếp theo')}
-                          >
-                            {compensatedConsultants[0].name}
-                          </span>
-                          {compensatedConsultants.length > 1 && (
-                            <>
-                              {' '}{t('và')}{' '}
-                              <span 
-                                style={{ 
-                                  fontWeight: 700, 
-                                  borderBottom: '1px dashed currentColor', 
-                                  cursor: 'help' 
-                                }} 
-                                title={compensatedConsultants.slice(1).map(c => c.name).join('\n')}
-                              >
-                                {t('{count} người khác').replace('{count}', String(compensatedConsultants.length - 1))}
-                              </span>
-                            </>
-                          )}
-                        </span>
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.725rem' }}>
+                      <Zap size={11} color="#d97706" style={{ fill: '#d97706', flexShrink: 0 }} />
+                      <span style={{ color: '#d97706', fontWeight: 600 }}>
+                        {t('Đang bù data:')}{' '}
+                        <strong>{compensatedConsultants[0].name}</strong>
+                        {compensatedConsultants.length > 1 && ` (+${compensatedConsultants.length - 1})`}
+                      </span>
                       {r.next_assigned_name && (
-                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500, paddingLeft: 16, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          {t('Lượt xoay tiếp theo:')}
-                          <Avatar src={nextCons?.avatar} name={r.next_assigned_name} size={14} />
-                          <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>{r.next_assigned_name}</span>
+                        <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', marginLeft: 8 }}>
+                          {t('Lượt tới:')} <strong>{r.next_assigned_name}</strong>
                         </span>
                       )}
                     </div>
                   ) : (
                     r.next_assigned_name && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Zap size={12} color="var(--color-primary)" />
-                        <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-dark)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          {t('Sale lượt tới:')}
-                          <Avatar src={nextCons?.avatar} name={r.next_assigned_name} size={16} />
-                          <span style={{ fontWeight: 700 }}>{r.next_assigned_name}</span>
-                        </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.725rem' }}>
+                        <span style={{ color: 'var(--color-text-muted)' }}>{t('Sale lượt tới:')}</span>
+                        <Avatar src={nextCons?.avatar} name={r.next_assigned_name} size={16} />
+                        <strong style={{ color: 'var(--color-primary-dark, #1d4ed8)', fontWeight: 700 }}>{r.next_assigned_name}</strong>
                       </div>
                     )
                   )}
                 </div>
 
-                <div className="mobile-round-actions" style={{ padding: '1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <button onClick={() => openEditModal(r)} className="btn outline" style={{ flex: 1, padding: '0.625rem', justifyContent: 'center' }}>
-                    <Info size={16} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
+                <div className="mobile-round-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
+                  <button onClick={() => openEditModal(r)} className="btn outline sm" style={{ padding: '0.4rem 0.75rem', justifyContent: 'center', fontSize: '0.8125rem' }}>
+                    <Info size={14} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                   </button>
                   {!isReadOnly && (
-                    <button onClick={() => openCompModal(r)} className="btn secondary" title={t("Bù Data")} style={{ padding: '0.625rem', width: 42, height: 40, flexShrink: 0, justifyContent: 'center' }}>
-                      <Zap size={16} />
+                    <button onClick={() => openCompModal(r)} className="btn secondary sm" title={t("Bù Data")} style={{ padding: '0.375rem', width: 34, height: 32, flexShrink: 0, justifyContent: 'center' }}>
+                      <Zap size={14} />
                     </button>
                   )}
                   {!isReadOnly && (
-                    <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline" title={t("Xóa vòng")} style={{ padding: '0.625rem', width: 42, height: 40, flexShrink: 0, justifyContent: 'center', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
-                      <Trash2 size={16} />
+                    <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline sm" title={t("Xóa vòng")} style={{ padding: '0.375rem', width: 34, height: 32, flexShrink: 0, justifyContent: 'center', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
+                      <Trash2 size={14} />
                     </button>
                   )}
                 </div>
