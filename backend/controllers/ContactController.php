@@ -980,6 +980,32 @@ class ContactController {
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
 
+            // Sync campaign_id to linked leads record if any, ensuring dashboard analytics consistency
+            if (array_key_exists('campaign_id', $b)) {
+                $newCampVal = !empty($b['campaign_id']) ? (string)$b['campaign_id'] : null;
+                $personId = $currentContact['person_id'] ?? null;
+                $cPhone = !empty($currentContact['phone']) ? $currentContact['phone'] : ($currentContact['mobile'] ?? null);
+                if ($personId || $cPhone) {
+                    try {
+                        $syncParams = [$newCampVal];
+                        $whereSync = [];
+                        if ($personId) {
+                            $whereSync[] = "person_id = ?";
+                            $syncParams[] = $personId;
+                        }
+                        if ($cPhone) {
+                            $whereSync[] = "phone = ?";
+                            $syncParams[] = $cPhone;
+                        }
+                        if (!empty($whereSync)) {
+                            $leadSyncSql = "UPDATE leads SET campaign_id = ? WHERE " . implode(' OR ', $whereSync);
+                            $stmtSyncLead = $this->db->prepare($leadSyncSql);
+                            $stmtSyncLead->execute($syncParams);
+                        }
+                    } catch (\Throwable $e) {}
+                }
+            }
+
             // SEND SYSTEM NOTIFICATION TO NEWLY ADDED CO-CARE SALES
             if (array_key_exists('collaborator_ids', $b)) {
                 $oldCollabs = array_values(array_unique(array_filter(array_map('trim', explode(',', $currentContact['collaborator_ids'] ?? '')))));

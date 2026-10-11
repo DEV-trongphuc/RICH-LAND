@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video, UserX, ArrowLeft, MoreVertical } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video, UserX, ArrowLeft, MoreVertical, Info } from 'lucide-react';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -7886,130 +7886,88 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
                                 <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Dự án nguồn</label>
-                                {currentUser?.role === 'sale' && (
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                                    <Lock size={10} /> Cố định MKT
-                                  </span>
-                                )}
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Dự án quan tâm</span>
                               </div>
-                              {currentUser?.role === 'sale' ? (
-                                (() => {
-                                  const projName = projectsList.find(p => Number(p.id) === Number(formData.project_id))?.name || (formData.project_id ? `Dự án #${formData.project_id}` : '—');
-                                  return (
-                                    <div style={{
-                                      background: 'var(--color-bg-subtle, #f8fafc)',
-                                      border: '1px solid var(--color-border)',
-                                      borderRadius: '6px',
-                                      padding: '4px 10px',
-                                      height: '32px',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      fontSize: '0.8125rem',
-                                      fontWeight: 700,
-                                      color: 'var(--color-text)',
-                                      cursor: 'not-allowed',
-                                      userSelect: 'none'
-                                    }}>
-                                      <span>{projName}</span>
-                                      <Lock size={12} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
-                                    </div>
-                                  );
-                                })()
-                              ) : (
-                                <CustomSelect
-                                  searchable
-                                  options={[
-                                    { value: '', label: '— Chọn dự án —' },
-                                    ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
-                                  ]}
-                                  value={String(formData.project_id || '')}
-                                  onChange={val => {
-                                    const selectedId = val ? Number(val) : null;
-                                    let nextCampaignId = formData.campaign_id;
-                                    if (!selectedId) {
+                              <CustomSelect
+                                searchable
+                                placeholder="Chọn dự án..."
+                                options={[
+                                  { value: '', label: '— Chọn dự án —' },
+                                  ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
+                                ]}
+                                value={String(formData.project_id || '')}
+                                onChange={val => {
+                                  const selectedId = val ? Number(val) : null;
+                                  let nextCampaignId = formData.campaign_id;
+                                  if (!selectedId) {
+                                    nextCampaignId = null;
+                                  } else if (nextCampaignId) {
+                                    const campObj = allowedCampaigns.find(c => Number(c.id) === Number(nextCampaignId));
+                                    if (campObj && Number(campObj.project_id) !== selectedId) {
                                       nextCampaignId = null;
-                                    } else if (nextCampaignId) {
-                                      const campObj = allowedCampaigns.find(c => Number(c.id) === Number(nextCampaignId));
-                                      if (campObj && Number(campObj.project_id) !== selectedId) {
-                                        nextCampaignId = null;
-                                      }
                                     }
-                                    setFormData((prev: any) => ({
-                                      ...prev,
-                                      project_id: selectedId,
-                                      campaign_id: nextCampaignId
-                                    }));
-                                  }}
-                                />
-                              )}
+                                  }
+                                  setFormData((prev: any) => ({
+                                    ...prev,
+                                    project_id: selectedId,
+                                    campaign_id: nextCampaignId
+                                  }));
+                                }}
+                              />
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
-                                <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
-                                {currentUser?.role === 'sale' && (
-                                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                                    <Lock size={10} /> Cố định MKT
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
+                                  <span 
+                                    title="Tại trường này có liên quan tới Dashboard đo lường chiến dịch sau này. Dashboard sẽ đo những khách hàng được gắn thẻ theo chiến dịch. Trường hợp khách cũ ở chiến dịch cũ sale chủ động chuyển qua chiến dịch mới được coi là hợp lệ." 
+                                    style={{ cursor: 'help', display: 'flex', alignItems: 'center' }}
+                                  >
+                                    <Info size={12} style={{ color: 'var(--color-text-muted)' }} />
                                   </span>
-                                )}
+                                </div>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Đo lường Dashboard</span>
                               </div>
-                              {currentUser?.role === 'sale' ? (
-                                (() => {
-                                  const campName = allowedCampaigns.find(c => Number(c.id) === Number(formData.campaign_id))?.name || (formData.campaign_id ? `Chiến dịch #${formData.campaign_id}` : '—');
-                                  return (
-                                    <div style={{
-                                      background: 'var(--color-bg-subtle, #f8fafc)',
-                                      border: '1px solid var(--color-border)',
-                                      borderRadius: '6px',
-                                      padding: '4px 10px',
-                                      height: '32px',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      fontSize: '0.8125rem',
-                                      fontWeight: 700,
-                                      color: 'var(--color-text)',
-                                      cursor: 'not-allowed',
-                                      userSelect: 'none'
-                                    }}>
-                                      <span>{campName}</span>
-                                      <Lock size={12} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
-                                    </div>
-                                  );
-                                })()
-                              ) : (
-                                (() => {
-                                  const filteredCamps = formData.project_id
-                                    ? allowedCampaigns.filter(c => Number(c.project_id) === Number(formData.project_id))
-                                    : allowedCampaigns;
-                                  return (
-                                    <CustomSelect
-                                      searchable
-                                      options={[
-                                        { value: '', label: '— Chọn chiến dịch —' },
-                                        ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
-                                      ]}
-                                      value={formData.campaign_id ? String(formData.campaign_id) : ''}
-                                      onChange={val => {
-                                        const nextCampaign = val ? Number(val) : null;
-                                        let nextProjectId = formData.project_id;
-                                        if (nextCampaign) {
-                                          const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
-                                          if (campObj && campObj.project_id) {
-                                            nextProjectId = Number(campObj.project_id);
-                                          }
+                              {(() => {
+                                const filteredCamps = formData.project_id
+                                  ? allowedCampaigns.filter(c => Number(c.project_id) === Number(formData.project_id) || Number(c.id) === Number(formData.campaign_id))
+                                  : allowedCampaigns;
+                                return (
+                                  <CustomSelect
+                                    searchable
+                                    placeholder="Chọn chiến dịch..."
+                                    options={[
+                                      { value: '', label: '— Chọn chiến dịch —' },
+                                      ...filteredCamps.map(c => {
+                                        const pName = projectsList.find(p => Number(p.id) === Number(c.project_id))?.name || c.project_name;
+                                        const labelText = (!formData.project_id && pName) ? `${c.name} (${pName})` : c.name;
+                                        return {
+                                          value: String(c.id),
+                                          label: labelText,
+                                          faded: c.status !== 'active'
+                                        };
+                                      })
+                                    ]}
+                                    value={formData.campaign_id ? String(formData.campaign_id) : ''}
+                                    onChange={val => {
+                                      const nextCampaign = val ? Number(val) : null;
+                                      let nextProjectId = formData.project_id;
+                                      if (nextCampaign) {
+                                        const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
+                                        if (campObj && campObj.project_id) {
+                                          nextProjectId = Number(campObj.project_id);
                                         }
-                                        setFormData((prev: any) => ({
-                                          ...prev,
-                                          campaign_id: nextCampaign,
-                                          project_id: nextProjectId
-                                        }));
-                                      }}
-                                    />
-                                  );
-                                })()
-                              )}
+                                      }
+                                      setFormData((prev: any) => ({
+                                        ...prev,
+                                        campaign_id: nextCampaign,
+                                        project_id: nextProjectId
+                                      }));
+                                    }}
+                                  />
+                                );
+                              })()}
                             </div>
                           </div>
 
