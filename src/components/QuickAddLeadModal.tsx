@@ -1261,7 +1261,9 @@ export const QuickAddLeadModal = () => {
         const payload = {
           data: {
             ...manualData,
-            loai_lead: manualData.lead_phan_loai || ''
+            lead_phan_loai: manualData.lead_phan_loai || '',
+            phan_loai_lead: manualData.lead_phan_loai || '',
+            source: manualData.lead_phan_loai || manualData.source || 'ca_nhan'
           },
           override_round_id: overrideRoundId ? Number(overrideRoundId) : (distributionMode === 'auto_round' ? previewCons?.round_id : null),
           override_consultant_id: distributionMode === 'auto_round' && overrideConsId ? Number(overrideConsId) : null,
@@ -1771,16 +1773,27 @@ export const QuickAddLeadModal = () => {
                 <CustomSelect
                   options={[
                     { value: '', label: t('Chọn phân loại') },
-                    { value: 'Khách Nét', label: '🔥 ' + t('Khách Nét') },
-                    { value: 'Khách Tiềm Năng', label: '⭐ ' + t('Khách Tiềm Năng') },
-                    { value: 'Khách Nóng', label: '⚡ ' + t('Khách Nóng') },
-                    { value: 'Khách Ấm', label: '☀️ ' + t('Khách Ấm') },
-                    { value: 'Khách Lạnh', label: '❄️ ' + t('Khách Lạnh') },
-                    { value: 'Khách Spam', label: '⚠️ ' + t('Khách Spam') },
-                    { value: 'Khách Rác', label: '🗑️ ' + t('Khách Rác') },
+                    { value: 'R3_Fb', label: 'R3_Fb' },
+                    { value: 'R3', label: 'R3' },
+                    { value: 'R2', label: 'R2' },
+                    { value: 'R3_Zalo', label: 'R3_Zalo' },
+                    { value: 'ca_nhan', label: 'ca_nhan' },
+                    { value: 'gioi_thieu', label: 'gioi_thieu' },
+                    { value: 'broadcast', label: 'broadcast' },
+                    { value: 'databank', label: 'databank' },
+                    ...(manualData.lead_phan_loai && !['', 'R3_Fb', 'R3', 'R2', 'R3_Zalo', 'ca_nhan', 'gioi_thieu', 'broadcast', 'databank'].includes(manualData.lead_phan_loai)
+                      ? [{ value: manualData.lead_phan_loai, label: manualData.lead_phan_loai }]
+                      : [])
                   ]}
                   value={manualData.lead_phan_loai || ''}
-                  onChange={val => setManualData({ ...manualData, lead_phan_loai: val.toString() })}
+                  onChange={val => {
+                    const v = val ? val.toString() : '';
+                    setManualData(prev => ({
+                      ...prev,
+                      lead_phan_loai: v,
+                      source: (!prev.source || prev.source === 'ca_nhan' || prev.source === 'other' || prev.source === 'website') && v ? v : prev.source
+                    }));
+                  }}
                   width="100%"
                 />
               </div>

@@ -1590,32 +1590,47 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
 
   const getPhanLoaiBadge = (lead: Lead) => {
-    // Phân loại lead: Ưu tiên mã nguồn / phân loại marketing (R3_Fb, R1, R2, R3, ca_nhan, gioi_thieu...)
-    // Tuyệt đối bỏ qua các định dạng kỹ thuật (như 'lead_form', 'website', '-', 'databank')
+    // PHÂN LOẠI LEAD LÀ 1 CÁI DUY NHẤT phan_loai_lead (lead_phan_loai) - R3_Fb, R3, R2, ca_nhan, gioi_thieu...
+    // Tuyệt đối không lấy nhãn nóng lạnh/khách nét/khách rác/lead_form/website/databank
     const isIgnored = (val?: string | null) => {
       if (!val) return true;
       const v = val.trim().toLowerCase();
-      return v === '' || v === '-' || v === '—' || v === 'lead_form' || v === 'website' || v === 'databank' || v === 'other' || v === 'default';
+      return (
+        v === '' ||
+        v === '-' ||
+        v === '—' ||
+        v === 'lead_form' ||
+        v === 'website' ||
+        v === 'databank' ||
+        v === 'other' ||
+        v === 'default' ||
+        v.includes('khách') ||
+        v.includes('nét') ||
+        v.includes('nóng') ||
+        v.includes('ấm') ||
+        v.includes('lạnh') ||
+        v.includes('tiềm năng') ||
+        v.includes('spam') ||
+        v.includes('rác')
+      );
     };
 
-    let sourceTag = '';
-    // 1. Ưu tiên source trước nếu có mã cụ thể (R3_Fb, R2, R3, ca_nhan, FB_Ads...)
-    if (!isIgnored(lead.source)) {
-      sourceTag = lead.source!.trim();
-    } else if (!isIgnored(lead.lead_phan_loai)) {
-      sourceTag = lead.lead_phan_loai!.trim();
-    } else if (!isIgnored(lead.loai_lead)) {
-      sourceTag = lead.loai_lead!.trim();
-    } else if (!isIgnored(lead.type)) {
-      sourceTag = lead.type!.trim();
+    let tag = '';
+    // 1 CÁI DUY NHẤT: phan_loai_lead (lead_phan_loai), fallback sang source nếu lead_phan_loai chưa có
+    if (!isIgnored(lead.lead_phan_loai)) {
+      tag = lead.lead_phan_loai!.trim();
+    } else if (!isIgnored(lead.source)) {
+      tag = lead.source!.trim();
     }
 
     const isDb = (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'databank' || lead.status === 'databank_claim' || lead.status === 'released_to_kho' || lead.lead_phan_loai === 'databank' || lead.source === 'databank');
-    const tag = sourceTag || (isDb ? 'databank' : '');
+    if (!tag && isDb) {
+      tag = 'databank';
+    }
 
     if (!tag) return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>;
 
-    const isHot = /r[1-3]/i.test(tag) || /hot|nóng/i.test(tag);
+    const isHot = /r[1-3]/i.test(tag) || /fb/i.test(tag);
     const isDatabank = tag.toLowerCase() === 'databank';
 
     return (

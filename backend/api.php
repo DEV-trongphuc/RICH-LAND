@@ -958,29 +958,16 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $canSelfAssign = ($decodedUser['role'] === 'sale') || ($decodedUser['role'] === 'manager' && $managerBehaviorMode === 'sale');
 
     // Mapping phân loại lead cho data nhập tay:
-    // Phân biệt rõ giữa Marketing Classification/Source (R3_Fb, R2, R3, ca_nhan, gioi_thieu)
-    // và Phân loại chất lượng khách hàng (Khách Nét, Khách Nóng, Khách Lạnh, Khách Ấm, Khách Tiềm Năng, Khách Spam, Khách Rác).
+    // PHÂN LOẠI LEAD LÀ 1 CÁI DUY NHẤT phan_loai_lead (lead_phan_loai): R3_Fb, R3, R2, ca_nhan, gioi_thieu...
+    // Tuyệt đối không có nóng lạnh.
+    $lead_phan_loai = !empty($leadData['lead_phan_loai']) ? trim($leadData['lead_phan_loai']) : (!empty($leadData['phan_loai_lead']) ? trim($leadData['phan_loai_lead']) : null);
     $loai_lead = !empty($leadData['loai_lead']) ? trim($leadData['loai_lead']) : null;
     if (!empty($lead_phan_loai)) {
-        if (preg_match('/^(?:khách\s*)?(nét|tiềm năng|nóng|ấm|lạnh|spam|rác)$/i', $lead_phan_loai)) {
-            // Đây là chất lượng khách hàng -> map sang loai_lead
-            $loai_lead = $lead_phan_loai;
-            // lead_phan_loai hiển thị trên bảng sẽ lấy theo source nếu source là mã nguồn marketing (R3_Fb...)
-            $lead_phan_loai = (!empty($source) && strtolower($source) !== 'databank') ? $source : null;
-        } else if (preg_match('/^(?:r[0-9]+(?:_[a-z0-9]+)?|fbads|facebook|google|zalo|broadcast|landing_page)$/i', $lead_phan_loai)) {
-            if (empty($source) || in_array(strtolower($source), ['website', 'other', 'default', ''])) {
-                $source = $lead_phan_loai;
-            }
+        if (empty($source) || in_array(strtolower($source), ['website', 'other', 'default', ''])) {
+            $source = $lead_phan_loai;
         }
-    }
-    // Nếu source là mã nguồn marketing (R3_Fb, R2, R3, ca_nhan...) mà lead_phan_loai đang rỗng -> kế thừa source vào lead_phan_loai
-    if (empty($lead_phan_loai) && !empty($source) && strtolower($source) !== 'databank' && strtolower($source) !== 'website') {
+    } else if (!empty($source) && strtolower($source) !== 'databank' && strtolower($source) !== 'website') {
         $lead_phan_loai = $source;
-    }
-    // Nếu loai_lead rỗng mà type là nhãn chất lượng (Khách Nét, Khách Lạnh...) -> chuyển sang loai_lead
-    if (empty($loai_lead) && !empty($type) && preg_match('/^(?:khách\s*)?(nét|tiềm năng|nóng|ấm|lạnh|spam|rác)$/i', $type)) {
-        $loai_lead = $type;
-        $type = '';
     }
 
     if ($distribution_mode === 'self_assign' && !$canSelfAssign) {
@@ -999,8 +986,9 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
             $override_consultant_id = (int)$decodedUser['user_id'];
         }
         $distribution_mode = 'auto_round';
-        if ($source !== 'gioi_thieu') {
+        if ($source !== 'gioi_thieu' && empty($lead_phan_loai)) {
             $source = 'ca_nhan';
+            $lead_phan_loai = 'ca_nhan';
         }
     }
 
