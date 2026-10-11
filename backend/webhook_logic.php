@@ -2918,7 +2918,8 @@ function checkConsultantGates($conn, $consultantId, $lead = null, $bypassBackpre
             if ($stmtCheckReg) {
                 $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
                 $stmtCheckReg->execute();
-                $hasReg = $stmtCheckReg->get_result() ? $stmtCheckReg->get_result()->fetch_assoc() : null;
+                $resReg = $stmtCheckReg->get_result();
+                $hasReg = $resReg ? $resReg->fetch_assoc() : null;
                 $stmtCheckReg->close();
                 if (!$hasReg) {
                     return "Failed Gate 2: No approved holiday registration for today ({$holidayName})";
@@ -2930,7 +2931,8 @@ function checkConsultantGates($conn, $consultantId, $lead = null, $bypassBackpre
             if ($stmtCheckReg) {
                 $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
                 $stmtCheckReg->execute();
-                $hasReg = $stmtCheckReg->get_result() ? $stmtCheckReg->get_result()->fetch_assoc() : null;
+                $resReg = $stmtCheckReg->get_result();
+                $hasReg = $resReg ? $resReg->fetch_assoc() : null;
                 $stmtCheckReg->close();
                 if (!$hasReg) {
                     return "Failed Gate 2: No approved weekend registration for today";

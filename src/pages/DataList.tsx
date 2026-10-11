@@ -1589,12 +1589,24 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
 
   const getPhanLoaiBadge = (lead: Lead) => {
+    // Ưu tiên phân loại gốc từ nguồn về (R3_Fb, R1, R2, R3, Nóng, Lead Form...)
+    const sourceTag = (lead.lead_phan_loai && lead.lead_phan_loai.toLowerCase() !== 'databank')
+      ? lead.lead_phan_loai
+      : (lead.loai_lead && lead.loai_lead.toLowerCase() !== 'databank')
+        ? lead.loai_lead
+        : (lead.type && lead.type !== '-' && lead.type.toLowerCase() !== 'databank')
+          ? lead.type
+          : (lead.source && lead.source !== '-' && lead.source.toLowerCase() !== 'website' && lead.source.toLowerCase() !== 'databank')
+            ? lead.source
+            : '';
+
     const isDb = (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'databank' || lead.status === 'databank_claim' || lead.status === 'released_to_kho' || lead.lead_phan_loai === 'databank');
-    const tag = isDb ? 'databank' : (lead.lead_phan_loai || lead.loai_lead || (lead.type && lead.type !== '-' ? lead.type : ''));
+    const tag = sourceTag || (isDb ? 'databank' : '');
 
     if (!tag) return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>;
 
     const isHot = /r[1-3]/i.test(tag) || /hot|nóng/i.test(tag);
+    const isDatabank = tag.toLowerCase() === 'databank';
 
     return (
       <span
@@ -1605,18 +1617,18 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           borderRadius: '6px',
           background: isHot
             ? 'rgba(239, 68, 68, 0.12)'
-            : isDb
+            : isDatabank
               ? 'rgba(14, 165, 233, 0.12)'
               : 'var(--color-bg-light)',
           color: isHot
             ? '#dc2626'
-            : isDb
+            : isDatabank
               ? '#0284c7'
               : 'var(--color-text-muted)',
           border: `1px solid ${
             isHot
               ? 'rgba(239, 68, 68, 0.28)'
-              : isDb
+              : isDatabank
                 ? 'rgba(14, 165, 233, 0.28)'
                 : 'var(--color-border)'
           }`,
@@ -1658,7 +1670,19 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     const dayData = calendarData[dateStr] || { distributed: 0, blacklist: 0, reminder: 0, error: 0, ticket_total: 0 };
     const isToday = new Date().toDateString() === new Date(year, month, d).toDateString();
     const dayOfWeek = (startOffset + d - 1) % 7;
-    const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+    const cellDate = new Date(year, month, d);
+    const cellDayKey = cellDate.getDay() === 0 ? '7' : String(cellDate.getDay());
+    let isWeekend = (cellDate.getDay() === 0);
+    if (sysSettings?.global_work_schedule) {
+      try {
+        const sched = typeof sysSettings.global_work_schedule === 'string'
+          ? JSON.parse(sysSettings.global_work_schedule)
+          : sysSettings.global_work_schedule;
+        if (sched && sched[cellDayKey] && typeof sched[cellDayKey].active === 'boolean') {
+          isWeekend = !sched[cellDayKey].active;
+        }
+      } catch (e) {}
+    }
 
     days.push(
       <div
@@ -4744,9 +4768,18 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           </thead>
                           <tbody>
                             {selectedLead.takers.map((tk: any, idx: number) => {
-                              const isTakerDb = (tk.lead_phan_loai === 'databank' || tk.source === 'databank');
-                              const takerRank = isTakerDb ? 'databank' : (tk.lead_phan_loai || selectedLead.lead_phan_loai || 'R3_Fb');
+                              const sourceTakerRank = (tk.lead_phan_loai && tk.lead_phan_loai.toLowerCase() !== 'databank')
+                                ? tk.lead_phan_loai
+                                : (selectedLead.lead_phan_loai && selectedLead.lead_phan_loai.toLowerCase() !== 'databank')
+                                  ? selectedLead.lead_phan_loai
+                                  : (selectedLead.loai_lead && selectedLead.loai_lead.toLowerCase() !== 'databank')
+                                    ? selectedLead.loai_lead
+                                    : (selectedLead.type && selectedLead.type !== '-' && selectedLead.type.toLowerCase() !== 'databank')
+                                      ? selectedLead.type
+                                      : '';
+                              const takerRank = sourceTakerRank || ((tk.lead_phan_loai === 'databank' || tk.source === 'databank') ? 'databank' : 'R3_Fb');
                               const isTakerHot = /r[1-3]/i.test(takerRank) || /hot|nóng/i.test(takerRank);
+                              const isTakerDb = takerRank.toLowerCase() === 'databank';
                               const isViewerSale = user?.role === 'sale';
                               const isSameUser = Number(tk.id) === Number(user?.id) || Number(tk.id) === Number(user?.consultant_id);
                               const dtStr = tk.claimed_at || tk.created_at || '';

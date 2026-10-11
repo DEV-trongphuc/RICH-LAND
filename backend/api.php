@@ -4887,9 +4887,32 @@ switch ($action) {
             $userCheckinDays = (int)($chkRow['cnt'] ?? 0);
         }
 
+        // Check whether Saturday or Sunday are regular workdays in work schedule
+        $isSatWorkday = false;
+        $isSunWorkday = false;
+        $satWorkHours = '';
+        $sunWorkHours = '';
+        $globalSchedRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
+        if ($globalSchedRes && $gRow = $globalSchedRes->fetch_assoc()) {
+            $gSched = json_decode($gRow['setting_value'], true);
+            if (is_array($gSched)) {
+                $satConf = $gSched['6'] ?? $gSched[6] ?? null;
+                if (!empty($satConf['active'])) {
+                    $isSatWorkday = true;
+                    $satWorkHours = ($satConf['start'] ?? '') . ' - ' . ($satConf['end'] ?? '');
+                }
+                $sunConf = $gSched['7'] ?? $gSched[7] ?? null;
+                if (!empty($sunConf['active'])) {
+                    $isSunWorkday = true;
+                    $sunWorkHours = ($sunConf['start'] ?? '') . ' - ' . ($sunConf['end'] ?? '');
+                }
+            }
+        }
+
         $activeWeekendDays = array_map('trim', explode(',', $weekendShiftDays));
-        $satEnabledByRule = in_array('6', $activeWeekendDays);
-        $sunEnabledByRule = in_array('7', $activeWeekendDays);
+        // A day only counts as weekend direct duty if it is NOT an active workday
+        $satEnabledByRule = !$isSatWorkday && in_array('6', $activeWeekendDays);
+        $sunEnabledByRule = !$isSunWorkday && in_array('7', $activeWeekendDays);
         $isCheckinEligible = $isAdminOrMgr || ($weekendMinCheckinDays <= 0) || ($userCheckinDays >= $weekendMinCheckinDays);
 
         // Query registrations
@@ -4929,20 +4952,26 @@ switch ($action) {
             'weekend_shift_round_id' => $weekendRoundId,
             'user_checkin_days' => $userCheckinDays,
             'is_checkin_eligible' => $isCheckinEligible,
+            'is_sat_workday' => $isSatWorkday,
+            'is_sun_workday' => $isSunWorkday,
             'saturday' => [
                 'date' => $satDate,
                 'registered' => $satRegistered,
                 'approved' => $satApproved,
-                'can_toggle' => $satCanToggle,
+                'can_toggle' => $isSatWorkday ? false : $satCanToggle,
                 'enabled_by_rule' => $satEnabledByRule,
+                'is_workday' => $isSatWorkday,
+                'work_hours' => $satWorkHours,
                 'deadline_time' => date('Y-m-d H:i', $satDeadline)
             ],
             'sunday' => [
                 'date' => $sunDate,
                 'registered' => $sunRegistered,
                 'approved' => $sunApproved,
-                'can_toggle' => $sunCanToggle,
+                'can_toggle' => $isSunWorkday ? false : $sunCanToggle,
                 'enabled_by_rule' => $sunEnabledByRule,
+                'is_workday' => $isSunWorkday,
+                'work_hours' => $sunWorkHours,
                 'deadline_time' => date('Y-m-d H:i', $sunDeadline)
             ]
         ]);
@@ -4978,6 +5007,13 @@ switch ($action) {
 
         if (empty($targetDate)) {
             echo json_encode(['success' => false, 'message' => 'Thiếu thông tin ngày đăng ký.']);
+            break;
+        }
+
+        // Check if date is a rest day or regular working day
+        $isRestDay = isRestDayForUser($conn, $dbUserId, $targetDate);
+        if (!$isRestDay && $register) {
+            echo json_encode(['success' => false, 'message' => 'Ngày này là ngày làm việc hành chính bình thường của công ty, bạn chấm công đi làm theo lịch và không cần đăng ký trực cuối tuần.']);
             break;
         }
 
@@ -20275,21 +20311,90 @@ switch ($action) {
             $projectId = $projRes ? $projRes['project_id'] : NULL;
             $stmtProj->close();
 
-            // Fetch latest lead details to fill the contact
-            $sourceVal = 'databank';
+            // Fetch latest lead details to fill the contact (Preserve original source classification)
+            $sourceVal = '';
             $noteVal = '';
             $typeVal = '';
-            $stmtLead = $conn->prepare("SELECT source, type, note FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $leadPhanLoaiVal = '';
+            $loaiLeadVal = '';
+            $campaignIdVal = null;
+            $donviChayVal = null;
+            $adNameVal = null;
+            $formNameVal = null;
+            $linkVideoAdsVal = null;
+            $facebookLinkVal = null;
+            $zaloPhoneVal = null;
+            $appLienHeVal = null;
+
+            $stmtLead = $conn->prepare("SELECT source, type, note, lead_phan_loai, loai_lead, campaign_id, donvi_chay, ad_name, form_name, link_video_ads, facebook_link, zalo_phone, app_lienhe FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
             if ($stmtLead) {
                 $stmtLead->bind_param("i", $personId);
                 $stmtLead->execute();
                 $lRow = $stmtLead->get_result()->fetch_assoc();
                 if ($lRow) {
-                    $sourceVal = !empty($lRow['source']) ? $lRow['source'] : 'databank';
+                    $sourceVal = (!empty($lRow['source']) && strtolower($lRow['source']) !== 'databank') ? $lRow['source'] : '';
                     $noteVal = $lRow['note'] ?? '';
                     $typeVal = $lRow['type'] ?? '';
+                    $leadPhanLoaiVal = (!empty($lRow['lead_phan_loai']) && strtolower($lRow['lead_phan_loai']) !== 'databank') ? $lRow['lead_phan_loai'] : '';
+                    $loaiLeadVal = (!empty($lRow['loai_lead']) && strtolower($lRow['loai_lead']) !== 'databank') ? $lRow['loai_lead'] : '';
+                    $campaignIdVal = !empty($lRow['campaign_id']) ? (int)$lRow['campaign_id'] : null;
+                    $donviChayVal = $lRow['donvi_chay'] ?? null;
+                    $adNameVal = $lRow['ad_name'] ?? null;
+                    $formNameVal = $lRow['form_name'] ?? null;
+                    $linkVideoAdsVal = $lRow['link_video_ads'] ?? null;
+                    $facebookLinkVal = $lRow['facebook_link'] ?? null;
+                    $zaloPhoneVal = $lRow['zalo_phone'] ?? null;
+                    $appLienHeVal = $lRow['app_lienhe'] ?? null;
                 }
                 $stmtLead->close();
+            }
+
+            // Also check previous contacts if lead didn't have full classification or source
+            $stmtPrevCt = $conn->prepare("SELECT source, lead_phan_loai, loai_lead, customer_type, campaign_id, donvi_chay, ad_name, form_name, link_video_ads, facebook_link, zalo_phone, app_lienhe FROM contacts WHERE person_id = ? AND (lead_phan_loai IS NOT NULL AND lead_phan_loai != '' AND lead_phan_loai != 'databank') ORDER BY id DESC LIMIT 1");
+            if ($stmtPrevCt) {
+                $stmtPrevCt->bind_param("i", $personId);
+                $stmtPrevCt->execute();
+                $prevCt = $stmtPrevCt->get_result()->fetch_assoc();
+                if ($prevCt) {
+                    if (empty($leadPhanLoaiVal) && !empty($prevCt['lead_phan_loai']) && strtolower($prevCt['lead_phan_loai']) !== 'databank') {
+                        $leadPhanLoaiVal = $prevCt['lead_phan_loai'];
+                    }
+                    if (empty($loaiLeadVal) && !empty($prevCt['loai_lead']) && strtolower($prevCt['loai_lead']) !== 'databank') {
+                        $loaiLeadVal = $prevCt['loai_lead'];
+                    }
+                    if (empty($sourceVal) && !empty($prevCt['source']) && strtolower($prevCt['source']) !== 'databank') {
+                        $sourceVal = $prevCt['source'];
+                    }
+                    if (empty($typeVal) && !empty($prevCt['customer_type'])) {
+                        $typeVal = $prevCt['customer_type'];
+                    }
+                    if (empty($campaignIdVal) && !empty($prevCt['campaign_id'])) {
+                        $campaignIdVal = (int)$prevCt['campaign_id'];
+                    }
+                    if (empty($donviChayVal) && !empty($prevCt['donvi_chay'])) $donviChayVal = $prevCt['donvi_chay'];
+                    if (empty($adNameVal) && !empty($prevCt['ad_name'])) $adNameVal = $prevCt['ad_name'];
+                    if (empty($formNameVal) && !empty($prevCt['form_name'])) $formNameVal = $prevCt['form_name'];
+                    if (empty($linkVideoAdsVal) && !empty($prevCt['link_video_ads'])) $linkVideoAdsVal = $prevCt['link_video_ads'];
+                    if (empty($facebookLinkVal) && !empty($prevCt['facebook_link'])) $facebookLinkVal = $prevCt['facebook_link'];
+                    if (empty($zaloPhoneVal) && !empty($prevCt['zalo_phone'])) $zaloPhoneVal = $prevCt['zalo_phone'];
+                    if (empty($appLienHeVal) && !empty($prevCt['app_lienhe'])) $appLienHeVal = $prevCt['app_lienhe'];
+                }
+                $stmtPrevCt->close();
+            }
+
+            // Fallbacks: If source is still empty, fallback to 'databank'
+            if (empty($sourceVal)) {
+                $sourceVal = 'databank';
+            }
+            // If lead_phan_loai is still empty, fallback to loai_lead, then typeVal, or null
+            if (empty($leadPhanLoaiVal)) {
+                if (!empty($loaiLeadVal)) {
+                    $leadPhanLoaiVal = $loaiLeadVal;
+                } elseif (!empty($typeVal) && $typeVal !== '-' && strtolower($typeVal) !== 'databank') {
+                    $leadPhanLoaiVal = $typeVal;
+                } else {
+                    $leadPhanLoaiVal = null;
+                }
             }
 
             $createdBy = $saleUserId;
@@ -20301,12 +20406,16 @@ switch ($action) {
             }
             $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
-            $leadPhanLoaiVal = 'databank';
             $stmtIns = $conn->prepare("
-                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, lead_phan_loai, status, pipeline_status, security_expires_at, notes, customer_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?)
+                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, lead_phan_loai, loai_lead, status, pipeline_status, security_expires_at, notes, customer_type, campaign_id, donvi_chay, ad_name, form_name, link_video_ads, facebook_link, zalo_phone, app_lienhe)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmtIns->bind_param("iiiissssssssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $sourceVal, $leadPhanLoaiVal, $triggerStatus, $secExpiresTime, $noteVal, $typeVal);
+            $stmtIns->bind_param("iiiisssssssssssissssssss", 
+                $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, 
+                $person['email'], $person['phone'], $sourceVal, $leadPhanLoaiVal, $loaiLeadVal, 
+                $triggerStatus, $secExpiresTime, $noteVal, $typeVal, $campaignIdVal, 
+                $donviChayVal, $adNameVal, $formNameVal, $linkVideoAdsVal, $facebookLinkVal, $zaloPhoneVal, $appLienHeVal
+            );
             $stmtIns->execute();
             $newContactId = $conn->insert_id;
             $stmtIns->close();

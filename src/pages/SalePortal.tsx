@@ -2459,7 +2459,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [nightShiftDate, setNightShiftDate] = useState('');
   const [nightShiftStartTime, setNightShiftStartTime] = useState('');
   const [nightShiftEndTime, setNightShiftEndTime] = useState('');
-  const isTodayWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+  const [editWorkSchedule, setEditWorkSchedule] = useState<any>(DEFAULT_SCHEDULE);
+  const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
+  const isTodayWeekend = useMemo(() => {
+    const today = new Date();
+    const dayKey = today.getDay() === 0 ? '7' : String(today.getDay());
+    if (editWorkSchedule && editWorkSchedule[dayKey] && typeof editWorkSchedule[dayKey].active === 'boolean') {
+      return !editWorkSchedule[dayKey].active;
+    }
+    if (sysSettings?.global_work_schedule) {
+      try {
+        const sched = typeof sysSettings.global_work_schedule === 'string'
+          ? JSON.parse(sysSettings.global_work_schedule)
+          : sysSettings.global_work_schedule;
+        if (sched && sched[dayKey] && typeof sched[dayKey].active === 'boolean') {
+          return !sched[dayKey].active;
+        }
+      } catch (e) {}
+    }
+    return today.getDay() === 0;
+  }, [editWorkSchedule, sysSettings?.global_work_schedule]);
   const [nightShiftDeadline, setNightShiftDeadline] = useState('');
   const [togglingNightShift, setTogglingNightShift] = useState(false);
   const currentHour = new Date().getHours();
@@ -2598,8 +2617,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [editAvatar, setEditAvatar] = useState('');
   const [editWorkStartTime, setEditWorkStartTime] = useState('08:00');
   const [editWorkEndTime, setEditWorkEndTime] = useState('17:30');
-  const [editWorkSchedule, setEditWorkSchedule] = useState<any>(DEFAULT_SCHEDULE);
-  const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [editDob, setEditDob] = useState('');
@@ -9528,8 +9545,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const dayData = calendarData[dateStr] || { distributed: 0, blacklist: 0, reminder: 0, error: 0, ticket_total: 0 };
       const dayNotesCount = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(dateStr) && a.type === 'note').length;
       const isToday = new Date().toDateString() === new Date(y, m, d).toDateString();
-      const dayOfWeek = (startOffset + d - 1) % 7;
-      const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+      const cellDate = new Date(y, m, d);
+      const cellDayKey = cellDate.getDay() === 0 ? '7' : String(cellDate.getDay());
+      let isWeekend = (cellDate.getDay() === 0);
+      if (editWorkSchedule && editWorkSchedule[cellDayKey] && typeof editWorkSchedule[cellDayKey].active === 'boolean') {
+        isWeekend = !editWorkSchedule[cellDayKey].active;
+      } else if (sysSettings?.global_work_schedule) {
+        try {
+          const sched = typeof sysSettings.global_work_schedule === 'string'
+            ? JSON.parse(sysSettings.global_work_schedule)
+            : sysSettings.global_work_schedule;
+          if (sched && sched[cellDayKey] && typeof sched[cellDayKey].active === 'boolean') {
+            isWeekend = !sched[cellDayKey].active;
+          }
+        } catch (e) {}
+      }
 
       days.push(
         <div
@@ -13225,16 +13255,109 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
                                       </span>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{
-                                          fontSize: '0.75rem',
-                                          fontWeight: 700,
-                                          color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                          background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                          padding: '2px 8px',
-                                          borderRadius: '6px'
-                                        }}>
-                                          {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                        </span>
+                                        {isSatWorkday ? (
+                                          <span style={{
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            color: 'var(--color-success)',
+                                            background: 'rgba(16, 185, 129, 0.1)',
+                                            padding: '2px 8px',
+                                            borderRadius: '6px'
+                                          }}>
+                                            {t('Đi làm hành chính')}
+                                          </span>
+                                        ) : (
+                                          <>
+                                            <span style={{
+                                              fontSize: '0.75rem',
+                                              fontWeight: 700,
+                                              color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                              background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                              padding: '2px 8px',
+                                              borderRadius: '6px'
+                                            }}>
+                                              {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                            </span>
+                                            {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
+                                              <div style={{ opacity: (weekendShiftSat.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
+                                                <ToggleSwitch
+                                                  checked={weekendShiftSat.registered}
+                                                  onChange={() => {
+                                                    if (!weekendShiftSat.can_toggle && !isUserAdminRole && !isUserManagerRole) {
+                                                      toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
+                                                      return;
+                                                    }
+                                                    handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered);
+                                                  }}
+                                                />
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                      {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
+                                    </span>
+                                  )}
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                    {isSatWorkday ? (
+                                      <span style={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 600,
+                                        color: 'var(--color-primary, #bd1d2d)',
+                                        background: 'rgba(189, 29, 45, 0.08)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px'
+                                      }}>
+                                        {t('Lịch hành chính: ')}{satHours}{t(' • Đi làm & nhận data theo ca làm việc ngày thường')}
+                                      </span>
+                                    ) : (
+                                      <>
+                                        {weekendShiftSat.deadline_time && (
+                                          <span style={{
+                                            fontSize: '0.7rem',
+                                            color: 'var(--color-text-muted)',
+                                            background: 'rgba(100, 116, 139, 0.04)',
+                                            padding: '2px 8px',
+                                            borderRadius: '4px',
+                                            border: '1px solid var(--color-border-light)'
+                                          }}>
+                                            {t('Hạn đăng ký:')} {new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                {!isMobile && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    {isSatWorkday ? (
+                                      <span style={{
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        color: 'var(--color-success)',
+                                        background: 'rgba(16, 185, 129, 0.1)',
+                                        padding: '3px 8px',
+                                        borderRadius: '6px'
+                                      }}>
+                                        {t('Lịch làm việc chính thức')}
+                                      </span>
+                                    ) : (
+                                      <>
+                                        {(!isMobile || weekendShiftSat.registered) && (
+                                          <span style={{
+                                            fontSize: '0.8rem',
+                                            fontWeight: 700,
+                                            color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                            background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                            padding: '3px 8px',
+                                            borderRadius: '6px'
+                                          }}>
+                                            {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                          </span>
+                                        )}
                                         {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
                                           <div style={{ opacity: (weekendShiftSat.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
                                             <ToggleSwitch
@@ -13249,67 +13372,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                             />
                                           </div>
                                         )}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                      {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
-                                    </span>
-                                  )}
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                                    {isSatWorkday && (
-                                      <span style={{
-                                        fontSize: '0.7rem',
-                                        fontWeight: 600,
-                                        color: 'var(--color-text-muted)',
-                                        background: 'rgba(100, 116, 139, 0.08)',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px'
-                                      }}>
-                                        {t('Lịch hành chính:')} {satHours}
-                                      </span>
-                                    )}
-                                    {weekendShiftSat.deadline_time && (
-                                      <span style={{
-                                        fontSize: '0.7rem',
-                                        color: 'var(--color-text-muted)',
-                                        background: 'rgba(100, 116, 139, 0.04)',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px',
-                                        border: '1px solid var(--color-border-light)'
-                                      }}>
-                                        {t('Hạn đăng ký:')} {new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                {!isMobile && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    {(!isMobile || weekendShiftSat.registered) && (
-                                      <span style={{
-                                        fontSize: '0.8rem',
-                                        fontWeight: 700,
-                                        color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                        background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                        padding: '3px 8px',
-                                        borderRadius: '6px'
-                                      }}>
-                                        {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                      </span>
-                                    )}
-                                    {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
-                                      <div style={{ opacity: (weekendShiftSat.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
-                                        <ToggleSwitch
-                                          checked={weekendShiftSat.registered}
-                                          onChange={() => {
-                                            if (!weekendShiftSat.can_toggle && !isUserAdminRole && !isUserManagerRole) {
-                                              toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
-                                              return;
-                                            }
-                                            handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered);
-                                          }}
-                                        />
-                                      </div>
+                                      </>
                                     )}
                                   </div>
                                 )}
@@ -13661,17 +13724,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 return name.replace('Thứ ', 'T');
                               };
 
-                              const isWeekend = Boolean(
-                                (day.name && (day.name.includes('7') || day.name.includes('Bảy') || day.name.includes('Sat') || day.name.includes('CN') || day.name.includes('Chủ') || day.name.includes('Sun'))) ||
-                                day.dayIndex === 6 || day.dayIndex === 0
-                              );
+                              const dayKey = String(day.dayIndex + 1);
+                              const daySchedule = editWorkSchedule?.[dayKey] || (sysSettings?.global_work_schedule ? (() => {
+                                try {
+                                  const s = typeof sysSettings.global_work_schedule === 'string' ? JSON.parse(sysSettings.global_work_schedule) : sysSettings.global_work_schedule;
+                                  return s?.[dayKey];
+                                } catch (e) { return null; }
+                              })() : null);
+
+                              const isWorkday = daySchedule ? Boolean(daySchedule.active) : (day.dayIndex !== 6);
+                              const isRestDay = !isWorkday;
 
                               // Determine background, border and text colors based on state
                               let borderStyle = '1px solid var(--color-border-light)';
                               let backgroundStyle = 'var(--color-bg-alt)';
-                              let statusText = t('Nghỉ');
-                              let statusColor = 'var(--color-text-muted)';
-                              let statusBg = 'rgba(100, 116, 139, 0.08)';
+                              let statusText = isWorkday ? t('Đi làm') : t('Nghỉ');
+                              let statusColor = isWorkday ? 'var(--color-primary)' : 'var(--color-text-muted)';
+                              let statusBg = isWorkday ? 'rgba(189, 29, 45, 0.08)' : 'rgba(100, 116, 139, 0.08)';
 
                               if (isNightRegistered) {
                                 backgroundStyle = 'rgba(139, 92, 246, 0.06)';
@@ -13686,8 +13755,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   statusText = isPastDay ? t('Đã làm') : t('Đã duyệt');
                                   statusColor = 'var(--color-success)';
                                   statusBg = 'rgba(16, 185, 129, 0.12)';
-                                } else if (isWeekend) {
-                                  // Cuối tuần -> Màu Đỏ
+                                } else if (isRestDay) {
+                                  // Cuối tuần / Ngày nghỉ -> Màu Đỏ
                                   backgroundStyle = 'rgba(239, 68, 68, 0.06)';
                                   borderStyle = '2px solid #dc2626';
                                   statusText = isPastDay ? t('Đã làm') : t('Đăng ký');
@@ -19016,22 +19085,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   (nightShiftRegistered && nightShiftDate === day.date) ||
                   (data.consultant_profile?.night_shifts && data.consultant_profile.night_shifts.some((ns: any) => ns.shift_date === day.date))
                 );
-                const isWeekend = Boolean(
-                  (day.name && (day.name.includes('7') || day.name.includes('Bảy') || day.name.includes('Sat') || day.name.includes('CN') || day.name.includes('Chủ') || day.name.includes('Sun'))) ||
-                  day.dayIndex === 6 || day.dayIndex === 0
-                );
+                const dayKey = String(day.dayIndex + 1);
+                const daySchedule = editWorkSchedule?.[dayKey] || (sysSettings?.global_work_schedule ? (() => {
+                  try {
+                    const s = typeof sysSettings.global_work_schedule === 'string' ? JSON.parse(sysSettings.global_work_schedule) : sysSettings.global_work_schedule;
+                    return s?.[dayKey];
+                  } catch (e) { return null; }
+                })() : null);
+
+                const isWorkday = daySchedule ? Boolean(daySchedule.active) : (day.dayIndex !== 6);
+                const isRestDay = !isWorkday;
                 const isSelected = weeklyShiftDates.includes(day.date) || isNightRegistered || Boolean(reg);
 
-                let statusLabel = t('Nghỉ');
-                let statusBadgeColor = 'var(--color-text-muted)';
-                let statusBadgeBg = 'rgba(100, 116, 139, 0.08)';
+                let statusLabel = isWorkday ? t('Lịch đi làm') : t('Nghỉ');
+                let statusBadgeColor = isWorkday ? 'var(--color-primary)' : 'var(--color-text-muted)';
+                let statusBadgeBg = isWorkday ? 'rgba(189, 29, 45, 0.08)' : 'rgba(100, 116, 139, 0.08)';
 
                 if (isNightRegistered) {
                   statusLabel = t('Trực đêm');
                   statusBadgeColor = '#8b5cf6';
                   statusBadgeBg = 'rgba(139, 92, 246, 0.12)';
                 } else if (isSelected || reg) {
-                  if (isWeekend) {
+                  if (isRestDay) {
                     statusLabel = t('Đăng ký (Cuối tuần)');
                     statusBadgeColor = '#dc2626';
                     statusBadgeBg = 'rgba(239, 68, 68, 0.12)';

@@ -107,52 +107,46 @@ if (!function_exists('get_system_setting')) {
 if (!function_exists('isRestDayForUser')) {
     function isRestDayForUser($conn, $userId, $date) {
         $dayOfWeek = (int)date('N', strtotime($date));
-        if ($dayOfWeek < 6) {
-            return false;
+        $dayKey = (string)$dayOfWeek;
+
+        // 1. Check user's individual schedule if use_custom_work_hours is enabled
+        $stmtSched = $conn->prepare("SELECT use_custom_work_hours, work_schedule FROM users WHERE id = ?");
+        if ($stmtSched) {
+            $stmtSched->bind_param("i", $userId);
+            $stmtSched->execute();
+            $sRow = $stmtSched->get_result()->fetch_assoc();
+            $stmtSched->close();
+            if ($sRow && (int)($sRow['use_custom_work_hours'] ?? 0) === 1 && !empty($sRow['work_schedule'])) {
+                $sched = json_decode($sRow['work_schedule'], true);
+                if (is_array($sched)) {
+                    $dayConfig = $sched[$dayKey] ?? $sched[$dayOfWeek] ?? null;
+                    if (is_array($dayConfig) && isset($dayConfig['active'])) {
+                        return !(bool)$dayConfig['active'];
+                    }
+                }
+            }
         }
 
-        // Check if day is configured as weekend day by manager
-        $weekendDaysStr = '6,7';
+        // 2. Check global work schedule
+        $resSched = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
+        if ($resSched && $gRow = $resSched->fetch_assoc()) {
+            $schedule = json_decode($gRow['setting_value'], true);
+            if (is_array($schedule)) {
+                $dayConfig = $schedule[$dayKey] ?? $schedule[$dayOfWeek] ?? null;
+                if (is_array($dayConfig) && isset($dayConfig['active'])) {
+                    return !(bool)$dayConfig['active'];
+                }
+            }
+        }
+
+        // 3. Fallback: Check weekend_shift_days setting if no schedule found
+        $weekendDaysStr = '7'; // Default: Sunday is rest day
         $resW = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'weekend_shift_days' LIMIT 1");
         if ($resW && $wRow = $resW->fetch_assoc()) {
             if (!empty($wRow['setting_value'])) $weekendDaysStr = $wRow['setting_value'];
         }
         $configuredWeekend = array_map('trim', explode(',', $weekendDaysStr));
-        if (!in_array((string)$dayOfWeek, $configuredWeekend)) {
-            return false;
-        }
-
-        if ($dayOfWeek == 7) {
-            return true; // Sunday is rest day if in configured weekend
-        }
-        if ($dayOfWeek == 6) { // Saturday
-            // 1. Check user's individual schedule if use_custom_work_hours is enabled
-            $stmtSched = $conn->prepare("SELECT use_custom_work_hours, work_schedule FROM users WHERE id = ?");
-            if ($stmtSched) {
-                $stmtSched->bind_param("i", $userId);
-                $stmtSched->execute();
-                $sRow = $stmtSched->get_result()->fetch_assoc();
-                $stmtSched->close();
-                if ($sRow && (int)($sRow['use_custom_work_hours'] ?? 0) === 1 && !empty($sRow['work_schedule'])) {
-                    $sched = json_decode($sRow['work_schedule'], true);
-                    if (isset($sched[6]) && isset($sched[6]['active'])) {
-                        return !(bool)$sched[6]['active'];
-                    }
-                }
-            }
-            
-            // 2. Fallback to global work schedule
-            $resSched = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
-            if ($resSched && $gRow = $resSched->fetch_assoc()) {
-                $schedule = json_decode($gRow['setting_value'], true);
-                if (isset($schedule["6"]) && isset($schedule["6"]["active"])) {
-                    return !(bool)$schedule["6"]["active"];
-                }
-            }
-            
-            return true; // default Saturday is off if not specified
-        }
-        return false;
+        return in_array($dayKey, $configuredWeekend);
     }
 }
 

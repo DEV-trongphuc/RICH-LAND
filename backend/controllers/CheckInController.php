@@ -317,13 +317,19 @@ class CheckInController {
         // Apply day-of-week schedule (1 = Monday ... 7 = Sunday)
         $dayOfWeek = (int)date('N', strtotime($today));
         $dayKey = (string)$dayOfWeek;
-        if (is_array($workSchedule) && isset($workSchedule[$dayKey]) && is_array($workSchedule[$dayKey])) {
-            $dayConfig = $workSchedule[$dayKey];
-            if (!empty($dayConfig['start'])) {
-                $workStartTime = $dayConfig['start'];
-            }
-            if (!empty($dayConfig['end'])) {
-                $workEndTime = $dayConfig['end'];
+        $isScheduledWorkday = ($dayOfWeek < 7);
+        if (is_array($workSchedule) && (isset($workSchedule[$dayKey]) || isset($workSchedule[$dayOfWeek]))) {
+            $dayConfig = $workSchedule[$dayKey] ?? $workSchedule[$dayOfWeek] ?? null;
+            if (is_array($dayConfig)) {
+                if (isset($dayConfig['active'])) {
+                    $isScheduledWorkday = (bool)$dayConfig['active'];
+                }
+                if (!empty($dayConfig['start'])) {
+                    $workStartTime = $dayConfig['start'];
+                }
+                if (!empty($dayConfig['end'])) {
+                    $workEndTime = $dayConfig['end'];
+                }
             }
         }
 
@@ -409,7 +415,7 @@ class CheckInController {
         }
 
         $dayOfWeek = (int)date('N', strtotime($today));
-        $isWeekend = ($dayOfWeek >= 6);
+        $isWeekend = !$isScheduledWorkday;
 
         $isHoliday = false;
         if (!empty($settingsMap['holiday_schedules'])) {

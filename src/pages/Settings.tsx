@@ -6049,6 +6049,11 @@ function doPost(e) {
                               <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                                 {t('Chỉ áp dụng chế độ trực cuối tuần cho các ngày được chọn.')}
                               </div>
+                              {globalWorkSchedule?.["6"]?.active && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', marginTop: 6, fontWeight: 600, background: 'rgba(189, 29, 45, 0.08)', padding: '6px 10px', borderRadius: '6px' }}>
+                                  {t('💡 Thứ Bảy hiện đang được bật là ngày làm việc hành chính bình thường')} ({globalWorkSchedule?.["6"]?.start} - {globalWorkSchedule?.["6"]?.end}). {t('Nhân viên sẽ chấm công và nhận data theo lịch làm việc ngày thường.')}
+                                </div>
+                              )}
                             </div>
                           </div>
 

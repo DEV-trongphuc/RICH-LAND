@@ -547,6 +547,40 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const holidayShiftsCount = useMemo(() => shiftList.filter((s: any) => s.shift_type === 'holiday').length, [shiftList]);
   const totalShiftsCount = shiftList.length;
 
+  const isDateRestDay = (dateStr: string | null | undefined, colIdx?: number) => {
+    if (dateStr) {
+      const d = new Date(dateStr);
+      const dayOfWeek = d.getDay();
+      const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+      if (sysSettings?.global_work_schedule) {
+        try {
+          const sched = typeof sysSettings.global_work_schedule === 'string'
+            ? JSON.parse(sysSettings.global_work_schedule)
+            : sysSettings.global_work_schedule;
+          if (sched && sched[dayKey] && typeof sched[dayKey].active === 'boolean') {
+            return !sched[dayKey].active;
+          }
+        } catch (e) {}
+      }
+      return dayOfWeek === 0;
+    }
+    if (colIdx !== undefined) {
+      const dayKey = (colIdx % 7 === 6) ? '7' : String((colIdx % 7) + 1);
+      if (sysSettings?.global_work_schedule) {
+        try {
+          const sched = typeof sysSettings.global_work_schedule === 'string'
+            ? JSON.parse(sysSettings.global_work_schedule)
+            : sysSettings.global_work_schedule;
+          if (sched && sched[dayKey] && typeof sched[dayKey].active === 'boolean') {
+            return !sched[dayKey].active;
+          }
+        } catch (e) {}
+      }
+      return (colIdx % 7 === 6);
+    }
+    return false;
+  };
+
   const renderCalendarView = () => {
     const firstDayIndex = new Date(currentYear, currentMonth - 1, 1).getDay();
     const adjustedFirstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
@@ -735,7 +769,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           {cells.map((cell, idx) => {
             const dayCheckIns = getCellData(cell.dateStr);
             const dayShifts = getCellShifts(cell.dateStr) || [];
-            const isWeekend = (idx % 7 === 5 || idx % 7 === 6);
+            const isWeekend = isDateRestDay(cell.dateStr, idx);
             const isHoliday = cell.dateStr && (
               dayShifts.some(s => s.shift_type === 'holiday') ||
               (sysSettings?.holidays && Array.isArray(sysSettings.holidays) && sysSettings.holidays.some((h: any) => h.date === cell.dateStr))
@@ -2170,8 +2204,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               {(() => {
                 const detailDayShifts = calendarShifts.filter(s => s.shift_date === selectedDateForDetail);
                 const hasHoliday = detailDayShifts.some(s => s.shift_type === 'holiday');
-                const dayOfWeek = selectedDateForDetail ? new Date(selectedDateForDetail).getDay() : 1;
-                const isWeekendDetail = dayOfWeek === 0 || dayOfWeek === 6;
+                const isWeekendDetail = isDateRestDay(selectedDateForDetail);
                 const activeShiftType = hasHoliday ? 'holiday' : isWeekendDetail ? 'weekend' : 'night';
 
                 return (
@@ -2687,8 +2720,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                     {(() => {
                       const dayShifts = calendarShifts.filter(s => s.shift_date === selectedDateForDetail);
                       const hasHoliday = dayShifts.some(s => s.shift_type === 'holiday');
-                      const dayOfWeek = selectedDateForDetail ? new Date(selectedDateForDetail).getDay() : 1;
-                      const isWeekendDetail = dayOfWeek === 0 || dayOfWeek === 6;
+                      const isWeekendDetail = isDateRestDay(selectedDateForDetail);
                       const activeShiftType = hasHoliday ? 'holiday' : isWeekendDetail ? 'weekend' : 'night';
 
                       if (dayShifts.length === 0) {
