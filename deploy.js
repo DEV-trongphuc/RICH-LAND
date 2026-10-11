@@ -378,6 +378,7 @@ async function main() {
   // 5. Nén gói release.zip
   console.log("\n🗜️ 3. Đang nén toàn bộ thành release.zip...");
   if (fs.existsSync(RELEASE_ZIP)) fs.unlinkSync(RELEASE_ZIP);
+  await new Promise(r => setTimeout(r, 800));
 
   if (process.platform === 'win32') {
     execSync(`powershell -Command "Get-ChildItem -Path '${TEMP_DEPLOY_DIR}' -Force | Compress-Archive -DestinationPath '${RELEASE_ZIP}' -Force"`, { stdio: 'inherit' });
