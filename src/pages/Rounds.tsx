@@ -74,6 +74,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const [consultants, setConsultants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const [dateFilter, setDateFilter] = useState(() => {
     return localStorage.getItem('richland_global_date') || getDefaultDateFilter();
@@ -81,6 +82,42 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const activeRoundsCount = useMemo(() => rounds.filter(r => Number(r.is_active) === 1).length, [rounds]);
+  const inactiveRoundsCount = useMemo(() => rounds.filter(r => Number(r.is_active) !== 1).length, [rounds]);
+
+  const statusFilterOptions = useMemo(() => [
+    { value: 'all', label: `${t('Tất cả trạng thái')} (${rounds.length})` },
+    { value: 'active', label: `🟢 ${t('Đang hoạt động')} (${activeRoundsCount})` },
+    { value: 'inactive', label: `⚪ ${t('Tạm dừng')} (${inactiveRoundsCount})` },
+  ], [rounds.length, activeRoundsCount, inactiveRoundsCount, t]);
+
+  const processedRounds = useMemo(() => {
+    let list = [...rounds];
+    if (statusFilter === 'active') {
+      list = list.filter(r => Number(r.is_active) === 1);
+    } else if (statusFilter === 'inactive') {
+      list = list.filter(r => Number(r.is_active) !== 1);
+    }
+
+    // Mặc định luôn xếp các vòng active lên trên
+    list.sort((a, b) => {
+      const aActive = Number(a.is_active) === 1 ? 1 : 0;
+      const bActive = Number(b.is_active) === 1 ? 1 : 0;
+      if (aActive !== bActive) {
+        return bActive - aActive; // 1 (Active) comes first
+      }
+      // Nếu cùng active, ưu tiên vòng đang trong ca trực (is_currently_active)
+      const aCurrent = a.is_currently_active ? 1 : 0;
+      const bCurrent = b.is_currently_active ? 1 : 0;
+      if (aCurrent !== bCurrent) {
+        return bCurrent - aCurrent;
+      }
+      return Number(b.id) - Number(a.id);
+    });
+
+    return list;
+  }, [rounds, statusFilter]);
 
   const handleUpdateDateFilter = (val: string) => {
     setDateFilter(val);
@@ -923,6 +960,19 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
         </div>
 
         <div className="mobile-flex-wrap" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {/* Bộ lọc trạng thái (Active filter) */}
+          <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 185 }}>
+            <CustomSelect
+              options={statusFilterOptions}
+              value={statusFilter}
+              onChange={val => {
+                setStatusFilter(val as any);
+                setRoundsPage(1);
+              }}
+              width="100%"
+            />
+          </div>
+
           {/* Date Filter Dropdown */}
           <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 180 }}>
             <CustomSelect
@@ -1073,17 +1123,17 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             flexDirection: 'column',
             gap: '1.25rem'
           }}>
-          {rounds.length === 0 ? (
+          {processedRounds.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', width: '100%' }}>
               <EmptyCard
                 icon={<Zap size={48} />}
-                title={t("Chưa có Vòng Phân Bổ")}
-                description={t("Bắt đầu bằng cách thêm mới vòng phân bổ đầu tiên của bạn để chia số cho Sale.")}
-                actionText={isReadOnly ? undefined : t("Thêm Vòng ngay")}
-                onAction={isReadOnly ? undefined : openAddModal}
+                title={statusFilter !== 'all' ? t("Không có vòng phân bổ phù hợp") : t("Chưa có Vòng Phân Bổ")}
+                description={statusFilter !== 'all' ? t("Thử chọn bộ lọc trạng thái khác để xem thêm vòng.") : t("Bắt đầu bằng cách thêm mới vòng phân bổ đầu tiên của bạn để chia số cho Sale.")}
+                actionText={statusFilter !== 'all' ? t("Xem tất cả") : (isReadOnly ? undefined : t("Thêm Vòng ngay"))}
+                onAction={statusFilter !== 'all' ? () => setStatusFilter('all') : (isReadOnly ? undefined : openAddModal)}
               />
             </div>
-          ) : rounds.slice((roundsPage - 1) * roundsPageSize, roundsPage * roundsPageSize).map((r, idx) => {
+          ) : processedRounds.slice((roundsPage - 1) * roundsPageSize, roundsPage * roundsPageSize).map((r, idx) => {
             const consList = r.consultants ? r.consultants.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
             const consIds = r.consultant_ids ? r.consultant_ids.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
             const compensatedConsultants = [];
@@ -1784,10 +1834,10 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
         </div>
       )}
 
-      {rounds.length > roundsPageSize && (
+      {processedRounds.length > roundsPageSize && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', paddingRight: '0.5rem' }}>
           <Pagination
-            total={rounds.length}
+            total={processedRounds.length}
             page={roundsPage}
             pageSize={roundsPageSize}
             onChange={setRoundsPage}

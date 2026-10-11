@@ -7942,7 +7942,8 @@ switch ($action) {
                                LEFT JOIN round_consultants rc ON r.id = rc.round_id
                                LEFT JOIN consultants c ON rc.consultant_id = c.id AND c.status = 'active'
                                $roundFilter
-                               GROUP BY r.id");
+                               GROUP BY r.id
+                               ORDER BY r.is_active DESC, r.id DESC");
         $fbRoundId = 0;
         $fbTypeStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_type' LIMIT 1");
         $fbType = ($fbTypeStmt && $fbTypeStmt->num_rows > 0) ? $fbTypeStmt->fetch_assoc()['setting_value'] : 'round';
@@ -8206,7 +8207,22 @@ switch ($action) {
             }
         }
 
-        echo json_encode(['success' => true, 'data' => array_values($data)]);
+        $finalRounds = array_values($data);
+        usort($finalRounds, function($a, $b) {
+            $aActive = (int)($a['is_active'] ?? 0);
+            $bActive = (int)($b['is_active'] ?? 0);
+            if ($aActive !== $bActive) {
+                return $bActive - $aActive;
+            }
+            $aCur = !empty($a['is_currently_active']) ? 1 : 0;
+            $bCur = !empty($b['is_currently_active']) ? 1 : 0;
+            if ($aCur !== $bCur) {
+                return $bCur - $aCur;
+            }
+            return (int)($b['id'] ?? 0) - (int)($a['id'] ?? 0);
+        });
+
+        echo json_encode(['success' => true, 'data' => $finalRounds]);
         break;
 
     case 'add_round':
