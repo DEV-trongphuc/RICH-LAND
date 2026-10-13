@@ -4266,11 +4266,19 @@ function sendScheduledAttendanceReports($conn) {
         $nightShifts = (int)($stmtNight->get_result()->fetch_assoc()['cnt'] ?? 0);
         $stmtNight->close();
 
-        $stmtDuty = $conn->prepare("SELECT COUNT(*) as cnt FROM duty_registrations WHERE user_id = ? AND duty_date BETWEEN ? AND ? AND approved = 1");
-        $stmtDuty->bind_param("iss", $userId, $startDate, $endDate);
-        $stmtDuty->execute();
-        $dutyShifts = (int)($stmtDuty->get_result()->fetch_assoc()['cnt'] ?? 0);
-        $stmtDuty->close();
+        $stmtWeekend = $conn->prepare("SELECT COUNT(*) as cnt FROM weekend_shift_registrations WHERE user_id = ? AND shift_date BETWEEN ? AND ? AND approved = 1");
+        $stmtWeekend->bind_param("iss", $userId, $startDate, $endDate);
+        $stmtWeekend->execute();
+        $weekendShifts = (int)($stmtWeekend->get_result()->fetch_assoc()['cnt'] ?? 0);
+        $stmtWeekend->close();
+
+        $stmtHoliday = $conn->prepare("SELECT COUNT(*) as cnt FROM holiday_shift_registrations WHERE user_id = ? AND shift_date BETWEEN ? AND ? AND approved = 1");
+        $stmtHoliday->bind_param("iss", $userId, $startDate, $endDate);
+        $stmtHoliday->execute();
+        $holidayShifts = (int)($stmtHoliday->get_result()->fetch_assoc()['cnt'] ?? 0);
+        $stmtHoliday->close();
+
+        $dutyShifts = $weekendShifts + $holidayShifts;
 
         $summaryText = "Xin chào {$sale['full_name']},\n"
             . "Hệ thống xin gửi tổng kết Chấm công & Trực ca của bạn trong {$periodStr}:\n"

@@ -21,8 +21,8 @@ while ($row = $r2->fetch_assoc()) {
 }
 
 // Search in contacts
-$r3 = $conn->query("SELECT * FROM contacts WHERE id = 24 OR person_id = 24 OR name LIKE '%Khách hàng ẩn danh%'");
+$r3 = $conn->query("SELECT * FROM contacts WHERE id = 24 OR person_id = 24 OR first_name LIKE '%Khách hàng ẩn danh%' OR last_name LIKE '%Khách hàng ẩn danh%'");
 echo "\n3. CONTACTS TABLE:\n";
 while ($row = $r3->fetch_assoc()) {
-    echo "Contact ID: {$row['id']} | Person ID: {$row['person_id']} | Phone: {$row['phone']} | Name: {$row['name']}\n";
+    echo "Contact ID: {$row['id']} | Person ID: {$row['person_id']} | Phone: {$row['phone']} | Name: {$row['first_name']} {$row['last_name']}\n";
 }
