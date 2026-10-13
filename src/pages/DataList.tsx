@@ -1934,6 +1934,18 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   
   const LEAD_STATUS_TABS = useMemo(() => [
     { id: 'all', label: 'Tất cả trạng thái', color: 'var(--color-primary)' },
+    { id: 'not_lead', label: 'Not Lead', color: '#dc2626' },
+    { id: 'chua_xac_dinh', label: '2. Chưa xác định', color: '#BD1D2D' },
+    { id: 'cham_soc_dai_han', label: '3. Chăm sóc dài hạn', color: '#0d9488' },
+    { id: 'quan_tam', label: '4. Quan tâm', color: '#ca8a04' },
+    { id: 'thien_chi', label: '5. Thiện chí', color: '#ea580c' },
+    { id: 'da_gap', label: '6. Đã gặp', color: '#c026d3' },
+    { id: 'booking', label: '7. Booking', color: '#2563eb' },
+    { id: 'dat_coc', label: '8. Đặt cọc', color: '#047857' },
+    { id: 'dong_deal', label: '9. Đã đóng deal', color: '#059669' },
+  ], []);
+
+  const DISTRIBUTION_STATUS_TABS = useMemo(() => [
     { id: 'not_contacted', label: 'Chưa liên hệ', color: '#3b82f6' },
     { id: 'assigned', label: 'Đã chia', color: '#06b6d4' },
     { id: 'grabbed', label: 'Giật Lead', color: '#f97316' },
@@ -1979,6 +1991,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     leads.forEach(l => {
       const s = l.status || 'unknown';
       counts[s] = (counts[s] || 0) + 1;
+      const hs = l.highest_status;
+      if (hs) {
+        counts[hs] = (counts[hs] || 0) + 1;
+        if (hs === 'dong_y_gap') counts['thien_chi'] = (counts['thien_chi'] || 0) + 1;
+        if (hs === 'thien_chi') counts['dong_y_gap'] = (counts['dong_y_gap'] || 0) + 1;
+      }
     });
     return counts;
   }, [leads]);
@@ -2141,9 +2159,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         {viewMode !== 'databank' && (
           <div>
             <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
-              {t('Trạng thái Lead')}
+              {t('Trạng thái Lead (Pipeline)')}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '260px', overflowY: 'auto' }} className="custom-scrollbar">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '380px', overflowY: 'auto' }} className="custom-scrollbar">
               {LEAD_STATUS_TABS.map((tab) => {
                 const isActive = statusFilter === tab.id || (tab.id === 'all' && (!statusFilter || statusFilter === 'all'));
                 const count = tab.id === 'all' ? totalCount : (statusCounts[tab.id] || 0);
@@ -2281,6 +2299,24 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 />
               </div>
             )}
+
+            {/* Trạng thái phân bổ */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái phân bổ')}</span>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả phân bổ'), icon: <Tag size={14} /> },
+                  ...DISTRIBUTION_STATUS_TABS.map(tab => ({
+                    value: tab.id,
+                    label: tab.label
+                  }))
+                ]}
+                value={DISTRIBUTION_STATUS_TABS.some(s => s.id === statusFilter) ? statusFilter : 'all'}
+                onChange={val => updateParams('status', val.toString())}
+                searchable={true}
+                width="100%"
+              />
+            </div>
 
             {/* Dự án */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -3409,12 +3445,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 )}
               </div>
             ) : (
-              <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', minWidth: 1050, borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--color-bg)' }}>
                   <tr>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Khách hàng')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Liên hệ')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái cao nhất')}</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Dự án')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Phân loại lead')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>{t('Phân bổ cho')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Thời gian nhận')}</th>
@@ -3440,6 +3477,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         <div style={{ width: 80, height: 24, background: 'var(--skeleton-base)', borderRadius: 12, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
                       </td>
                       <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div style={{ width: 90, height: 22, background: 'var(--skeleton-base)', borderRadius: 6, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
+                      </td>
+                      <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
                         <div style={{ width: 70, height: 22, background: 'var(--skeleton-base)', borderRadius: 6, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
                       </td>
                       <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -3456,7 +3496,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     groupedLeads.map(group => (
                       <Fragment key={`group-${group.dateKey}`}>
                         <tr style={{ background: 'var(--color-bg-light)', borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)' }}>
-                          <td colSpan={6} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                          <td colSpan={7} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <Calendar size={13} />
                               <span>{formatDateHeader(group.dateKey, group.items.length)}</span>
@@ -3487,6 +3527,31 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             {getHighestStatusBadge(lead.highest_status, lead)}
                             {lead.status !== 'assigned' && lead.status !== 'grabbed' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                           </div>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          {lead.project_name ? (
+                            <span style={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '5px', 
+                              padding: '3px 8px', 
+                              borderRadius: '6px', 
+                              background: 'rgba(59, 130, 246, 0.08)', 
+                              color: '#2563eb', 
+                              fontWeight: 600, 
+                              fontSize: '0.78rem',
+                              border: '1px solid rgba(59, 130, 246, 0.2)',
+                              maxWidth: '180px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }} title={lead.project_name}>
+                              <Building2 size={12} style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.project_name}</span>
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>
+                          )}
                         </td>
                         <td style={{ padding: '1rem' }}>
                           {getPhanLoaiBadge(lead)}
@@ -3594,7 +3659,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
                         {t('Không tìm thấy dữ liệu phù hợp.')}
                       </td>
                     </tr>
@@ -8724,15 +8789,32 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       />
                     </div>
 
-                    {/* Trạng thái */}
+                    {/* Trạng thái Pipeline */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái Lead')}</label>
+                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái Lead (Pipeline)')}</label>
                       <CustomSelect
                         options={LEAD_STATUS_TABS.map(tab => ({
                           value: tab.id,
                           label: t(tab.label)
                         }))}
                         value={statusFilter}
+                        onChange={val => updateParams('status', val.toString())}
+                        width="100%"
+                      />
+                    </div>
+
+                    {/* Trạng thái phân bổ */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái phân bổ')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'all', label: t('Tất cả phân bổ') },
+                          ...DISTRIBUTION_STATUS_TABS.map(tab => ({
+                            value: tab.id,
+                            label: t(tab.label)
+                          }))
+                        ]}
+                        value={DISTRIBUTION_STATUS_TABS.some(s => s.id === statusFilter) ? statusFilter : 'all'}
                         onChange={val => updateParams('status', val.toString())}
                         width="100%"
                       />

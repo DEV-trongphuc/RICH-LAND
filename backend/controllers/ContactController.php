@@ -121,9 +121,7 @@ class ContactController {
         
         if ($dataType !== '') {
             $errorCond = "(
-                (c.report_status IS NOT NULL AND c.report_status != '')
-                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
-                OR EXISTS (
+                EXISTS (
                     SELECT 1 FROM leads l2 
                     JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
                     WHERE l2.person_id = c.person_id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
@@ -166,9 +164,7 @@ class ContactController {
             }
         } else if (($auth['role'] ?? '') === 'sale') {
             $errorCond = "(
-                (c.report_status IS NOT NULL AND c.report_status != '')
-                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
-                OR EXISTS (
+                EXISTS (
                     SELECT 1 FROM leads l2 
                     JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
                     WHERE l2.person_id = c.person_id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
