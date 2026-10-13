@@ -609,6 +609,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [rounds, setRounds] = useState<{ id: number; round_name: string; round_type?: string; is_active?: number; is_currently_active?: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [serverStatusCounts, setServerStatusCounts] = useState<Record<string, number>>({});
+  const [overallTotalCount, setOverallTotalCount] = useState(0);
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -701,6 +703,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         }));
         setLeads(mappedLeads);
         setTotalCount(json.total_count ?? mappedLeads.length);
+        if (json.status_counts) {
+          setServerStatusCounts(json.status_counts);
+        }
+        if (json.overall_total_count !== undefined) {
+          setOverallTotalCount(Number(json.overall_total_count));
+        }
       }
     } catch (e: any) {
       toast.error(t('Lỗi tải dữ liệu: ') + e.message);
@@ -1987,19 +1995,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
 
   const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    leads.forEach(l => {
-      const s = l.status || 'unknown';
-      counts[s] = (counts[s] || 0) + 1;
-      const hs = l.highest_status;
-      if (hs) {
-        counts[hs] = (counts[hs] || 0) + 1;
-        if (hs === 'dong_y_gap') counts['thien_chi'] = (counts['thien_chi'] || 0) + 1;
-        if (hs === 'thien_chi') counts['dong_y_gap'] = (counts['dong_y_gap'] || 0) + 1;
-      }
-    });
+    const counts = { ...serverStatusCounts };
+    if (counts['thien_chi'] !== undefined && counts['dong_y_gap'] === undefined) {
+      counts['dong_y_gap'] = counts['thien_chi'];
+    }
     return counts;
-  }, [leads]);
+  }, [serverStatusCounts]);
 
   const renderLeadFilterContent = (inDrawer = false) => {
     return (
@@ -2164,7 +2165,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '380px', overflowY: 'auto' }} className="custom-scrollbar">
               {LEAD_STATUS_TABS.map((tab) => {
                 const isActive = statusFilter === tab.id || (tab.id === 'all' && (!statusFilter || statusFilter === 'all'));
-                const count = tab.id === 'all' ? totalCount : (statusCounts[tab.id] || 0);
+                const count = tab.id === 'all' ? (overallTotalCount || totalCount) : (statusCounts[tab.id] || 0);
 
                 return (
                   <button
@@ -2722,121 +2723,68 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               <input
                 className="form-input"
                 placeholder={t("Tìm theo tên, SĐT, email...")}
-                style={{ paddingLeft: 34, paddingRight: searchInput ? 30 : 12, width: '100%', height: 38, fontSize: '0.82rem', borderRadius: '8px' }}
+                style={{ paddingLeft: 14, paddingRight: searchInput ? 54 : 36, width: '100%', height: 38, fontSize: '0.82rem', borderRadius: '8px' }}
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
               />
-              <Search size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              {searchInput && (
-                <button
-                  type="button"
-                  onClick={() => { setSearchInput(''); updateParams('search', ''); }}
-                  style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}
-                >
-                  <X size={14} />
-                </button>
-              )}
+              <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => { setSearchInput(''); updateParams('search', ''); }}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}
+                    title={t("Xóa tìm kiếm")}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+                <Search size={15} style={{ color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
+              </div>
             </div>
 
-            {/* Desktop / Tablet Quick Filter Dropdowns */}
-            {!isMobile && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                {/* 1. Dự án */}
-                <div style={{ width: 155 }}>
-                  <CustomSelect
-                    value={projectFilter}
-                    onChange={val => updateParams('project', val.toString())}
-                    options={[
-                      { value: 'all', label: t('Tất cả dự án'), icon: <Building2 size={13} /> },
-                      ...projectsList.map(p => ({
-                        value: String(p.id || p.name),
-                        label: p.name
-                      }))
-                    ]}
-                    searchable={true}
-                    width="100%"
-                  />
-                </div>
-
-                {/* 2. Phân loại */}
-                <div style={{ width: 145 }}>
-                  <CustomSelect
-                    value={leadPhanLoaiFilter}
-                    onChange={val => updateParams('lead_phan_loai', val.toString())}
-                    options={[
-                      { value: 'all', label: t('Tất cả phân loại'), icon: <Tag size={13} /> },
-                      ...Array.from(new Set([
-                        ...availableLeadPhanLoai,
-                        ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
-                        'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
-                      ])).map(pl => ({ value: pl, label: pl }))
-                    ]}
-                    searchable={true}
-                    width="100%"
-                  />
-                </div>
-
-                {/* 3. Đơn vị chạy */}
-                <div style={{ width: 150 }}>
-                  <CustomSelect
-                    value={donviChayFilter}
-                    onChange={val => updateParams('donvi_chay', val.toString())}
-                    options={[
-                      { value: 'all', label: t('Tất cả đơn vị'), icon: <Layers size={13} /> },
-                      ...Array.from(new Set([
-                        ...availableDonviChay,
-                        ...leads.map(l => l.donvi_chay).filter(Boolean)
-                      ])).map(dv => ({ value: dv, label: dv }))
-                    ]}
-                    searchable={true}
-                    width="100%"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Detailed Filter Button (Opens Slide-Over Drawer) */}
-            <button
-              type="button"
-              onClick={() => setShowAdvancedFilterDrawer(true)}
-              style={{
-                height: '38px',
-                padding: '0 12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                border: activeFiltersCount > 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                borderRadius: '8px',
-                background: activeFiltersCount > 0 ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                color: activeFiltersCount > 0 ? 'var(--color-primary)' : 'var(--color-text)',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                transition: 'all 0.2s',
-                boxShadow: 'var(--shadow-sm)'
-              }}
-              title={t('Mở bộ lọc chi tiết chuyên sâu')}
-            >
-              <SlidersHorizontal size={14} />
-              <span className="hide-on-mobile">{t('Bộ lọc chi tiết')}</span>
-              <span className="show-on-mobile" style={{ display: isMobile ? 'inline' : 'none' }}>{t('Bộ lọc')}</span>
-              {activeFiltersCount > 0 && (
-                <span style={{
-                  background: 'var(--color-primary)',
-                  color: '#fff',
-                  borderRadius: '50%',
-                  minWidth: 18,
-                  height: 18,
+            {/* Mobile Filter Button (Opens Slide-Over Drawer on Mobile only, as Desktop has full Sidebar) */}
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterDrawer(true)}
+                style={{
+                  height: '38px',
+                  padding: '0 12px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.65rem',
-                  lineHeight: 1
-                }}>
-                  {activeFiltersCount}
-                </span>
-              )}
-            </button>
+                  gap: '6px',
+                  cursor: 'pointer',
+                  border: activeFiltersCount > 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  background: activeFiltersCount > 0 ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                  color: activeFiltersCount > 0 ? 'var(--color-primary)' : 'var(--color-text)',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  transition: 'all 0.2s',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+                title={t('Mở bộ lọc')}
+              >
+                <SlidersHorizontal size={14} />
+                <span>{t('Bộ lọc')}</span>
+                {activeFiltersCount > 0 && (
+                  <span style={{
+                    background: 'var(--color-primary)',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    minWidth: 18,
+                    height: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.65rem',
+                    lineHeight: 1
+                  }}>
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Quick Reset All Button */}
             {activeFiltersCount > 0 && (

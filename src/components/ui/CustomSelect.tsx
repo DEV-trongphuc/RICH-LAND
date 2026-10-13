@@ -396,7 +396,6 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           >
             {searchable && (
               <div className={styles.searchBox}>
-                <Search size={14} className={styles.searchIcon} />
                 <input
                   type="text"
                   autoFocus
@@ -406,6 +405,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                   onClick={e => e.stopPropagation()}
                   className={styles.searchInput}
                 />
+                <Search size={14} className={styles.searchIcon} />
               </div>
             )}
             <div className={`${styles.list} custom-scrollbar`}>

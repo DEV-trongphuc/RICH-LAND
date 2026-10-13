@@ -3565,20 +3565,26 @@ switch ($action) {
         }
         $isFilteringActive = false;
 
+        $leadPipelineExpr = "
+            CASE 
+                WHEN p.is_blocked = 1 OR l.status = 'not_lead' OR dl.status = 'not_lead' OR EXISTS (SELECT 1 FROM contacts cnl WHERE cnl.person_id = l.person_id AND cnl.pipeline_status = 'not_lead') THEN 'not_lead'
+                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'dong_deal' AND c.deleted_at IS NULL) THEN 'dong_deal'
+                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'dat_coc' AND c.deleted_at IS NULL) THEN 'dat_coc'
+                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'booking' AND c.deleted_at IS NULL) THEN 'booking'
+                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'da_gap' AND c.deleted_at IS NULL) THEN 'da_gap'
+                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status IN ('dong_y_gap', 'thien_chi') AND c.deleted_at IS NULL) THEN 'thien_chi'
+                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'quan_tam' AND c.deleted_at IS NULL) THEN 'quan_tam'
+                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'cham_soc_dai_han' AND c.deleted_at IS NULL) THEN 'cham_soc_dai_han'
+                ELSE 'chua_xac_dinh'
+            END
+        ";
+
         if (isset($_GET['status']) && $_GET['status'] !== 'all') {
             $statusInput = $_GET['status'];
             $pipelineStatusList = ['not_lead', 'chua_xac_dinh', 'cham_soc_dai_han', 'quan_tam', 'dong_y_gap', 'thien_chi', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
             if (in_array($statusInput, $pipelineStatusList)) {
-                if ($statusInput === 'not_lead') {
-                    $extraCondition .= " AND (p.is_blocked = 1 OR l.status = 'not_lead' OR dl.status = 'not_lead' OR EXISTS (SELECT 1 FROM contacts cnl WHERE cnl.person_id = l.person_id AND cnl.pipeline_status = 'not_lead'))";
-                } else if ($statusInput === 'chua_xac_dinh') {
-                    $extraCondition .= " AND (p.is_blocked = 0 OR p.is_blocked IS NULL) AND l.status != 'not_lead' AND dl.status != 'not_lead' AND (EXISTS (SELECT 1 FROM contacts cst WHERE cst.person_id = l.person_id AND (cst.pipeline_status = 'chua_xac_dinh' OR cst.pipeline_status IS NULL OR cst.pipeline_status = '')) OR NOT EXISTS (SELECT 1 FROM contacts cst2 WHERE cst2.person_id = l.person_id))";
-                } else if ($statusInput === 'dong_y_gap' || $statusInput === 'thien_chi') {
-                    $extraCondition .= " AND EXISTS (SELECT 1 FROM contacts cst WHERE cst.person_id = l.person_id AND cst.pipeline_status IN ('dong_y_gap', 'thien_chi'))";
-                } else {
-                    $escapedSt = $conn->real_escape_string($statusInput);
-                    $extraCondition .= " AND EXISTS (SELECT 1 FROM contacts cst WHERE cst.person_id = l.person_id AND cst.pipeline_status = '$escapedSt')";
-                }
+                $targetStatus = ($statusInput === 'dong_y_gap') ? 'thien_chi' : $statusInput;
+                $extraCondition .= " AND ($leadPipelineExpr) = '$targetStatus'";
             } else if ($statusInput === 'not_contacted') {
                 $extraCondition .= " AND l.status != 'reminder' AND l.is_accepted = 1 AND l.source NOT IN ('ca_nhan', 'gioi_thieu') 
                     AND EXISTS (
@@ -3740,8 +3746,8 @@ switch ($action) {
             }
         }
 
-        $pipeCountRes = $conn->query("
-            SELECT COALESCE(NULLIF(c.pipeline_status, ''), 'chua_xac_dinh') as p_status, COUNT(DISTINCT l.id) as cnt 
+        $overallCountRes = $conn->query("
+            SELECT COUNT(DISTINCT dl.lead_id) as cnt 
             FROM distribution_logs dl 
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
@@ -3749,8 +3755,21 @@ switch ($action) {
                 WHERE $dateConditionSubQuery
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
+            WHERE $dateCondition
+        ");
+        $overallTotalCount = (int) ($overallCountRes ? ($overallCountRes->fetch_assoc()['cnt'] ?? 0) : 0);
+
+        $pipeCountRes = $conn->query("
+            SELECT ($leadPipelineExpr) as p_status, COUNT(*) as cnt
+            FROM distribution_logs dl
+            INNER JOIN (
+                SELECT lead_id, MAX(id) as max_id 
+                FROM distribution_logs 
+                WHERE $dateConditionSubQuery
+                GROUP BY lead_id
+            ) dl_max ON dl.id = dl_max.max_id
             LEFT JOIN leads l ON dl.lead_id = l.id
-            LEFT JOIN contacts c ON l.person_id = c.person_id
+            LEFT JOIN persons p ON l.person_id = p.id
             WHERE $dateCondition
             GROUP BY p_status
         ");
@@ -4117,6 +4136,7 @@ switch ($action) {
             'success' => true, 
             'data' => $data, 
             'total_count' => $totalCount, 
+            'overall_total_count' => $overallTotalCount, 
             'status_counts' => $statusCounts, 
             'limit' => $responseLimit,
             'available_donvi_chay' => array_values(array_unique($distinctDonvi)),
