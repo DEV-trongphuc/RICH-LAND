@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { RefreshCw, Upload, Trash2, Lightbulb, Download, Loader2, AlertCircle } from 'lucide-react';
+import { RefreshCw, Upload, Trash2, Lightbulb, Download, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { CustomModal } from './ui/CustomModal';
 import { CustomSelect } from './ui/CustomSelect';
 import { Avatar } from './ui/Avatar';
@@ -1117,9 +1117,61 @@ export const QuickAddLeadModal = () => {
     const lines = text.split(/\r?\n/);
     const leads: any[] = [];
     
-    lines.forEach(line => {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) return;
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i;
+    const phoneRegex = /(?:\+?84|0)(?:\s*[\.\-]?\s*\d){9,10}/;
+    const fbUrlRegex = /https?:\/\/(?:www\.)?(?:facebook\.com|fb\.com)\/[^\s,;]+/i;
+    const urlRegex = /https?:\/\/[^\s,;]+/i;
+
+    // Detect if first line is a header row
+    const headerMap: { [key: string]: number } = {};
+    let startIndex = 0;
+
+    const firstLine = lines[0]?.trim();
+    if (firstLine) {
+      let firstParts: string[] = [];
+      if (firstLine.includes('\t')) firstParts = firstLine.split('\t');
+      else if (firstLine.includes(';')) firstParts = firstLine.split(';');
+      else firstParts = firstLine.split(',');
+      firstParts = firstParts.map(p => p.trim().toLowerCase());
+
+      const isHeader = firstParts.some(p => 
+        p.includes('họ') || p.includes('tên') || p.includes('sđt') || p.includes('phone') || 
+        p.includes('email') || p.includes('nguồn') || p.includes('nhu cầu') || p.includes('phân loại') || p.includes('dự án')
+      );
+
+      if (isHeader) {
+        startIndex = 1;
+        firstParts.forEach((header, idx) => {
+          if (header.includes('dự án') || header.includes('du an') || header.includes('project')) {
+            headerMap['project'] = idx;
+          } else if (header.includes('phân loại') || header.includes('phan loai') || header.includes('rank')) {
+            headerMap['lead_phan_loai'] = idx;
+          } else if (header.includes('fb') || header.includes('facebook')) {
+            headerMap['facebook_link'] = idx;
+          } else if (header.includes('video') || header.includes('ads') || header.includes('link data') || header.includes('chứa data')) {
+            headerMap['link_video_ads'] = idx;
+          } else if (header.includes('ghi chú') || header.includes('ghi chu') || header.includes('note')) {
+            headerMap['note'] = idx;
+          } else if (header.includes('họ') || header.includes('tên') || header === 'name' || header === 'khách hàng') {
+            headerMap['name'] = idx;
+          } else if (header.includes('sđt') || header.includes('sdt') || header.includes('điện thoại') || header.includes('phone')) {
+            headerMap['phone'] = idx;
+          } else if (header.includes('email') || header.includes('mail')) {
+            headerMap['email'] = idx;
+          } else if (header.includes('nguồn') || header.includes('source')) {
+            headerMap['source'] = idx;
+          } else if (header.includes('nhu cầu') || header.includes('loại') || header.includes('type')) {
+            headerMap['type'] = idx;
+          }
+        });
+      }
+    }
+
+    const hasHeaderMap = Object.keys(headerMap).length >= 2;
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const trimmedLine = lines[i].trim();
+      if (!trimmedLine) continue;
       
       let parts: string[] = [];
       if (trimmedLine.includes('\t')) {
@@ -1129,57 +1181,104 @@ export const QuickAddLeadModal = () => {
       } else {
         parts = trimmedLine.split(',');
       }
-      
-      parts = parts.map(p => p.trim());
-      if (parts.length === 0 || (parts.length === 1 && !parts[0])) return;
+      parts = parts.map(p => p.trim().replace(/^["']|["']$/g, ''));
+      if (parts.length === 0 || (parts.length === 1 && !parts[0])) continue;
       
       let phone = '';
       let email = '';
       let name = '';
       let source = '';
       let type = '';
+      let leadPhanLoai = '';
+      let projectRaw = '';
+      let facebookLink = '';
+      let linkVideoAds = '';
       let note = '';
-      
-      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-      const phoneRegex = /(?:\+?84|0)(?:\s*[\.\-]?\s*\d){9,10}/;
-      
-      const remainingParts: string[] = [];
-      parts.forEach(part => {
-        if (emailRegex.test(part)) {
-          email = part;
+
+      if (hasHeaderMap) {
+        if (headerMap['name'] !== undefined) name = parts[headerMap['name']] || '';
+        if (headerMap['phone'] !== undefined) {
+          const m = (parts[headerMap['phone']] || '').match(phoneRegex);
+          phone = m ? beautifyPhone(m[0]) : (parts[headerMap['phone']] || '');
+        }
+        if (headerMap['email'] !== undefined) email = parts[headerMap['email']] || '';
+        if (headerMap['source'] !== undefined) source = parts[headerMap['source']] || '';
+        if (headerMap['type'] !== undefined) type = parts[headerMap['type']] || '';
+        if (headerMap['lead_phan_loai'] !== undefined) leadPhanLoai = parts[headerMap['lead_phan_loai']] || '';
+        if (headerMap['project'] !== undefined) projectRaw = parts[headerMap['project']] || '';
+        if (headerMap['facebook_link'] !== undefined) facebookLink = parts[headerMap['facebook_link']] || '';
+        if (headerMap['link_video_ads'] !== undefined) linkVideoAds = parts[headerMap['link_video_ads']] || '';
+        if (headerMap['note'] !== undefined) note = parts[headerMap['note']] || '';
+      } else {
+        // Fallback: If formatted as standard 10 or 7+ columns
+        if (parts.length >= 7) {
+          name = parts[0] || '';
+          const mPhone = (parts[1] || '').match(phoneRegex);
+          phone = mPhone ? beautifyPhone(mPhone[0]) : (parts[1] || '');
+          email = parts[2] || '';
+          source = parts[3] || '';
+          type = parts[4] || '';
+          leadPhanLoai = parts[5] || '';
+          projectRaw = parts[6] || '';
+          facebookLink = parts[7] || '';
+          linkVideoAds = parts[8] || '';
+          if (parts.length > 9) {
+            note = parts.slice(9).join(' - ');
+          }
         } else {
-          const phoneMatch = part.match(phoneRegex);
-          if (phoneMatch) {
-            phone = beautifyPhone(phoneMatch[0]);
-          } else {
-            remainingParts.push(part);
+          // Heuristic extraction for few columns
+          const remainingParts: string[] = [];
+          parts.forEach(part => {
+            if (emailRegex.test(part) && !email) {
+              email = part;
+            } else if (phoneRegex.test(part) && !phone) {
+              const phoneMatch = part.match(phoneRegex);
+              phone = phoneMatch ? beautifyPhone(phoneMatch[0]) : '';
+            } else if (fbUrlRegex.test(part) && !facebookLink) {
+              facebookLink = part;
+            } else if (urlRegex.test(part) && !linkVideoAds) {
+              linkVideoAds = part;
+            } else {
+              remainingParts.push(part);
+            }
+          });
+          
+          if (remainingParts.length > 0) name = remainingParts[0];
+          if (remainingParts.length > 1) {
+            const second = remainingParts[1];
+            const isSrc = ['fb', 'facebook', 'zalo', 'google', 'gg', 'tiktok', 'youtube', 'mkt', 'ads', 'ca_nhan', 'gioi_thieu'].some(k => second.toLowerCase().includes(k));
+            if (isSrc) source = second;
+            else type = second;
+          }
+          if (remainingParts.length > 2) {
+            if (!source) source = remainingParts[2];
+            else if (!type) type = remainingParts[2];
+            else note = remainingParts[2];
+          }
+          if (remainingParts.length > 3) {
+            note = remainingParts.slice(3).join(' - ');
           }
         }
-      });
-      
-      if (remainingParts.length > 0) {
-        name = remainingParts[0];
       }
-      if (remainingParts.length > 1) {
-        const second = remainingParts[1];
-        const isSrc = ['fb', 'facebook', 'zalo', 'google', 'gg', 'tiktok', 'youtube', 'mkt', 'ads'].some(k => second.toLowerCase().includes(k));
-        if (isSrc) {
-          source = second;
+
+      // Resolve Project ID and Name from projectsList
+      let projectId = '';
+      let projectName = '';
+      if (projectRaw) {
+        const found = projectsList.find((p: any) => 
+          p.id?.toString() === projectRaw ||
+          (p.name && p.name.trim().toLowerCase() === projectRaw.toLowerCase()) ||
+          (p.title && p.title.trim().toLowerCase() === projectRaw.toLowerCase())
+        );
+        if (found) {
+          projectId = found.id.toString();
+          projectName = found.name || found.title || `Dự án #${found.id}`;
         } else {
-          type = second;
+          if (!isNaN(Number(projectRaw))) {
+            projectId = projectRaw;
+          }
+          projectName = projectRaw;
         }
-      }
-      if (remainingParts.length > 2) {
-        if (!source) {
-          source = remainingParts[2];
-        } else if (!type) {
-          type = remainingParts[2];
-        } else {
-          note = remainingParts[2];
-        }
-      }
-      if (remainingParts.length > 3) {
-        note = remainingParts.slice(3).join(' - ');
       }
       
       if (phone || email) {
@@ -1187,19 +1286,28 @@ export const QuickAddLeadModal = () => {
           name: name || 'Khách hàng',
           phone,
           email,
-          source: source || 'Bulk_Import',
+          source: source || (distributionMode === 'direct_databank' ? 'databank' : 'Bulk_Import'),
           type: type || 'Khác',
+          lead_phan_loai: leadPhanLoai || (distributionMode === 'direct_databank' ? 'databank' : ''),
+          project_id: projectId,
+          project_name: projectName,
+          facebook_link: facebookLink,
+          link_video_ads: linkVideoAds,
           note: note || ''
         });
       }
-    });
+    }
     return leads;
   };
 
   const downloadSampleCSV = () => {
-    const headers = 'Họ & Tên,Số điện thoại,Email,Nguồn,Nhu cầu,Ghi chú\n';
-    const row = 'Nguyễn Văn A,0912345678,a@gmail.com,Facebook,Đất nền,Cần gọi lại buổi chiều\n';
-    const csvContent = '\uFEFF' + headers + row;
+    const headers = 'Họ & Tên,Số điện thoại,Email,Nguồn,Nhu cầu,Phân loại Lead,Dự án nguồn,Link Facebook,Link Video Ads,Ghi chú\n';
+    const rows = [
+      'Nguyễn Văn A,0912345678,nguyenvana@gmail.com,Facebook,Đất nền,R3_Fb,Gem Sky World,https://facebook.com/nguyenvana,https://tiktok.com/@ads/video1,Cần tư vấn căn 2 phòng ngủ hướng Đông Nam\n',
+      'Trần Thị B,0987654321,tranthib@gmail.com,FB_Ads,Căn hộ,R3,The Global City,https://facebook.com/tranthib,https://youtube.com/watch?v=demo,Khách quan tâm đầu tư đợt 1\n',
+      'Lê Văn C,0901234567,levanc@gmail.com,Zalo,Biệt thự,VIP,Eco Green Saigon,,,Cần hẹn xem nhà mẫu cuối tuần\n'
+    ].join('');
+    const csvContent = '\uFEFF' + headers + rows;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1349,7 +1457,7 @@ export const QuickAddLeadModal = () => {
         setShowOverrideSelector(false);
       }}
       title={t("Thêm Mới Khách Hàng")}
-      width={activeTab === 'bulk' && bulkParsedLeads.length > 0 ? "800px" : "650px"}
+      width={activeTab === 'bulk' && bulkParsedLeads.length > 0 ? "1050px" : "680px"}
     >
       {isOpen && (
         <>
@@ -1929,29 +2037,39 @@ export const QuickAddLeadModal = () => {
                 </button>
               </div>
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px', textAlign: 'left', minWidth: '500px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px', textAlign: 'left', minWidth: '860px' }}>
                   <thead>
                     <tr style={{ background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)', color: 'var(--color-text-muted)' }}>
-                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '6px 0 0 6px', fontSize: '0.625rem' }}>{t('Họ & Tên')}</th>
-                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('SĐT')}</th>
-                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Email')}</th>
-                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Nguồn')}</th>
-                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Nhu cầu')}</th>
-                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '0 6px 6px 0', fontSize: '0.625rem' }}>{t('Ghi chú')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '6px 0 0 6px', fontSize: '0.625rem' }}>{t('Họ & Tên')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('SĐT')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Email')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Nguồn')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Nhu cầu')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Phân loại')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Dự án nguồn')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Link Facebook')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Link Video Ads')}</th>
+                      <th style={{ padding: '5px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '0 6px 6px 0', fontSize: '0.625rem' }}>{t('Ghi chú')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '4px 6px', color: 'var(--color-text)', fontWeight: 500, fontSize: '0.625rem' }}>Nguyễn Văn A</td>
-                      <td style={{ padding: '4px 6px', color: 'var(--color-text)', fontFamily: 'monospace', fontSize: '0.625rem' }}>0912345678</td>
-                      <td style={{ padding: '4px 6px', color: 'var(--color-text)', fontSize: '0.625rem' }}>a@gmail.com</td>
-                      <td style={{ padding: '4px 6px', fontSize: '0.625rem' }}>
-                        <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '1px 4px', borderRadius: '4px', fontSize: '0.5625rem', fontWeight: 600 }}>Facebook</span>
+                      <td style={{ padding: '5px 8px', color: 'var(--color-text)', fontWeight: 500, fontSize: '0.625rem' }}>Nguyễn Văn A</td>
+                      <td style={{ padding: '5px 8px', color: 'var(--color-text)', fontFamily: 'monospace', fontSize: '0.625rem' }}>0912345678</td>
+                      <td style={{ padding: '5px 8px', color: 'var(--color-text)', fontSize: '0.625rem' }}>nguyenvana@gmail.com</td>
+                      <td style={{ padding: '5px 8px', fontSize: '0.625rem' }}>
+                        <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '1px 5px', borderRadius: '4px', fontSize: '0.5625rem', fontWeight: 600 }}>Facebook</span>
                       </td>
-                      <td style={{ padding: '4px 6px', fontSize: '0.625rem' }}>
-                        <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '1px 4px', borderRadius: '4px', fontSize: '0.5625rem', fontWeight: 600 }}>Đất nền</span>
+                      <td style={{ padding: '5px 8px', fontSize: '0.625rem' }}>
+                        <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '1px 5px', borderRadius: '4px', fontSize: '0.5625rem', fontWeight: 600 }}>Đất nền</span>
                       </td>
-                      <td style={{ padding: '4px 6px', color: 'var(--color-text-muted)', fontSize: '0.625rem' }}>Cần gọi lại buổi chiều</td>
+                      <td style={{ padding: '5px 8px', fontSize: '0.625rem' }}>
+                        <span style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#9333ea', padding: '1px 5px', borderRadius: '4px', fontSize: '0.5625rem', fontWeight: 600 }}>R3_Fb</span>
+                      </td>
+                      <td style={{ padding: '5px 8px', fontSize: '0.625rem', color: 'var(--color-text)', fontWeight: 500 }}>Gem Sky World</td>
+                      <td style={{ padding: '5px 8px', fontSize: '0.625rem', color: '#3b82f6' }}>fb.com/nguyenvana</td>
+                      <td style={{ padding: '5px 8px', fontSize: '0.625rem', color: '#10b981' }}>tiktok.com/...</td>
+                      <td style={{ padding: '5px 8px', color: 'var(--color-text-muted)', fontSize: '0.625rem' }}>Cần tư vấn căn 2PN hướng Đông Nam</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1969,7 +2087,7 @@ export const QuickAddLeadModal = () => {
                   value={bulkInputText}
                   onChange={e => setBulkInputText(e.target.value)}
                   style={{ fontFamily: 'monospace', fontSize: '0.8125rem', lineHeight: 1.4, minHeight: '220px' }}
-                  placeholder={`Nguyễn Văn A, 0912345678, email@gmail.com, FB_Ads, Căn hộ, Ghi chú\nNguyễn Văn B, 0923456789, email2@gmail.com, Zalo, Đất nền, Ghi chú 2`}
+                  placeholder={`Nguyễn Văn A, 0912345678, nguyenvana@gmail.com, Facebook, Đất nền, R3_Fb, Gem Sky World, https://facebook.com/nguyenvana, https://tiktok.com/@ads/video1, Cần tư vấn căn 2 phòng ngủ hướng Đông Nam\nTrần Thị B, 0987654321, tranthib@gmail.com, FB_Ads, Căn hộ, R3, The Global City, https://facebook.com/tranthib, https://youtube.com/watch?v=demo, Khách quan tâm đầu tư đợt 1`}
                 />
                 <button
                   type="button"
@@ -2050,39 +2168,92 @@ export const QuickAddLeadModal = () => {
                 </div>
 
                 <div style={{
-                  maxHeight: '260px',
+                  maxHeight: '300px',
                   overflowY: 'auto',
+                  overflowX: 'auto',
                   border: '1px solid var(--color-border)',
                   borderRadius: '10px',
                   background: theme === 'dark' ? 'var(--color-surface)' : '#ffffff'
                 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: '920px' }}>
                     <thead>
                       <tr style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#f8fafc', borderBottom: '1px solid var(--color-border)' }}>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('Tên')}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('SĐT')}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('Email')}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('Nguồn')}</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('Loại')}</th>
-                        <th style={{ padding: '8px 12px', width: '50px' }}></th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>{t('Họ tên')}</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>{t('SĐT')}</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>{t('Email')}</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>{t('Nguồn')}</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>{t('Nhu cầu')}</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>{t('Phân loại')}</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>{t('Dự án')}</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>{t('Liên kết')}</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>{t('Ghi chú')}</th>
+                        <th style={{ padding: '8px 10px', width: '40px' }}></th>
                       </tr>
                     </thead>
                     <tbody>
                       {bulkParsedLeads.map((lead, idx) => (
                         <tr key={idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                          <td style={{ padding: '8px 12px' }}>{lead.name}</td>
-                          <td style={{ padding: '8px 12px', color: (lead.phone && !isValidPhone(lead.phone)) ? 'var(--color-danger)' : 'inherit' }}>
-                            {lead.phone}
+                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>{lead.name}</td>
+                          <td style={{ padding: '8px 10px', color: (lead.phone && !isValidPhone(lead.phone)) ? 'var(--color-danger)' : 'inherit', fontFamily: 'monospace' }}>
+                            {lead.phone || '-'}
                             {lead.phone && !isValidPhone(lead.phone) && (
                               <span style={{ marginLeft: '6px', fontSize: '0.6875rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
                                 {t('Không hợp lệ')}
                               </span>
                             )}
                           </td>
-                          <td style={{ padding: '8px 12px' }}>{lead.email || '-'}</td>
-                          <td style={{ padding: '8px 12px' }}>{lead.source}</td>
-                          <td style={{ padding: '8px 12px' }}>{lead.type}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                          <td style={{ padding: '8px 10px' }}>{lead.email || '-'}</td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <span style={{ background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 500 }}>
+                              {lead.source}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>{lead.type || '-'}</td>
+                          <td style={{ padding: '8px 10px' }}>
+                            {lead.lead_phan_loai ? (
+                              <span style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#9333ea', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                                {lead.lead_phan_loai}
+                              </span>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            {lead.project_name || lead.project_id || '-'}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              {lead.facebook_link && (
+                                <a 
+                                  href={lead.facebook_link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  title={`Facebook: ${lead.facebook_link}`}
+                                  style={{ color: '#1877f2', display: 'inline-flex', alignItems: 'center', gap: '2px', fontSize: '0.75rem', textDecoration: 'none' }}
+                                >
+                                  FB <ExternalLink size={10} />
+                                </a>
+                              )}
+                              {lead.link_video_ads && (
+                                <a 
+                                  href={lead.link_video_ads} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  title={`Video / Ads: ${lead.link_video_ads}`}
+                                  style={{ color: '#ea580c', display: 'inline-flex', alignItems: 'center', gap: '2px', fontSize: '0.75rem', textDecoration: 'none' }}
+                                >
+                                  Ads <ExternalLink size={10} />
+                                </a>
+                              )}
+                              {!lead.facebook_link && !lead.link_video_ads && (
+                                <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ padding: '8px 10px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={lead.note}>
+                            {lead.note || '-'}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                             <button
                               onClick={() => removeBulkLeadRow(idx)}
                               style={{
@@ -2094,6 +2265,7 @@ export const QuickAddLeadModal = () => {
                               }}
                               onMouseEnter={e => e.currentTarget.style.color = 'var(--color-danger)'}
                               onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
+                              title={t('Xóa dòng này')}
                             >
                               <Trash2 size={14} />
                             </button>

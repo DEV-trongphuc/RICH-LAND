@@ -950,7 +950,23 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $type = trim($leadData['type'] ?? '');
     $note = trim($leadData['note'] ?? '');
     $lead_phan_loai = !empty($leadData['lead_phan_loai']) ? trim($leadData['lead_phan_loai']) : null;
-    $project_id = !empty($leadData['project_id']) ? (int)$leadData['project_id'] : null;
+    $project_id = !empty($leadData['project_id']) && is_numeric($leadData['project_id']) ? (int)$leadData['project_id'] : null;
+    $projectName = trim($leadData['project_name'] ?? '');
+    if (empty($project_id) && !empty($leadData['project_id']) && !is_numeric($leadData['project_id'])) {
+        $projectName = trim($leadData['project_id']);
+    }
+    if (empty($project_id) && !empty($projectName)) {
+        $pStmt = $conn->prepare("SELECT id FROM projects WHERE name = ? OR title = ? LIMIT 1");
+        if ($pStmt) {
+            $pStmt->bind_param("ss", $projectName, $projectName);
+            $pStmt->execute();
+            $pRow = $pStmt->get_result()->fetch_assoc();
+            $pStmt->close();
+            if ($pRow) {
+                $project_id = (int)$pRow['id'];
+            }
+        }
+    }
     $facebook_link = !empty($leadData['facebook_link']) ? trim($leadData['facebook_link']) : null;
     $link_video_ads = !empty($leadData['link_video_ads']) ? trim($leadData['link_video_ads']) : null;
 
@@ -962,8 +978,12 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $lead_phan_loai = !empty($leadData['lead_phan_loai']) ? trim($leadData['lead_phan_loai']) : (!empty($leadData['phan_loai_lead']) ? trim($leadData['phan_loai_lead']) : null);
     $loai_lead = !empty($leadData['loai_lead']) ? trim($leadData['loai_lead']) : null;
     if ($distribution_mode === 'direct_databank') {
-        $lead_phan_loai = 'databank';
-        $source = 'databank';
+        if (empty($lead_phan_loai)) {
+            $lead_phan_loai = 'databank';
+        }
+        if (empty($source) || in_array(strtolower($source), ['website', 'other', 'default', ''])) {
+            $source = 'databank';
+        }
     } else if (!empty($lead_phan_loai)) {
         if (strcasecmp($lead_phan_loai, 'r3_fb') === 0) $lead_phan_loai = 'R3_Fb';
         elseif (strcasecmp($lead_phan_loai, 'r3') === 0) $lead_phan_loai = 'R3';
@@ -1014,12 +1034,26 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
         // Direct to Databank
         $conn->begin_transaction();
         try {
+            $leadPayload = [
+                'phone' => $phone,
+                'email' => $email,
+                'name' => $name,
+                'source' => $source,
+                'type' => $type,
+                'note' => $note,
+                'lead_phan_loai' => $lead_phan_loai,
+                'project_id' => $project_id,
+                'facebook_link' => $facebook_link,
+                'link_video_ads' => $link_video_ads,
+                'loai_lead' => $loai_lead
+            ];
+
             // Check if duplicate in leads to update last interaction
             $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
             if ($crmCheckResult['leadExists']) {
                 $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
             } else {
-                $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+                $leadId = insertLead($conn, $leadPayload, null, $phone, $email, $name, $source, $type, $note);
             }
 
             if ($leadId) {
@@ -1046,6 +1080,21 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
             $stmtPerson->bind_param("sss", $phone, $email, $name);
             $stmtPerson->execute();
             $stmtPerson->close();
+
+            // Link person_id to leads record
+            if ($leadId) {
+                $stmtGetPerson = $conn->prepare("SELECT id FROM persons WHERE phone = ? LIMIT 1");
+                if ($stmtGetPerson) {
+                    $stmtGetPerson->bind_param("s", $phone);
+                    $stmtGetPerson->execute();
+                    $pRow = $stmtGetPerson->get_result()->fetch_assoc();
+                    $stmtGetPerson->close();
+                    if ($pRow) {
+                        $pId = (int)$pRow['id'];
+                        $conn->query("UPDATE leads SET person_id = $pId WHERE id = $leadId");
+                    }
+                }
+            }
 
             logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Thêm thủ công thẳng vào Kho chung (Databank)', false);
             $conn->commit();
@@ -20990,11 +21039,11 @@ switch ($action) {
                 $lastName = '';
             }
 
-            $stmtProj = $conn->prepare("SELECT project_id FROM contacts WHERE person_id = ? AND project_id IS NOT NULL LIMIT 1");
-            $stmtProj->bind_param("i", $personId);
+            $stmtProj = $conn->prepare("SELECT project_id FROM contacts WHERE person_id = ? AND project_id IS NOT NULL UNION SELECT project_id FROM leads WHERE (person_id = ? OR phone = ?) AND project_id IS NOT NULL LIMIT 1");
+            $stmtProj->bind_param("iis", $personId, $personId, $person['phone']);
             $stmtProj->execute();
             $projRes = $stmtProj->get_result()->fetch_assoc();
-            $projectId = $projRes ? $projRes['project_id'] : NULL;
+            $projectId = $projRes ? (int)$projRes['project_id'] : NULL;
             $stmtProj->close();
 
             // Fetch latest lead details to fill the contact (Preserve original source classification)
@@ -21012,9 +21061,9 @@ switch ($action) {
             $zaloPhoneVal = null;
             $appLienHeVal = null;
 
-            $stmtLead = $conn->prepare("SELECT source, type, note, lead_phan_loai, loai_lead, campaign_id, donvi_chay, ad_name, form_name, link_video_ads, facebook_link, zalo_phone, app_lienhe FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $stmtLead = $conn->prepare("SELECT source, type, note, lead_phan_loai, loai_lead, campaign_id, donvi_chay, ad_name, form_name, link_video_ads, facebook_link, zalo_phone, app_lienhe FROM leads WHERE person_id = ? OR phone = ? ORDER BY id DESC LIMIT 1");
             if ($stmtLead) {
-                $stmtLead->bind_param("i", $personId);
+                $stmtLead->bind_param("is", $personId, $person['phone']);
                 $stmtLead->execute();
                 $lRow = $stmtLead->get_result()->fetch_assoc();
                 if ($lRow) {
@@ -21208,9 +21257,24 @@ switch ($action) {
 
         if ($isStaffAdmin) {
             $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at, p.deleted_from_databank, p.is_blocked,
-                           (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
-                           (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1)) as project_name,
-                           (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source,
+                           COALESCE(
+                               (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1),
+                               (SELECT project_id FROM leads WHERE (person_id = p.id OR phone = p.phone) AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1)
+                           ) as project_id,
+                           COALESCE(
+                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1)),
+                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM leads WHERE (person_id = p.id OR phone = p.phone) AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1))
+                           ) as project_name,
+                           COALESCE(
+                               (SELECT source FROM contacts WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' LIMIT 1),
+                               (SELECT source FROM leads WHERE (person_id = p.id OR phone = p.phone) AND source IS NOT NULL AND source != '' AND source != 'databank' ORDER BY id DESC LIMIT 1),
+                               'databank'
+                           ) as original_source,
+                           (SELECT type FROM leads WHERE (person_id = p.id OR phone = p.phone) AND type IS NOT NULL AND type != '' ORDER BY id DESC LIMIT 1) as customer_type,
+                           (SELECT lead_phan_loai FROM leads WHERE (person_id = p.id OR phone = p.phone) AND lead_phan_loai IS NOT NULL AND lead_phan_loai != '' ORDER BY id DESC LIMIT 1) as lead_phan_loai,
+                           (SELECT facebook_link FROM leads WHERE (person_id = p.id OR phone = p.phone) AND facebook_link IS NOT NULL AND facebook_link != '' ORDER BY id DESC LIMIT 1) as facebook_link,
+                           (SELECT link_video_ads FROM leads WHERE (person_id = p.id OR phone = p.phone) AND link_video_ads IS NOT NULL AND link_video_ads != '' ORDER BY id DESC LIMIT 1) as link_video_ads,
+                           (SELECT note FROM leads WHERE (person_id = p.id OR phone = p.phone) AND note IS NOT NULL AND note != '' ORDER BY id DESC LIMIT 1) as note,
                            EXISTS (
                                SELECT 1 FROM contacts 
                                WHERE person_id = p.id 
@@ -21225,9 +21289,24 @@ switch ($action) {
         } else {
             $currentUserId = (int)($decodedUser['id'] ?? 0);
             $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
-                           (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
-                           (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1)) as project_name,
-                           (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
+                           COALESCE(
+                               (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1),
+                               (SELECT project_id FROM leads WHERE (person_id = p.id OR phone = p.phone) AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1)
+                           ) as project_id,
+                           COALESCE(
+                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1)),
+                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM leads WHERE (person_id = p.id OR phone = p.phone) AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1))
+                           ) as project_name,
+                           COALESCE(
+                               (SELECT source FROM contacts WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' LIMIT 1),
+                               (SELECT source FROM leads WHERE (person_id = p.id OR phone = p.phone) AND source IS NOT NULL AND source != '' AND source != 'databank' ORDER BY id DESC LIMIT 1),
+                               'databank'
+                           ) as original_source,
+                           (SELECT type FROM leads WHERE (person_id = p.id OR phone = p.phone) AND type IS NOT NULL AND type != '' ORDER BY id DESC LIMIT 1) as customer_type,
+                           (SELECT lead_phan_loai FROM leads WHERE (person_id = p.id OR phone = p.phone) AND lead_phan_loai IS NOT NULL AND lead_phan_loai != '' ORDER BY id DESC LIMIT 1) as lead_phan_loai,
+                           (SELECT facebook_link FROM leads WHERE (person_id = p.id OR phone = p.phone) AND facebook_link IS NOT NULL AND facebook_link != '' ORDER BY id DESC LIMIT 1) as facebook_link,
+                           (SELECT link_video_ads FROM leads WHERE (person_id = p.id OR phone = p.phone) AND link_video_ads IS NOT NULL AND link_video_ads != '' ORDER BY id DESC LIMIT 1) as link_video_ads,
+                           (SELECT note FROM leads WHERE (person_id = p.id OR phone = p.phone) AND note IS NOT NULL AND note != '' ORDER BY id DESC LIMIT 1) as note
                     FROM persons p
                     WHERE p.is_public = 1
                       AND NOT EXISTS (
