@@ -3751,7 +3751,7 @@ switch ($action) {
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             LEFT JOIN leads l ON dl.lead_id = l.id
-            LEFT JOIN projects proj ON (l.project_id = proj.id OR l.target_project_id = proj.id)
+            LEFT JOIN projects proj ON l.project_id = proj.id
             LEFT JOIN persons p ON l.person_id = p.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
