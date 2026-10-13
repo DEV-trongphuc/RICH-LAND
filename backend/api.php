@@ -3924,8 +3924,8 @@ switch ($action) {
                 if (empty($takersMap[$pId])) {
                     $histQuery = "SELECT 
                                     COALESCE(NULLIF(dl.assigned_to, 0), NULLIF(rpt.consultant_id, 0), 0) as id,
-                                    COALESCE(NULLIF(cons.name, ''), NULLIF(u.name, ''), NULLIF(u.full_name, ''), 'Tư vấn viên') as name,
-                                    COALESCE(cons.avatar, u.avatar) as avatar,
+                                    COALESCE(NULLIF(cons.name, ''), NULLIF(u.full_name, ''), 'Tư vấn viên') as name,
+                                    COALESCE(cons.avatar, u.avatar_url) as avatar,
                                     COALESCE(cons.phone, u.phone) as consultant_phone,
                                     tm.name as team_name,
                                     COALESCE(dr.round_name, (SELECT dr2.round_name FROM distribution_rounds dr2 WHERE dr2.id = rpt.round_id LIMIT 1)) as round_name,
