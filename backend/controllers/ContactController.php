@@ -278,6 +278,17 @@ class ContactController {
                    ps.name as stage_name, ps.color as stage_color,
                    dl.received_at as distributed_at,
                    dl.status as dl_status,
+                   CASE 
+                       WHEN c.source = 'databank' 
+                            OR c.lead_phan_loai = 'databank' 
+                            OR dl.status = 'databank_claim'
+                            OR EXISTS (
+                                SELECT 1 FROM distribution_logs dl_dbk 
+                                WHERE dl_dbk.lead_id = l.id AND dl_dbk.assigned_to = c.owner_id AND dl_dbk.status = 'databank_claim'
+                            )
+                       THEN 1 
+                       ELSE 0 
+                   END as from_databank,
                    dl.round_id as dl_round_id,
                    r.round_name,
                    dl.id as log_id,
@@ -285,6 +296,15 @@ class ContactController {
                    l.note as lead_note,
                    l.type as lead_type,
                    l.source as lead_source,
+                   COALESCE(NULLIF(c.lead_phan_loai, ''), NULLIF(l.lead_phan_loai, ''), c.source) as lead_phan_loai,
+                   COALESCE(NULLIF(c.loai_lead, ''), NULLIF(l.loai_lead, ''), c.customer_type) as loai_lead,
+                   l.lead_phan_loai as lead_lead_phan_loai,
+                   l.loai_lead as lead_loai_lead,
+                   l.platform as lead_platform,
+                   l.donvi_chay as lead_donvi_chay,
+                   l.ad_name as lead_ad_name,
+                   l.form_name as lead_form_name,
+                   l.link_video_ads as lead_link_video_ads,
                    l.preferred_location as lead_preferred_location,
                    l.bedroom_count as lead_bedroom_count,
                    l.property_type as lead_property_type,
@@ -302,7 +322,7 @@ class ContactController {
             )
             LEFT JOIN distribution_logs dl ON dl.id = (
                 SELECT MAX(id) FROM distribution_logs 
-                WHERE lead_id = l.id
+                WHERE lead_id = l.id AND assigned_to = c.owner_id
             )
             LEFT JOIN distribution_rounds r ON COALESCE(dl.round_id, l.target_round_id) = r.id
             LEFT JOIN data_reports dr ON dr.id = (
@@ -609,6 +629,15 @@ class ContactController {
                     l.note as lead_note,
                     l.type as lead_type,
                     l.source as lead_source,
+                    COALESCE(NULLIF(c.lead_phan_loai, ''), NULLIF(l.lead_phan_loai, ''), c.source) as lead_phan_loai,
+                    COALESCE(NULLIF(c.loai_lead, ''), NULLIF(l.loai_lead, ''), c.customer_type) as loai_lead,
+                    l.lead_phan_loai as lead_lead_phan_loai,
+                    l.loai_lead as lead_loai_lead,
+                    l.platform as lead_platform,
+                    l.donvi_chay as lead_donvi_chay,
+                    l.ad_name as lead_ad_name,
+                    l.form_name as lead_form_name,
+                    l.link_video_ads as lead_link_video_ads,
                     l.preferred_location as lead_preferred_location,
                     l.bedroom_count as lead_bedroom_count,
                     l.property_type as lead_property_type,
@@ -616,6 +645,17 @@ class ContactController {
                     l.budget as lead_budget,
                     dl.round_id as dl_round_id,
                     dl.status as dl_status,
+                    CASE 
+                        WHEN c.source = 'databank' 
+                             OR c.lead_phan_loai = 'databank' 
+                             OR dl.status = 'databank_claim'
+                             OR EXISTS (
+                                 SELECT 1 FROM distribution_logs dl_dbk 
+                                 WHERE dl_dbk.lead_id = l.id AND dl_dbk.assigned_to = c.owner_id AND dl_dbk.status = 'databank_claim'
+                             )
+                        THEN 1 
+                        ELSE 0 
+                    END as from_databank,
                     r.round_name,
                     dr.status as ticket_status,
                     dr.reason as ticket_reason
@@ -745,8 +785,24 @@ class ContactController {
                 logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'PROPOSE_NOT_LEAD', 'contact', $id, "Báo cáo Not Lead cho khách hàng ID: $id.$reasonMsg");
                 respond(200, null, 'Báo cáo Not Lead đã được gửi đến Quản lý để phê duyệt.');
             } else {
-                // Manager/Admin can directly approve or transition to Not Lead
+                // Manager/Admin can directly approve or transition to Not Lead -> BAN on all fronts
                 $b['not_lead_proposed'] = 0;
+                $stmtBanP = $this->db->prepare("
+                    UPDATE persons 
+                    SET is_blocked = 1, is_public = 0, deleted_from_databank = 1, released_to_kho_at = NULL 
+                    WHERE id = (SELECT person_id FROM contacts WHERE id = ? LIMIT 1)
+                ");
+                $stmtBanP->execute([$id]);
+
+                $cPhone = $currentContact['phone'] ?? null;
+                $cEmail = $currentContact['email'] ?? null;
+                if ($cPhone || $cEmail) {
+                    $stmtInsBlk = $this->db->prepare("
+                        INSERT INTO blocked_leads (phone, email, reason, created_by, created_at)
+                        VALUES (?, ?, 'Admin direct Not Lead approval', ?, NOW())
+                    ");
+                    $stmtInsBlk->execute([$cPhone, $cEmail, $auth['user_id']]);
+                }
             }
         }
 
@@ -1592,18 +1648,39 @@ class ContactController {
         $reason = trim($input['reason'] ?? 'Không phải khách hàng tiềm năng');
 
         // 1. Fetch contact
-        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name, phone, email, source, pipeline_status FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name, phone, email, source, lead_phan_loai, pipeline_status FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
         $stmt->execute([$id, $tid]);
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$contact) respond(404, null, 'Không tìm thấy liên hệ', false);
 
         // Check if contact is from databank
+        $isFromDatabank = false;
         $srcLower = strtolower($contact['source'] ?? '');
-        if (strpos($srcLower, 'databank') !== false || strpos($srcLower, 'kho data') !== false || strpos($srcLower, 'kho_data') !== false) {
-            respond(400, null, 'Khách hàng từ Databank vui lòng sử dụng tính năng "Trả về Databank"!', false);
+        $phanLoaiLower = strtolower($contact['lead_phan_loai'] ?? '');
+        if (strpos($srcLower, 'databank') !== false || strpos($srcLower, 'kho data') !== false || strpos($srcLower, 'kho_data') !== false || strpos($phanLoaiLower, 'databank') !== false) {
+            $isFromDatabank = true;
         }
 
         $personId = $contact['person_id'];
+
+        // Check if distribution_logs has databank_claim for this contact's person and owner
+        if (!$isFromDatabank && $personId) {
+            $chkDl = $this->db->prepare("
+                SELECT dl.id 
+                FROM distribution_logs dl
+                JOIN leads l ON dl.lead_id = l.id
+                WHERE l.person_id = ? AND dl.assigned_to = ? AND dl.status = 'databank_claim'
+                LIMIT 1
+            ");
+            $chkDl->execute([$personId, $auth['user_id']]);
+            if ($chkDl->fetch()) {
+                $isFromDatabank = true;
+            }
+        }
+
+        if ($isFromDatabank) {
+            respond(400, null, 'Khách hàng nhận từ Kho Databank không được phép báo cáo Not Lead hoặc gửi ticket báo lỗi. Vui lòng sử dụng tính năng "Trả về Databank"!', false);
+        }
 
         // Prevent reporting not lead if deposit or coop active
         $currStatus = $contact['pipeline_status'];
@@ -1675,14 +1752,22 @@ class ContactController {
             return 'all';
         }
 
-        if (in_array($auth['role'], ['sale', 'sales'], true) && ($module === 'deals' || $module === 'leads')) {
+        // Strict business rule: Manager, Director, Assistant are NOT allowed to see or manage leads/contacts/customers
+        if (in_array($auth['role'], ['manager', 'director', 'assistant'], true) && in_array($module, ['leads', 'contacts', 'customers'], true)) {
+            return 'none';
+        }
+
+        if (in_array($auth['role'], ['sale', 'sales'], true) && ($module === 'deals' || $module === 'leads' || $module === 'contacts' || $module === 'customers')) {
             return $action === 'delete' ? 'none' : 'own';
         }
 
         if ($permissionsJson && isset($permissionsJson[$module][$action])) {
             $val = $permissionsJson[$module][$action];
             if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
-                if ($action !== 'delete' && $val === 'none' && in_array($auth['role'], ['sale', 'sales', 'manager', 'director', 'assistant'], true)) {
+                if (in_array($auth['role'], ['manager', 'director', 'assistant'], true) && in_array($module, ['leads', 'contacts', 'customers'], true)) {
+                    return 'none';
+                }
+                if ($action !== 'delete' && $val === 'none' && in_array($auth['role'], ['sale', 'sales'], true)) {
                     return 'own';
                 }
                 return $val;
@@ -1692,16 +1777,20 @@ class ContactController {
         // Default fallbacks
         $role = $auth['role'];
         if ($role === 'director') {
-            if ($module === 'settings') {
+            if ($module === 'settings' || in_array($module, ['leads', 'contacts', 'customers'], true)) {
                 return 'none';
             }
             return 'all';
         }
         if ($role === 'assistant') {
+            if (in_array($module, ['leads', 'contacts', 'customers'], true)) return 'none';
             return $action === 'delete' ? 'none' : 'all';
         }
         if ($role === 'manager') {
-            return $action === 'delete' ? 'none' : 'team';
+            if (in_array($module, ['leads', 'contacts', 'customers'], true) || $action === 'delete') {
+                return 'none';
+            }
+            return 'team';
         }
         if (in_array($role, ['sale', 'sales'], true)) {
             if ($module === 'projects') {

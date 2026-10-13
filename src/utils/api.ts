@@ -23,38 +23,62 @@ export function clearSettingsCache() {
   cachedToken = null;
 }
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('system_settings_updated', () => {
+    clearSettingsCache();
+  });
+}
+
 export async function fetchAPI(action: string, options: RequestInit = {}) {
   const originalMethod = (options.method || 'GET').toUpperCase();
+  const isBypassCache = options.cache === 'no-store' || 
+                        options.cache === 'no-cache' || 
+                        (options.headers as any)?.['Cache-Control'] === 'no-cache';
   
+  if (action.includes('save_settings') || originalMethod !== 'GET' || isBypassCache) {
+    clearSettingsCache();
+  }
+
   // Transparent caching for get_settings action
   if (action === 'get_settings' && originalMethod === 'GET') {
     const token = localStorage.getItem('richland_token');
+    const fetchFresh = async () => {
+      let url = `api.php?action=get_settings&_t=${Date.now()}`;
+      if (token) {
+        url += `&token=${token}`;
+      }
+      try {
+        const response = await api({
+          method: 'GET',
+          url,
+          headers: {
+            ...(options.headers as Record<string, string>),
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+        });
+        return response.data;
+      } catch (err: any) {
+        settingsCachePromise = null; // Clear on error to allow retries
+        if (err.response) {
+          throw new Error(err.response.data?.message || err.message, { cause: err });
+        }
+        throw err;
+      }
+    };
+
+    if (isBypassCache) {
+      clearSettingsCache();
+      return fetchFresh();
+    }
+
     if (token !== cachedToken) {
       settingsCachePromise = null;
       cachedToken = token;
     }
     
     if (!settingsCachePromise) {
-      settingsCachePromise = (async () => {
-        let url = `api.php?action=get_settings`;
-        if (token) {
-          url += `&token=${token}`;
-        }
-        try {
-          const response = await api({
-            method: 'GET',
-            url,
-            headers: options.headers as Record<string, string>,
-          });
-          return response.data;
-        } catch (err: any) {
-          settingsCachePromise = null; // Clear on error to allow retries
-          if (err.response) {
-            throw new Error(err.response.data?.message || err.message, { cause: err });
-          }
-          throw err;
-        }
-      })();
+      settingsCachePromise = fetchFresh();
     }
     return settingsCachePromise;
   }

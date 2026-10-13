@@ -18,8 +18,9 @@ const SYSTEM_FIELDS = [
   { value: 'dob', label: 'Ngày sinh' },
   { value: 'citizen_id', label: 'Số CCCD / CMND' },
   { value: 'address', label: 'Địa chỉ thường trú / tạm trú' },
-  { value: 'city', label: 'Tỉnh / Thành phố' },
+  { value: 'ward', label: 'Phường / Xã' },
   { value: 'district', label: 'Quận / Huyện' },
+  { value: 'city', label: 'Tỉnh / Thành phố' },
   { value: 'company', label: 'Công ty / Đơn vị làm việc' },
   { value: 'job_title', label: 'Nghề nghiệp / Chức danh' },
   { value: 'tax_code', label: 'Mã số thuế cá nhân' },
@@ -50,6 +51,9 @@ const SYSTEM_FIELDS = [
   { value: 'project_id', label: 'Dự án (Project ID / Tên dự án)' },
   { value: 'time_lienhe', label: 'Thời gian liên hệ thuận tiện (time_lienhe)' },
   { value: 'hinh_thuc_tt', label: 'Hình thức thanh toán (hinh_thuc_tt)' },
+  { value: 'temperature', label: 'Nhiệt độ khách hàng (Hot / Warm / Cold)' },
+  { value: 'customer_type', label: 'Phân loại khách hàng (Cá nhân / Doanh nghiệp)' },
+  { value: 'pipeline_status', label: 'Trạng thái Pipeline ban đầu' },
 
   // --- Mạng Xã Hội & Khác ---
   { value: 'zalo_phone', label: 'Số Zalo / Link Zalo' },

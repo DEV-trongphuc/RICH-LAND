@@ -1735,6 +1735,7 @@ function isLeadBlocked($conn, $phone, $email) {
     }
     
     try {
+        // 1. Check blocked_leads table
         $query = "SELECT id FROM blocked_leads WHERE 1=2";
         $params = [];
         
@@ -1747,11 +1748,12 @@ function isLeadBlocked($conn, $phone, $email) {
             $params[] = $email;
         }
         
+        $isBlocked = false;
         if ($conn instanceof PDO) {
             $stmt = $conn->prepare($query);
             if ($stmt) {
                 $stmt->execute($params);
-                return (bool)$stmt->fetchColumn();
+                $isBlocked = (bool)$stmt->fetchColumn();
             }
         } else {
             $stmt = $conn->prepare($query);
@@ -1764,7 +1766,71 @@ function isLeadBlocked($conn, $phone, $email) {
                 $res = $stmt->get_result();
                 $isBlocked = ($res && $res->num_rows > 0);
                 $stmt->close();
-                return $isBlocked;
+            }
+        }
+        if ($isBlocked) return true;
+
+        // 2. Check persons table: is_blocked = 1 (Ban lead on all fronts per approved Not Lead)
+        $pQuery = "SELECT id FROM persons WHERE is_blocked = 1 AND (1=2";
+        $pParams = [];
+        if (!empty($phone)) {
+            $pQuery .= " OR phone = ?";
+            $pParams[] = $phone;
+        }
+        if (!empty($email)) {
+            $pQuery .= " OR email = ?";
+            $pParams[] = $email;
+        }
+        $pQuery .= ") LIMIT 1";
+
+        if ($conn instanceof PDO) {
+            $stmtP = $conn->prepare($pQuery);
+            if ($stmtP) {
+                $stmtP->execute($pParams);
+                if ($stmtP->fetchColumn()) return true;
+            }
+        } else {
+            $stmtP = $conn->prepare($pQuery);
+            if ($stmtP) {
+                $types = str_repeat("s", count($pParams));
+                $stmtP->bind_param($types, ...$pParams);
+                $stmtP->execute();
+                $resP = $stmtP->get_result();
+                $hasBlockedPerson = ($resP && $resP->num_rows > 0);
+                $stmtP->close();
+                if ($hasBlockedPerson) return true;
+            }
+        }
+
+        // 3. Check data_reports: status IN ('approved', 'approved_no_comp')
+        $rQuery = "SELECT dr.id FROM data_reports dr JOIN leads l ON dr.lead_id = l.id WHERE dr.status IN ('approved', 'approved_no_comp') AND (1=2";
+        $rParams = [];
+        if (!empty($phone)) {
+            $rQuery .= " OR l.phone = ?";
+            $rParams[] = $phone;
+        }
+        if (!empty($email)) {
+            $rQuery .= " OR l.email = ?";
+            $rParams[] = $email;
+        }
+        $rQuery .= ") LIMIT 1";
+
+        if ($conn instanceof PDO) {
+            $stmtR = $conn->prepare($rQuery);
+            if ($stmtR) {
+                $stmtR->execute($rParams);
+                if ($stmtR->fetchColumn()) return true;
+            }
+        } else {
+            $stmtR = $conn->prepare($rQuery);
+            if ($stmtR) {
+                $types = str_repeat("s", count($rParams));
+                $stmtR->bind_param($types, ...$rParams);
+                $stmtR->execute();
+                $resR = $stmtR->get_result();
+                $hasApprovedReport = ($resR && $resR->num_rows > 0);
+                $stmtR->close();
+                if ($hasApprovedReport) return true;
             }
         }
     } catch (Throwable $e) {

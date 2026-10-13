@@ -935,7 +935,8 @@ const RuleSettingsInner = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingRule ? t("Chỉnh sửa Quy tắc") : t("Thêm Quy tắc mới")}
-        width="800px"
+        width="960px"
+        maxWidth="96vw"
       >
         {isModalOpen && (
           <fieldset disabled={isReadOnly} style={{ border: 'none', margin: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
@@ -976,7 +977,7 @@ const RuleSettingsInner = () => {
                     const isLast = i === branch.conditions.length - 1;
                     return (
                       <div key={i} className="condition-row-responsive" style={{ background: 'transparent', padding: '0', position: 'relative' }}>
-                        <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                           {i === 0 ? (
                             <div style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>IF</div>
                           ) : (
@@ -987,7 +988,7 @@ const RuleSettingsInner = () => {
                           )}
                         </div>
 
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
                             <CustomSelect
                               options={getFieldOptions()}
@@ -1002,7 +1003,7 @@ const RuleSettingsInner = () => {
                             />
                           </div>
                         </div>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
                             <CustomSelect
                               options={opOptions}
@@ -1017,7 +1018,7 @@ const RuleSettingsInner = () => {
                           </div>
                         </div>
                         {!isNoValueOp && (
-                          <div style={{ flex: 1 }}>
+                          <div style={{ flex: 1.2, minWidth: 0 }}>
                             {c.op.startsWith('date_') ? (
                               <input
                                 type="date"

@@ -10,7 +10,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
-import { fetchAPI } from '../utils/api';
+import { fetchAPI, clearSettingsCache } from '../utils/api';
 import toast from 'react-hot-toast';
 import { CardSkeleton, TableSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
@@ -785,7 +785,8 @@ const SettingsInner = () => {
         console.error("Error fetching unique sources:", err);
       }
 
-      const json = await fetchAPI('get_settings');
+      clearSettingsCache();
+      const json = await fetchAPI('get_settings', { cache: 'no-store' });
       if (json.success && json.data) {
         if (json.data.pipeline_status_hierarchy) {
           try {
@@ -1578,6 +1579,7 @@ const SettingsInner = () => {
     });
 
     try {
+      clearSettingsCache();
       const json = await fetchAPI('save_settings', {
         method: 'POST',
         body: JSON.stringify(payload)
@@ -1601,6 +1603,7 @@ const SettingsInner = () => {
       const currentTabLabel = tabLabels[activeTab] || 'Cài đặt hệ thống';
 
       if (json.success) {
+        clearSettingsCache();
         toast.success(t('Đã lưu cấu hình "{tabName}" thành công!').replace('{tabName}', currentTabLabel));
         // Cache invalidation and refetch fresh settings immediately (Issue 6)
         window.dispatchEvent(new CustomEvent('system_settings_updated', { detail: payload }));
@@ -6020,31 +6023,33 @@ function doPost(e) {
 
                             <div>
                               <label className="form-label">{t('Cấu hình các ngày tính là cuối tuần')}</label>
-                              <div style={{ display: 'flex', gap: '8px', marginTop: 4 }}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const current = weekendShiftDays.split(',').map(s => s.trim()).filter(Boolean);
-                                    const next = current.includes('6') ? current.filter(x => x !== '6') : [...current, '6'];
-                                    setWeekendShiftDays(next.join(',') || '7');
-                                  }}
-                                  className={`btn btn-sm ${weekendShiftDays.includes('6') ? 'btn-primary' : 'btn-outline'}`}
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '6px' }}
-                                >
-                                  {weekendShiftDays.includes('6') ? '✓ ' : ''}{t('Thứ Bảy')}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const current = weekendShiftDays.split(',').map(s => s.trim()).filter(Boolean);
-                                    const next = current.includes('7') ? current.filter(x => x !== '7') : [...current, '7'];
-                                    setWeekendShiftDays(next.join(',') || '6');
-                                  }}
-                                  className={`btn btn-sm ${weekendShiftDays.includes('7') ? 'btn-primary' : 'btn-outline'}`}
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '6px' }}
-                                >
-                                  {weekendShiftDays.includes('7') ? '✓ ' : ''}{t('Chủ Nhật')}
-                                </button>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: 4 }}>
+                                {[
+                                  { id: '1', label: t('Thứ Hai') },
+                                  { id: '2', label: t('Thứ Ba') },
+                                  { id: '3', label: t('Thứ Tư') },
+                                  { id: '4', label: t('Thứ Năm') },
+                                  { id: '5', label: t('Thứ Sáu') },
+                                  { id: '6', label: t('Thứ Bảy') },
+                                  { id: '7', label: t('Chủ Nhật') }
+                                ].map(day => {
+                                  const current = weekendShiftDays.split(',').map(s => s.trim()).filter(Boolean);
+                                  const isSelected = current.includes(day.id);
+                                  return (
+                                    <button
+                                      key={day.id}
+                                      type="button"
+                                      onClick={() => {
+                                        const next = isSelected ? current.filter(x => x !== day.id) : [...current, day.id];
+                                        setWeekendShiftDays(next.join(',') || '7');
+                                      }}
+                                      className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline'}`}
+                                      style={{ padding: '6px 10px', fontSize: '0.78rem', borderRadius: '6px' }}
+                                    >
+                                      {isSelected ? '✓ ' : ''}{day.label}
+                                    </button>
+                                  );
+                                })}
                               </div>
                               <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                                 {t('Chỉ áp dụng chế độ trực cuối tuần cho các ngày được chọn.')}

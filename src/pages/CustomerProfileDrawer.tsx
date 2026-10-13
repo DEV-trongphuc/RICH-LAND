@@ -3799,8 +3799,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const wb = parseWebhookData((contact.notes || contact.lead_note || '').trim());
       const mergedContact = {
         ...contact,
-        lead_phan_loai: contact.lead_phan_loai || wb.parsed['lead_phan_loai'] || contact.source || '',
-        loai_lead: contact.loai_lead || wb.parsed['loai_lead'] || '',
+        lead_phan_loai: contact.lead_phan_loai || (contact as any).phan_loai_lead || (contact as any).lead_lead_phan_loai || wb.parsed['lead_phan_loai'] || wb.parsed['phan_loai_lead'] || (contact.source !== 'Website' && contact.source !== 'other' && contact.source !== 'ca_nhan' ? contact.source : '') || '',
+        loai_lead: contact.loai_lead || (contact as any).lead_loai_lead || wb.parsed['loai_lead'] || '',
         ad_name: contact.ad_name || wb.parsed['ad_name'] || '',
         form_name: contact.form_name || wb.parsed['form_name'] || '',
         link_video_ads: contact.link_video_ads || wb.parsed['link_video_ads'] || '',
@@ -4216,15 +4216,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const isDatabankLead = useMemo(() => {
     const src = (formData?.source || contact?.source || '').toLowerCase();
+    const phanLoai = (formData?.lead_phan_loai || contact?.lead_phan_loai || (contact as any)?.phan_loai_lead || '').toLowerCase();
+    const dlStatus = (formData?.dl_status || contact?.dl_status || (contact as any)?.dl_status || '');
     return Boolean(
+      Boolean((contact as any)?.from_databank) ||
+      Boolean((formData as any)?.from_databank) ||
+      dlStatus === 'databank_claim' ||
       (contact as any)?.dl_status === 'databank_claim' ||
-      (contact as any)?.from_databank ||
-      (formData as any)?.from_databank ||
       src.includes('databank') ||
       src.includes('kho data') ||
-      src.includes('kho_data')
+      src.includes('kho_data') ||
+      phanLoai.includes('databank') ||
+      Boolean((contact as any)?.is_public) ||
+      Boolean((formData as any)?.is_public)
     );
-  }, [formData?.source, contact?.source, (contact as any)?.dl_status, (contact as any)?.from_databank, (formData as any)?.from_databank]);
+  }, [
+    formData?.source, contact?.source,
+    formData?.lead_phan_loai, contact?.lead_phan_loai,
+    formData?.dl_status, contact?.dl_status,
+    (contact as any)?.from_databank, (formData as any)?.from_databank,
+    (contact as any)?.dl_status, (contact as any)?.is_public, (formData as any)?.is_public
+  ]);
 
   const executeStageTransition = async (targetId: string, targetLabel: string, proofUrl?: string, customNote?: string) => {
     let calculatedStatus = 'lead';
@@ -5525,10 +5537,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const handleCreateTicket = async () => {
     if (!ticketForm.subject.trim() || isSubmitting) return;
-    const isSelfEnteredOrDb = ['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || 
+    const isSelfEnteredOrDb = isDatabankLead || ['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || 
       (formData.dl_status || contact?.dl_status) === 'databank_claim' ||
       (formData.lead_phan_loai || contact?.lead_phan_loai) === 'databank' ||
-      (formData.phan_loai_lead || contact?.phan_loai_lead) === 'databank';
+      (formData.phan_loai_lead || contact?.phan_loai_lead) === 'databank' ||
+      Boolean((contact as any)?.from_databank) || Boolean((formData as any)?.from_databank);
     const isNotLeadItem = (formData.pipeline_status || contact?.pipeline_status) === 'not_lead' || (formData.status || contact?.status) === 'not_lead' || Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) === 1;
     if (isNotLeadItem && ticketForm.category === 'lead_error_compensation') {
       addToast('Khách hàng Not Lead không cần tạo ticket Báo lỗi bù data.', 'error');
@@ -5565,13 +5578,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast('Khách hàng Not Lead không cần tạo ticket Báo lỗi bù data.', 'error');
       return;
     }
-    const isDbLead = ['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || 
+    const isDbLead = isDatabankLead || ['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || 
       (formData.lead_phan_loai || contact?.lead_phan_loai) === 'databank' || 
       (formData.phan_loai_lead || contact?.phan_loai_lead) === 'databank' || 
       (formData.source || contact?.source) === 'databank' ||
-      (formData.dl_status || contact?.dl_status) === 'databank_claim';
+      (formData.dl_status || contact?.dl_status) === 'databank_claim' ||
+      Boolean((contact as any)?.from_databank) || Boolean((formData as any)?.from_databank);
     if (isDbLead) {
-      addToast('Khách hàng lấy từ Kho Databank không hỗ trợ báo lỗi bù data.', 'error');
+      addToast('Khách hàng nhận từ Kho Databank không được phép báo cáo lỗi dữ liệu.', 'error');
       return;
     }
     const leadId = formData.lead_id || contact?.lead_id;
@@ -7291,7 +7305,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       </button>
                                     ))}
 
-                                    {group.title === 'Nghiệp vụ & Hỗ trợ' && 
+                                    {group.title === 'Nghiệp vụ & Hỗ trợ' && !isDatabankLead && !(contact as any)?.from_databank && !(formData as any)?.from_databank &&
                                      !['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) && 
                                      (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
                                      (formData.lead_phan_loai || contact?.lead_phan_loai) !== 'databank' && 
@@ -7809,7 +7823,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </span>
                               </div>
                               {(() => {
-                                const currentRank = contact?.lead_phan_loai || webhookData.parsed['lead_phan_loai'] || formData.lead_phan_loai || (formData.source !== 'Website' && formData.source !== 'other' ? formData.source : '') || '—';
+                                const currentRank = contact?.lead_phan_loai || (contact as any)?.phan_loai_lead || (contact as any)?.lead_lead_phan_loai || webhookData.parsed['lead_phan_loai'] || webhookData.parsed['phan_loai_lead'] || formData.lead_phan_loai || formData.phan_loai_lead || (formData.source !== 'Website' && formData.source !== 'other' && formData.source !== 'ca_nhan' ? formData.source : '') || '—';
                                 return (
                                   <div 
                                     title="Phân loại Rank nguồn lead được map lúc Tích hợp Data"
@@ -7846,7 +7860,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </span>
                               </div>
                               {(() => {
-                                const rawLoai = contact?.loai_lead || webhookData.parsed['loai_lead'] || formData.loai_lead || contact?.customer_type || formData.customer_type || '';
+                                const rawLoai = contact?.loai_lead || (contact as any)?.lead_loai_lead || webhookData.parsed['loai_lead'] || formData.loai_lead || contact?.customer_type || formData.customer_type || '';
                                 const loaiMap: Record<string, string> = {
                                   lead_form: 'Lead Form',
                                   message: 'Tin nhắn (Inbox)',
@@ -13660,10 +13674,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label className="form-label">Loại hỗ trợ *</label>
                   {(() => {
-                    const isSelfEnteredOrDb = ['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || 
+                    const isSelfEnteredOrDb = isDatabankLead || ['ca_nhan', 'cold_call', 'gioi_thieu', 'databank'].includes(formData.source || contact?.source) || 
                       (formData.dl_status || contact?.dl_status) === 'databank_claim' ||
                       (formData.lead_phan_loai || contact?.lead_phan_loai) === 'databank' ||
-                      (formData.phan_loai_lead || contact?.phan_loai_lead) === 'databank';
+                      (formData.phan_loai_lead || contact?.phan_loai_lead) === 'databank' ||
+                      Boolean((contact as any)?.from_databank) || Boolean((formData as any)?.from_databank);
                     const isNotLeadItem = (formData.pipeline_status || contact?.pipeline_status) === 'not_lead' || (formData.status || contact?.status) === 'not_lead' || Number(formData.not_lead_proposed || contact?.not_lead_proposed || 0) === 1;
                     const catOptions = [
                       { value: 'technical_support', label: 'Hỗ trợ kỹ thuật / Yêu cầu chung' },
@@ -15820,6 +15835,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             </div>
           )}
 
+          {(isDatabankLead || Boolean((contact as any)?.from_databank) || Boolean((formData as any)?.from_databank)) && (
+            <div style={{ padding: '10px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#ef4444', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldAlert size={16} />
+              <span>Khách hàng này được nhận từ Kho Databank. Vui lòng đóng modal và sử dụng chức năng <strong>"Trả về Databank"</strong>.</span>
+            </div>
+          )}
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px' }}>
             <button
               type="button"
@@ -15833,8 +15855,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             <button
               type="button"
               className={`btn danger sm ${isSubmittingNotLead ? 'loading' : ''}`}
-              disabled={isSubmittingNotLead}
+              disabled={isSubmittingNotLead || isDatabankLead || Boolean((contact as any)?.from_databank) || Boolean((formData as any)?.from_databank)}
               onClick={async () => {
+                if (isDatabankLead || (contact as any)?.from_databank || (formData as any)?.from_databank) {
+                  addToast('Khách hàng nhận từ Kho Databank không được phép báo Not Lead. Vui lòng sử dụng tính năng "Trả về Databank".', 'error');
+                  return;
+                }
                 setIsSubmittingNotLead(true);
                 try {
                   const finalReason = notLeadReasonType === 'Khác...' ? (notLeadReasonCustom.trim() || 'Lý do khác') : notLeadReasonType;

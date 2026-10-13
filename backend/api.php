@@ -958,16 +958,26 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $canSelfAssign = ($decodedUser['role'] === 'sale') || ($decodedUser['role'] === 'manager' && $managerBehaviorMode === 'sale');
 
     // Mapping phân loại lead cho data nhập tay:
-    // PHÂN LOẠI LEAD LÀ 1 CÁI DUY NHẤT phan_loai_lead (lead_phan_loai): R3_Fb, R3, R2, ca_nhan, gioi_thieu...
-    // Tuyệt đối không có nóng lạnh.
+    // PHÂN LOẠI LEAD LÀ 1 CÁI DUY NHẤT phan_loai_lead (lead_phan_loai): R3_Fb, R3, R2, databank, ca_nhan, gioi_thieu...
     $lead_phan_loai = !empty($leadData['lead_phan_loai']) ? trim($leadData['lead_phan_loai']) : (!empty($leadData['phan_loai_lead']) ? trim($leadData['phan_loai_lead']) : null);
     $loai_lead = !empty($leadData['loai_lead']) ? trim($leadData['loai_lead']) : null;
-    if (!empty($lead_phan_loai)) {
+    if ($distribution_mode === 'direct_databank') {
+        $lead_phan_loai = 'databank';
+        $source = 'databank';
+    } else if (!empty($lead_phan_loai)) {
+        if (strcasecmp($lead_phan_loai, 'r3_fb') === 0) $lead_phan_loai = 'R3_Fb';
+        elseif (strcasecmp($lead_phan_loai, 'r3') === 0) $lead_phan_loai = 'R3';
+        elseif (strcasecmp($lead_phan_loai, 'r2') === 0) $lead_phan_loai = 'R2';
+        elseif (strcasecmp($lead_phan_loai, 'databank') === 0) $lead_phan_loai = 'databank';
         if (empty($source) || in_array(strtolower($source), ['website', 'other', 'default', ''])) {
             $source = $lead_phan_loai;
         }
-    } else if (!empty($source) && strtolower($source) !== 'databank' && strtolower($source) !== 'website') {
-        $lead_phan_loai = $source;
+    } else if (!empty($source) && strtolower($source) !== 'website') {
+        if (strcasecmp($source, 'r3_fb') === 0) $lead_phan_loai = 'R3_Fb';
+        elseif (strcasecmp($source, 'r3') === 0) $lead_phan_loai = 'R3';
+        elseif (strcasecmp($source, 'r2') === 0) $lead_phan_loai = 'R2';
+        elseif (strcasecmp($source, 'databank') === 0) $lead_phan_loai = 'databank';
+        else $lead_phan_loai = $source;
     }
 
     if ($distribution_mode === 'self_assign' && !$canSelfAssign) {
@@ -2924,12 +2934,15 @@ switch ($action) {
 
         if (!empty($personIds)) {
             $personIds = array_unique($personIds);
-            $inClause = implode(',', array_map('intval', $personIds));
-            $tQuery = "SELECT c.person_id, c.id as contact_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
+            $tQuery = "SELECT c.person_id, c.id as contact_id, c.owner_id as id, 
+                       COALESCE(NULLIF(cons.name, ''), NULLIF(u.name, ''), NULLIF(u.full_name, ''), 'Tư vấn viên') as name, 
+                       COALESCE(cons.avatar, u.avatar, u.avatar_url) as avatar, 
+                       COALESCE(cons.phone, u.phone) as consultant_phone,
+                       c.created_at as claimed_at 
                        FROM contacts c
-                       JOIN users u ON c.owner_id = u.id
-                       JOIN consultants cons ON u.email = cons.email
-                       WHERE c.person_id IN ($inClause) AND c.deleted_at IS NULL";
+                       LEFT JOIN users u ON c.owner_id = u.id
+                       LEFT JOIN consultants cons ON (cons.id = c.owner_id OR u.email = cons.email OR u.id = cons.id)
+                       WHERE c.person_id IN ($inClause) AND (c.deleted_at IS NULL OR c.pipeline_status = 'not_lead')";
             $tRes = $conn->query($tQuery);
             if ($tRes) {
                 $takersMap = [];
@@ -3602,36 +3615,12 @@ switch ($action) {
             $extraCondition .= " AND dl.status != 'silent'";
         }
 
-        // Security check for Sale and Manager roles
-        if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale') {
+        // Strict access control: Only Admin sees all logs, Sale sees own logs, Manager/Director/Assistant are NOT allowed to see lead management
+        $curRole = $decodedUser['role'] ?? 'viewer';
+        if (in_array($curRole, ['manager', 'director', 'assistant', 'viewer'], true)) {
+            $extraCondition .= " AND 1=0";
+        } elseif (in_array($curRole, ['sale', 'sales'], true)) {
             $extraCondition .= " AND dl.assigned_to = " . (int)($currentSaleConsultantId ?? 0);
-        } elseif (isset($decodedUser['role']) && $decodedUser['role'] === 'manager') {
-            $teamMemberIds = [];
-            $stmtTeam = $conn->prepare("SELECT id FROM consultants WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
-            $stmtTeam->bind_param("i", $decodedUser['user_id']);
-            $stmtTeam->execute();
-            $resTeam = $stmtTeam->get_result();
-            while ($tRow = $resTeam->fetch_assoc()) {
-                $teamMemberIds[] = (int)$tRow['id'];
-            }
-            $stmtTeam->close();
-            
-            // Also include the manager's own consultant ID
-            $stmtSelf = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
-            $stmtSelf->bind_param("s", $decodedUser['email']);
-            $stmtSelf->execute();
-            $selfRow = $stmtSelf->get_result()->fetch_assoc();
-            $stmtSelf->close();
-            if ($selfRow) {
-                $teamMemberIds[] = (int)$selfRow['id'];
-            }
-            
-            $teamMemberIds = array_unique(array_filter($teamMemberIds));
-            if (!empty($teamMemberIds)) {
-                $extraCondition .= " AND dl.assigned_to IN (" . implode(',', $teamMemberIds) . ")";
-            } else {
-                $extraCondition .= " AND dl.assigned_to = " . (int)($selfRow ? $selfRow['id'] : 0);
-            }
         }
 
         // Get total count first with all active filters
@@ -3654,6 +3643,28 @@ switch ($action) {
             WHERE $dateCondition AND $extraCondition
         ");
         $totalCount = (int) ($countRes->fetch_assoc()['cnt'] ?? 0);
+
+        $statusCounts = [];
+        $statusCountRes = $conn->query("
+            SELECT dl.status, COUNT(*) as cnt 
+            FROM distribution_logs dl 
+            INNER JOIN (
+                SELECT lead_id, MAX(id) as max_id 
+                FROM distribution_logs 
+                WHERE $dateConditionSubQuery
+                GROUP BY lead_id
+            ) dl_max ON dl.id = dl_max.max_id
+            $joinLeads 
+            $joinConsultants
+            $joinRounds
+            WHERE $dateCondition
+            GROUP BY dl.status
+        ");
+        if ($statusCountRes) {
+            while ($scRow = $statusCountRes->fetch_assoc()) {
+                $statusCounts[$scRow['status']] = (int) $scRow['cnt'];
+            }
+        }
 
         // Check for pagination
         $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
@@ -3713,6 +3724,10 @@ switch ($action) {
                 l.accepted_at,
                 l.lead_phan_loai,
                 l.loai_lead,
+                l.donvi_chay,
+                l.ad_name,
+                l.link_video_ads,
+                COALESCE(proj.name, l.preferred_location) as project_name,
                 dl.status, 
                 c.name as assigned_to_name, 
                 c.avatar as assigned_to_avatar, 
@@ -3736,6 +3751,7 @@ switch ($action) {
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             LEFT JOIN leads l ON dl.lead_id = l.id
+            LEFT JOIN projects proj ON (l.project_id = proj.id OR l.target_project_id = proj.id)
             LEFT JOIN persons p ON l.person_id = p.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
@@ -3770,18 +3786,112 @@ switch ($action) {
                         c.person_id, 
                         c.id as contact_id, 
                         c.lead_id,
-                        c.owner_id as id, 
-                        cons.name, 
-                        cons.avatar, 
-                        cons.phone as consultant_phone,
-                        tm.name as team_name,
+                        COALESCE(NULLIF(c.owner_id, 0), NULLIF(c.not_lead_proposed_by, 0), (
+                            SELECT dl2.assigned_to 
+                            FROM distribution_logs dl2 
+                            WHERE (dl2.lead_id = c.lead_id OR (c.person_id > 0 AND dl2.lead_id IN (SELECT ld2.id FROM leads ld2 WHERE ld2.person_id = c.person_id))) AND dl2.assigned_to > 0
+                            ORDER BY dl2.id DESC LIMIT 1
+                        ), (
+                            SELECT r2.consultant_id 
+                            FROM data_reports r2 
+                            WHERE (r2.lead_id = c.lead_id OR (c.person_id > 0 AND r2.lead_id IN (SELECT ld3.id FROM leads ld3 WHERE ld3.person_id = c.person_id))) AND r2.consultant_id > 0
+                            ORDER BY r2.id DESC LIMIT 1
+                        ), 0) as id, 
+                        COALESCE(NULLIF(cons.name, ''), NULLIF(u.full_name, ''), NULLIF(consNL.name, ''), NULLIF(uNL.full_name, ''), (
+                            SELECT COALESCE(NULLIF(cons3.name, ''), NULLIF(u3.full_name, ''))
+                            FROM distribution_logs dl3
+                            LEFT JOIN users u3 ON dl3.assigned_to = u3.id
+                            LEFT JOIN consultants cons3 ON (cons3.id = dl3.assigned_to OR u3.email = cons3.email OR u3.id = cons3.id)
+                            WHERE (dl3.lead_id = c.lead_id OR (c.person_id > 0 AND dl3.lead_id IN (SELECT ld_sub.id FROM leads ld_sub WHERE ld_sub.person_id = c.person_id))) AND dl3.assigned_to > 0
+                            ORDER BY dl3.id DESC LIMIT 1
+                        ), (
+                            SELECT COALESCE(NULLIF(cons4.name, ''), NULLIF(u4.full_name, ''))
+                            FROM data_reports r4
+                            LEFT JOIN consultants cons4 ON cons4.id = r4.consultant_id
+                            LEFT JOIN users u4 ON (u4.id = r4.consultant_id OR (cons4.email IS NOT NULL AND cons4.email = u4.email))
+                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld_sub2.id FROM leads ld_sub2 WHERE ld_sub2.person_id = c.person_id))) AND r4.consultant_id > 0
+                            ORDER BY r4.id DESC LIMIT 1
+                        ), (
+                            SELECT COALESCE(NULLIF(cons5.name, ''), NULLIF(u5.full_name, ''))
+                            FROM leads ld5
+                            LEFT JOIN consultants cons5 ON cons5.id = ld5.assigned_to
+                            LEFT JOIN users u5 ON (u5.id = ld5.assigned_to OR (cons5.email IS NOT NULL AND cons5.email = u5.email))
+                            WHERE (ld5.id = c.lead_id OR (c.person_id > 0 AND ld5.person_id = c.person_id)) AND ld5.assigned_to > 0
+                            ORDER BY ld5.id DESC LIMIT 1
+                        ), 'Tư vấn viên') as name, 
+                        COALESCE(cons.avatar, u.avatar_url, consNL.avatar, uNL.avatar_url, (
+                            SELECT COALESCE(cons3.avatar, u3.avatar_url)
+                            FROM distribution_logs dl3
+                            LEFT JOIN users u3 ON dl3.assigned_to = u3.id
+                            LEFT JOIN consultants cons3 ON (cons3.id = dl3.assigned_to OR u3.email = cons3.email OR u3.id = cons3.id)
+                            WHERE (dl3.lead_id = c.lead_id OR (c.person_id > 0 AND dl3.lead_id IN (SELECT ld_sub.id FROM leads ld_sub WHERE ld_sub.person_id = c.person_id))) AND dl3.assigned_to > 0
+                            ORDER BY dl3.id DESC LIMIT 1
+                        ), (
+                            SELECT COALESCE(cons4.avatar, u4.avatar_url)
+                            FROM data_reports r4
+                            LEFT JOIN consultants cons4 ON cons4.id = r4.consultant_id
+                            LEFT JOIN users u4 ON (u4.id = r4.consultant_id OR (cons4.email IS NOT NULL AND cons4.email = u4.email))
+                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld_sub2.id FROM leads ld_sub2 WHERE ld_sub2.person_id = c.person_id))) AND r4.consultant_id > 0
+                            ORDER BY r4.id DESC LIMIT 1
+                        ), (
+                            SELECT COALESCE(cons5.avatar, u5.avatar_url)
+                            FROM leads ld5
+                            LEFT JOIN consultants cons5 ON cons5.id = ld5.assigned_to
+                            LEFT JOIN users u5 ON (u5.id = ld5.assigned_to OR (cons5.email IS NOT NULL AND cons5.email = u5.email))
+                            WHERE (ld5.id = c.lead_id OR (c.person_id > 0 AND ld5.person_id = c.person_id)) AND ld5.assigned_to > 0
+                            ORDER BY ld5.id DESC LIMIT 1
+                        )) as avatar, 
+                        COALESCE(cons.phone, u.phone, consNL.phone, uNL.phone, (
+                            SELECT COALESCE(cons3.phone, u3.phone)
+                            FROM distribution_logs dl3
+                            LEFT JOIN users u3 ON dl3.assigned_to = u3.id
+                            LEFT JOIN consultants cons3 ON (cons3.id = dl3.assigned_to OR u3.email = cons3.email OR u3.id = cons3.id)
+                            WHERE (dl3.lead_id = c.lead_id OR (c.person_id > 0 AND dl3.lead_id IN (SELECT ld_sub.id FROM leads ld_sub WHERE ld_sub.person_id = c.person_id))) AND dl3.assigned_to > 0
+                            ORDER BY dl3.id DESC LIMIT 1
+                        ), (
+                            SELECT COALESCE(cons4.phone, u4.phone)
+                            FROM data_reports r4
+                            LEFT JOIN consultants cons4 ON cons4.id = r4.consultant_id
+                            LEFT JOIN users u4 ON (u4.id = r4.consultant_id OR (cons4.email IS NOT NULL AND cons4.email = u4.email))
+                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld_sub2.id FROM leads ld_sub2 WHERE ld_sub2.person_id = c.person_id))) AND r4.consultant_id > 0
+                            ORDER BY r4.id DESC LIMIT 1
+                        ), (
+                            SELECT COALESCE(cons5.phone, u5.phone)
+                            FROM leads ld5
+                            LEFT JOIN consultants cons5 ON cons5.id = ld5.assigned_to
+                            LEFT JOIN users u5 ON (u5.id = ld5.assigned_to OR (cons5.email IS NOT NULL AND cons5.email = u5.email))
+                            WHERE (ld5.id = c.lead_id OR (c.person_id > 0 AND ld5.person_id = c.person_id)) AND ld5.assigned_to > 0
+                            ORDER BY ld5.id DESC LIMIT 1
+                        )) as consultant_phone,
+                        COALESCE(tm.name, tmNL.name, (
+                            SELECT tm3.name
+                            FROM distribution_logs dl3
+                            LEFT JOIN users u3 ON dl3.assigned_to = u3.id
+                            LEFT JOIN consultants cons3 ON (cons3.id = dl3.assigned_to OR u3.email = cons3.email OR u3.id = cons3.id)
+                            LEFT JOIN teams tm3 ON (cons3.team_id = tm3.id OR u3.team_id = tm3.id)
+                            WHERE (dl3.lead_id = c.lead_id OR (c.person_id > 0 AND dl3.lead_id IN (SELECT ld_sub.id FROM leads ld_sub WHERE ld_sub.person_id = c.person_id))) AND dl3.assigned_to > 0
+                            ORDER BY dl3.id DESC LIMIT 1
+                        ), (
+                            SELECT tm4.name
+                            FROM data_reports r4
+                            LEFT JOIN users u4 ON r4.consultant_id = u4.id
+                            LEFT JOIN consultants cons4 ON (cons4.id = r4.consultant_id OR u4.email = cons4.email OR u4.id = cons4.id)
+                            LEFT JOIN teams tm4 ON (cons4.team_id = tm4.id OR u4.team_id = tm4.id)
+                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld_sub2.id FROM leads ld_sub2 WHERE ld_sub2.person_id = c.person_id))) AND r4.consultant_id > 0
+                            ORDER BY r4.id DESC LIMIT 1
+                        )) as team_name, 
                         COALESCE(dr.round_name, (
                             SELECT dr2.round_name 
                             FROM distribution_logs dl2 
                             JOIN distribution_rounds dr2 ON dl2.round_id = dr2.id 
-                            JOIN leads ld2 ON dl2.lead_id = ld2.id 
-                            WHERE ld2.person_id = c.person_id AND dl2.assigned_to = c.owner_id 
+                            WHERE (dl2.lead_id = c.lead_id OR (c.person_id > 0 AND dl2.lead_id IN (SELECT ld2.id FROM leads ld2 WHERE ld2.person_id = c.person_id)))
                             ORDER BY dl2.id DESC LIMIT 1
+                        ), (
+                            SELECT dr4.round_name
+                            FROM data_reports r4
+                            JOIN distribution_rounds dr4 ON r4.round_id = dr4.id
+                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld4.id FROM leads ld4 WHERE ld4.person_id = c.person_id)))
+                            ORDER BY r4.id DESC LIMIT 1
                         )) as round_name,
                         c.pipeline_status, 
                         c.status as contact_status, 
@@ -3790,12 +3900,15 @@ switch ($action) {
                         c.created_at as claimed_at,
                         c.updated_at
                        FROM contacts c
-                       LEFT JOIN users u ON c.owner_id = u.id
-                       LEFT JOIN consultants cons ON (u.email = cons.email OR u.id = cons.id)
+                       LEFT JOIN users u ON (c.owner_id = u.id AND c.owner_id > 0)
+                       LEFT JOIN consultants cons ON (cons.id = c.owner_id OR (c.owner_id > 0 AND (u.email = cons.email OR u.id = cons.id)))
                        LEFT JOIN teams tm ON (cons.team_id = tm.id OR u.team_id = tm.id)
+                       LEFT JOIN users uNL ON (c.not_lead_proposed_by = uNL.id AND c.not_lead_proposed_by > 0)
+                       LEFT JOIN consultants consNL ON (consNL.id = c.not_lead_proposed_by OR (c.not_lead_proposed_by > 0 AND (uNL.email = consNL.email OR uNL.id = consNL.id)))
+                       LEFT JOIN teams tmNL ON (consNL.team_id = tmNL.id OR uNL.team_id = tmNL.id)
                        LEFT JOIN leads ld ON c.lead_id = ld.id
                        LEFT JOIN distribution_rounds dr ON ld.target_round_id = dr.id
-                       WHERE c.person_id IN ($inClause) AND c.deleted_at IS NULL
+                       WHERE c.person_id IN ($inClause) AND (c.deleted_at IS NULL OR c.pipeline_status = 'not_lead')
                        ORDER BY c.created_at DESC";
             $tRes = $conn->query($tQuery);
             if ($tRes) {
@@ -3803,6 +3916,38 @@ switch ($action) {
                     $pid = $tRow['person_id'];
                     unset($tRow['person_id']);
                     $takersMap[$pid][] = $tRow;
+                }
+            }
+
+            // Fallback for persons with Not Lead status where contact was detached or unassigned
+            foreach ($personIds as $pId) {
+                if (empty($takersMap[$pId])) {
+                    $histQuery = "SELECT 
+                                    COALESCE(NULLIF(dl.assigned_to, 0), NULLIF(rpt.consultant_id, 0), 0) as id,
+                                    COALESCE(NULLIF(cons.name, ''), NULLIF(u.name, ''), NULLIF(u.full_name, ''), 'Tư vấn viên') as name,
+                                    COALESCE(cons.avatar, u.avatar) as avatar,
+                                    COALESCE(cons.phone, u.phone) as consultant_phone,
+                                    tm.name as team_name,
+                                    COALESCE(dr.round_name, (SELECT dr2.round_name FROM distribution_rounds dr2 WHERE dr2.id = rpt.round_id LIMIT 1)) as round_name,
+                                    'not_lead' as pipeline_status,
+                                    'not_lead' as contact_status,
+                                    l.lead_phan_loai,
+                                    l.source,
+                                    COALESCE(dl.received_at, rpt.created_at, l.created_at) as claimed_at,
+                                    COALESCE(dl.received_at, rpt.created_at, l.created_at) as updated_at
+                                  FROM leads l
+                                  LEFT JOIN distribution_logs dl ON (dl.lead_id = l.id AND dl.assigned_to > 0)
+                                  LEFT JOIN data_reports rpt ON (rpt.lead_id = l.id AND rpt.consultant_id > 0)
+                                  LEFT JOIN users u ON (dl.assigned_to = u.id OR rpt.consultant_id = u.id)
+                                  LEFT JOIN consultants cons ON (cons.id = dl.assigned_to OR cons.id = rpt.consultant_id OR u.email = cons.email OR u.id = cons.id)
+                                  LEFT JOIN teams tm ON (cons.team_id = tm.id OR u.team_id = tm.id)
+                                  LEFT JOIN distribution_rounds dr ON (dl.round_id = dr.id OR rpt.round_id = dr.id)
+                                  WHERE l.person_id = $pId
+                                  ORDER BY COALESCE(dl.id, 0) DESC, COALESCE(rpt.id, 0) DESC LIMIT 1";
+                    $hRes = $conn->query($histQuery);
+                    if ($hRes && $hRow = $hRes->fetch_assoc()) {
+                        $takersMap[$pId][] = $hRow;
+                    }
                 }
             }
         }
@@ -3856,7 +4001,7 @@ switch ($action) {
         }
         unset($row);
 
-        echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $responseLimit]);
+        echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'status_counts' => $statusCounts, 'limit' => $responseLimit]);
         break;
 
     case 'get_lead_notification_status':
@@ -4890,20 +5035,7 @@ switch ($action) {
             }
         }
 
-        // Determine next Saturday and Sunday
-        $dayOfWeek = (int)date('N');
-        if ($dayOfWeek == 6) { // today is Sat
-            $satDate = date('Y-m-d');
-            $sunDate = date('Y-m-d', strtotime('+1 day'));
-        } else if ($dayOfWeek == 7) { // today is Sun
-            $satDate = date('Y-m-d', strtotime('-1 day'));
-            $sunDate = date('Y-m-d');
-        } else {
-            $satDate = date('Y-m-d', strtotime('next Saturday'));
-            $sunDate = date('Y-m-d', strtotime('next Sunday'));
-        }
-
-        // Get weekend registration settings
+        // Determine registration settings first
         $allowWeekend = 1;
         $leadHours = 0;
         $weekendShiftDays = '6,7';
@@ -4926,9 +5058,34 @@ switch ($action) {
             }
         }
 
+        $weekendRoundName = '';
+        if ($weekendRoundId > 0) {
+            $stmtR = $conn->prepare("SELECT round_name FROM lead_distribution_rounds WHERE id = ? LIMIT 1");
+            if ($stmtR) {
+                $stmtR->bind_param("i", $weekendRoundId);
+                $stmtR->execute();
+                $rRes = $stmtR->get_result()->fetch_assoc();
+                $stmtR->close();
+                if ($rRes) $weekendRoundName = $rRes['round_name'];
+            }
+        }
+
+        // Determine Saturday and Sunday dates for backward compatibility
+        $dayOfWeek = (int)date('N');
+        if ($dayOfWeek == 6) { // today is Sat
+            $satDate = date('Y-m-d');
+            $sunDate = date('Y-m-d', strtotime('+1 day'));
+        } else if ($dayOfWeek == 7) { // today is Sun
+            $satDate = date('Y-m-d', strtotime('-1 day'));
+            $sunDate = date('Y-m-d');
+        } else {
+            $satDate = date('Y-m-d', strtotime('next Saturday'));
+            $sunDate = date('Y-m-d', strtotime('next Sunday'));
+        }
+
         // Count approved/pending check-ins in the current week (Monday - Friday)
-        $startOfWeek = date('Y-m-d', strtotime('monday this week', strtotime($satDate)));
-        $endOfWeek = date('Y-m-d', strtotime('friday this week', strtotime($satDate)));
+        $startOfWeek = date('Y-m-d', strtotime('monday this week'));
+        $endOfWeek = date('Y-m-d', strtotime('friday this week'));
         $userCheckinDays = 0;
         $stmtChk = $conn->prepare("SELECT COUNT(DISTINCT check_in_date) as cnt FROM check_ins WHERE user_id = ? AND check_in_date BETWEEN ? AND ? AND status IN ('approved', 'pending_approval')");
         if ($stmtChk) {
@@ -4939,62 +5096,133 @@ switch ($action) {
             $userCheckinDays = (int)($chkRow['cnt'] ?? 0);
         }
 
-        // Check whether Saturday or Sunday are regular workdays in work schedule
-        $isSatWorkday = false;
-        $isSunWorkday = false;
-        $satWorkHours = '';
-        $sunWorkHours = '';
+        // Global work schedule inspection
+        $globalWorkSchedule = [];
         $globalSchedRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
         if ($globalSchedRes && $gRow = $globalSchedRes->fetch_assoc()) {
             $gSched = json_decode($gRow['setting_value'], true);
             if (is_array($gSched)) {
-                $satConf = $gSched['6'] ?? $gSched[6] ?? null;
-                if (!empty($satConf['active'])) {
-                    $isSatWorkday = true;
-                    $satWorkHours = ($satConf['start'] ?? '') . ' - ' . ($satConf['end'] ?? '');
-                }
-                $sunConf = $gSched['7'] ?? $gSched[7] ?? null;
-                if (!empty($sunConf['active'])) {
-                    $isSunWorkday = true;
-                    $sunWorkHours = ($sunConf['start'] ?? '') . ' - ' . ($sunConf['end'] ?? '');
-                }
+                $globalWorkSchedule = $gSched;
             }
         }
 
         $activeWeekendDays = array_map('trim', explode(',', $weekendShiftDays));
-        // A day only counts as weekend direct duty if it is NOT an active workday
-        $satEnabledByRule = !$isSatWorkday && in_array('6', $activeWeekendDays);
-        $sunEnabledByRule = !$isSunWorkday && in_array('7', $activeWeekendDays);
         $isCheckinEligible = $isAdminOrMgr || ($weekendMinCheckinDays <= 0) || ($userCheckinDays >= $weekendMinCheckinDays);
 
-        // Query registrations
-        $satRegistered = false;
-        $satApproved = false;
-        $sunRegistered = false;
-        $sunApproved = false;
+        $dayNameMap = [
+            1 => 'Thứ Hai',
+            2 => 'Thứ Ba',
+            3 => 'Thứ Tư',
+            4 => 'Thứ Năm',
+            5 => 'Thứ Sáu',
+            6 => 'Thứ Bảy',
+            7 => 'Chủ Nhật'
+        ];
 
-        $stmt = $conn->prepare("SELECT shift_date, approved FROM weekend_shift_registrations WHERE user_id = ? AND shift_date IN (?, ?)");
-        $stmt->bind_param("iss", $dbUserId, $satDate, $sunDate);
-        $stmt->execute();
-        $rQuery = $stmt->get_result();
-        while ($row = $rQuery->fetch_assoc()) {
-            if ($row['shift_date'] === $satDate) {
-                $satRegistered = true;
-                $satApproved = (bool)$row['approved'];
-            } else if ($row['shift_date'] === $sunDate) {
-                $sunRegistered = true;
-                $sunApproved = (bool)$row['approved'];
+        // Build dynamic list of days configured as weekend shift days
+        $daysList = [];
+        $mondayTimestamp = strtotime('monday this week');
+
+        // Pre-fetch all user registrations for this week
+        $weekDates = [];
+        for ($i = 0; $i < 7; $i++) {
+            $weekDates[] = date('Y-m-d', strtotime("+$i days", $mondayTimestamp));
+        }
+        $userRegistrations = [];
+        if (!empty($weekDates)) {
+            $inClause = implode(',', array_fill(0, count($weekDates), '?'));
+            $types = 'i' . str_repeat('s', count($weekDates));
+            $params = array_merge([$dbUserId], $weekDates);
+            $stmtRegs = $conn->prepare("SELECT shift_date, approved FROM weekend_shift_registrations WHERE user_id = ? AND shift_date IN ($inClause)");
+            if ($stmtRegs) {
+                $stmtRegs->bind_param($types, ...$params);
+                $stmtRegs->execute();
+                $regQuery = $stmtRegs->get_result();
+                while ($regRow = $regQuery->fetch_assoc()) {
+                    $userRegistrations[$regRow['shift_date']] = [
+                        'registered' => true,
+                        'approved' => (bool)$regRow['approved']
+                    ];
+                }
+                $stmtRegs->close();
             }
         }
-        $stmt->close();
 
-        // Compute deadline and can_toggle
-        $satDeadline = strtotime($satDate . ' 00:00:00') - ($leadHours * 3600);
-        $sunDeadline = strtotime($sunDate . ' 00:00:00') - ($leadHours * 3600);
+        foreach ($activeWeekendDays as $dayKey) {
+            $dNum = (int)$dayKey;
+            if ($dNum < 1 || $dNum > 7) continue;
 
-        // Admin/Manager can ALWAYS toggle without registration cutoff restrictions
-        $satCanToggle = $isAdminOrMgr ? true : ($satEnabledByRule && $isCheckinEligible && time() < $satDeadline);
-        $sunCanToggle = $isAdminOrMgr ? true : ($sunEnabledByRule && $isCheckinEligible && time() < $sunDeadline);
+            $dDate = date('Y-m-d', strtotime('+' . ($dNum - 1) . ' days', $mondayTimestamp));
+            $dConf = $globalWorkSchedule[(string)$dNum] ?? $globalWorkSchedule[$dNum] ?? null;
+            $dIsWorkday = !empty($dConf['active']);
+            $dWorkHours = $dIsWorkday ? (($dConf['start'] ?? '') . ' - ' . ($dConf['end'] ?? '')) : '';
+            $dEnabledByRule = !$dIsWorkday;
+
+            $regInfo = $userRegistrations[$dDate] ?? ['registered' => false, 'approved' => false];
+            $dDeadline = strtotime($dDate . ' 00:00:00') - ($leadHours * 3600);
+            $dCanToggle = $isAdminOrMgr ? true : ($dEnabledByRule && $isCheckinEligible && time() < $dDeadline);
+
+            $daysList[] = [
+                'day_num' => $dNum,
+                'day_label' => $dayNameMap[$dNum] ?? "Thứ $dNum",
+                'date' => $dDate,
+                'registered' => $regInfo['registered'],
+                'approved' => $regInfo['approved'],
+                'can_toggle' => $dIsWorkday ? false : $dCanToggle,
+                'enabled_by_rule' => $dEnabledByRule,
+                'is_workday' => $dIsWorkday,
+                'work_hours' => $dWorkHours,
+                'deadline_time' => date('Y-m-d H:i', $dDeadline)
+            ];
+        }
+
+        // Backward compatible Saturday & Sunday objects
+        $satItem = null;
+        $sunItem = null;
+        foreach ($daysList as $dItem) {
+            if ($dItem['day_num'] === 6) $satItem = $dItem;
+            if ($dItem['day_num'] === 7) $sunItem = $dItem;
+        }
+
+        if (!$satItem) {
+            $satConf = $globalWorkSchedule['6'] ?? $globalWorkSchedule[6] ?? null;
+            $isSatWorkday = !empty($satConf['active']);
+            $satHours = $isSatWorkday ? (($satConf['start'] ?? '') . ' - ' . ($satConf['end'] ?? '')) : '';
+            $satReg = $userRegistrations[$satDate] ?? ['registered' => false, 'approved' => false];
+            $satDeadline = strtotime($satDate . ' 00:00:00') - ($leadHours * 3600);
+            $satItem = [
+                'day_num' => 6,
+                'day_label' => 'Thứ Bảy',
+                'date' => $satDate,
+                'registered' => $satReg['registered'],
+                'approved' => $satReg['approved'],
+                'can_toggle' => $isSatWorkday ? false : ($isAdminOrMgr ? true : (in_array('6', $activeWeekendDays) && $isCheckinEligible && time() < $satDeadline)),
+                'enabled_by_rule' => !$isSatWorkday && in_array('6', $activeWeekendDays),
+                'is_workday' => $isSatWorkday,
+                'work_hours' => $satHours,
+                'deadline_time' => date('Y-m-d H:i', $satDeadline)
+            ];
+        }
+
+        if (!$sunItem) {
+            $sunConf = $globalWorkSchedule['7'] ?? $globalWorkSchedule[7] ?? null;
+            $isSunWorkday = !empty($sunConf['active']);
+            $sunHours = $isSunWorkday ? (($sunConf['start'] ?? '') . ' - ' . ($sunConf['end'] ?? '')) : '';
+            $sunReg = $userRegistrations[$sunDate] ?? ['registered' => false, 'approved' => false];
+            $sunDeadline = strtotime($sunDate . ' 00:00:00') - ($leadHours * 3600);
+            $sunItem = [
+                'day_num' => 7,
+                'day_label' => 'Chủ Nhật',
+                'date' => $sunDate,
+                'registered' => $sunReg['registered'],
+                'approved' => $sunReg['approved'],
+                'can_toggle' => $isSunWorkday ? false : ($isAdminOrMgr ? true : (in_array('7', $activeWeekendDays) && $isCheckinEligible && time() < $sunDeadline)),
+                'enabled_by_rule' => !$isSunWorkday && in_array('7', $activeWeekendDays),
+                'is_workday' => $isSunWorkday,
+                'work_hours' => $sunHours,
+                'deadline_time' => date('Y-m-d H:i', $sunDeadline)
+            ];
+        }
 
         echo json_encode([
             'success' => true,
@@ -5002,30 +5230,14 @@ switch ($action) {
             'weekend_shift_days' => $weekendShiftDays,
             'weekend_shift_min_checkin_days' => $weekendMinCheckinDays,
             'weekend_shift_round_id' => $weekendRoundId,
+            'weekend_shift_round_name' => $weekendRoundName,
             'user_checkin_days' => $userCheckinDays,
             'is_checkin_eligible' => $isCheckinEligible,
-            'is_sat_workday' => $isSatWorkday,
-            'is_sun_workday' => $isSunWorkday,
-            'saturday' => [
-                'date' => $satDate,
-                'registered' => $satRegistered,
-                'approved' => $satApproved,
-                'can_toggle' => $isSatWorkday ? false : $satCanToggle,
-                'enabled_by_rule' => $satEnabledByRule,
-                'is_workday' => $isSatWorkday,
-                'work_hours' => $satWorkHours,
-                'deadline_time' => date('Y-m-d H:i', $satDeadline)
-            ],
-            'sunday' => [
-                'date' => $sunDate,
-                'registered' => $sunRegistered,
-                'approved' => $sunApproved,
-                'can_toggle' => $isSunWorkday ? false : $sunCanToggle,
-                'enabled_by_rule' => $sunEnabledByRule,
-                'is_workday' => $isSunWorkday,
-                'work_hours' => $sunWorkHours,
-                'deadline_time' => date('Y-m-d H:i', $sunDeadline)
-            ]
+            'is_sat_workday' => $satItem['is_workday'],
+            'is_sun_workday' => $sunItem['is_workday'],
+            'days' => $daysList,
+            'saturday' => $satItem,
+            'sunday' => $sunItem
         ]);
         break;
 
@@ -5062,21 +5274,7 @@ switch ($action) {
             break;
         }
 
-        // Check if date is a rest day or regular working day
-        $isRestDay = isRestDayForUser($conn, $dbUserId, $targetDate);
-        if (!$isRestDay && $register) {
-            echo json_encode(['success' => false, 'message' => 'Ngày này là ngày làm việc hành chính bình thường của công ty, bạn chấm công đi làm theo lịch và không cần đăng ký trực cuối tuần.']);
-            break;
-        }
-
-        // Validate if it is weekend day
-        $dayNum = (int)date('N', strtotime($targetDate));
-        if ($dayNum != 6 && $dayNum != 7) {
-            echo json_encode(['success' => false, 'message' => 'Chỉ được phép đăng ký trực cuối tuần cho Thứ 7 hoặc Chủ Nhật.']);
-            break;
-        }
-
-        // Fetch settings
+        // Fetch settings first
         $allowWeekend = 1;
         $leadHours = 0;
         $weekendShiftDays = '6,7';
@@ -5096,15 +5294,29 @@ switch ($action) {
             }
         }
 
+        $dayNum = (int)date('N', strtotime($targetDate));
+        $dayNameMap = [
+            1 => 'Thứ Hai', 2 => 'Thứ Ba', 3 => 'Thứ Tư', 4 => 'Thứ Năm',
+            5 => 'Thứ Sáu', 6 => 'Thứ Bảy', 7 => 'Chủ Nhật'
+        ];
+        $dayLabel = $dayNameMap[$dayNum] ?? "Thứ $dayNum";
+
+        // Validate allowed days configured by manager
+        $allowedDays = array_map('trim', explode(',', $weekendShiftDays));
+        if (!in_array((string)$dayNum, $allowedDays)) {
+            echo json_encode(['success' => false, 'message' => "Quản lý hiện chưa thiết lập mở ca trực cuối tuần cho {$dayLabel}."]);
+            break;
+        }
+
+        // Check if date is a rest day or regular working day
+        $isRestDay = isRestDayForUser($conn, $dbUserId, $targetDate);
+        if (!$isRestDay && $register) {
+            echo json_encode(['success' => false, 'message' => 'Ngày này là ngày làm việc hành chính bình thường của công ty, bạn chấm công đi làm theo lịch và không cần đăng ký trực cuối tuần.']);
+            break;
+        }
+
         // ONLY check registration cutoff deadline and system setting for regular sales (Admin/Manager bypasses all)
         if (!$isAdminOrMgr) {
-            $allowedDays = array_map('trim', explode(',', $weekendShiftDays));
-            if (!in_array((string)$dayNum, $allowedDays)) {
-                $dayLabel = $dayNum == 6 ? 'Thứ Bảy' : 'Chủ Nhật';
-                echo json_encode(['success' => false, 'message' => "Quản lý hiện chưa thiết lập mở ca trực cuối tuần cho {$dayLabel}."]);
-                break;
-            }
-
             if ($allowWeekend !== 1) {
                 echo json_encode(['success' => false, 'message' => 'Hệ thống hiện không cho phép đăng ký trực cuối tuần.']);
                 break;
@@ -9676,10 +9888,90 @@ switch ($action) {
         $round_id = (int) ($input['round_id'] ?? 0);
         $reason = trim($input['reason'] ?? '');
 
-        // Auto-discover original assignment if this is a reminder lead (status = 'reminder') or round_id = 0
+        // 0. ABSOLUTE GUARD: Leads claimed from Databank or originating from Databank are STRICTLY FORBIDDEN from reporting data errors!
+        $isDatabankClaim = false;
+        $chkDbLog = $conn->prepare("
+            SELECT id FROM distribution_logs 
+            WHERE lead_id = ? AND assigned_to = ? AND status = 'databank_claim' 
+            LIMIT 1
+        ");
+        if ($chkDbLog) {
+            $chkDbLog->bind_param("ii", $lead_id, $sale_id);
+            $chkDbLog->execute();
+            if ($chkDbLog->get_result()->num_rows > 0) {
+                $isDatabankClaim = true;
+            }
+            $chkDbLog->close();
+        }
+
+        if (!$isDatabankClaim) {
+            $chkLatestDl = $conn->prepare("
+                SELECT status FROM distribution_logs 
+                WHERE lead_id = ? AND assigned_to = ? 
+                ORDER BY id DESC LIMIT 1
+            ");
+            if ($chkLatestDl) {
+                $chkLatestDl->bind_param("ii", $lead_id, $sale_id);
+                $chkLatestDl->execute();
+                $latRow = $chkLatestDl->get_result()->fetch_assoc();
+                if ($latRow && in_array($latRow['status'], ['databank_claim', 'released_to_kho'])) {
+                    $isDatabankClaim = true;
+                }
+                $chkLatestDl->close();
+            }
+        }
+
+        if (!$isDatabankClaim) {
+            $chkCtDb = $conn->prepare("
+                SELECT c.source, c.lead_phan_loai 
+                FROM contacts c 
+                JOIN leads l ON l.person_id = c.person_id 
+                WHERE l.id = ? AND c.owner_id = ? AND c.deleted_at IS NULL 
+                ORDER BY c.id DESC LIMIT 1
+            ");
+            if ($chkCtDb) {
+                $chkCtDb->bind_param("ii", $lead_id, $sale_id);
+                $chkCtDb->execute();
+                $cRowDb = $chkCtDb->get_result()->fetch_assoc();
+                if ($cRowDb) {
+                    $cSrc = strtolower($cRowDb['source'] ?? '');
+                    $cPhanLoai = strtolower($cRowDb['lead_phan_loai'] ?? '');
+                    if (strpos($cSrc, 'databank') !== false || strpos($cPhanLoai, 'databank') !== false) {
+                        $isDatabankClaim = true;
+                    }
+                }
+                $chkCtDb->close();
+            }
+        }
+
+        if ($isDatabankClaim) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Khách hàng nhận từ Kho Databank không được phép báo cáo lỗi dữ liệu.'
+            ]);
+            break;
+        }
+
+        // Auto-discover original assignment only if this lead is genuinely a reminder lead (status = 'reminder')
         $isReminder = false;
         if ($round_id <= 0) {
-            $isReminder = true;
+            $chkLog = $conn->prepare("SELECT status FROM distribution_logs WHERE lead_id = ? AND assigned_to = ? ORDER BY id DESC LIMIT 1");
+            if ($chkLog) {
+                $chkLog->bind_param("ii", $lead_id, $sale_id);
+                $chkLog->execute();
+                $resLog = $chkLog->get_result()->fetch_assoc();
+                if ($resLog && $resLog['status'] === 'reminder') {
+                    $isReminder = true;
+                }
+                $chkLog->close();
+            }
+            if (!$isReminder) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Dữ liệu không có thông tin vòng phân bổ hợp lệ (không phải dữ liệu được chia theo vòng).'
+                ]);
+                break;
+            }
         } else {
             $chkLog = $conn->prepare("SELECT status FROM distribution_logs WHERE lead_id = ? AND assigned_to = ? AND round_id = ? LIMIT 1");
             if ($chkLog) {
@@ -9782,15 +10074,25 @@ switch ($action) {
         }
 
         // Check contacts lead_phan_loai or source
-        $dbkChk = $conn->prepare("SELECT lead_phan_loai, source FROM contacts WHERE lead_id = ? LIMIT 1");
+        $dbkChk = $conn->prepare("
+            SELECT c.lead_phan_loai, c.source 
+            FROM contacts c 
+            JOIN leads l ON l.person_id = c.person_id 
+            WHERE l.id = ? AND c.owner_id = ? AND c.deleted_at IS NULL 
+            LIMIT 1
+        ");
         if ($dbkChk) {
-            $dbkChk->bind_param("i", $lead_id);
+            $dbkChk->bind_param("ii", $lead_id, $sale_id);
             $dbkChk->execute();
             $cDbk = $dbkChk->get_result()->fetch_assoc();
             $dbkChk->close();
-            if ($cDbk && (($cDbk['lead_phan_loai'] ?? '') === 'databank' || ($cDbk['source'] ?? '') === 'databank')) {
-                echo json_encode(['success' => false, 'message' => 'Khách hàng lấy từ Kho Data (databank) không được phép gửi ticket bù data lỗi.']);
-                break;
+            if ($cDbk) {
+                $cSrc = strtolower($cDbk['source'] ?? '');
+                $cPhanLoai = strtolower($cDbk['lead_phan_loai'] ?? '');
+                if (strpos($cSrc, 'databank') !== false || strpos($cPhanLoai, 'databank') !== false) {
+                    echo json_encode(['success' => false, 'message' => 'Khách hàng lấy từ Kho Data (databank) không được phép gửi ticket bù data lỗi.']);
+                    break;
+                }
             }
         }
 
@@ -10907,12 +11209,35 @@ switch ($action) {
                 $updContact->close();
             }
 
-            // BAN from Databank and blacklist person completely
-            $updPerson = $conn->prepare("UPDATE persons SET is_blocked = 1, deleted_from_databank = 1, is_public = 0 WHERE (id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')");
+            // BAN from Databank and blacklist person completely on all fronts
+            $updPerson = $conn->prepare("UPDATE persons SET is_blocked = 1, deleted_from_databank = 1, is_public = 0, released_to_kho_at = NULL WHERE (id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')");
             if ($updPerson) {
                 $updPerson->bind_param("ii", $report['lead_id'], $report['lead_id']);
                 $updPerson->execute();
                 $updPerson->close();
+            }
+
+            // Permanently insert into blocked_leads table so lead mới trùng số cũng không được chia
+            $bPhone = null;
+            $bEmail = null;
+            $qLeadInfo = $conn->prepare("SELECT phone, email FROM leads WHERE id = ? LIMIT 1");
+            if ($qLeadInfo) {
+                $qLeadInfo->bind_param("i", $report['lead_id']);
+                $qLeadInfo->execute();
+                $lInfo = $qLeadInfo->get_result()->fetch_assoc();
+                $bPhone = $lInfo['phone'] ?? null;
+                $bEmail = $lInfo['email'] ?? null;
+                $qLeadInfo->close();
+            }
+            if (!empty($bPhone) || !empty($bEmail)) {
+                $bReason = "Banned via Approved Not Lead: " . ($report['reason'] ?? 'Not Lead');
+                $adminUserId = (int)($decodedUser['id'] ?? 1);
+                $insBlock = $conn->prepare("INSERT INTO blocked_leads (phone, email, reason, created_by, created_at) VALUES (?, ?, ?, ?, NOW())");
+                if ($insBlock) {
+                    $insBlock->bind_param("sssi", $bPhone, $bEmail, $bReason, $adminUserId);
+                    $insBlock->execute();
+                    $insBlock->close();
+                }
             }
 
             // Mark lead status as not_lead
@@ -13060,6 +13385,9 @@ switch ($action) {
         break;
 
     case 'get_settings':
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        header("Expires: 0");
         $res = $conn->query("SELECT * FROM system_settings");
         $data = [];
         while ($row = $res->fetch_assoc()) {
@@ -13369,6 +13697,34 @@ switch ($action) {
             $stmt->execute();
         }
         $stmt->close();
+
+        // If max_parallel_sales_per_client was updated, re-activate released databank persons whose claims < newMax
+        if (isset($input['max_parallel_sales_per_client'])) {
+            $newMax = (int) $input['max_parallel_sales_per_client'];
+            if ($newMax > 0) {
+                $conn->query("
+                    UPDATE persons p
+                    SET p.is_public = 1
+                    WHERE p.released_to_kho_at IS NOT NULL
+                      AND p.is_public = 0
+                      AND p.is_blocked = 0
+                      AND p.deleted_from_databank = 0
+                      AND (
+                          SELECT COUNT(*) FROM contacts c 
+                          WHERE c.person_id = p.id AND c.deleted_at IS NULL
+                      ) < $newMax
+                      AND NOT EXISTS (
+                          SELECT 1 FROM contacts c2
+                          WHERE c2.person_id = p.id 
+                            AND c2.deleted_at IS NULL
+                            AND c2.pipeline_status IN (
+                                (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1),
+                                'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'
+                            )
+                      )
+                ");
+            }
+        }
 
         // Synchronize pipeline_stages table with pipeline_status_hierarchy settings
         $resH = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
@@ -14787,6 +15143,28 @@ switch ($action) {
                             $stmtSet->close();
                         }
                     }
+                }
+
+                // Sync directly to accounts table (Source of Truth for get_accounts and authentication)
+                if (!empty($password)) {
+                    $stmtAcc = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, email=?, role=?, zalo_chat_id=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, phone=?, is_active=? WHERE id=?");
+                    $stmtAcc->bind_param("ssssssssssssssii", $username, $hash, $name, $dbEmail, $role, $zalo_chat_id, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $phone, $is_active, $id);
+                } else {
+                    $stmtAcc = $conn->prepare("UPDATE accounts SET username=?, name=?, email=?, role=?, zalo_chat_id=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, phone=?, is_active=? WHERE id=?");
+                    $stmtAcc->bind_param("sssssssssssssii", $username, $name, $dbEmail, $role, $zalo_chat_id, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $phone, $is_active, $id);
+                }
+                if ($stmtAcc) {
+                    $stmtAcc->execute();
+                    $stmtAcc->close();
+                }
+
+                // Sync directly to consultants table
+                $consStatus = ($is_active === 1) ? 'active' : 'inactive';
+                $stmtCons = $conn->prepare("UPDATE consultants SET name=?, email=?, phone=?, role=?, avatar=?, is_active=?, status=? WHERE id=? OR email=?");
+                if ($stmtCons) {
+                    $stmtCons->bind_param("sssssisis", $name, $email, $phone, $role, $avatar, $is_active, $consStatus, $id, $email);
+                    $stmtCons->execute();
+                    $stmtCons->close();
                 }
 
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_ACCOUNT', ['id' => $id, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email, 'avatar' => $avatar, 'phone' => $phone, 'is_active' => $is_active]);
@@ -20461,22 +20839,11 @@ switch ($action) {
                 $stmtPrevCt->close();
             }
 
-            // Fallbacks: If source is still empty, fallback to 'databank'
-            if (empty($sourceVal)) {
-                $sourceVal = 'databank';
-            }
-            // If lead_phan_loai is still empty, preserve sourceVal, then loai_lead, then typeVal
-            if (empty($leadPhanLoaiVal)) {
-                if (!empty($sourceVal) && strtolower($sourceVal) !== 'databank') {
-                    $leadPhanLoaiVal = $sourceVal;
-                } elseif (!empty($loaiLeadVal)) {
-                    $leadPhanLoaiVal = $loaiLeadVal;
-                } elseif (!empty($typeVal) && $typeVal !== '-' && strtolower($typeVal) !== 'databank') {
-                    $leadPhanLoaiVal = $typeVal;
-                } else {
-                    $leadPhanLoaiVal = null;
-                }
-            }
+            // Quy tắc Hiến chương: Lead từ kho databank LUÔN ĐƯỢC GẮN = 'databank'
+            // và chỉ vận hành 1 vòng tròn khép kín từ kho -> sale -> kho
+            $sourceVal = 'databank';
+            $leadPhanLoaiVal = 'databank';
+            $loaiLeadVal = 'databank';
 
             $createdBy = $saleUserId;
             $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
@@ -20569,12 +20936,44 @@ switch ($action) {
             }
         }
 
+        // Instant sync: release any leads whose security timer has expired back to Databank (is_public = 1)
+        // Vòng đời: không chuyển trong thời gian lý tưởng -> xuất hiện ở kho databank cho tới khi chuyển được lên trạng thái tiếp theo -> ẩn ở kho databank theo thời gian bảo mật đã set -> hết thời gian lại xuất hiện ở kho databank
+        $conn->query("
+            UPDATE persons p
+            JOIN contacts c ON c.person_id = p.id
+            SET p.is_public = 1, p.released_to_kho_at = IFNULL(p.released_to_kho_at, NOW())
+            WHERE c.security_expires_at <= NOW()
+              AND c.security_expires_at IS NOT NULL
+              AND c.deleted_at IS NULL
+              AND p.is_public = 0
+              AND p.is_blocked = 0
+              AND p.deleted_from_databank = 0
+              AND c.pipeline_status NOT IN (
+                  (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1),
+                  'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead'
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM data_reports dr 
+                  WHERE dr.lead_id IN (SELECT id FROM leads WHERE person_id = p.id) 
+                    AND dr.status IN ('approved', 'approved_no_comp')
+              )
+        ");
+
         $blockCond = "
             AND p.is_blocked = 0 
             AND NOT EXISTS (
                 SELECT 1 FROM persons p2 
                 WHERE p2.is_blocked = 1 
                   AND (p2.phone = p.phone OR (p2.email = p.email AND p.email IS NOT NULL AND p.email != ''))
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM blocked_leads bl 
+                WHERE bl.phone = p.phone OR (bl.email = p.email AND p.email IS NOT NULL AND p.email != '')
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM data_reports dr 
+                WHERE dr.lead_id IN (SELECT id FROM leads WHERE person_id = p.id) 
+                  AND dr.status IN ('approved', 'approved_no_comp')
             )
         ";
 
@@ -20641,6 +21040,8 @@ switch ($action) {
             }
         }
 
+        $maxParallelClaims = (int) get_system_setting($conn, 'max_parallel_sales_per_client') ?: 2;
+
         // Quota calculations for non-admin roles
         $quota = null;
         if (!$isStaffAdmin) {
@@ -20680,11 +21081,17 @@ switch ($action) {
                 'claims_day' => $claimsDay,
                 'limit_day' => $limitDay,
                 'claims_month' => $claimsMonth,
-                'limit_month' => $limitMonth
+                'limit_month' => $limitMonth,
+                'max_parallel_sales_per_client' => $maxParallelClaims
             ];
         }
 
-        echo json_encode(['success' => true, 'data' => $publicLeads, 'quota' => $quota]);
+        echo json_encode([
+            'success' => true, 
+            'data' => $publicLeads, 
+            'quota' => $quota,
+            'max_parallel_claims' => $maxParallelClaims
+        ]);
         break;
 
     case 'delete_public_leads':

@@ -456,10 +456,12 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
     }
     $knownSingleFields = [
         'phone', 'phone2', 'name', 'email', 'source', 'type', 'assigned_to', 'saleperson',
-        'gender', 'dob', 'citizen_id', 'address', 'city', 'district', 'company', 'job_title', 'tax_code',
-        'budget', 'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
+        'gender', 'dob', 'citizen_id', 'address', 'ward', 'city', 'district', 'company', 'job_title', 'tax_code',
+        'budget', 'demand_type', 'property_type', 'bedroom_count', 'preferred_location', 'project_id',
         'utm_campaign', 'utm_medium', 'utm_content', 'utm_term', 'platform', 'form_name',
-        'zalo_phone', 'facebook_link', 'lead_phan_loai', 'phan_loai_lead', 'loai_lead'
+        'zalo_phone', 'facebook_link', 'lead_phan_loai', 'phan_loai_lead', 'loai_lead',
+        'donvi_chay', 'ad_name', 'link_video_ads', 'app_lienhe', 'time_lienhe', 'hinh_thuc_tt', 'loai_hinh',
+        'temperature', 'customer_type', 'pipeline_status'
     ];
     if (in_array($systemField, $knownSingleFields) || strpos($systemField, 'cf_') === 0 || strpos($systemField, 'custom_field_') === 0) {
         foreach ($mappingsArray[$systemField] as $mapItem) {
@@ -523,14 +525,34 @@ $lead_phan_loai = $findSmartField('lead_phan_loai', ['lead_phan_loai', 'phan_loa
 if (empty($lead_phan_loai)) {
     $lead_phan_loai = $findSmartField('phan_loai_lead', ['phan_loai_lead', 'lead_phan_loai', 'phan_loai', 'rank', 'lead_rank']);
 }
-// Normalize source vs lead_phan_loai: nếu lead_phan_loai là mã nguồn marketing (R3_Fb, R2, R3, FbAds...)
+// Normalize phan_loai_lead vs source:
+// Quy tắc Hiến chương:
+// 1. lead từ kho databank luôn được gắn = databank và chỉ vận hành 1 vòng tròn khép kín từ kho -> sale -> kho
+// 2. các giá trị R3_Fb, R3, R2 luôn mang ý nghĩa là khách mới đăng ký được chia lần đầu tới sale đại diện cho khách nóng.
 if (!empty($lead_phan_loai)) {
-    $cleanRank = strtolower(trim($lead_phan_loai));
-    if (preg_match('/^(?:r[0-9]+(?:_[a-z0-9]+)?|fbads|facebook|google|zalo|broadcast|landing_page)$/i', $cleanRank)) {
-        if (empty($source) || in_array(strtolower(trim($source)), ['website', 'other', 'default', ''])) {
-            $source = $lead_phan_loai;
-        }
-        $lead_phan_loai = null;
+    $cleanRank = trim($lead_phan_loai);
+    if (strcasecmp($cleanRank, 'r3_fb') === 0) {
+        $lead_phan_loai = 'R3_Fb';
+    } elseif (strcasecmp($cleanRank, 'r3') === 0) {
+        $lead_phan_loai = 'R3';
+    } elseif (strcasecmp($cleanRank, 'r2') === 0) {
+        $lead_phan_loai = 'R2';
+    } elseif (strcasecmp($cleanRank, 'databank') === 0) {
+        $lead_phan_loai = 'databank';
+    }
+    if (empty($source) || in_array(strtolower(trim($source)), ['website', 'other', 'default', ''])) {
+        $source = $lead_phan_loai;
+    }
+} else if (!empty($source)) {
+    $cleanSrc = trim($source);
+    if (strcasecmp($cleanSrc, 'r3_fb') === 0) {
+        $lead_phan_loai = 'R3_Fb';
+    } elseif (strcasecmp($cleanSrc, 'r3') === 0) {
+        $lead_phan_loai = 'R3';
+    } elseif (strcasecmp($cleanSrc, 'r2') === 0) {
+        $lead_phan_loai = 'R2';
+    } elseif (strcasecmp($cleanSrc, 'databank') === 0) {
+        $lead_phan_loai = 'databank';
     }
 }
 $donvi_chay = $findSmartField('donvi_chay', ['donvi_chay', 'don_vi_chay', 'agency', 'unit', 'donvi', 'kenh_chay']);
@@ -576,8 +598,9 @@ if (!empty($rawProjId) && is_numeric($rawProjId)) {
     }
 }
 $address = $findSmartField('address', ['address', 'dia_chi', 'full_address', 'dia_chi_nha']);
-$city = $findSmartField('city', ['city', 'tinh', 'thanh_pho', 'province', 'tinh_thanh']);
+$ward = $findSmartField('ward', ['ward', 'phuong', 'xa', 'phuong_xa']);
 $district = $findSmartField('district', ['district', 'quan', 'huyen', 'quan_huyen']);
+$city = $findSmartField('city', ['city', 'tinh', 'thanh_pho', 'province', 'tinh_thanh']);
 $company = $findSmartField('company', ['company', 'cong_ty', 'don_vi', 'co_quan']);
 $job_title = $findSmartField('job_title', ['job_title', 'chuc_vu', 'nghe_nghiep', 'occupation']);
 $citizen_id = $findSmartField('citizen_id', ['citizen_id', 'cccd', 'cmnd', 'so_cccd', 'so_cmnd', 'id_card']);
@@ -819,6 +842,34 @@ if ($targetRoundId) {
 $isFallbackAdmin = false;
 $fallbackAdminData = null;
 $fallbackCcEmails = '';
+
+if (!$targetRoundId) {
+    // Check if today is a configured weekend shift day and a weekend shift round is configured
+    $wSettingsRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('weekend_shift_days', 'weekend_shift_round_id')");
+    $wShiftDays = '6,7';
+    $wShiftRoundId = 0;
+    if ($wSettingsRes) {
+        while ($ws = $wSettingsRes->fetch_assoc()) {
+            if ($ws['setting_key'] === 'weekend_shift_days') $wShiftDays = !empty($ws['setting_value']) ? $ws['setting_value'] : '6,7';
+            if ($ws['setting_key'] === 'weekend_shift_round_id') $wShiftRoundId = (int)$ws['setting_value'];
+        }
+    }
+    $currDayNum = (string)date('N');
+    $activeWDays = array_map('trim', explode(',', $wShiftDays));
+    if ($wShiftRoundId > 0 && in_array($currDayNum, $activeWDays)) {
+        $chkWkRound = $conn->prepare("SELECT is_active, is_schedule_active, active_time_start, active_time_end, active_days, round_name FROM distribution_rounds WHERE id = ?");
+        if ($chkWkRound) {
+            $chkWkRound->bind_param("i", $wShiftRoundId);
+            $chkWkRound->execute();
+            $chkWkRes = $chkWkRound->get_result()->fetch_assoc();
+            $chkWkRound->close();
+            if ($chkWkRes && isRoundCurrentlyActive($chkWkRes)) {
+                $targetRoundId = $wShiftRoundId;
+                $message = "Lead phát sinh trong ngày trực cuối tuần. Phân bổ theo vòng trực: " . $chkWkRes['round_name'];
+            }
+        }
+    }
+}
 
 if (!$targetRoundId) {
     $fbSettings = [];
@@ -1067,19 +1118,7 @@ if ($isSilent == 1) {
 }
 
 // --- Check if Customer/Phone is BANNED (Approved Not Lead) ---
-$isCustomerBanned = false;
-if (!empty($phone)) {
-    $chkBlock = $conn->prepare("SELECT id FROM persons WHERE phone = ? AND is_blocked = 1 LIMIT 1");
-    if ($chkBlock) {
-        $chkBlock->bind_param("s", $phone);
-        $chkBlock->execute();
-        $resBlock = $chkBlock->get_result();
-        if ($resBlock && $resBlock->num_rows > 0) {
-            $isCustomerBanned = true;
-        }
-        $chkBlock->close();
-    }
-}
+$isCustomerBanned = isLeadBlocked($conn, $phone, $email);
 
 if ($isCustomerBanned) {
     $conn->begin_transaction();

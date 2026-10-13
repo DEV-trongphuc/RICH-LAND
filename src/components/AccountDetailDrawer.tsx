@@ -424,7 +424,9 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           if (res.success && res.data) {
             const d = res.data;
             setZaloChatId(d.zalo_chat_id || '');
-            setTelegramChatId(d.telegram_chat_id || '');
+            if (d.is_active !== undefined && d.is_active !== null) {
+              setIsActive(String(d.is_active));
+            }
             setVacationMode(d.vacation_mode === 1);
             setOvertimeMode(d.overtime_mode === 1);
             setUseCustomWorkHours(d.use_custom_work_hours === 1);

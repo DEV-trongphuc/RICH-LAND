@@ -1116,12 +1116,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         setSysSettings(res.data);
       }
     });
+
+    const handleSettingsUpdated = (e: any) => {
+      if (e.detail) {
+        setSysSettings((prev: any) => ({ ...prev, ...e.detail }));
+      }
+    };
+    window.addEventListener('system_settings_updated', handleSettingsUpdated);
+    return () => window.removeEventListener('system_settings_updated', handleSettingsUpdated);
   }, []);
 
   const [showDatabankSettingsModal, setShowDatabankSettingsModal] = useState(false);
   const [dbLimitHour, setDbLimitHour] = useState(3);
   const [dbLimitDay, setDbLimitDay] = useState(2);
   const [dbLimitMonth, setDbLimitMonth] = useState(300);
+  const [dbMaxParallelSales, setDbMaxParallelSales] = useState(2);
   const [dbApplicableSources, setDbApplicableSources] = useState('');
   const [dbTimerChuaXacDinh, setDbTimerChuaXacDinh] = useState('');
   const [dbTimerQuanTam, setDbTimerQuanTam] = useState('');
@@ -1135,6 +1144,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       setDbLimitHour(Number(sysSettings.databank_limit_per_hour ?? 3));
       setDbLimitDay(Number(sysSettings.databank_limit_per_day ?? 2));
       setDbLimitMonth(Number(sysSettings.databank_limit_per_month ?? 300));
+      setDbMaxParallelSales(Number(sysSettings.max_parallel_sales_per_client ?? 2));
       setDbApplicableSources(sysSettings.databank_applicable_sources ?? '');
       setDbTimerChuaXacDinh(sysSettings.security_timer_chua_xac_dinh ?? '');
       setDbTimerQuanTam(sysSettings.security_timer_quan_tam ?? '');
@@ -1154,6 +1164,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         databank_limit_per_hour: dbLimitHour,
         databank_limit_per_day: dbLimitDay,
         databank_limit_per_month: dbLimitMonth,
+        max_parallel_sales_per_client: dbMaxParallelSales,
         databank_applicable_sources: dbApplicableSources,
         security_timer_chua_xac_dinh: dbTimerChuaXacDinh,
         security_timer_quan_tam: dbTimerQuanTam,
@@ -2488,6 +2499,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [weekendShiftAllow, setWeekendShiftAllow] = useState(false);
   const [weekendShiftSat, setWeekendShiftSat] = useState<any>(null);
   const [weekendShiftSun, setWeekendShiftSun] = useState<any>(null);
+  const [weekendShiftDaysList, setWeekendShiftDaysList] = useState<any[]>([]);
+  const [weekendShiftRoundName, setWeekendShiftRoundName] = useState<string>('');
+  const [weekendMinCheckinDays, setWeekendMinCheckinDays] = useState<number>(0);
+  const [userCheckinDays, setUserCheckinDays] = useState<number>(0);
+  const [isCheckinEligible, setIsCheckinEligible] = useState<boolean>(true);
   const [weekendShiftLoading, setWeekendShiftLoading] = useState(false);
   const [togglingWeekendShift, setTogglingWeekendShift] = useState<Record<string, boolean>>({});
 
@@ -4585,6 +4601,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         setWeekendShiftAllow(res.allow_weekend_registration || isUserAdminRole || isUserManagerRole);
         setWeekendShiftSat(res.saturday);
         setWeekendShiftSun(res.sunday);
+        setWeekendShiftDaysList(res.days || []);
+        setWeekendShiftRoundName(res.weekend_shift_round_name || '');
+        setWeekendMinCheckinDays(Number(res.weekend_shift_min_checkin_days) || 0);
+        setUserCheckinDays(Number(res.user_checkin_days) || 0);
+        setIsCheckinEligible(res.is_checkin_eligible !== false);
       }
     } catch (e) {
       console.error("Error loading weekend shift status:", e);
@@ -4811,6 +4832,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         setPublicLeads(res.data || []);
         if (res.quota) {
           setPublicQuota(res.quota);
+        } else if (res.max_parallel_claims) {
+          setPublicQuota((prev: any) => ({ ...prev, max_parallel_sales_per_client: Number(res.max_parallel_claims) }));
         }
       }
     } catch (e) {
@@ -5985,8 +6008,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     ];
   };
 
+  // Check if lead is from databank
+  const isLeadFromDatabank = (lead: any) => {
+    if (!lead) return false;
+    const src = String(lead.source || '').toLowerCase();
+    const phanLoai = String(lead.lead_phan_loai || lead.phan_loai_lead || '').toLowerCase();
+    return Boolean(
+      lead.status === 'databank_claim' ||
+      lead.dl_status === 'databank_claim' ||
+      lead.from_databank ||
+      src.includes('databank') ||
+      src.includes('kho data') ||
+      src.includes('kho_data') ||
+      phanLoai.includes('databank')
+    );
+  };
+
   // Submit quick ticket
   const handleOpenReportModal = (lead: any) => {
+    if (isLeadFromDatabank(lead)) {
+      toast.error(t('Khách hàng nhận từ Kho Databank không được phép báo cáo lỗi dữ liệu.'));
+      return;
+    }
     setSelectedLead(lead);
     const rList = getReasonsList();
     setReportReasonType(rList[0]?.reason || '');
@@ -5996,6 +6039,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const handleSubmitReport = async () => {
     if (!selectedLead) return;
+    if (isLeadFromDatabank(selectedLead)) {
+      toast.error(t('Khách hàng nhận từ Kho Databank không được phép báo cáo lỗi dữ liệu.'));
+      return;
+    }
     const isOtherReason = reportReasonType.toLowerCase().includes('khác') || reportReasonType.toLowerCase().includes('other');
     if (isOtherReason && !reportDetails.trim()) {
       toast.error(t('Vui lòng nhập mô tả chi tiết lý do lỗi.'));
@@ -6134,12 +6181,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       case 'released_to_kho':
       case 'databank': {
         const cnt = takers && takers.length ? takers.length : 0;
-        if (cnt === 0) {
-          return <span className="badge" style={{ background: 'rgba(16,185,129,0.1)', color: '#047857', border: '1px solid rgba(16,185,129,0.2)' }}>{t('Public (2/2)')}</span>;
-        } else if (cnt >= 2) {
-          return <span className="badge" style={{ background: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: '1px solid rgba(107, 114, 128, 0.2)' }}>{t('Giới hạn (0/2)')}</span>;
+        const maxLimit = Math.max(1, Number(publicQuota?.max_parallel_sales_per_client || sysSettings?.max_parallel_sales_per_client || 2));
+        const available = Math.max(0, maxLimit - cnt);
+        if (available <= 0) {
+          return <span className="badge" style={{ background: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: '1px solid rgba(107, 114, 128, 0.2)' }}>{t(`Giới hạn (0/${maxLimit})`)}</span>;
+        } else if (cnt === 0) {
+          return <span className="badge" style={{ background: 'rgba(16,185,129,0.1)', color: '#047857', border: '1px solid rgba(16,185,129,0.2)' }}>{t(`Public (${maxLimit}/${maxLimit})`)}</span>;
         } else {
-          return <span className="badge" style={{ background: 'rgba(59,130,246,0.1)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Public (1/2)`)}</span>;
+          return <span className="badge" style={{ background: 'rgba(59,130,246,0.1)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Public (${available}/${maxLimit})`)}</span>;
         }
       }
       default: return null;
@@ -8135,6 +8184,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 </span>
                               )}
                               {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport &&
+                                !isLeadFromDatabank(lead) &&
                                 lead.status !== 'reminder' && lead.status !== 'databank_claim' &&
                                 lead.status !== 'not_lead' && lead.pipeline_status !== 'not_lead' && lead.contact_pipeline_status !== 'not_lead' && !Number(lead.not_lead_proposed) &&
                                 (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
@@ -8281,6 +8331,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               </div>
                             )}
                             {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport &&
+                              !isLeadFromDatabank(lead) &&
                               lead.status !== 'reminder' && lead.status !== 'databank_claim' &&
                               lead.status !== 'not_lead' && lead.pipeline_status !== 'not_lead' && lead.contact_pipeline_status !== 'not_lead' && !Number(lead.not_lead_proposed) &&
                               (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
@@ -8681,16 +8732,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           /* ── Mobile Card View ── */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {paginatedPublicLeads.map((lead) => {
+              const maxParallel = Math.max(1, Number(publicQuota?.max_parallel_sales_per_client || sysSettings?.max_parallel_sales_per_client || 2));
               const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
-              const isFull = lead.takers && lead.takers.length >= 2;
+              const isFull = lead.takers && lead.takers.length >= maxParallel;
               const takerCount = lead.takers ? lead.takers.length : 0;
-              const availableCount = Math.max(0, 2 - takerCount);
+              const availableCount = Math.max(0, maxParallel - takerCount);
               const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin && !isQuotaExceeded;
 
               // Determine badge colors based on takerCount
-              const badgeBg = isFull ? 'rgba(107, 114, 128, 0.1)' : (availableCount === 1 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)');
-              const badgeColor = isFull ? '#4b5563' : (availableCount === 1 ? '#1d4ed8' : '#047857');
-              const badgeText = isFull ? t('Giới hạn (0/2)') : (availableCount === 1 ? t('Public (1/2)') : t('Public (2/2)'));
+              const badgeBg = isFull ? 'rgba(107, 114, 128, 0.1)' : (availableCount < maxParallel ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)');
+              const badgeColor = isFull ? '#4b5563' : (availableCount < maxParallel ? '#1d4ed8' : '#047857');
+              const badgeText = isFull ? t(`Giới hạn (0/${maxParallel})`) : t(`Public (${availableCount}/${maxParallel})`);
 
               return (
                 <div 
@@ -8812,8 +8864,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </thead>
                 <tbody>
                   {paginatedPublicLeads.map((lead) => {
+                    const maxParallel = Math.max(1, Number(publicQuota?.max_parallel_sales_per_client || sysSettings?.max_parallel_sales_per_client || 2));
                     const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
-                    const isFull = lead.takers && lead.takers.length >= 2;
+                    const isFull = lead.takers && lead.takers.length >= maxParallel;
                     const isAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
                     const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin && !isQuotaExceeded;
 
@@ -13224,300 +13277,242 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               {t('ĐĂNG KÝ TRỰC CUỐI TUẦN')}
                             </h3>
                             <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                              {t('Đăng ký nhận lead trong các ngày Thứ Bảy và Chủ Nhật.')}
+                              {t('Đăng ký nhận lead trong các ca trực cuối tuần theo lịch phân công của quản lý.')}
                             </p>
                           </div>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          {/* Saturday */}
-                          {weekendShiftSat && (() => {
-                            const satWorkConfig = editWorkSchedule?.["6"] || editWorkSchedule?.[6];
-                            const isSatWorkday = satWorkConfig?.active;
-                            const satHours = isSatWorkday ? `${satWorkConfig.start} - ${satWorkConfig.end}` : '';
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '4px' }}>
+                          {weekendShiftRoundName && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '0.75rem',
+                              color: 'var(--color-primary)',
+                              background: 'var(--color-primary-light)',
+                              padding: '5px 10px',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              width: 'fit-content'
+                            }}>
+                              <Layers size={13} />
+                              <span>{t('Vòng phân bổ Lead trực:')} <strong>{weekendShiftRoundName}</strong></span>
+                            </div>
+                          )}
 
-                            return (
-                              <div style={{
-                                display: 'flex',
-                                flexDirection: isMobile ? 'column' : 'row',
-                                justifyContent: 'space-between',
-                                alignItems: isMobile ? 'stretch' : 'center',
-                                background: 'var(--color-bg-alt)',
-                                padding: isMobile ? '12px 14px' : '10px 14px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--color-border-light)',
-                                gap: isMobile ? '10px' : '0'
-                              }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                                  {isMobile ? (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '4px' }}>
-                                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                        {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
-                                      </span>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        {isSatWorkday ? (
-                                          <span style={{
-                                            fontSize: '0.75rem',
-                                            fontWeight: 700,
-                                            color: 'var(--color-success)',
-                                            background: 'rgba(16, 185, 129, 0.1)',
-                                            padding: '2px 8px',
-                                            borderRadius: '6px'
-                                          }}>
-                                            {t('Đi làm hành chính')}
-                                          </span>
-                                        ) : (
-                                          <>
+                          {weekendMinCheckinDays > 0 && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              flexWrap: 'wrap',
+                              gap: '6px',
+                              fontSize: '0.75rem',
+                              background: isCheckinEligible ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                              border: `1px solid ${isCheckinEligible ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
+                              color: isCheckinEligible ? '#059669' : '#dc2626',
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              fontWeight: 600
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <CheckCircle2 size={14} />
+                                <span>{t('Tiêu chuẩn chấm công tuần (T2 - T6):')} <strong>{userCheckinDays}/{weekendMinCheckinDays} {t('ngày')}</strong></span>
+                              </div>
+                              <span style={{ fontWeight: 700 }}>
+                                {isCheckinEligible ? t('✓ Đủ điều kiện đăng ký') : t('⚠️ Chưa đủ điều kiện đăng ký')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {(() => {
+                            const displayDays = (weekendShiftDaysList && weekendShiftDaysList.length > 0)
+                              ? weekendShiftDaysList
+                              : [weekendShiftSat, weekendShiftSun].filter(Boolean);
+
+                            if (displayDays.length === 0) {
+                              return (
+                                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                                  {t('Hiện chưa có ca trực cuối tuần nào được mở.')}
+                                </div>
+                              );
+                            }
+
+                            return displayDays.map((dayItem: any) => {
+                              const dNumKey = String(dayItem.day_num || 6);
+                              const workConfig = editWorkSchedule?.[dNumKey];
+                              const isWorkday = dayItem.is_workday !== undefined ? dayItem.is_workday : workConfig?.active;
+                              const workHours = dayItem.work_hours || (isWorkday ? `${workConfig?.start} - ${workConfig?.end}` : '');
+
+                              return (
+                                <div
+                                  key={dayItem.date}
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: isMobile ? 'column' : 'row',
+                                    justifyContent: 'space-between',
+                                    alignItems: isMobile ? 'stretch' : 'center',
+                                    background: 'var(--color-bg-alt)',
+                                    padding: isMobile ? '12px 14px' : '10px 14px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--color-border-light)',
+                                    gap: isMobile ? '10px' : '0'
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                                    {isMobile ? (
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '4px' }}>
+                                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                          {dayItem.day_label || t('Ca trực')} ({new Date(dayItem.date).toLocaleDateString('vi-VN')})
+                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          {isWorkday ? (
                                             <span style={{
                                               fontSize: '0.75rem',
                                               fontWeight: 700,
-                                              color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                              background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                              color: 'var(--color-success)',
+                                              background: 'rgba(16, 185, 129, 0.1)',
                                               padding: '2px 8px',
                                               borderRadius: '6px'
                                             }}>
-                                              {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                              {t('Đi làm hành chính')}
                                             </span>
-                                            {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
-                                              <div style={{ opacity: (weekendShiftSat.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
-                                                <ToggleSwitch
-                                                  checked={weekendShiftSat.registered}
-                                                  onChange={() => {
-                                                    if (!weekendShiftSat.can_toggle && !isUserAdminRole && !isUserManagerRole) {
-                                                      toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
-                                                      return;
-                                                    }
-                                                    handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered);
-                                                  }}
-                                                />
-                                              </div>
-                                            )}
-                                          </>
-                                        )}
+                                          ) : (
+                                            <>
+                                              <span style={{
+                                                fontSize: '0.75rem',
+                                                fontWeight: 700,
+                                                color: dayItem.registered ? (dayItem.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                                background: dayItem.registered ? (dayItem.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                                padding: '2px 8px',
+                                                borderRadius: '6px'
+                                              }}>
+                                                {dayItem.registered ? (dayItem.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                              </span>
+                                              {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
+                                                <div style={{ opacity: (dayItem.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
+                                                  <ToggleSwitch
+                                                    checked={dayItem.registered}
+                                                    onChange={() => {
+                                                      if (!isCheckinEligible && !isUserAdminRole && !isUserManagerRole && !dayItem.registered) {
+                                                        toast.error(t(`Bạn chưa đủ điều kiện đăng ký: Cần tối thiểu ${weekendMinCheckinDays} ngày chấm công hợp lệ trong tuần!`));
+                                                        return;
+                                                      }
+                                                      if (!dayItem.can_toggle && !isUserAdminRole && !isUserManagerRole) {
+                                                        toast.error(t(`Đã quá hạn đăng ký trực cho ${dayItem.day_label || dayItem.date}!`));
+                                                        return;
+                                                      }
+                                                      handleToggleWeekendShift(dayItem.date, dayItem.registered);
+                                                    }}
+                                                  />
+                                                </div>
+                                              )}
+                                            </>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  ) : (
-                                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                      {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
-                                    </span>
-                                  )}
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                                    {isSatWorkday ? (
-                                      <span style={{
-                                        fontSize: '0.72rem',
-                                        fontWeight: 600,
-                                        color: 'var(--color-primary, #bd1d2d)',
-                                        background: 'rgba(189, 29, 45, 0.08)',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px'
-                                      }}>
-                                        {t('Lịch hành chính: ')}{satHours}{t(' • Đi làm & nhận data theo ca làm việc ngày thường')}
-                                      </span>
                                     ) : (
-                                      <>
-                                        {weekendShiftSat.deadline_time && (
-                                          <span style={{
-                                            fontSize: '0.7rem',
-                                            color: 'var(--color-text-muted)',
-                                            background: 'rgba(100, 116, 139, 0.04)',
-                                            padding: '2px 8px',
-                                            borderRadius: '4px',
-                                            border: '1px solid var(--color-border-light)'
-                                          }}>
-                                            {t('Hạn đăng ký:')} {new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}
-                                          </span>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                                {!isMobile && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    {isSatWorkday ? (
-                                      <span style={{
-                                        fontSize: '0.8rem',
-                                        fontWeight: 700,
-                                        color: 'var(--color-success)',
-                                        background: 'rgba(16, 185, 129, 0.1)',
-                                        padding: '3px 8px',
-                                        borderRadius: '6px'
-                                      }}>
-                                        {t('Lịch làm việc chính thức')}
-                                      </span>
-                                    ) : (
-                                      <>
-                                        {(!isMobile || weekendShiftSat.registered) && (
-                                          <span style={{
-                                            fontSize: '0.8rem',
-                                            fontWeight: 700,
-                                            color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                            background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                            padding: '3px 8px',
-                                            borderRadius: '6px'
-                                          }}>
-                                            {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                          </span>
-                                        )}
-                                        {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
-                                          <div style={{ opacity: (weekendShiftSat.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
-                                            <ToggleSwitch
-                                              checked={weekendShiftSat.registered}
-                                              onChange={() => {
-                                                if (!weekendShiftSat.can_toggle && !isUserAdminRole && !isUserManagerRole) {
-                                                  toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
-                                                  return;
-                                                }
-                                                handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered);
-                                              }}
-                                            />
-                                          </div>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-
-                          {/* Sunday */}
-                          {weekendShiftSun && (() => {
-                            const sunWorkConfig = editWorkSchedule?.["7"] || editWorkSchedule?.[7];
-                            const isSunWorkday = sunWorkConfig?.active;
-                            const sunHours = isSunWorkday ? `${sunWorkConfig.start} - ${sunWorkConfig.end}` : '';
-
-                            return (
-                              <div style={{
-                                display: 'flex',
-                                flexDirection: isMobile ? 'column' : 'row',
-                                justifyContent: 'space-between',
-                                alignItems: isMobile ? 'stretch' : 'center',
-                                background: 'var(--color-bg-alt)',
-                                padding: isMobile ? '12px 14px' : '10px 14px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--color-border-light)',
-                                gap: isMobile ? '10px' : '0'
-                              }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                                  {isMobile ? (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '4px' }}>
                                       <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                        {t('Chủ Nhật')} ({new Date(weekendShiftSun.date).toLocaleDateString('vi-VN')})
+                                        {dayItem.day_label || t('Ca trực')} ({new Date(dayItem.date).toLocaleDateString('vi-VN')})
                                       </span>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    )}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                      {isWorkday && (
                                         <span style={{
-                                          fontSize: '0.75rem',
-                                          fontWeight: 700,
-                                          color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                          background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                          fontSize: '0.7rem',
+                                          fontWeight: 600,
+                                          color: 'var(--color-text-muted)',
+                                          background: 'rgba(100, 116, 139, 0.08)',
                                           padding: '2px 8px',
+                                          borderRadius: '4px'
+                                        }}>
+                                          {t('Lịch hành chính:')} {workHours}
+                                        </span>
+                                      )}
+                                      {dayItem.deadline_time && (
+                                        <span style={{
+                                          fontSize: '0.7rem',
+                                          color: 'var(--color-text-muted)',
+                                          background: 'rgba(100, 116, 139, 0.04)',
+                                          padding: '2px 8px',
+                                          borderRadius: '4px',
+                                          border: '1px solid var(--color-border-light)'
+                                        }}>
+                                          {t('Hạn đăng ký:')} {new Date(dayItem.deadline_time).toLocaleString('vi-VN')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {!isMobile && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                      {(!isMobile || dayItem.registered) && (
+                                        <span style={{
+                                          fontSize: '0.8rem',
+                                          fontWeight: 700,
+                                          color: dayItem.registered ? (dayItem.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                          background: dayItem.registered ? (dayItem.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                          padding: '3px 8px',
                                           borderRadius: '6px'
                                         }}>
-                                          {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                          {dayItem.registered ? (dayItem.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
                                         </span>
-                                        {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
-                                          <div style={{ opacity: (weekendShiftSun.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
-                                            <ToggleSwitch
-                                              checked={weekendShiftSun.registered}
-                                              onChange={() => {
-                                                if (!weekendShiftSun.can_toggle && !isUserAdminRole && !isUserManagerRole) {
-                                                  toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Chủ Nhật!'));
-                                                  return;
-                                                }
-                                                handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered);
-                                              }}
-                                            />
-                                          </div>
-                                        )}
-                                      </div>
+                                      )}
+                                      {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
+                                        <div style={{ opacity: (dayItem.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
+                                          <ToggleSwitch
+                                            checked={dayItem.registered}
+                                            onChange={() => {
+                                              if (!isCheckinEligible && !isUserAdminRole && !isUserManagerRole && !dayItem.registered) {
+                                                toast.error(t('Bạn chưa đủ điều kiện đăng ký: Cần tối thiểu ') + weekendMinCheckinDays + t(' ngày chấm công hợp lệ trong tuần!'));
+                                                return;
+                                              }
+                                              if (!dayItem.can_toggle && !isUserAdminRole && !isUserManagerRole) {
+                                                toast.error(t('Đã quá hạn đăng ký trực cho ') + (dayItem.day_label || dayItem.date) + '!');
+                                                return;
+                                              }
+                                              handleToggleWeekendShift(dayItem.date, dayItem.registered);
+                                            }}
+                                          />
+                                        </div>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                      {t('Chủ Nhật')} ({new Date(weekendShiftSun.date).toLocaleDateString('vi-VN')})
-                                    </span>
                                   )}
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                                    {isSunWorkday && (
-                                      <span style={{
-                                        fontSize: '0.7rem',
-                                        fontWeight: 600,
-                                        color: 'var(--color-text-muted)',
-                                        background: 'rgba(100, 116, 139, 0.08)',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px'
-                                      }}>
-                                        {t('Lịch hành chính:')} {sunHours}
-                                      </span>
-                                    )}
-                                    {weekendShiftSun.deadline_time && (
-                                      <span style={{
-                                        fontSize: '0.7rem',
-                                        color: 'var(--color-text-muted)',
-                                        background: 'rgba(100, 116, 139, 0.04)',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px',
-                                        border: '1px solid var(--color-border-light)'
-                                      }}>
-                                        {t('Hạn đăng ký:')} {new Date(weekendShiftSun.deadline_time).toLocaleString('vi-VN')}
-                                      </span>
-                                    )}
-                                  </div>
                                 </div>
-                                {!isMobile && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    {(!isMobile || weekendShiftSun.registered) && (
-                                      <span style={{
-                                        fontSize: '0.8rem',
-                                        fontWeight: 700,
-                                        color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                        background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                        padding: '3px 8px',
-                                        borderRadius: '6px'
-                                      }}>
-                                        {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                      </span>
-                                    )}
-                                    {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
-                                      <div style={{ opacity: (weekendShiftSun.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
-                                        <ToggleSwitch
-                                          checked={weekendShiftSun.registered}
-                                          onChange={() => {
-                                            if (!weekendShiftSun.can_toggle && !isUserAdminRole && !isUserManagerRole) {
-                                              toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Chủ Nhật!'));
-                                              return;
-                                            }
-                                            handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered);
-                                          }}
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
+                              );
+                            });
                           })()}
                         </div>
 
-                        {((weekendShiftSat && !weekendShiftSat.can_toggle && !weekendShiftSat.registered) || 
-                          (weekendShiftSun && !weekendShiftSun.can_toggle && !weekendShiftSun.registered)) && (
-                          <div style={{
-                            background: 'var(--color-danger-light)', 
-                            color: 'var(--color-danger)', 
-                            padding: '10px 14px',
-                            borderRadius: '10px', 
-                            border: '1px solid rgba(239, 68, 68, 0.2)', 
-                            fontSize: '0.78rem', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 8,
-                            marginTop: '4px'
-                          }}>
-                            <Info size={14} />
-                            <span>
-                              {t('Đã quá hạn đăng ký trực cuối tuần. Bạn không thể thay đổi trạng thái đăng ký của các ngày đã quá hạn.')}
-                            </span>
-                          </div>
-                        )}
+                        {(() => {
+                          const displayDays = (weekendShiftDaysList && weekendShiftDaysList.length > 0)
+                            ? weekendShiftDaysList
+                            : [weekendShiftSat, weekendShiftSun].filter(Boolean);
+                          const hasExpired = displayDays.some((d: any) => d && !d.can_toggle && !d.registered && !d.is_workday);
+                          if (!hasExpired) return null;
+
+                          return (
+                            <div style={{
+                              background: 'var(--color-danger-light)',
+                              color: 'var(--color-danger)',
+                              padding: '10px 14px',
+                              borderRadius: '10px',
+                              border: '1px solid rgba(239, 68, 68, 0.2)',
+                              fontSize: '0.78rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              marginTop: '4px'
+                            }}>
+                              <Info size={14} />
+                              <span>
+                                {t('Đã quá hạn đăng ký trực cuối tuần. Bạn không thể thay đổi trạng thái đăng ký của các ngày đã quá hạn.')}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                     {/* Holiday Shift Registration Card */}
@@ -17977,11 +17972,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {t("Hạn mức tối đa mà một tư vấn viên có thể nhận từ Databank để chăm sóc.")}
             </p>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
               {[
                 { label: t("Hạn mức giờ"), value: dbLimitHour, setter: setDbLimitHour, suffix: "/giờ" },
                 { label: t("Hạn mức ngày"), value: dbLimitDay, setter: setDbLimitDay, suffix: "/ngày" },
-                { label: t("Hạn mức tháng"), value: dbLimitMonth, setter: setDbLimitMonth, suffix: "/tháng" }
+                { label: t("Hạn mức tháng"), value: dbLimitMonth, setter: setDbLimitMonth, suffix: "/tháng" },
+                { label: t("Số Sale tối đa / khách"), value: dbMaxParallelSales, setter: setDbMaxParallelSales, suffix: "Sale" }
               ].map((limit, idx) => (
                 <div key={idx}>
                   <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', marginBottom: '4px', display: 'block' }}>

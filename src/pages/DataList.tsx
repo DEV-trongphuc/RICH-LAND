@@ -1,7 +1,8 @@
 import { useState, useEffect, Fragment, useMemo, lazy, Suspense } from 'react';
-import api from '../api/axios';
 import { createPortal } from 'react-dom';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap, Loader2 } from 'lucide-react';
+import api from '../api/axios';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap, Loader2, Video, StickyNote, ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw, Archive } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -82,6 +83,23 @@ type Lead = {
   campaign_name?: string;
   zalo_phone?: string;
   facebook_link?: string;
+  donvi_chay?: string;
+  ad_name?: string;
+  link_video_ads?: string;
+  project_name?: string;
+  link_fb?: string;
+  birthday?: string;
+  city?: string;
+  country?: string;
+  loai_hinh?: string;
+  hinh_thuc_tt?: string;
+  time_lienhe?: string;
+  app_lienhe?: string;
+  nhu_cau?: string;
+  tieu_chi?: string;
+  san_pham?: string;
+  tinh_trang?: string;
+  webhook_data?: any;
 };
 
 import { fetchAPI, getDefaultDateFilter } from '../utils/api';
@@ -350,7 +368,7 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
 const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any; location: any }) => {
   const { user } = useAuth();
   const userRole = user?.role as string;
-  const isAdmin = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager';
+  const isAdmin = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin';
   const { language, t } = useLanguage();
   const { showConfirm } = useUIStore();
 
@@ -433,15 +451,27 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const roundFilter = searchParams.get('round') || 'all';
   const currentPage = Number(searchParams.get('page') || '1');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showMobileFilterDrawer, setShowMobileFilterDrawer] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [sysSettings, setSysSettings] = useState<any>(null);
+  const [publicMaxClaims, setPublicMaxClaims] = useState<number>(2);
+  const maxParallelSales = Math.max(1, Number(sysSettings?.max_parallel_sales_per_client || publicMaxClaims || 2));
+
   useEffect(() => {
     fetchAPI('get_settings').then(res => {
       if (res && res.success) {
         setSysSettings(res.data);
       }
     });
+
+    const handleSettingsUpdated = (e: any) => {
+      if (e.detail) {
+        setSysSettings((prev: any) => ({ ...prev, ...e.detail }));
+      }
+    };
+    window.addEventListener('system_settings_updated', handleSettingsUpdated);
+    return () => window.removeEventListener('system_settings_updated', handleSettingsUpdated);
   }, []);
 
   const [searchInput, setSearchInput] = useState(searchTerm);
@@ -627,7 +657,23 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           highest_status: item.highest_status || item.status || 'chua_xac_dinh',
           lead_phan_loai: item.lead_phan_loai || '',
           loai_lead: item.loai_lead || '',
-          is_blocked: item.is_blocked !== undefined ? Number(item.is_blocked) : 0
+          is_blocked: item.is_blocked !== undefined ? Number(item.is_blocked) : 0,
+          donvi_chay: item.donvi_chay || item.lead_donvi_chay || '',
+          ad_name: item.ad_name || item.lead_ad_name || item.utm_content || '',
+          link_video_ads: item.link_video_ads || item.lead_link_video_ads || '',
+          project_name: item.project_name || item.preferred_location || '',
+          link_fb: item.facebook_link || item.link_fb || '',
+          birthday: item.birthday || item.dob || '',
+          city: item.city || item.district || '',
+          country: item.country || '',
+          loai_hinh: item.loai_hinh || item.property_type || item.bedroom_count || '',
+          hinh_thuc_tt: item.hinh_thuc_tt || '',
+          time_lienhe: item.time_lienhe || '',
+          app_lienhe: item.app_lienhe || '',
+          nhu_cau: item.nhu_cau || item.demand_type || '',
+          tieu_chi: item.tieu_chi || '',
+          san_pham: item.san_pham || '',
+          tinh_trang: item.tinh_trang || ''
         }));
         setLeads(mappedLeads);
         setTotalCount(json.total_count ?? mappedLeads.length);
@@ -782,13 +828,21 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [notificationStatus, setNotificationStatus] = useState<any>(null);
   const [notifLoading, setNotifLoading] = useState(false);
   const [isAdminEditingLead, setIsAdminEditingLead] = useState(false);
+  const [isMktNoteExpanded, setIsMktNoteExpanded] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
     phone: '',
     email: '',
     source: '',
     type: '',
-    note: ''
+    note: '',
+    project_name: '',
+    lead_phan_loai: '',
+    loai_lead: '',
+    platform: '',
+    donvi_chay: '',
+    link_video_ads: '',
+    facebook_link: ''
   });
   const [isSavingLeadFields, setIsSavingLeadFields] = useState(false);
   const [isReleasingLead, setIsReleasingLead] = useState(false);
@@ -929,8 +983,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         email: selectedLead.email || '',
         source: selectedLead.source || '',
         type: selectedLead.type || '',
-        note: selectedLead.note || ''
+        note: selectedLead.note || '',
+        project_name: selectedLead.project_name || selectedLead.preferred_location || '',
+        lead_phan_loai: selectedLead.lead_phan_loai || '',
+        loai_lead: selectedLead.loai_lead || '',
+        platform: selectedLead.platform || '',
+        donvi_chay: selectedLead.donvi_chay || '',
+        link_video_ads: selectedLead.link_video_ads || '',
+        facebook_link: selectedLead.facebook_link || selectedLead.link_fb || ''
       });
+      setIsMktNoteExpanded(false);
       setIsAdminEditingLead(false);
       fetchLeadDistributionLogs(selectedLead.lead_id || selectedLead.id);
 
@@ -950,6 +1012,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     } else {
       setNotificationStatus(null);
       setIsAdminEditingLead(false);
+      setIsMktNoteExpanded(false);
       setDistributionLogs([]);
       setReassignRoundId('');
       setReassignConsId('');
@@ -999,7 +1062,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           email: editForm.email.trim(),
           source: editForm.source.trim(),
           type: editForm.type.trim(),
-          note: editForm.note.trim()
+          note: editForm.note.trim(),
+          project_name: editForm.project_name.trim(),
+          lead_phan_loai: editForm.lead_phan_loai.trim(),
+          loai_lead: editForm.loai_lead.trim(),
+          platform: editForm.platform.trim(),
+          donvi_chay: editForm.donvi_chay.trim(),
+          link_video_ads: editForm.link_video_ads.trim(),
+          facebook_link: editForm.facebook_link.trim()
         })
       });
       if (res.success) {
@@ -1011,7 +1081,15 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           email: editForm.email.trim(),
           source: editForm.source.trim(),
           type: editForm.type.trim(),
-          note: editForm.note.trim()
+          note: editForm.note.trim(),
+          project_name: editForm.project_name.trim(),
+          preferred_location: editForm.project_name.trim(),
+          lead_phan_loai: editForm.lead_phan_loai.trim(),
+          loai_lead: editForm.loai_lead.trim(),
+          platform: editForm.platform.trim(),
+          donvi_chay: editForm.donvi_chay.trim(),
+          link_video_ads: editForm.link_video_ads.trim(),
+          facebook_link: editForm.facebook_link.trim()
         });
         setIsAdminEditingLead(false);
         fetchLeads();
@@ -1083,6 +1161,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       if (json.success) {
         setPublicLeads(json.data || []);
         setPublicTotalCount(json.total_count || (json.data ? json.data.length : 0));
+        if (json.max_parallel_claims) {
+          setPublicMaxClaims(Number(json.max_parallel_claims));
+        }
       } else {
         toast.error(json.message || t('Lỗi tải dữ liệu kho data chung'));
       }
@@ -1541,12 +1622,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       case 'released_to_kho':
       case 'databank': {
         const cnt = takers && takers.length ? takers.length : 0;
-        if (cnt === 0) {
-          return <span className="badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>{t('Public (2/2)')}</span>;
-        } else if (cnt >= 2) {
-          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Giới hạn (0/2)')}</span>;
+        const available = Math.max(0, maxParallelSales - cnt);
+        if (available <= 0) {
+          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t(`Giới hạn (0/${maxParallelSales})`)}</span>;
+        } else if (cnt === 0) {
+          return <span className="badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>{t(`Public (${maxParallelSales}/${maxParallelSales})`)}</span>;
         } else {
-          return <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Public (1/2)`)}</span>;
+          return <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Public (${available}/${maxParallelSales})`)}</span>;
         }
       }
       case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
@@ -1601,7 +1683,6 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         v === '—' ||
         v === 'lead_form' ||
         v === 'website' ||
-        v === 'databank' ||
         v === 'other' ||
         v === 'default' ||
         v.includes('khách') ||
@@ -1845,6 +1926,370 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   for (let i = 0; i < endOffset; i++) {
     days.push(<div key={`empty-end-${i}`} style={{ background: 'var(--color-bg)', borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', opacity: 0.3 }}></div>);
   }
+
+  
+  const LEAD_STATUS_TABS = useMemo(() => [
+    { id: 'all', label: 'Tất cả trạng thái', color: 'var(--color-primary)' },
+    { id: 'not_contacted', label: 'Chưa liên hệ', color: '#3b82f6' },
+    { id: 'assigned', label: 'Đã chia', color: '#06b6d4' },
+    { id: 'grabbed', label: 'Giật Lead', color: '#f97316' },
+    { id: 'pending_claim', label: 'Chờ nhận', color: '#eab308' },
+    { id: 'databank_claim', label: 'Nhặt Databank', color: '#10b981' },
+    { id: 'pending', label: 'Chờ chia', color: '#6b7280' },
+    { id: 'pending_work_hours', label: 'Chờ giờ làm', color: '#6366f1' },
+    { id: 'compensation', label: 'Data bù', color: '#a855f7' },
+    { id: 'reminder', label: 'Nhắc lại', color: '#1d4ed8' },
+    { id: 'silent', label: 'Chỉ đồng bộ', color: '#4b5563' },
+    { id: 'error', label: 'Ticket lỗi', color: '#ef4444' },
+    { id: 'pending_approval', label: 'Tạm giữ', color: '#d97706' },
+    { id: 'rejected', label: 'Dưới chuẩn', color: '#f43f5e' },
+    { id: 'blacklisted', label: 'Blacklist', color: '#991b1b' },
+  ], []);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter && statusFilter !== 'all') count++;
+    if (roundFilter && roundFilter !== 'all') count++;
+    if (consultantFilter && consultantFilter !== 'all') count++;
+    if (dateFilter && dateFilter !== 'all') count++;
+    if (searchTerm && searchTerm.trim()) count++;
+    return count;
+  }, [statusFilter, roundFilter, consultantFilter, dateFilter, searchTerm]);
+
+  const handleResetAllFilters = () => {
+    setSearchInput('');
+    handleUpdateDateFilter('all');
+    setSearchParams((prev: any) => {
+      const next = new URLSearchParams();
+      if (prev.get('view')) next.set('view', prev.get('view'));
+      return next;
+    }, { replace: true });
+  };
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    leads.forEach(l => {
+      const s = l.status || 'unknown';
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    return counts;
+  }, [leads]);
+
+  const renderLeadFilterContent = (inDrawer = false) => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <SlidersHorizontal size={15} style={{ color: 'var(--color-primary)' }} />
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {t('Bộ lọc Lead')}
+            </span>
+            {activeFiltersCount > 0 && (
+              <span style={{
+                background: 'var(--color-primary)',
+                color: '#fff',
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                borderRadius: '10px',
+                padding: '1px 6px',
+                lineHeight: 1.3
+              }}>
+                {activeFiltersCount}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {activeFiltersCount > 0 && (
+              <button
+                type="button"
+                onClick={handleResetAllFilters}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-primary)',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '2px 4px'
+                }}
+                title={t('Đặt lại toàn bộ bộ lọc')}
+              >
+                <RotateCcw size={11} />
+                <span>{t('Đặt lại')}</span>
+              </button>
+            )}
+            {inDrawer && (
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterDrawer(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Section 1: Chế độ xem & Kho */}
+        <div>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
+            {t('Chế độ xem')}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setLocalViewMode('list');
+                navigate('/data');
+                if (inDrawer) setShowMobileFilterDrawer(false);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 9px',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: viewMode === 'list' ? 700 : 500,
+                cursor: 'pointer',
+                border: viewMode === 'list' ? '1.5px solid var(--color-primary)' : '1px solid transparent',
+                background: viewMode === 'list' ? 'var(--color-primary-light)' : 'transparent',
+                color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text)',
+                width: '100%',
+                textAlign: 'left'
+              }}
+            >
+              <LayoutList size={14} />
+              <span>{t('Danh sách Lead')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLocalViewMode('databank');
+                navigate('/data?view=databank');
+                if (inDrawer) setShowMobileFilterDrawer(false);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 9px',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: viewMode === 'databank' ? 700 : 500,
+                cursor: 'pointer',
+                border: viewMode === 'databank' ? '1.5px solid var(--color-primary)' : '1px solid transparent',
+                background: viewMode === 'databank' ? 'var(--color-primary-light)' : 'transparent',
+                color: viewMode === 'databank' ? 'var(--color-primary)' : 'var(--color-text)',
+                width: '100%',
+                textAlign: 'left'
+              }}
+            >
+              <Database size={14} />
+              <span>{t('Kho chung (Databank)')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLocalViewMode('calendar');
+                navigate('/calendar');
+                if (inDrawer) setShowMobileFilterDrawer(false);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 9px',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: viewMode === 'calendar' ? 700 : 500,
+                cursor: 'pointer',
+                border: viewMode === 'calendar' ? '1.5px solid var(--color-primary)' : '1px solid transparent',
+                background: viewMode === 'calendar' ? 'var(--color-primary-light)' : 'transparent',
+                color: viewMode === 'calendar' ? 'var(--color-primary)' : 'var(--color-text)',
+                width: '100%',
+                textAlign: 'left'
+              }}
+            >
+              <Calendar size={14} />
+              <span>{t('Lịch biểu phân bổ')}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Section 2: Trạng thái Lead */}
+        {viewMode !== 'databank' && (
+          <div>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
+              {t('Trạng thái Lead')}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '260px', overflowY: 'auto' }} className="custom-scrollbar">
+              {LEAD_STATUS_TABS.map((tab) => {
+                const isActive = statusFilter === tab.id || (tab.id === 'all' && (!statusFilter || statusFilter === 'all'));
+                const count = tab.id === 'all' ? totalCount : (statusCounts[tab.id] || 0);
+
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      updateParams('status', tab.id);
+                      if (inDrawer) setShowMobileFilterDrawer(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '5px 8px',
+                      borderRadius: '7px',
+                      fontSize: '0.76rem',
+                      fontWeight: isActive ? 700 : 500,
+                      cursor: 'pointer',
+                      border: isActive ? `1.5px solid ${tab.color}60` : '1px solid transparent',
+                      background: isActive ? `${tab.color}15` : 'transparent',
+                      color: isActive ? tab.color : 'var(--color-text)',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                      <span
+                        style={{
+                          width: '7px',
+                          height: '7px',
+                          borderRadius: '50%',
+                          backgroundColor: tab.color,
+                          flexShrink: 0
+                        }}
+                      />
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {t(tab.label)}
+                      </span>
+                    </div>
+                    {count > 0 && (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          padding: '1px 5px',
+                          borderRadius: '8px',
+                          background: isActive ? tab.color : 'var(--color-bg-light)',
+                          color: isActive ? '#ffffff' : 'var(--color-text-muted)',
+                          minWidth: '18px',
+                          textAlign: 'center',
+                          lineHeight: '1.3',
+                          flexShrink: 0,
+                          marginLeft: '4px'
+                        }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Section 3: Tiêu chí lọc chi tiết */}
+        {viewMode !== 'databank' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {t('Tiêu chí lọc')}
+            </div>
+
+            {/* Thời gian */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Thời gian')}</span>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={14} /> },
+                  { value: 'Hôm nay', label: t('Hôm nay') },
+                  { value: 'Hôm qua', label: t('Hôm qua') },
+                  { value: 'Tuần này', label: t('Tuần này') },
+                  { value: 'Tuần trước', label: t('Tuần trước') },
+                  { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
+                  { value: '7 ngày qua', label: t('7 ngày qua') },
+                  { value: '30 ngày qua', label: t('30 ngày qua') },
+                  { value: 'Tháng này', label: t('Tháng này') },
+                  { value: 'Tháng trước', label: t('Tháng trước') }
+                ]}
+                value={dateFilter}
+                onChange={val => updateParams('date', val.toString())}
+                width="100%"
+              />
+            </div>
+
+            {/* Vòng phân bổ */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Vòng phân bổ')}</span>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả vòng'), icon: <Tag size={14} /> },
+                  ...rounds.map(r => ({
+                    value: r.round_name,
+                    label: r.round_name
+                  }))
+                ]}
+                value={roundFilter}
+                onChange={val => updateParams('round', val.toString())}
+                searchable={true}
+                width="100%"
+              />
+            </div>
+
+            {/* Tư vấn viên */}
+            {user?.role !== 'sale' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</span>
+                <CustomSelect
+                  options={[
+                    { value: 'all', label: t('Tất cả TVV'), icon: <User size={14} /> },
+                    ...consultants.map(c => ({
+                      value: c.name,
+                      label: c.name,
+                      avatar: c.avatar
+                    }))
+                  ]}
+                  value={consultantFilter}
+                  onChange={val => updateParams('consultant', val.toString())}
+                  showAvatars={true}
+                  searchable={true}
+                  width="100%"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Nút đóng cho Drawer */}
+        {inDrawer && (
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => setShowMobileFilterDrawer(false)}
+            style={{ width: '100%', height: '38px', marginTop: '0.5rem', fontWeight: 700 }}
+          >
+            {t('Áp dụng bộ lọc')}
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', minHeight: 0 }}>
@@ -2103,132 +2548,115 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         </div>
       </div>
 
-      {/* Filters */}
-      <div
-        className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`}
-        style={{
-          position: 'relative',
-          zIndex: 100,
-          display: (viewMode === 'calendar') ? 'none' : 'flex',
-          gap: '0.75rem',
-          marginBottom: '1.25rem',
-          flexShrink: 0,
-          flexWrap: 'wrap',
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border-light)',
-          borderRadius: '12px',
-          padding: '0.75rem 1rem',
-          alignItems: 'center',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
-        }}
-      >
-        <div className="responsive-filter-item" style={{ position: 'relative', width: 240 }}>
-          <input
-            className="form-input"
-            placeholder={t("Tìm theo tên, SĐT, email...")}
-            style={{ paddingLeft: 12, width: '100%', height: 38, fontSize: '0.875rem' }}
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-          />
-        </div>
-
-        {viewMode !== 'databank' && (
-          <>
-            <div className="responsive-filter-item">
-              <CustomSelect
-                options={[
-                  { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
-                  { value: 'Hôm nay', label: t('Hôm nay') },
-                  { value: 'Hôm qua', label: t('Hôm qua') },
-                  { value: 'Tuần này', label: t('Tuần này') },
-                  { value: 'Tuần trước', label: t('Tuần trước') },
-                  { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
-                  { value: '7 ngày qua', label: t('7 ngày qua') },
-                  { value: '30 ngày qua', label: t('30 ngày qua') },
-                  { value: 'Tháng này', label: t('Tháng này') },
-                  { value: 'Tháng trước', label: t('Tháng trước') }
-                ]}
-                value={dateFilter}
-                onChange={val => updateParams('date', val.toString())}
-                width={160}
-              />
-            </div>
-
-            <div className="responsive-filter-item">
-              <CustomSelect
-                options={[
-                  { value: 'all', label: t('Tất cả trạng thái'), icon: <Filter size={16} /> },
-                  { value: 'not_contacted', label: t('Chưa liên hệ') },
-                  { value: 'assigned', label: t('Đã chia') },
-                  { value: 'grabbed', label: t('Giật Lead') },
-                  { value: 'compensation', label: t('Data Bù') },
-                  { value: 'pending_claim', label: t('Chờ nhận') },
-                  { value: 'pending_work_hours', label: t('Chờ giờ làm') },
-                  { value: 'databank_claim', label: 'Databank Claim' },
-                  { value: 'pending', label: t('Chờ chia') },
-                  { value: 'reminder', label: t('Nhắc lại') },
-                  { value: 'silent', label: t('Chỉ đồng bộ') },
-                  { value: 'error', label: t('Ticket') },
-                  { value: 'blacklisted', label: t('Blacklist') },
-                  { value: 'pending_approval', label: t('Tạm giữ') },
-                  { value: 'rejected', label: t('Dưới chuẩn') }
-                ]}
-                value={statusFilter.includes(',') ? statusFilter.split(',') : [statusFilter]}
-                onChange={val => {
-                  const nextVal = Array.isArray(val)
-                    ? (val.includes('all') ? 'all' : val.join(','))
-                    : val.toString();
-                  updateParams('status', nextVal);
-                }}
-                multiple={true}
-                width={170}
-              />
-            </div>
-
-            <div className="responsive-filter-item">
-              <CustomSelect
-                options={[
-                  { value: 'all', label: t('Tất cả vòng'), icon: <Tag size={16} /> },
-                  ...rounds.map(r => ({
-                    value: r.round_name,
-                    label: r.round_name
-                  }))
-                ]}
-                value={roundFilter}
-                onChange={val => updateParams('round', val.toString())}
-                searchable={true}
-                width={160}
-              />
-            </div>
-
-            {user?.role !== 'sale' && (
-              <div className="responsive-filter-item">
-                <CustomSelect
-                  options={[
-                    { value: 'all', label: t('Tất cả TVV'), icon: <User size={16} /> },
-                    ...consultants.map(c => ({
-                      value: c.name,
-                      label: c.name,
-                      avatar: c.avatar
-                    }))
-                  ]}
-                  value={consultantFilter}
-                  onChange={val => updateParams('consultant', val.toString())}
-                  showAvatars={true}
-                  searchable={true}
-                  width={180}
-                />
-              </div>
-            )}
-          </>
+      {/* TWO-COLUMN LAYOUT: DESKTOP SIDEBAR (260px) + MAIN CONTENT */}
+      <div style={{ display: 'flex', gap: '1rem', width: '100%', alignItems: 'flex-start', flex: 1, minHeight: 0 }}>
+        {/* Desktop Sidebar */}
+        {!isMobile && (
+          <aside
+            className="card custom-scrollbar"
+            style={{
+              width: '260px',
+              minWidth: '260px',
+              maxWidth: '260px',
+              position: 'sticky',
+              top: '70px',
+              maxHeight: 'calc(100vh - 90px)',
+              height: 'calc(100vh - 90px)',
+              overflowY: 'auto',
+              padding: '0.85rem',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              flexShrink: 0
+            }}
+          >
+            {renderLeadFilterContent(false)}
+          </aside>
         )}
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          {t('Tổng cộng')}: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{viewMode === 'databank' ? publicTotalCount : totalCount}</strong> {t('data')}
-        </div>
-      </div>
+        {/* Main Column */}
+        <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+          {/* Top Search & Filter Bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            marginBottom: '0.85rem',
+            flexWrap: 'wrap',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '12px',
+            padding: '0.65rem 0.85rem',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+            flexShrink: 0
+          }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: isMobile ? '100%' : 420 }}>
+              <input
+                className="form-input"
+                placeholder={t("Tìm theo tên, SĐT, email...")}
+                style={{ paddingLeft: 34, paddingRight: searchInput ? 30 : 12, width: '100%', height: 38, fontSize: '0.82rem', borderRadius: '8px' }}
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+              />
+              <Search size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchInput(''); updateParams('search', ''); }}
+                  style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
 
-      {/* Table */}
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterDrawer(true)}
+                style={{
+                  height: '38px',
+                  padding: '0 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  border: activeFiltersCount > 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  background: activeFiltersCount > 0 ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                  color: activeFiltersCount > 0 ? 'var(--color-primary)' : 'var(--color-text)',
+                  fontWeight: 700,
+                  fontSize: '0.8rem'
+                }}
+              >
+                <SlidersHorizontal size={14} />
+                <span>{t('Bộ lọc')}</span>
+                {activeFiltersCount > 0 && (
+                  <span style={{
+                    background: 'var(--color-primary)',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    minWidth: 16,
+                    height: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.65rem'
+                  }}>
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+              <span>{t('Tổng cộng')}:</span>
+              <strong style={{ color: 'var(--color-text)', fontSize: '0.85rem' }}>{viewMode === 'databank' ? publicTotalCount : totalCount}</strong>
+              <span>{t('data')}</span>
+            </div>
+          </div>
+
+          {/* Table */}
       {viewMode === 'calendar' ? (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }} className="fade-in-view">
           {/* Calendar Header / Control */}
@@ -2392,7 +2820,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         style={{ 
                           borderBottom: '1px solid var(--color-border)', 
                           transition: 'background-color 0.2s', 
-                          cursor: Number(lead.is_won) === 1 ? 'default' : ((isAdmin || (lead.takers && !lead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id)) && lead.takers.length < 2)) ? 'pointer' : 'default')
+                          cursor: Number(lead.is_won) === 1 ? 'default' : ((isAdmin || (lead.takers && !lead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id)) && lead.takers.length < maxParallelSales)) ? 'pointer' : 'default')
                         }} 
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.01)' : '#fff9fa'} 
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -2415,7 +2843,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             });
                           } else {
                             const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id));
-                            const isFull = lead.takers && lead.takers.length >= 2;
+                            const isFull = lead.takers && lead.takers.length >= maxParallelSales;
                             if (!hasClaimed && !isFull) {
                               handleClaimLead(lead.id, lead.full_name || lead.name);
                             }
@@ -2498,20 +2926,20 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             <span 
                               className="badge" 
                               style={{ 
-                                background: !lead.takers || lead.takers.length === 0 ? 'rgba(16,185,129,0.1)' : (lead.takers.length === 1 ? 'rgba(59,130,246,0.1)' : 'rgba(156,163,175,0.1)'),
-                                color: !lead.takers || lead.takers.length === 0 ? '#10b981' : (lead.takers.length === 1 ? '#3b82f6' : '#9ca3af'),
-                                border: !lead.takers || lead.takers.length === 0 ? '1px solid rgba(16,185,129,0.2)' : (lead.takers.length === 1 ? '1px solid rgba(59,130,246,0.2)' : '1px solid rgba(156,163,175,0.2)'),
+                                background: !lead.takers || lead.takers.length === 0 ? 'rgba(16,185,129,0.1)' : (lead.takers.length < maxParallelSales ? 'rgba(59,130,246,0.1)' : 'rgba(156,163,175,0.1)'),
+                                color: !lead.takers || lead.takers.length === 0 ? '#10b981' : (lead.takers.length < maxParallelSales ? '#3b82f6' : '#9ca3af'),
+                                border: !lead.takers || lead.takers.length === 0 ? '1px solid rgba(16,185,129,0.2)' : (lead.takers.length < maxParallelSales ? '1px solid rgba(59,130,246,0.2)' : '1px solid rgba(156,163,175,0.2)'),
                                 fontWeight: 700,
                                 fontSize: '0.8rem',
                                 padding: '4px 10px',
                                 borderRadius: '20px'
                               }}
                             >
-                              {Math.max(0, 2 - (lead.takers ? lead.takers.length : 0))} / 2
+                              {Math.max(0, maxParallelSales - (lead.takers ? lead.takers.length : 0))} / {maxParallelSales}
                             </span>
                           ) : (() => {
                             const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id));
-                            const isFull = lead.takers && lead.takers.length >= 2;
+                            const isFull = lead.takers && lead.takers.length >= maxParallelSales;
                             return (
                               <button
                                 onClick={() => handleClaimLead(lead.id, lead.name)}
@@ -3051,6 +3479,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         </div>
       )}
 
+              </main>
+      </div>
+
       <CustomModal
         isOpen={selectedLead !== null}
         onClose={() => {
@@ -3212,7 +3643,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 email: selectedLead.email || '',
                                 source: selectedLead.source || '',
                                 type: selectedLead.type || '',
-                                note: selectedLead.note || ''
+                                note: selectedLead.note || '',
+                                project_name: selectedLead.project_name || selectedLead.preferred_location || '',
+                                lead_phan_loai: selectedLead.lead_phan_loai || '',
+                                loai_lead: selectedLead.loai_lead || '',
+                                platform: selectedLead.platform || '',
+                                donvi_chay: selectedLead.donvi_chay || '',
+                                link_video_ads: selectedLead.link_video_ads || '',
+                                facebook_link: selectedLead.facebook_link || selectedLead.link_fb || ''
                               });
                               setIsAdminEditingLead(true);
                             }}
@@ -3320,7 +3758,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     {user?.role === 'sale' && 
                      (selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim' || selectedLead.status === 'databank') &&
                      !(selectedLead.takers && selectedLead.takers.some((t: any) => Number(t.id) === Number(user?.consultant_id))) &&
-                     (selectedLead.takers ? selectedLead.takers.length : 0) < 2 && (
+                     (selectedLead.takers ? selectedLead.takers.length : 0) < maxParallelSales && (
                       <button
                         onClick={() => {
                           handleClaimLead(selectedLead.person_id || selectedLead.id, selectedLead.name, () => {
@@ -3355,12 +3793,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   </div>
                 </div>
 
+                {/* BLOCK 1: 8 KEY FIELDS (phone, email, du_an, status, phan_loai_lead, loai_lead, flatform, donvi_chay) */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '0.75rem',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: '0.625rem',
                   marginBottom: '1rem'
                 }}>
+                  {/* 1. Phone */}
                   <div
                     onClick={!isAdminEditingLead ? () => handleCopyText(canSeeFullInfo ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone') : undefined}
                     style={{
@@ -3370,6 +3810,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       border: '1px solid var(--color-border-light)',
                       cursor: !isAdminEditingLead ? 'pointer' : 'default',
                       transition: 'all 0.2s',
+                      minWidth: 0
                     }}
                     onMouseEnter={e => {
                       if (!isAdminEditingLead) {
@@ -3420,26 +3861,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
                           border: '1px solid rgba(163, 20, 34, 0.15)',
-                          borderRadius: '10px',
-                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
                           width: '100%',
                           boxSizing: 'border-box',
-                          outline: 'none',
-                          transition: 'all 0.2s ease-in-out',
-                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
-                        }}
-                        onFocus={e => {
-                          e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
-                        }}
-                        onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
-                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
+                          outline: 'none'
                         }}
                       />
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.phone}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.phone}>
                           {canSeeFullInfo ? selectedLead.phone : maskPhone(selectedLead.phone)}
                         </span>
                         {!isAdminEditingLead && (
@@ -3459,25 +3890,27 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       </div>
                     )}
                   </div>
+
+                  {/* 2. Email */}
                   <div
-                    onClick={!isAdminEditingLead ? () => handleCopyText(canSeeFullInfo ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
+                    onClick={(!isAdminEditingLead && selectedLead.email) ? () => handleCopyText(canSeeFullInfo ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
                     style={{
                       background: 'var(--color-bg)',
                       padding: '0.625rem 0.75rem',
                       borderRadius: 10,
                       border: '1px solid var(--color-border-light)',
                       minWidth: 0,
-                      cursor: !isAdminEditingLead ? 'pointer' : 'default',
+                      cursor: (!isAdminEditingLead && selectedLead.email) ? 'pointer' : 'default',
                       transition: 'all 0.2s',
                     }}
                     onMouseEnter={e => {
-                      if (!isAdminEditingLead) {
+                      if (!isAdminEditingLead && selectedLead.email) {
                         e.currentTarget.style.borderColor = 'var(--color-primary-light)';
                         e.currentTarget.style.background = 'rgba(163, 20, 34, 0.02)';
                       }
                     }}
                     onMouseLeave={e => {
-                      if (!isAdminEditingLead) {
+                      if (!isAdminEditingLead && selectedLead.email) {
                         e.currentTarget.style.borderColor = 'var(--color-border-light)';
                         e.currentTarget.style.background = 'var(--color-bg)';
                       }
@@ -3495,29 +3928,19 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
                           border: '1px solid rgba(163, 20, 34, 0.15)',
-                          borderRadius: '10px',
-                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
                           width: '100%',
                           boxSizing: 'border-box',
-                          outline: 'none',
-                          transition: 'all 0.2s ease-in-out',
-                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
-                        }}
-                        onFocus={e => {
-                          e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
-                        }}
-                        onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
-                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
+                          outline: 'none'
                         }}
                       />
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.email}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.email}>
                           {canSeeFullInfo ? selectedLead.email : maskEmail(selectedLead.email)}
                         </span>
-                        {!isAdminEditingLead && (
+                        {!isAdminEditingLead && selectedLead.email && (
                           <div
                             style={{
                               padding: '2px 6px',
@@ -3534,44 +3957,379 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       </div>
                     )}
                   </div>
+
+                  {/* 3. Dự án (du_an) */}
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><ExternalLink size={12} /> {t('Nguồn')}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                      <Building2 size={12} /> {t("Dự án")}
+                    </div>
                     {isAdminEditingLead ? (
                       <input
                         type="text"
-                        value={editForm.source}
-                        onChange={e => setEditForm({ ...editForm, source: e.target.value })}
+                        value={editForm.project_name}
+                        onChange={e => setEditForm({ ...editForm, project_name: e.target.value })}
+                        placeholder={t("Nhập tên dự án")}
                         style={{
                           fontSize: '0.875rem',
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
                           border: '1px solid rgba(163, 20, 34, 0.15)',
-                          borderRadius: '10px',
-                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
                           width: '100%',
                           boxSizing: 'border-box',
-                          outline: 'none',
-                          transition: 'all 0.2s ease-in-out',
-                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
-                        }}
-                        onFocus={e => {
-                          e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
-                        }}
-                        onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
-                          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
+                          outline: 'none'
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={selectedLead.source}>{selectedLead.source}</div>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={selectedLead.project_name || selectedLead.preferred_location}>
+                        {selectedLead.project_name || selectedLead.preferred_location || '—'}
+                      </div>
                     )}
                   </div>
-                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
+
+                  {/* 4. Trạng thái (status) */}
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái')}</div>
                     <div>
                       {getStatusBadge((selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim') ? 'databank' : selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at, selectedLead.takers, selectedLead.is_accepted)}
+                    </div>
+                  </div>
+
+                  {/* 5. Phân loại Lead (phan_loai_lead) */}
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                      <Target size={12} /> {t("Phân loại Lead")}
+                    </div>
+                    {isAdminEditingLead ? (
+                      <input
+                        type="text"
+                        value={editForm.lead_phan_loai}
+                        onChange={e => setEditForm({ ...editForm, lead_phan_loai: e.target.value })}
+                        placeholder={t("Lead nét, Lead tiềm năng...")}
+                        style={{
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          background: 'var(--color-surface)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          outline: 'none'
+                        }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={selectedLead.lead_phan_loai}>
+                        {selectedLead.lead_phan_loai ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: 'rgba(234, 88, 12, 0.1)',
+                            color: '#ea580c',
+                            border: '1px solid rgba(234, 88, 12, 0.25)',
+                            fontWeight: 700,
+                            fontSize: '0.75rem'
+                          }}>
+                            {selectedLead.lead_phan_loai}
+                          </span>
+                        ) : '—'}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 6. Loại Lead (loai_lead) */}
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                      <Tag size={12} /> {t("Loại Lead")}
+                    </div>
+                    {isAdminEditingLead ? (
+                      <input
+                        type="text"
+                        value={editForm.loai_lead}
+                        onChange={e => setEditForm({ ...editForm, loai_lead: e.target.value })}
+                        placeholder={t("Nóng, Ấm, Lạnh...")}
+                        style={{
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          background: 'var(--color-surface)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          outline: 'none'
+                        }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={selectedLead.loai_lead}>
+                        {selectedLead.loai_lead ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            color: '#2563eb',
+                            border: '1px solid rgba(59, 130, 246, 0.25)',
+                            fontWeight: 700,
+                            fontSize: '0.75rem'
+                          }}>
+                            {selectedLead.loai_lead}
+                          </span>
+                        ) : '—'}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 7. Nền tảng (flatform / platform) */}
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                      <Globe size={12} /> {t("Nền tảng")}
+                    </div>
+                    {isAdminEditingLead ? (
+                      <input
+                        type="text"
+                        value={editForm.platform}
+                        onChange={e => setEditForm({ ...editForm, platform: e.target.value })}
+                        placeholder={t("Facebook, Google, TikTok...")}
+                        style={{
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          background: 'var(--color-surface)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          outline: 'none'
+                        }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={selectedLead.platform || selectedLead.source}>
+                        {selectedLead.platform || selectedLead.source || '—'}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 8. Đơn vị chạy (donvi_chay) */}
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                      <Zap size={12} /> {t("Đơn vị chạy")}
+                    </div>
+                    {isAdminEditingLead ? (
+                      <input
+                        type="text"
+                        value={editForm.donvi_chay}
+                        onChange={e => setEditForm({ ...editForm, donvi_chay: e.target.value })}
+                        placeholder={t("MKT Team, Agency...")}
+                        style={{
+                          fontSize: '0.875rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          background: 'var(--color-surface)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          outline: 'none'
+                        }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={selectedLead.donvi_chay}>
+                        {selectedLead.donvi_chay || '—'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* BLOCK 2: THÔNG TIN FORM ĐĂNG KÝ (COPIED FROM CustomerProfileDrawer.tsx) */}
+                <div style={{
+                  background: theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                  borderRadius: '12px',
+                  border: '1px solid var(--color-border)',
+                  padding: '12px 14px',
+                  marginBottom: '1rem',
+                  boxSizing: 'border-box'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      <FileText size={14} style={{ color: 'var(--color-primary)' }} />
+                      <span>{t('Thông Tin Form Đăng Ký')}</span>
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const FORM_SPEC = [
+                      { key: 'ad_name', label: t('Mẫu quảng cáo'), fullWidth: true },
+                      { key: 'form_name', label: t('Tên Form'), fullWidth: true },
+                      { key: 'birthday', label: t('Sinh nhật') },
+                      { key: 'country', label: t('Quốc gia') },
+                      { key: 'city', label: t('Thành Phố') },
+                      { key: 'loai_hinh', label: t('Loại hình') },
+                      { key: 'hinh_thuc_tt', label: t('Hình thức thanh toán') },
+                      { key: 'time_lienhe', label: t('Thời gian liên hệ') },
+                      { key: 'app_lienhe', label: t('Ứng dụng liên hệ') },
+                      { key: 'nhu_cau', label: t('Nhu cầu') },
+                      { key: 'tieu_chi', label: t('Tiêu chí') },
+                      { key: 'san_pham', label: t('Sản phẩm') },
+                      { key: 'tinh_trang', label: t('Tình trạng') }
+                    ];
+
+                    let wb: any = {};
+                    if (selectedLead.webhook_data) {
+                      wb = typeof selectedLead.webhook_data === 'string'
+                        ? (() => { try { return JSON.parse(selectedLead.webhook_data); } catch { return {}; } })()
+                        : selectedLead.webhook_data;
+                    }
+
+                    const getFormVal = (k: string) => {
+                      if (k === 'ad_name') {
+                        return wb['ad_name'] || selectedLead.ad_name || (selectedLead as any).lead_ad_name || selectedLead.utm_content || '';
+                      }
+                      if (k === 'form_name') {
+                        return wb['form_name'] || selectedLead.form_name || (selectedLead as any).lead_form_name || '';
+                      }
+                      const fromWb = wb[k] || wb[k.toLowerCase()];
+                      if (fromWb) return fromWb;
+                      if (k === 'city') return selectedLead.city || selectedLead.district || '';
+                      if (k === 'country') return selectedLead.country || '';
+                      if (k === 'birthday') return selectedLead.birthday || selectedLead.dob || '';
+                      if (k === 'loai_hinh') {
+                        const wbLoai = wb['loai_hinh'] || wb['property_type'] || selectedLead.loai_hinh || selectedLead.property_type || selectedLead.bedroom_count || selectedLead.type || '';
+                        if (wbLoai) return wbLoai;
+                        const fullNote = selectedLead.note || '';
+                        const loaiMatch = fullNote.match(/(?:mấy phòng ngủ|may phong ngu|loại căn hộ|loai can ho)[^:]*:\s*([^\n\r,•\-]+)/i);
+                        if (loaiMatch && loaiMatch[1]) return loaiMatch[1].trim();
+                        return '';
+                      }
+                      if (k === 'nhu_cau') return wb['nhu_cau'] || selectedLead.demand_type || selectedLead.nhu_cau || '';
+                      if (k === 'san_pham') return wb['san_pham'] || selectedLead.san_pham || '';
+                      if (k === 'tieu_chi') return wb['tieu_chi'] || selectedLead.tieu_chi || '';
+                      if (k === 'tinh_trang') return wb['tinh_trang'] || selectedLead.tinh_trang || '';
+                      if (k === 'hinh_thuc_tt') return wb['hinh_thuc_tt'] || selectedLead.hinh_thuc_tt || '';
+                      if (k === 'time_lienhe') return wb['time_lienhe'] || selectedLead.time_lienhe || '';
+                      if (k === 'app_lienhe') {
+                        const wbApp = wb['app_lienhe'] || wb['ung_dung_lien_he'] || wb['app'] || selectedLead.app_lienhe || '';
+                        if (wbApp) return wbApp;
+                        const fullNote = selectedLead.note || '';
+                        const appMatch = fullNote.match(/(?:ứng dụng nào|ung dung nao|app liên hệ|app lien he)[^:]*:\s*([^\n\r,•\-]+)/i);
+                        if (appMatch && appMatch[1]) return appMatch[1].trim();
+                        return '';
+                      }
+                      return '';
+                    };
+
+                    const activeFields = FORM_SPEC
+                      .map(item => ({ ...item, value: (getFormVal(item.key) || '').trim() }))
+                      .filter(item => Boolean(item.value && item.value !== '—' && item.value !== '-'));
+
+                    return activeFields.length > 0 ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px', fontSize: '0.75rem', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+                        {activeFields.map(item => (
+                          <div 
+                            key={item.key} 
+                            style={{ 
+                              background: 'var(--color-surface)', 
+                              padding: '4px 8px', 
+                              borderRadius: '6px', 
+                              border: '1px solid var(--color-border)',
+                              gridColumn: item.fullWidth ? 'span 2' : undefined,
+                              minWidth: 0,
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{item.label}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '2px', wordBreak: 'break-word' }}>
+                              {item.value.replace(/_/g, ' ')}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ padding: '8px', color: 'var(--color-text-muted)', fontSize: '0.75rem', textAlign: 'center', fontStyle: 'italic', background: 'var(--color-surface)', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                        {t('Chưa có thông tin từ form đăng ký')}
+                      </div>
+                    );
+                  })()}
+
+                  {/* CÁC TRƯỜNG DƯỚI FORM ĐĂNG KÝ: link_fb & link_video_ads */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px', marginTop: '8px', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+                    {/* Link Facebook */}
+                    <div style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', minHeight: '18px' }}>
+                        <label style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', margin: 0, fontWeight: 700, color: 'var(--color-text)' }}>
+                          <Globe size={11} style={{ color: '#1877F2' }} /> Link Facebook
+                        </label>
+                      </div>
+                      {isAdminEditingLead ? (
+                        <input
+                          className="form-input sm"
+                          placeholder="https://facebook.com/profile..."
+                          value={editForm.facebook_link}
+                          onChange={e => setEditForm(prev => ({ ...prev, facebook_link: e.target.value }))}
+                          style={{ height: '32px', fontSize: '0.8125rem', width: '100%', boxSizing: 'border-box' }}
+                        />
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)', minHeight: '32px', boxSizing: 'border-box' }}>
+                          {(selectedLead.facebook_link || selectedLead.link_fb) ? (
+                            <a
+                              href={selectedLead.facebook_link || selectedLead.link_fb}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: '#1877F2', fontWeight: 600, fontSize: '0.78rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              title={selectedLead.facebook_link || selectedLead.link_fb}
+                            >
+                              <ExternalLink size={12} style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedLead.facebook_link || selectedLead.link_fb}</span>
+                            </a>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>—</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Link Video Ads */}
+                    <div style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', minHeight: '18px' }}>
+                        <label style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px', margin: 0, fontWeight: 700, color: 'var(--color-text)' }}>
+                          <Video size={11} style={{ color: '#ef4444' }} /> Link Video Ads
+                        </label>
+                      </div>
+                      {isAdminEditingLead ? (
+                        <input
+                          className="form-input sm"
+                          placeholder="https://facebook.com/watch/... hoặc link video"
+                          value={editForm.link_video_ads}
+                          onChange={e => setEditForm(prev => ({ ...prev, link_video_ads: e.target.value }))}
+                          style={{ height: '32px', fontSize: '0.8125rem', width: '100%', boxSizing: 'border-box' }}
+                        />
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)', minHeight: '32px', boxSizing: 'border-box' }}>
+                          {(selectedLead.link_video_ads || (selectedLead as any).lead_link_video_ads) ? (
+                            <a
+                              href={selectedLead.link_video_ads || (selectedLead as any).lead_link_video_ads}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: '#ef4444', fontWeight: 600, fontSize: '0.78rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              title={selectedLead.link_video_ads || (selectedLead as any).lead_link_video_ads}
+                            >
+                              <ExternalLink size={12} style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedLead.link_video_ads || (selectedLead as any).lead_link_video_ads}</span>
+                            </a>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>—</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3613,400 +4371,99 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </div>
                       )}
 
-                      {/* Clean Note Card */}
+                      {/* BLOCK 3: GHI CHÚ MKT (COLLAPSED BY DEFAULT WITH EXPAND/FULL VIEW TOGGLE) */}
                       <div style={{
-                        background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'linear-gradient(135deg, #fefce8 0%, #fffbeb 100%)',
-                        border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef3c7',
-                        padding: '1.25rem',
-                        borderRadius: '16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.75rem',
-                        boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(245, 158, 11, 0.03)'
-                      }}
-                        className="premium-alert-card"
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{
-                            background: theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
-                            padding: '8px',
-                            borderRadius: '10px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: theme === 'dark' ? '#f59e0b' : '#d97706'
-                          }}>
-                            <Tag size={18} strokeWidth={2.5} />
+                        background: theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                        borderRadius: '12px',
+                        border: '1px solid var(--color-border)',
+                        padding: '12px 14px',
+                        marginBottom: '1rem',
+                        boxSizing: 'border-box'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                            <div style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 6,
+                              background: 'rgba(245, 158, 11, 0.15)',
+                              color: '#f59e0b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <StickyNote size={13} />
+                            </div>
+                            <span>{t('Ghi chú MKT')}</span>
                           </div>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#92400e', letterSpacing: '-0.01em' }}>{t('Ghi chú & Phân loại')}</span>
+
+                          {!isAdminEditingLead && (cleanNote || (selectedLead.note || '').trim()) && (
+                            <button
+                              type="button"
+                              onClick={() => setIsMktNoteExpanded(prev => !prev)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                color: 'var(--color-primary)',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <span>{isMktNoteExpanded ? t('Thu gọn') : t('Xem thêm')}</span>
+                              {isMktNoteExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </button>
+                          )}
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {isAdminEditingLead ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', width: '80px', flexShrink: 0 }}>{t('Loại Data:')}</span>
-                              <input
-                                type="text"
-                                value={editForm.type}
-                                onChange={e => setEditForm({ ...editForm, type: e.target.value })}
+                        {isAdminEditingLead ? (
+                          <textarea
+                            className="form-input"
+                            rows={4}
+                            placeholder={t('Ghi chú marketing / từ form...')}
+                            value={editForm.note}
+                            onChange={e => setEditForm(prev => ({ ...prev, note: e.target.value }))}
+                            style={{ fontSize: '0.8125rem', width: '100%', boxSizing: 'border-box', resize: 'vertical' }}
+                          />
+                        ) : (
+                          <div>
+                            {cleanNote ? (
+                              <div
+                                onClick={() => setIsMktNoteExpanded(prev => !prev)}
                                 style={{
-                                  fontSize: '0.875rem',
-                                  fontWeight: 600,
+                                  fontSize: '0.8125rem',
                                   color: 'var(--color-text)',
-                                  background: 'var(--color-surface)',
-                                  border: '1px solid rgba(163, 20, 34, 0.15)',
-                                  borderRadius: '10px',
-                                  padding: '8px 12px',
-                                  flex: 1,
-                                  outline: 'none',
-                                  transition: 'all 0.2s ease-in-out',
-                                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
+                                  lineHeight: 1.55,
+                                  wordBreak: 'break-word',
+                                  whiteSpace: isMktNoteExpanded ? 'pre-wrap' : 'normal',
+                                  cursor: 'pointer',
+                                  ...(!isMktNoteExpanded ? {
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden'
+                                  } : {})
                                 }}
-                                onFocus={e => {
-                                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
-                                }}
-                                onBlur={e => {
-                                  e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
-                                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <div style={{ fontSize: '0.85rem', color: theme === 'dark' ? '#dadada' : '#78350f' }}>
-                              <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', marginRight: '6px' }}>{t('Loại Data:')}</span>
-                              <span style={{ fontWeight: 600 }}>{selectedLead.type !== '-' ? selectedLead.type : t('Không có')}</span>
-                            </div>
-                          )}
-
-                          <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '10px', marginTop: '2px' }}>
-                            <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '6px' }}>{t('Nội dung ghi chú:')}</span>
-                            {isAdminEditingLead ? (
-                              <textarea
-                                value={editForm.note}
-                                onChange={e => setEditForm({ ...editForm, note: e.target.value })}
-                                rows={4}
-                                style={{
-                                  fontSize: '0.875rem',
-                                  fontWeight: 500,
-                                  color: 'var(--color-text)',
-                                  background: 'var(--color-surface)',
-                                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                                  borderRadius: '10px',
-                                  padding: '10px 14px',
-                                  width: '100%',
-                                  boxSizing: 'border-box',
-                                  lineHeight: 1.5,
-                                  resize: 'vertical',
-                                  outline: 'none',
-                                  transition: 'all 0.2s ease-in-out',
-                                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
-                                }}
-                                onFocus={e => {
-                                  e.currentTarget.style.borderColor = '#d97706';
-                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(245, 158, 11, 0.15)';
-                                }}
-                                onBlur={e => {
-                                  e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.25)';
-                                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
-                                }}
-                              />
+                                title={!isMktNoteExpanded ? t('Bấm để xem toàn bộ ghi chú') : undefined}
+                              >
+                                {cleanNote}
+                              </div>
                             ) : (
-                              <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#f3f4f6' : '#451a03', whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 500 }}>
-                                {cleanNote ? cleanNote : <em style={{ color: theme === 'dark' ? '#cbd5e1' : '#b45309', opacity: 0.6 }}>{t('Không có ghi chú thêm')}</em>}
+                              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic', padding: '4px 0' }}>
+                                {t('Chưa có ghi chú marketing')}
                               </div>
                             )}
                           </div>
-                          {/* Mapped Property & Requirement Details inside same Yellow Card */}
-                          {(selectedLead.preferred_location || selectedLead.bedroom_count || selectedLead.property_type || selectedLead.demand_type || (selectedLead.budget && Number(selectedLead.budget) > 0)) && (
-                            <div style={{ borderTop: theme === 'dark' ? '1px dashed rgba(245, 158, 11, 0.2)' : '1px dashed rgba(217, 119, 6, 0.15)', paddingTop: '10px', marginTop: '2px' }}>
-                              <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', color: theme === 'dark' ? '#fbbf24' : '#b45309', display: 'block', marginBottom: '8px' }}>
-                                {t('Nhu cầu & Bất động sản quan tâm:')}
-                              </span>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
-                                {selectedLead.preferred_location && (
-                                  <div style={{ gridColumn: 'span 2', background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                      <MapPin size={12} color="#d97706" /> {t('Khu vực / Dự án')}
-                                    </div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                      {selectedLead.preferred_location}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {selectedLead.bedroom_count && (
-                                  <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                      <BedDouble size={12} color="#d97706" /> {t('Loại hình / Phòng ngủ')}
-                                    </div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                      {selectedLead.bedroom_count}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {selectedLead.property_type && (
-                                  <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                      <Home size={12} color="#d97706" /> {t('Loại BĐS')}
-                                    </div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                      {selectedLead.property_type}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {selectedLead.demand_type && (
-                                  <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                      <Target size={12} color="#d97706" /> {t('Nhu cầu')}
-                                    </div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                      {selectedLead.demand_type}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {selectedLead.budget && Number(selectedLead.budget) > 0 && (
-                                  <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.15)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: theme === 'dark' ? '#fbbf24' : '#b45309', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                      <DollarSign size={12} color="#059669" /> {t('Ngân sách')}
-                                    </div>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-success)' }}>
-                                      {Number(selectedLead.budget).toLocaleString('vi-VN')} đ
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
 
-                      {/* Campaign & Source Tracking Info */}
-                      {(selectedLead.form_name || selectedLead.platform || selectedLead.campaign_name || selectedLead.utm_campaign || selectedLead.utm_content || selectedLead.utm_medium) && (
-                        <div style={{
-                          background: theme === 'dark' ? 'rgba(139, 92, 246, 0.08)' : 'linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%)',
-                          border: theme === 'dark' ? '1px solid rgba(139, 92, 246, 0.2)' : '1px solid #ddd6fe',
-                          padding: '1.25rem',
-                          borderRadius: '16px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.75rem',
-                          marginTop: '1rem',
-                          boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(139, 92, 246, 0.04)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{
-                              background: theme === 'dark' ? 'rgba(139, 92, 246, 0.2)' : '#ede9fe',
-                              padding: '8px',
-                              borderRadius: '10px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: theme === 'dark' ? '#a78bfa' : '#7c3aed'
-                            }}>
-                              <Layers size={18} strokeWidth={2.5} />
-                            </div>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#c4b5fd' : '#5b21b6', letterSpacing: '-0.01em' }}>
-                              {t('Nguồn & Chiến dịch Quảng cáo')}
-                            </span>
-                          </div>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '4px' }}>
-                            {selectedLead.form_name && (
-                              <div style={{ gridColumn: 'span 2', background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <FileText size={12} /> {t('Tên Form / Landing Page')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.form_name}
-                                </div>
-                              </div>
-                            )}
 
-                            {selectedLead.platform && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <Globe size={12} /> {t('Nền tảng')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.platform}
-                                </div>
-                              </div>
-                            )}
-
-                            {(selectedLead.campaign_name || selectedLead.utm_campaign) && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <Target size={12} /> {t('Chiến dịch Ads')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.campaign_name || selectedLead.utm_campaign}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.utm_content && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <Layers size={12} /> {t('Mẫu QC (Adset)')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.utm_content}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.utm_medium && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <ExternalLink size={12} /> {t('Hình thức Ads')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.utm_medium}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Extended Personal & Contact Info */}
-                      {(selectedLead.phone2 || selectedLead.zalo_phone || selectedLead.facebook_link || selectedLead.district || selectedLead.company || selectedLead.citizen_id || selectedLead.dob || selectedLead.gender) && (
-                        <div style={{
-                          background: theme === 'dark' ? 'rgba(16, 185, 129, 0.08)' : 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
-                          border: theme === 'dark' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid #a7f3d0',
-                          padding: '1.25rem',
-                          borderRadius: '16px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.75rem',
-                          marginTop: '1rem',
-                          boxShadow: theme === 'dark' ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.04)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{
-                              background: theme === 'dark' ? 'rgba(16, 185, 129, 0.2)' : '#d1fae5',
-                              padding: '8px',
-                              borderRadius: '10px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: theme === 'dark' ? '#34d399' : '#059669'
-                            }}>
-                              <User size={18} strokeWidth={2.5} />
-                            </div>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: theme === 'dark' ? '#6ee7b7' : '#065f46', letterSpacing: '-0.01em' }}>
-                              {t('Thông tin Khách hàng mở rộng')}
-                            </span>
-                          </div>
-
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '4px' }}>
-                            {selectedLead.phone2 && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <PhoneCall size={12} /> {t('SĐT phụ')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.phone2}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.zalo_phone && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <MessageSquare size={12} /> {t('Zalo')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.zalo_phone}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.district && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <MapPin size={12} /> {t('Quận / Huyện')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.district}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.company && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <Briefcase size={12} /> {t('Công ty')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.company}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.facebook_link && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <Share2 size={12} /> {t('Facebook')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                                  <a href={selectedLead.facebook_link.startsWith('http') ? selectedLead.facebook_link : `https://${selectedLead.facebook_link}`} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
-                                    {selectedLead.facebook_link}
-                                  </a>
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.tax_code && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <FileText size={12} /> {t('Mã số thuế')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.tax_code}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.citizen_id && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <User size={12} /> {t('CCCD / CMND')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.citizen_id}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.dob && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <Calendar size={12} /> {t('Ngày sinh')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.dob}
-                                </div>
-                              </div>
-                            )}
-
-                            {selectedLead.gender && (
-                              <div style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', padding: '0.625rem 0.75rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                  <User size={12} /> {t('Giới tính')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                  {selectedLead.gender}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
 
                       {/* AI Decision Notes */}
                       {aiDecisionNotes && aiDecisionNotes.length > 0 && (
@@ -4807,7 +5264,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               const isTakerHot = /r[1-3]/i.test(takerRank) || /hot|nóng/i.test(takerRank);
                               const isTakerDb = takerRank.toLowerCase() === 'databank';
                               const isViewerSale = user?.role === 'sale';
-                              const isSameUser = Number(tk.id) === Number(user?.id) || Number(tk.id) === Number(user?.consultant_id);
+                              const isSameUser = Boolean(tk.id && Number(tk.id) > 0 && (Number(tk.id) === Number(user?.id) || Number(tk.id) === Number(user?.consultant_id)));
+                              const rawTakerName = (tk.name || tk.consultant_name || tk.full_name || '').trim();
+                              const takerDisplayName = rawTakerName || (isSameUser ? t('Bạn') : t('Tư vấn viên'));
                               const dtStr = tk.claimed_at || tk.created_at || '';
                               const dtParts = dtStr.split(' ');
                               const dPart = dtParts[0] || '—';
@@ -4826,11 +5285,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                   {/* 2. Tư vấn viên (Sale) */}
                                   <td style={{ padding: '8px 10px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <Avatar src={tk.avatar} name={tk.name} size={26} />
+                                      <Avatar src={tk.avatar} name={rawTakerName || takerDisplayName} size={26} />
                                       <div>
                                         <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
-                                          {tk.name}
-                                          {isSameUser && <span style={{ marginLeft: 4, fontSize: '0.62rem', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '1px 4px', borderRadius: 4, fontWeight: 700 }}>{t('Bạn')}</span>}
+                                          {takerDisplayName}
+                                          {isSameUser && rawTakerName && <span style={{ marginLeft: 4, fontSize: '0.62rem', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '1px 4px', borderRadius: 4, fontWeight: 700 }}>{t('Bạn')}</span>}
                                         </div>
                                         <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                                           {isViewerSale && !isSameUser ? maskPhone(tk.consultant_phone || '') : (tk.consultant_phone || '')}
@@ -4872,9 +5331,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                       {tk.contact_id ? (
                                         <button
-                                          onClick={() => {
-                                            setSelectedContactForDrawer({ id: Number(tk.contact_id), name: selectedLead.name });
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const cData = { id: Number(tk.contact_id), name: selectedLead?.name };
                                             setSelectedLead(null);
+                                            setReassignConsId('');
+                                            setTimeout(() => {
+                                              setSelectedContactForDrawer(cData);
+                                            }, 50);
                                           }}
                                           className="btn sm"
                                           style={{
@@ -7719,12 +8183,97 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
             isOpen={!!selectedContactForDrawer}
             onClose={() => setSelectedContactForDrawer(null)}
             contact={selectedContactForDrawer}
-            zIndex={1000050}
+            zIndex={2000050}
           />
         </Suspense>
       )}
+
+      {/* Mobile Filter Drawer Portal */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showMobileFilterDrawer && (
+            <div 
+              className="mobile-filter-drawer-container"
+              style={{ position: 'fixed', inset: 0, zIndex: 99999999, display: 'flex' }}
+            >
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setShowMobileFilterDrawer(false)}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0, 0, 0, 0.55)',
+                  backdropFilter: 'blur(5px)',
+                  WebkitBackdropFilter: 'blur(5px)',
+                  zIndex: 99999999
+                }}
+              />
+              <motion.div
+                className="mobile-filter-drawer-sheet"
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                style={{
+                  position: 'relative',
+                  width: '88%',
+                  maxWidth: '340px',
+                  height: '100%',
+                  background: 'var(--color-surface)',
+                  borderRight: '1px solid var(--color-border)',
+                  boxShadow: '4px 0 32px rgba(0, 0, 0, 0.35)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  zIndex: 100000000,
+                  overflowY: 'auto',
+                  padding: '1rem'
+                }}
+              >
+                {renderLeadFilterContent(true)}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
     </div>
   );
 };
 
-export const DataList = withRouterFreezer(DataListInner, (path) => path === '/data' || path === '/calendar');
+const DataListGuarded = (props: any) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+  const role = String(user?.role || '').toLowerCase();
+  const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
+
+  if (!isAdmin) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4 text-red-600 dark:text-red-400">
+          <ShieldAlert size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          {t('Không có quyền truy cập')}
+        </h2>
+        <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
+          {t('Chỉ Quản trị viên (Admin) mới có quyền truy cập Quản Lý Lead. Vui lòng liên hệ Admin để được hỗ trợ.')}
+        </p>
+        <button
+          onClick={() => navigate('/workspace')}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+        >
+          {t('Quay lại Bàn làm việc')}
+        </button>
+      </div>
+    );
+  }
+
+  return <DataListInner {...props} />;
+};
+
+export const DataList = withRouterFreezer(DataListGuarded, (path) => path === '/data' || path === '/calendar');

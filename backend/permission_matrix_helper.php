@@ -11,8 +11,13 @@ if (!function_exists('getModulePermissionScope')) {
         if ($role === 'superadmin' || $role === 'admin' || $role === 'super_admin') {
             return 'all';
         }
+
+        // Strict business rule: Manager, Director, Assistant are NOT allowed to see or manage leads/contacts/customers
+        if (in_array($role, ['manager', 'director', 'assistant'], true) && in_array($module, ['leads', 'contacts', 'customers'], true)) {
+            return 'none';
+        }
         
-        if (($role === 'sale' || $role === 'sales') && $module === 'deals') {
+        if (($role === 'sale' || $role === 'sales') && in_array($module, ['deals', 'leads', 'contacts', 'customers'], true)) {
             return $action === 'delete' ? 'none' : 'own';
         }
         
@@ -21,22 +26,28 @@ if (!function_exists('getModulePermissionScope')) {
         if (isset($permissions) && is_array($permissions)) {
             $val = $permissions[$module][$action] ?? null;
             if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
+                if (in_array($role, ['manager', 'director', 'assistant'], true) && in_array($module, ['leads', 'contacts', 'customers'], true)) {
+                    return 'none';
+                }
                 return $val;
             }
         }
         
         // Fallback based on role
         if ($role === 'director') {
-            if ($module === 'settings') {
+            if ($module === 'settings' || in_array($module, ['leads', 'contacts', 'customers'], true)) {
                 return 'none';
             }
             return 'all';
         }
         if ($role === 'manager') {
-            return $action === 'delete' ? 'none' : 'team';
+            if (in_array($module, ['leads', 'contacts', 'customers'], true) || $action === 'delete') {
+                return 'none';
+            }
+            return 'team';
         }
         if ($role === 'assistant') {
-            if ($module === 'leads') return $action === 'delete' ? 'none' : 'all';
+            if (in_array($module, ['leads', 'contacts', 'customers'], true)) return 'none';
             if ($module === 'deals') return 'all';
             return $action === 'delete' ? 'none' : 'all';
         }

@@ -35,10 +35,10 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'KHÁCH HÀNG',
     items: [
-      { name: 'Khách hàng', href: '/contacts', icon: Users },
-      { name: 'Quản Lý Lead', href: '/data', icon: Database, hideForRoles: ['sale'] },
-      { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, hideForRoles: ['sale', 'sales', 'viewer'] },
-      { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper', hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
+      { name: 'Khách hàng', href: '/contacts', icon: Users, hideForRoles: ['manager', 'director', 'assistant', 'viewer'] },
+      { name: 'Quản Lý Lead', href: '/data', icon: Database, hideForRoles: ['manager', 'director', 'assistant', 'sale', 'sales', 'viewer'] },
+      { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, hideForRoles: ['manager', 'director', 'assistant', 'sale', 'sales', 'viewer'] },
+      { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper', hideForRoles: ['manager', 'assistant', 'director', 'sale', 'sales', 'viewer'] },
       { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' },
       { name: 'Ticket hỗ trợ', href: '/support-tickets', icon: LifeBuoy, badgeKey: 'supportTickets' }
     ]

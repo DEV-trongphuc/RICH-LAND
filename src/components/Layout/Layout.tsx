@@ -49,7 +49,8 @@ import {
   Fingerprint,
   Camera,
   CheckSquare,
-  DollarSign
+  DollarSign,
+  Building2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -2251,36 +2252,69 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <span className="mobile-bottom-nav-item-label">{t('Bàn làm việc')}</span>
         </button>
 
-        {/* 3. Khách hàng (MoMo raised center button) */}
-        <button 
-          className={`mobile-bottom-nav-center-item ${location.pathname === '/contacts' ? 'active' : ''}`}
-          onClick={() => navigate('/contacts')}
-        >
-          <div className="raised-button-bg-hump" />
-          <div className="raised-button-circle">
-            <Users size={24} />
-          </div>
-          <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
-        </button>
+        {/* 3. Khách hàng (MoMo raised center button) cho Admin & Sale, hoặc Dự án cho Manager/Director */}
+        {(() => {
+          const roleNormalized = String(user?.role || '').toLowerCase();
+          const isManagerOrDirector = ['manager', 'director', 'assistant'].includes(roleNormalized);
 
-        {/* 4. Kho data / Quản Lý Lead */}
-        {['marketing', 'mkt', 'admin', 'superadmin', 'manager', 'director'].includes(user?.role as string) ? (
-          <button 
-            className={`mobile-bottom-nav-item ${location.pathname === '/data' || location.pathname === '/leads' ? 'active' : ''}`}
-            onClick={() => navigate('/data')}
-          >
-            <Database size={20} />
-            <span className="mobile-bottom-nav-item-label">{t('Quản Lý Lead')}</span>
-          </button>
-        ) : (
-          <button 
-            className={`mobile-bottom-nav-item ${location.pathname === '/databank' ? 'active' : ''}`}
-            onClick={() => navigate('/databank')}
-          >
-            <Database size={20} />
-            <span className="mobile-bottom-nav-item-label">{t('Kho databank')}</span>
-          </button>
-        )}
+          if (isManagerOrDirector) {
+            return (
+              <button 
+                className={`mobile-bottom-nav-center-item ${location.pathname === '/projects' ? 'active' : ''}`}
+                onClick={() => navigate('/projects')}
+              >
+                <div className="raised-button-bg-hump" />
+                <div className="raised-button-circle">
+                  <Building2 size={24} />
+                </div>
+                <span className="mobile-bottom-nav-item-label">{t('Dự án')}</span>
+              </button>
+            );
+          }
+
+          return (
+            <button 
+              className={`mobile-bottom-nav-center-item ${location.pathname === '/contacts' ? 'active' : ''}`}
+              onClick={() => navigate('/contacts')}
+            >
+              <div className="raised-button-bg-hump" />
+              <div className="raised-button-circle">
+                <Users size={24} />
+              </div>
+              <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
+            </button>
+          );
+        })()}
+
+        {/* 4. Nhật ký data (Quản lý lead) CHỈ CHO ADMIN & MKT / Kho databank cho Manager & Sales */}
+        {(() => {
+          const roleNormalized = String(user?.role || '').toLowerCase();
+          const isAdminOrMKT = 
+            ['marketing', 'mkt', 'admin', 'superadmin', 'super_admin'].includes(roleNormalized) &&
+            !['manager', 'director', 'assistant'].includes(roleNormalized);
+
+          if (isAdminOrMKT) {
+            return (
+              <button 
+                className={`mobile-bottom-nav-item ${location.pathname === '/data' || location.pathname === '/leads' ? 'active' : ''}`}
+                onClick={() => navigate('/data')}
+              >
+                <Database size={20} />
+                <span className="mobile-bottom-nav-item-label">{t('Nhật ký data')}</span>
+              </button>
+            );
+          }
+
+          return (
+            <button 
+              className={`mobile-bottom-nav-item ${location.pathname === '/databank' ? 'active' : ''}`}
+              onClick={() => navigate('/databank')}
+            >
+              <Database size={20} />
+              <span className="mobile-bottom-nav-item-label">{t('Kho databank')}</span>
+            </button>
+          );
+        })()}
 
         {/* 5. Tôi */}
         <button 

@@ -99,7 +99,7 @@ const ConsultantsInner = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const userRole = user?.role;
-  const isSale = userRole === 'sale';
+  const isSale = ['sale', 'sales', 'viewer'].includes(String(userRole || '').toLowerCase());
   const isWriteAuthorized = ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes(userRole || '');
 
   const isCurrentUser = (u: any) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText, ArrowLeft, ShieldAlert, Laptop } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText, ArrowLeft, ShieldAlert, Laptop, Star, RotateCcw, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ToggleSwitch } from '../ui/ToggleSwitch';
 import { useUIStore } from '../../store/uiStore';
@@ -69,16 +69,75 @@ export const Header = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Track dynamic recent routes in localStorage (Issue 5)
+  // Track dynamic recent routes in state and localStorage
+  const [recentRoutes, setRecentRoutes] = useState<string[]>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('recent_routes') || '[]');
+      return Array.isArray(stored) ? stored : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const userShortcutsKey = `custom_quick_shortcuts_${user?.id || 'default'}`;
+  const [customShortcuts, setCustomShortcuts] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(userShortcutsKey) || localStorage.getItem('custom_quick_shortcuts');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isEditingShortcuts, setIsEditingShortcuts] = useState(false);
+  const [shortcutTab, setShortcutTab] = useState<'pinned' | 'recent'>('pinned');
+
   useEffect(() => {
     if (!location.pathname || location.pathname === '/login') return;
     try {
       const stored = JSON.parse(localStorage.getItem('recent_routes') || '[]');
       const filtered = Array.isArray(stored) ? stored.filter((p: string) => p !== location.pathname) : [];
       filtered.unshift(location.pathname);
-      localStorage.setItem('recent_routes', JSON.stringify(filtered.slice(0, 20)));
+      const updated = filtered.slice(0, 20);
+      localStorage.setItem('recent_routes', JSON.stringify(updated));
+      setRecentRoutes(updated);
     } catch (e) {}
   }, [location.pathname]);
+
+  const saveCustomShortcuts = (newList: string[]) => {
+    setCustomShortcuts(newList);
+    try {
+      localStorage.setItem(userShortcutsKey, JSON.stringify(newList));
+      localStorage.setItem('custom_quick_shortcuts', JSON.stringify(newList));
+    } catch (e) {}
+  };
+
+  const togglePinShortcut = (name: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    let updated: string[];
+    if (customShortcuts.includes(name)) {
+      updated = customShortcuts.filter(n => n !== name);
+      toast.success(t('Đã gỡ lối tắt: ') + t(name), { duration: 1500 });
+    } else {
+      if (customShortcuts.length >= 12) {
+        toast.error(t('Tối đa 12 lối tắt nhanh. Vui lòng gỡ bớt để thêm mới.'));
+        return;
+      }
+      updated = [...customShortcuts, name];
+      toast.success(t('Đã ghim vào lối tắt: ') + t(name), { duration: 1500 });
+    }
+    saveCustomShortcuts(updated);
+  };
+
+  const moveShortcut = (index: number, direction: 'left' | 'right', e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= customShortcuts.length) return;
+    const copy = [...customShortcuts];
+    const temp = copy[index];
+    copy[index] = copy[targetIndex];
+    copy[targetIndex] = temp;
+    saveCustomShortcuts(copy);
+  };
 
   const [headerVacationMode, setHeaderVacationMode] = useState<boolean>(false);
   const [headerCheckIn, setHeaderCheckIn] = useState<any>(null);
@@ -1764,23 +1823,37 @@ export const Header = ({
                 'Bàn làm việc',
                 'Dashboard',
                 'Báo cáo',
-                'Khách hàng',
                 'Giỏ hàng',
                 'Kho Databank',
                 'Dự án',
                 'Nhân viên kinh doanh',
                 'Quản lý chấm công',
-                'Đối soát công bằng',
                 'Phiếu đặt cọc',
                 'Lịch trình'
               ];
             }
-            if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'director') {
+            if (userRole === 'director') {
+              return [
+                'Bàn làm việc',
+                'Dashboard',
+                'Báo cáo',
+                'Giỏ hàng',
+                'Kho Databank',
+                'Dự án',
+                'Nhân viên kinh doanh',
+                'Phiếu đặt cọc',
+                'Hóa đơn',
+                'Chi phí',
+                'Lịch trình'
+              ];
+            }
+            if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin') {
               return [
                 'Bàn làm việc',
                 'Dashboard',
                 'Báo cáo',
                 'Khách hàng',
+                'Quản Lý Lead',
                 'Giỏ hàng',
                 'Kho Databank',
                 'Dự án',
@@ -1801,8 +1874,7 @@ export const Header = ({
                 'Phiếu đặt cọc',
                 'Báo giá',
                 'Giỏ hàng',
-                'Dự án',
-                'Khách hàng'
+                'Dự án'
               ];
             }
             return [
@@ -1819,54 +1891,44 @@ export const Header = ({
             ];
           };
 
-          // Check dynamic recent routes from localStorage (Issue 5)
-          let dynamicRecentPaths: string[] = [];
-          try {
-            const raw = localStorage.getItem('recent_routes');
-            if (raw) dynamicRecentPaths = JSON.parse(raw);
-          } catch (e) {}
-
           const roleTargets = getRoleRecentTargets(role);
-          const maxCount = isMobile ? 9 : 7;
-          const matchedRecent: any[] = [];
+          const maxCount = isMobile ? 9 : 8;
+
+          // Determine shortcuts to display based on active tab
+          let displayedShortcuts: any[] = [];
           const seenNames = new Set<string>();
 
-          // 1. First prioritize routes actually visited recently by user
-          if (Array.isArray(dynamicRecentPaths)) {
-            for (const path of dynamicRecentPaths) {
+          if (shortcutTab === 'pinned') {
+            const listToUse = customShortcuts.length > 0 ? customShortcuts : roleTargets.slice(0, maxCount);
+            for (const name of listToUse) {
+              const found = allVisibleItems.find(item => item.name.toLowerCase() === name.toLowerCase());
+              if (found && !seenNames.has(found.name)) {
+                displayedShortcuts.push(found);
+                seenNames.add(found.name);
+              }
+            }
+          } else {
+            // 'recent' tab: actual dynamic recent routes from reactive state
+            for (const path of recentRoutes) {
               const found = allVisibleItems.find(item => item.href === path || (path !== '/' && item.href !== '/' && path.startsWith(item.href)));
               if (found && !seenNames.has(found.name)) {
-                matchedRecent.push(found);
+                displayedShortcuts.push(found);
                 seenNames.add(found.name);
-                if (matchedRecent.length >= maxCount) break;
+                if (displayedShortcuts.length >= maxCount) break;
+              }
+            }
+            // Fill remainder with role targets if needed
+            if (displayedShortcuts.length < maxCount) {
+              for (const targetName of roleTargets) {
+                const found = allVisibleItems.find(item => item.name.toLowerCase() === targetName.toLowerCase());
+                if (found && !seenNames.has(found.name)) {
+                  displayedShortcuts.push(found);
+                  seenNames.add(found.name);
+                  if (displayedShortcuts.length >= maxCount) break;
+                }
               }
             }
           }
-
-          // 2. Fill remaining slots with role priority targets
-          if (matchedRecent.length < maxCount) {
-            for (const targetName of roleTargets) {
-              const found = allVisibleItems.find(item => item.name.toLowerCase() === targetName.toLowerCase());
-              if (found && !seenNames.has(found.name)) {
-                matchedRecent.push(found);
-                seenNames.add(found.name);
-                if (matchedRecent.length >= maxCount) break;
-              }
-            }
-          }
-
-          // 3. Fallback to any remaining visible items
-          if (matchedRecent.length < maxCount) {
-            for (const item of allVisibleItems) {
-              if (!seenNames.has(item.name)) {
-                matchedRecent.push(item);
-                seenNames.add(item.name);
-                if (matchedRecent.length >= maxCount) break;
-              }
-            }
-          }
-
-          const recentItems = matchedRecent.slice(0, maxCount);
 
           return (
             <div style={{ paddingRight: '4px' }}>
@@ -1879,6 +1941,7 @@ export const Header = ({
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px 24px' }}>
                       {filteredItems.map(item => {
                         const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
+                        const isPinned = customShortcuts.includes(item.name);
                         return (
                           <div
                             key={item.name}
@@ -1915,7 +1978,7 @@ export const Header = ({
                             }}>
                               <AppIcon name={item.name} size={32} />
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
                               <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {t(item.name)}
                               </span>
@@ -1923,6 +1986,26 @@ export const Header = ({
                                 {t(desc)}
                               </span>
                             </div>
+                            <button
+                              type="button"
+                              onClick={(e) => togglePinShortcut(item.name, e)}
+                              style={{
+                                background: isPinned ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '5px',
+                                cursor: 'pointer',
+                                color: isPinned ? '#f59e0b' : 'var(--color-text-muted)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.15s ease',
+                                flexShrink: 0
+                              }}
+                              title={isPinned ? t('Bỏ ghim khỏi lối tắt') : t('Ghim vào lối tắt nhanh')}
+                            >
+                              <Star size={15} style={{ fill: isPinned ? '#f59e0b' : 'none' }} />
+                            </button>
                           </div>
                         );
                       })}
@@ -1935,71 +2018,302 @@ export const Header = ({
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1.75rem' }}>
-                  {/* Gần đây (Recent items) */}
-                  {recentItems.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: isMobile ? '1rem' : '1.5rem' }}>
-                      <span style={{ fontSize: isMobile ? '0.72rem' : '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {t('Gần đây')}
-                      </span>
+                  {/* Lối tắt tùy chỉnh & Truy cập gần đây */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: isMobile ? '1rem' : '1.5rem' }}>
+                    {/* Header bar: Tabs & Controls */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}>
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: 'var(--color-bg)',
+                        padding: '3px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--color-border-light)'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => setShortcutTab('pinned')}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '4px 10px',
+                            borderRadius: '7px',
+                            border: 'none',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            background: shortcutTab === 'pinned' ? 'var(--color-surface)' : 'transparent',
+                            color: shortcutTab === 'pinned' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                            boxShadow: shortcutTab === 'pinned' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Star size={13} style={{ fill: shortcutTab === 'pinned' ? 'currentColor' : 'none' }} />
+                          <span>{t('Lối tắt của tôi')}</span>
+                          {customShortcuts.length > 0 && (
+                            <span style={{ fontSize: '0.68rem', padding: '0 5px', borderRadius: '10px', background: 'var(--color-primary-light, #fee2e2)', color: 'var(--color-primary)' }}>
+                              {customShortcuts.length}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => { setShortcutTab('recent'); setIsEditingShortcuts(false); }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '4px 10px',
+                            borderRadius: '7px',
+                            border: 'none',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            background: shortcutTab === 'recent' ? 'var(--color-surface)' : 'transparent',
+                            color: shortcutTab === 'recent' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                            boxShadow: shortcutTab === 'recent' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Clock size={13} />
+                          <span>{t('Vừa truy cập')}</span>
+                        </button>
+                      </div>
+
+                      {shortcutTab === 'pinned' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {isEditingShortcuts && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                saveCustomShortcuts(roleTargets.slice(0, maxCount));
+                                toast.success(t('Đã khôi phục lối tắt mặc định'));
+                              }}
+                              className="btn ghost sm"
+                              style={{ fontSize: '0.72rem', height: '28px', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                              title={t('Khôi phục danh sách lối tắt mặc định')}
+                            >
+                              <RotateCcw size={12} />
+                              <span>{t('Mặc định')}</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!isEditingShortcuts && customShortcuts.length === 0) {
+                                saveCustomShortcuts(roleTargets.slice(0, maxCount));
+                              }
+                              setIsEditingShortcuts(!isEditingShortcuts);
+                            }}
+                            className={`btn ${isEditingShortcuts ? 'primary' : 'outline'} sm`}
+                            style={{ fontSize: '0.72rem', height: '28px', padding: '2px 10px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
+                          >
+                            {isEditingShortcuts ? (
+                              <>
+                                <Check size={13} />
+                                <span>{t('Xong')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Star size={13} />
+                                <span>{t('Tùy chỉnh')}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        recentRoutes.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              localStorage.removeItem('recent_routes');
+                              setRecentRoutes([]);
+                              toast.success(t('Đã xóa lịch sử truy cập'));
+                            }}
+                            className="btn ghost sm"
+                            style={{ fontSize: '0.72rem', height: '28px', padding: '2px 8px', color: 'var(--color-text-muted)' }}
+                          >
+                            <Trash2 size={12} />
+                            <span>{t('Xóa lịch sử')}</span>
+                          </button>
+                        )
+                      )}
+                    </div>
+
+                    {/* Hint banner when editing */}
+                    {isEditingShortcuts && (
+                      <div style={{
+                        padding: '8px 12px',
+                        background: 'rgba(245, 158, 11, 0.08)',
+                        border: '1px dashed #f59e0b',
+                        borderRadius: '10px',
+                        fontSize: '0.75rem',
+                        color: '#b45309',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        <span>⭐ {t('Chế độ tùy chỉnh: Bấm biểu tượng ⭐ ở các chức năng bên dưới để ghim/bỏ ghim. Bấm ⬅ ➡ để đổi thứ tự.')}</span>
+                      </div>
+                    )}
+
+                    {/* Shortcuts Grid */}
+                    {displayedShortcuts.length > 0 ? (
                       <div style={{
                         display: 'grid',
                         gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(130px, 1fr))',
                         gap: isMobile ? '8px' : '16px'
                       }}>
-                        {recentItems.map(item => {
+                        {displayedShortcuts.map((item, index) => {
                           return (
                             <div
                               key={item.name}
                               onClick={() => {
-                                navigate(item.href);
-                                setIsAppLauncherOpen(false);
+                                if (!isEditingShortcuts) {
+                                  navigate(item.href);
+                                  setIsAppLauncherOpen(false);
+                                }
                               }}
                               style={{
+                                position: 'relative',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: isMobile ? '8px' : '12px',
-                                padding: isMobile ? '14px 8px' : '20px 14px',
+                                gap: isMobile ? '6px' : '10px',
+                                padding: isMobile ? '12px 6px' : '18px 12px',
                                 background: 'var(--color-surface)',
-                                border: '1px solid var(--color-border-light)',
+                                border: isEditingShortcuts ? '1px dashed var(--color-primary)' : '1px solid var(--color-border-light)',
                                 borderRadius: '20px',
-                                cursor: 'pointer',
+                                cursor: isEditingShortcuts ? 'default' : 'pointer',
                                 textAlign: 'center',
                                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
                                 transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
                               }}
                               onMouseEnter={e => {
-                                e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-                                e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.08)';
-                                e.currentTarget.style.borderColor = 'var(--color-border)';
+                                if (!isEditingShortcuts) {
+                                  e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+                                  e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.08)';
+                                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                                }
                               }}
                               onMouseLeave={e => {
-                                e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.04)';
-                                e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                                if (!isEditingShortcuts) {
+                                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.04)';
+                                  e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                                }
                               }}
                             >
+                              {/* In edit mode: Unpin button */}
+                              {isEditingShortcuts && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => togglePinShortcut(item.name, e)}
+                                  style={{
+                                    position: 'absolute',
+                                    top: 4,
+                                    right: 4,
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: '50%',
+                                    background: 'rgba(239, 68, 68, 0.12)',
+                                    border: 'none',
+                                    color: 'var(--color-danger)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    padding: 0
+                                  }}
+                                  title={t('Bỏ ghim')}
+                                >
+                                  <X size={12} />
+                                </button>
+                              )}
+
                               <div style={{
-                                width: isMobile ? '48px' : '56px',
-                                height: isMobile ? '48px' : '56px',
+                                width: isMobile ? '44px' : '52px',
+                                height: isMobile ? '44px' : '52px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.12))',
                                 transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
                               }}>
-                                <AppIcon name={item.name} size={isMobile ? 48 : 56} />
+                                <AppIcon name={item.name} size={isMobile ? 44 : 52} />
                               </div>
-                              <span style={{ fontSize: isMobile ? '0.75rem' : '0.825rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+
+                              <span style={{ fontSize: isMobile ? '0.72rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
                                 {t(item.name)}
                               </span>
+
+                              {/* In edit mode: Move left/right buttons */}
+                              {isEditingShortcuts && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }} onClick={e => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    disabled={index === 0}
+                                    onClick={(e) => moveShortcut(index, 'left', e)}
+                                    style={{
+                                      width: 20,
+                                      height: 20,
+                                      borderRadius: 4,
+                                      border: '1px solid var(--color-border)',
+                                      background: 'var(--color-bg)',
+                                      color: index === 0 ? 'var(--color-text-light)' : 'var(--color-text)',
+                                      cursor: index === 0 ? 'not-allowed' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      padding: 0
+                                    }}
+                                    title={t('Chuyển sang trái')}
+                                  >
+                                    <ArrowLeft size={10} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={index === displayedShortcuts.length - 1}
+                                    onClick={(e) => moveShortcut(index, 'right', e)}
+                                    style={{
+                                      width: 20,
+                                      height: 20,
+                                      borderRadius: 4,
+                                      border: '1px solid var(--color-border)',
+                                      background: 'var(--color-bg)',
+                                      color: index === displayedShortcuts.length - 1 ? 'var(--color-text-light)' : 'var(--color-text)',
+                                      cursor: index === displayedShortcuts.length - 1 ? 'not-allowed' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      padding: 0
+                                    }}
+                                    title={t('Chuyển sang phải')}
+                                  >
+                                    <ArrowRight size={10} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                        {t('Chưa có lối tắt nào. Bấm "Tùy chỉnh" để chọn các chức năng yêu thích của bạn.')}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Categories */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1.25rem' : '2rem' }}>
@@ -2015,6 +2329,7 @@ export const Header = ({
                         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: isMobile ? '10px' : '12px 24px' }}>
                           {group.items.map(item => {
                             const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
+                            const isPinned = customShortcuts.includes(item.name);
                             return (
                               <div
                                 key={item.name}
@@ -2051,7 +2366,7 @@ export const Header = ({
                                 }}>
                                   <AppIcon name={item.name} size={isMobile ? 32 : 30} />
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
                                   <span style={{ fontSize: isMobile ? '0.92rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {t(item.name)}
                                   </span>
@@ -2061,6 +2376,27 @@ export const Header = ({
                                     </span>
                                   )}
                                 </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => togglePinShortcut(item.name, e)}
+                                  style={{
+                                    marginLeft: 'auto',
+                                    background: isPinned ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '5px',
+                                    cursor: 'pointer',
+                                    color: isPinned ? '#f59e0b' : 'var(--color-text-muted)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.15s ease',
+                                    flexShrink: 0
+                                  }}
+                                  title={isPinned ? t('Bỏ ghim khỏi lối tắt') : t('Ghim vào lối tắt nhanh')}
+                                >
+                                  <Star size={15} style={{ fill: isPinned ? '#f59e0b' : 'none' }} />
+                                </button>
                               </div>
                             );
                           })}

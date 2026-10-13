@@ -192,7 +192,7 @@ const FMT_VND = (n: any) => {
 };
 const AGO_DAYS = (d: string) => d ? Math.floor((Date.now()-new Date(d).getTime())/86400000) : 999;
 
-export const ContactsPage: React.FC = () => {
+const ContactsPageInner: React.FC = () => {
   const { user } = useAuth();
   const isSale = (user?.role as string) === 'sale' || (user?.role as string) === 'sales' || (user?.role as string) === 'telesale';
   const navigate = useNavigate();
@@ -585,9 +585,28 @@ export const ContactsPage: React.FC = () => {
   const [reportDetails, setReportDetails] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
 
+  const isLeadFromDatabank = (contact: any) => {
+    if (!contact) return false;
+    const src = String(contact.source || '').toLowerCase();
+    const phanLoai = String(contact.lead_phan_loai || contact.phan_loai_lead || '').toLowerCase();
+    return Boolean(
+      contact.status === 'databank_claim' ||
+      contact.dl_status === 'databank_claim' ||
+      contact.from_databank ||
+      src.includes('databank') ||
+      src.includes('kho data') ||
+      src.includes('kho_data') ||
+      phanLoai.includes('databank')
+    );
+  };
+
   const handleOpenReportModal = (contact: any) => {
     if (contact?.status === 'not_lead' || contact?.pipeline_status === 'not_lead' || Number(contact?.not_lead_proposed || 0) === 1) {
       addToast('Khách hàng Not Lead không cần tạo ticket Báo lỗi bù data.', 'error');
+      return;
+    }
+    if (isLeadFromDatabank(contact)) {
+      addToast('Khách hàng nhận từ Kho Databank không được phép báo cáo lỗi dữ liệu.', 'error');
       return;
     }
     setSelectedContactForReport(contact);
@@ -598,6 +617,10 @@ export const ContactsPage: React.FC = () => {
 
   const handleSubmitReport = async () => {
     if (!selectedContactForReport || submittingReport) return;
+    if (isLeadFromDatabank(selectedContactForReport)) {
+      addToast('Khách hàng nhận từ Kho Databank không được phép báo cáo lỗi dữ liệu.', 'error');
+      return;
+    }
     setSubmittingReport(true);
     try {
       const finalReason = reportReasonType === 'Lý do khác...'
@@ -3249,7 +3272,8 @@ export const ContactsPage: React.FC = () => {
                                     </span>
                                   ) : null}
                                   {(() => {
-                                    const leadTag = (c.dl_status === 'databank_claim' || c.source === 'databank' || c.lead_phan_loai === 'databank' || c.phan_loai_lead === 'databank')
+                                    const isFromDb = Boolean(c.from_databank || c.dl_status === 'databank_claim' || c.source === 'databank' || c.lead_phan_loai === 'databank' || c.phan_loai_lead === 'databank');
+                                    const leadTag = isFromDb
                                       ? 'databank'
                                       : (c.lead_phan_loai || c.phan_loai_lead || (c.source && c.source !== 'website' ? c.source : ''));
                                     if (!leadTag) return null;
@@ -3482,7 +3506,7 @@ export const ContactsPage: React.FC = () => {
                                     Từ chối
                                   </span>
                                 )}
-                                {(!c.report_status || c.report_status === 'rejected') && c.status !== 'not_lead' && c.pipeline_status !== 'not_lead' && Number(c.not_lead_proposed || 0) !== 1 && (
+                                {(!c.report_status || c.report_status === 'rejected') && !isLeadFromDatabank(c) && c.status !== 'not_lead' && c.pipeline_status !== 'not_lead' && Number(c.not_lead_proposed || 0) !== 1 && (
                                   <button onClick={() => handleOpenReportModal(c)} className="btn sm danger" style={{ height: 28, padding: '0 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                     <AlertCircle size={11} /> Báo lỗi
                                   </button>
@@ -3670,7 +3694,8 @@ export const ContactsPage: React.FC = () => {
                                       </span>
                                     ) : null}
                                   {(() => {
-                                    const leadTag = (c.dl_status === 'databank_claim' || c.source === 'databank' || c.lead_phan_loai === 'databank' || c.phan_loai_lead === 'databank')
+                                    const isFromDb = Boolean(c.from_databank || c.dl_status === 'databank_claim' || c.source === 'databank' || c.lead_phan_loai === 'databank' || c.phan_loai_lead === 'databank');
+                                    const leadTag = isFromDb
                                       ? 'databank'
                                       : (c.lead_phan_loai || c.phan_loai_lead || (c.source && c.source !== 'website' ? c.source : ''));
                                     if (!leadTag) return null;
@@ -4220,4 +4245,35 @@ export const ContactsPage: React.FC = () => {
     , document.body)}
     </div>
   );
+};
+
+export const ContactsPage: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const role = String(user?.role || '').toLowerCase();
+  const isBlocked = ['manager', 'director', 'assistant', 'viewer'].includes(role);
+
+  if (isBlocked) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4 text-red-600 dark:text-red-400">
+          <AlertTriangle size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          Không có quyền truy cập
+        </h2>
+        <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
+          Mục Khách hàng chỉ dành cho Admin và Nhân viên kinh doanh (Sales). Vui lòng liên hệ Admin để được hỗ trợ.
+        </p>
+        <button
+          onClick={() => navigate('/workspace')}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+        >
+          Quay lại Bàn làm việc
+        </button>
+      </div>
+    );
+  }
+
+  return <ContactsPageInner />;
 };

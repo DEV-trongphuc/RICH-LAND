@@ -71,7 +71,13 @@ export const getModulePermissionScope = (
   action: 'read' | 'write' | 'delete'
 ): 'none' | 'own' | 'team' | 'all' => {
   if (!user) return 'none';
-  if (user.role === 'admin' || user.role === 'superadmin') return 'all';
+  const role = user.role;
+  if (role === 'admin' || role === 'superadmin' || role === 'super_admin') return 'all';
+
+  // Strict business rule: Manager, Director, Assistant are NOT allowed to see or manage leads/contacts/customers
+  if (['manager', 'director', 'assistant'].includes(role) && ['leads', 'contacts', 'customers'].includes(module)) {
+    return 'none';
+  }
   
   let permissions: any = {};
   if (user.permissions_json) {
@@ -92,11 +98,10 @@ export const getModulePermissionScope = (
   }
   
   // Default fallbacks based on role if not configured in permissions_json
-  const role = user.role;
-  if (role === 'director') return module === 'settings' ? 'none' : 'all';
-  if (role === 'manager') return action === 'delete' ? 'none' : 'team';
+  if (role === 'director') return (module === 'settings' || module === 'leads' || module === 'contacts' || module === 'customers') ? 'none' : 'all';
+  if (role === 'manager') return (module === 'leads' || module === 'contacts' || module === 'customers' || action === 'delete') ? 'none' : 'team';
   if (role === 'assistant') {
-    if (module === 'leads') return action === 'delete' ? 'none' : 'all';
+    if (module === 'leads' || module === 'contacts' || module === 'customers') return 'none';
     if (module === 'deals') return 'all';
     return action === 'delete' ? 'none' : 'all';
   }
