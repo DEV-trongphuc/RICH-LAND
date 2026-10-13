@@ -404,7 +404,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
     if (account) {
       setLoading(true);
       // Load Basic Info
-      setUsername(account.username || '');
+      setUsername(account.username || (account.email ? account.email.split('@')[0] : ''));
       setPassword('');
       setName(account.name || '');
       setEmail(account.email || '');
@@ -419,11 +419,18 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       // Fetch Full Consultant Profile (for ERP metadata, Schedules, etc.)
       const fetchFullDetails = async () => {
         try {
-          const param = account.username ? `user_id=${account.id}` : `consultant_id=${account.id}`;
+          const param = `user_id=${account.id}&consultant_id=${account.id}`;
           const res = await fetchAPI(`consultant-profile?${param}`);
           if (res.success && res.data) {
             const d = res.data;
-            setZaloChatId(d.zalo_chat_id || '');
+            if (d.username) setUsername(d.username);
+            if (d.phone) setPhone(d.phone);
+            if (d.email) setEmail(d.email);
+            if (d.name) setName(d.name);
+            if (d.role) setRole(d.role);
+            if (d.avatar) setAvatar(d.avatar);
+            if (d.zalo_chat_id) setZaloChatId(d.zalo_chat_id);
+            if (d.telegram_chat_id) setTelegramChatId(d.telegram_chat_id);
             if (d.is_active !== undefined && d.is_active !== null) {
               setIsActive(String(d.is_active));
             }
@@ -492,6 +499,9 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 setDirectManagerId(erp.direct_manager_id || '');
                 setWorkplace(erp.workplace || '');
                 setPersonalPhone(erp.personal_phone || '');
+                if (erp.personal_phone) {
+                  setPhone(prev => prev || erp.personal_phone);
+                }
                 setExtNumber(erp.ext_number || '');
                 if (Array.isArray(erp.emergency_contacts) && erp.emergency_contacts.length > 0) {
                   setEmergencyContacts(erp.emergency_contacts);
@@ -961,8 +971,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         telegram_chat_id: telegramChatId,
         role,
         job_title: jobTitle,
-        avatar,
-        phone,
+        phone: phone.trim() || personalPhone.trim(),
+        personal_phone: personalPhone.trim() || phone.trim(),
         is_active: isActive,
         dob: dob || null,
         bio: bio || null,
@@ -2184,9 +2194,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           className="form-input" 
                           value={username} 
                           onChange={e => setUsername(e.target.value)} 
-                          placeholder="staff.name" 
-                          disabled={!!account}
-                          style={account ? { backgroundColor: 'var(--color-bg-light)', cursor: 'not-allowed' } : {}}
+                          disabled={Boolean(account && account.username)}
+                          style={Boolean(account && account.username) ? { backgroundColor: 'var(--color-bg-light)', cursor: 'not-allowed' } : {}}
                         />
                       </div>
                       <div className="form-group">

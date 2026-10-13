@@ -22,7 +22,7 @@ import { getModulePermissionScope, hasPermission } from '../store/authStore';
 
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { CalendarSkeleton, TableSkeleton, KpiCardSkeleton, CardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
-import { detectCountryFromPhone } from '../utils/phoneHelper';
+import { detectCountryFromPhone, canUserSeeFullPhone } from '../utils/phoneHelper';
 import { NotificationPreviewModal } from '../components/ui/NotificationPreviewModal';
 import { RuleSettings } from './RuleSettings';
 
@@ -368,7 +368,7 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
 const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any; location: any }) => {
   const { user } = useAuth();
   const userRole = user?.role as string;
-  const isAdmin = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin';
+  const isAdmin = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager' || userRole === 'director';
   const { language, t } = useLanguage();
   const { showConfirm } = useUIStore();
 
@@ -449,9 +449,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
   const consultantFilter = searchParams.get('consultant') || 'all';
   const roundFilter = searchParams.get('round') || 'all';
+  const projectFilter = searchParams.get('project') || 'all';
+  const leadPhanLoaiFilter = searchParams.get('lead_phan_loai') || 'all';
+  const donviChayFilter = searchParams.get('donvi_chay') || 'all';
+  const sourceFilter = searchParams.get('source') || 'all';
   const currentPage = Number(searchParams.get('page') || '1');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showMobileFilterDrawer, setShowMobileFilterDrawer] = useState(false);
+  const [showAdvancedFilterDrawer, setShowAdvancedFilterDrawer] = useState(false);
+  const [availableDonviChay, setAvailableDonviChay] = useState<string[]>([]);
+  const [availableLeadPhanLoai, setAvailableLeadPhanLoai] = useState<string[]>([]);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [sysSettings, setSysSettings] = useState<any>(null);
@@ -606,8 +613,25 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      const json = await fetchAPI(`get_logs&page=${currentPage}&pageSize=${ITEMS_PER_PAGE}&date=${encodeURIComponent(dateFilter)}&status=${encodeURIComponent(statusFilter)}&consultant=${encodeURIComponent(consultantFilter)}&round=${encodeURIComponent(roundFilter)}&search=${encodeURIComponent(searchTerm)}`);
+      const json = await fetchAPI(
+        `get_logs&page=${currentPage}&pageSize=${ITEMS_PER_PAGE}` +
+        `&date=${encodeURIComponent(dateFilter)}` +
+        `&status=${encodeURIComponent(statusFilter)}` +
+        `&consultant=${encodeURIComponent(consultantFilter)}` +
+        `&round=${encodeURIComponent(roundFilter)}` +
+        `&search=${encodeURIComponent(searchTerm)}` +
+        `&project=${encodeURIComponent(projectFilter)}` +
+        `&lead_phan_loai=${encodeURIComponent(leadPhanLoaiFilter)}` +
+        `&donvi_chay=${encodeURIComponent(donviChayFilter)}` +
+        `&source=${encodeURIComponent(sourceFilter)}`
+      );
       if (json.success) {
+        if (json.available_donvi_chay && Array.isArray(json.available_donvi_chay)) {
+          setAvailableDonviChay(json.available_donvi_chay);
+        }
+        if (json.available_lead_phan_loai && Array.isArray(json.available_lead_phan_loai)) {
+          setAvailableLeadPhanLoai(json.available_lead_phan_loai);
+        }
         // Map the backend structure to the frontend structure
         const mappedLeads = json.data.map((item: any) => ({
           id: item.id,
@@ -786,9 +810,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   };
 
   const handleCopyFullInfo = (lead: Lead) => {
-    const isUserAdmin = (user?.role === 'admin' || user?.role === 'superadmin');
-    const displayPhone = isUserAdmin ? lead.phone : maskPhone(lead.phone);
-    const displayEmail = isUserAdmin ? lead.email : maskEmail(lead.email);
+    const isFullAllowed = canUserSeeFullPhone(user, undefined, lead.takers, lead.assigned_to);
+    const displayPhone = isFullAllowed ? lead.phone : maskPhone(lead.phone);
+    const displayEmail = isFullAllowed ? lead.email : maskEmail(lead.email);
     const text = [
       `${t('Họ tên')}: ${lead.name || ''}`,
       `${t('Số điện thoại')}: ${displayPhone || ''}`,
@@ -803,27 +827,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const canSeeFullInfo = useMemo(() => {
     if (!selectedLead) return false;
-    const scope = getModulePermissionScope(user, 'leads', 'read');
-    if (scope === 'all') return true;
-    if (scope === 'team') {
-      const userTeamId = (user as any).team_id || (user as any).consultant_profile?.team_id;
-      if (userTeamId && Number((selectedLead as any).team_id) === Number(userTeamId)) return true;
-    }
-    if (scope === 'own') {
-      return (
-        (selectedLead.takers && selectedLead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id))) ||
-        Number(selectedLead.assigned_to) === Number(user?.consultant_id) ||
-        Number(selectedLead.assigned_to) === Number(user?.id)
-      );
-    }
-    if (scope === 'none') return false;
-    return (
-      user?.role === 'admin' ||
-      user?.role === 'superadmin' ||
-      (selectedLead.takers && selectedLead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id))) ||
-      Number(selectedLead.assigned_to) === Number(user?.consultant_id) ||
-      Number(selectedLead.assigned_to) === Number(user?.id)
-    );
+    return canUserSeeFullPhone(user, undefined, selectedLead.takers, selectedLead.assigned_to);
   }, [selectedLead, user]);
   const [notificationStatus, setNotificationStatus] = useState<any>(null);
   const [notifLoading, setNotifLoading] = useState(false);
@@ -1952,9 +1956,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     if (roundFilter && roundFilter !== 'all') count++;
     if (consultantFilter && consultantFilter !== 'all') count++;
     if (dateFilter && dateFilter !== 'all') count++;
+    if (projectFilter && projectFilter !== 'all') count++;
+    if (leadPhanLoaiFilter && leadPhanLoaiFilter !== 'all') count++;
+    if (donviChayFilter && donviChayFilter !== 'all') count++;
+    if (sourceFilter && sourceFilter !== 'all') count++;
     if (searchTerm && searchTerm.trim()) count++;
     return count;
-  }, [statusFilter, roundFilter, consultantFilter, dateFilter, searchTerm]);
+  }, [statusFilter, roundFilter, consultantFilter, dateFilter, projectFilter, leadPhanLoaiFilter, donviChayFilter, sourceFilter, searchTerm]);
 
   const handleResetAllFilters = () => {
     setSearchInput('');
@@ -2273,6 +2281,90 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 />
               </div>
             )}
+
+            {/* Dự án */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Dự án')}</span>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả dự án'), icon: <Building2 size={14} /> },
+                  ...projectsList.map(p => ({
+                    value: String(p.id || p.name),
+                    label: p.name
+                  }))
+                ]}
+                value={projectFilter}
+                onChange={val => updateParams('project', val.toString())}
+                searchable={true}
+                width="100%"
+              />
+            </div>
+
+            {/* Phân loại Lead */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Phân loại Lead')}</span>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả phân loại'), icon: <Tag size={14} /> },
+                  ...Array.from(new Set([
+                    ...availableLeadPhanLoai,
+                    ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
+                    'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
+                  ])).map(pl => ({
+                    value: pl,
+                    label: pl
+                  }))
+                ]}
+                value={leadPhanLoaiFilter}
+                onChange={val => updateParams('lead_phan_loai', val.toString())}
+                searchable={true}
+                width="100%"
+              />
+            </div>
+
+            {/* Đơn vị chạy */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đơn vị chạy')}</span>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả đơn vị'), icon: <Layers size={14} /> },
+                  ...Array.from(new Set([
+                    ...availableDonviChay,
+                    ...leads.map(l => l.donvi_chay).filter(Boolean)
+                  ])).map(dv => ({
+                    value: dv,
+                    label: dv
+                  }))
+                ]}
+                value={donviChayFilter}
+                onChange={val => updateParams('donvi_chay', val.toString())}
+                searchable={true}
+                width="100%"
+              />
+            </div>
+
+            {/* Nguồn / Kênh data */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Nguồn lead')}</span>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả nguồn'), icon: <Globe size={14} /> },
+                  { value: 'R3_Fb', label: 'R3_Fb (Facebook Ads)' },
+                  { value: 'facebook', label: 'Facebook' },
+                  { value: 'google', label: 'Google Ads' },
+                  { value: 'R3_Zalo', label: 'Zalo Ads' },
+                  { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
+                  { value: 'databank', label: 'Kho Data' },
+                  { value: 'website', label: 'Website' },
+                  { value: 'gioi_thieu', label: 'Giới thiệu' },
+                  { value: 'other', label: 'Khác' }
+                ]}
+                value={sourceFilter}
+                onChange={val => updateParams('source', val.toString())}
+                searchable={true}
+                width="100%"
+              />
+            </div>
           </div>
         )}
 
@@ -2610,42 +2702,130 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               )}
             </div>
 
-            {isMobile && (
-              <button
-                type="button"
-                onClick={() => setShowMobileFilterDrawer(true)}
-                style={{
-                  height: '38px',
-                  padding: '0 12px',
+            {/* Desktop / Tablet Quick Filter Dropdowns */}
+            {!isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                {/* 1. Dự án */}
+                <div style={{ width: 155 }}>
+                  <CustomSelect
+                    value={projectFilter}
+                    onChange={val => updateParams('project', val.toString())}
+                    options={[
+                      { value: 'all', label: t('Tất cả dự án'), icon: <Building2 size={13} /> },
+                      ...projectsList.map(p => ({
+                        value: String(p.id || p.name),
+                        label: p.name
+                      }))
+                    ]}
+                    searchable={true}
+                    width="100%"
+                  />
+                </div>
+
+                {/* 2. Phân loại */}
+                <div style={{ width: 145 }}>
+                  <CustomSelect
+                    value={leadPhanLoaiFilter}
+                    onChange={val => updateParams('lead_phan_loai', val.toString())}
+                    options={[
+                      { value: 'all', label: t('Tất cả phân loại'), icon: <Tag size={13} /> },
+                      ...Array.from(new Set([
+                        ...availableLeadPhanLoai,
+                        ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
+                        'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
+                      ])).map(pl => ({ value: pl, label: pl }))
+                    ]}
+                    searchable={true}
+                    width="100%"
+                  />
+                </div>
+
+                {/* 3. Đơn vị chạy */}
+                <div style={{ width: 150 }}>
+                  <CustomSelect
+                    value={donviChayFilter}
+                    onChange={val => updateParams('donvi_chay', val.toString())}
+                    options={[
+                      { value: 'all', label: t('Tất cả đơn vị'), icon: <Layers size={13} /> },
+                      ...Array.from(new Set([
+                        ...availableDonviChay,
+                        ...leads.map(l => l.donvi_chay).filter(Boolean)
+                      ])).map(dv => ({ value: dv, label: dv }))
+                    ]}
+                    searchable={true}
+                    width="100%"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Detailed Filter Button (Opens Slide-Over Drawer) */}
+            <button
+              type="button"
+              onClick={() => setShowAdvancedFilterDrawer(true)}
+              style={{
+                height: '38px',
+                padding: '0 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                border: activeFiltersCount > 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                borderRadius: '8px',
+                background: activeFiltersCount > 0 ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                color: activeFiltersCount > 0 ? 'var(--color-primary)' : 'var(--color-text)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                transition: 'all 0.2s',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+              title={t('Mở bộ lọc chi tiết chuyên sâu')}
+            >
+              <SlidersHorizontal size={14} />
+              <span className="hide-on-mobile">{t('Bộ lọc chi tiết')}</span>
+              <span className="show-on-mobile" style={{ display: isMobile ? 'inline' : 'none' }}>{t('Bộ lọc')}</span>
+              {activeFiltersCount > 0 && (
+                <span style={{
+                  background: 'var(--color-primary)',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  minWidth: 18,
+                  height: 18,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  justifyContent: 'center',
+                  fontSize: '0.65rem',
+                  lineHeight: 1
+                }}>
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+
+            {/* Quick Reset All Button */}
+            {activeFiltersCount > 0 && (
+              <button
+                type="button"
+                onClick={handleResetAllFilters}
+                style={{
+                  height: '38px',
+                  padding: '0 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
                   cursor: 'pointer',
-                  border: activeFiltersCount > 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
                   borderRadius: '8px',
-                  background: activeFiltersCount > 0 ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                  color: activeFiltersCount > 0 ? 'var(--color-primary)' : 'var(--color-text)',
-                  fontWeight: 700,
-                  fontSize: '0.8rem'
+                  background: 'rgba(239, 68, 68, 0.05)',
+                  color: 'var(--color-danger, #ef4444)',
+                  fontWeight: 600,
+                  fontSize: '0.78rem',
+                  transition: 'all 0.2s'
                 }}
+                title={t('Đặt lại toàn bộ bộ lọc')}
               >
-                <SlidersHorizontal size={14} />
-                <span>{t('Bộ lọc')}</span>
-                {activeFiltersCount > 0 && (
-                  <span style={{
-                    background: 'var(--color-primary)',
-                    color: '#fff',
-                    borderRadius: '50%',
-                    minWidth: 16,
-                    height: 16,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.65rem'
-                  }}>
-                    {activeFiltersCount}
-                  </span>
-                )}
+                <RotateCcw size={12} />
+                <span style={{ display: isMobile ? 'none' : 'inline' }}>{t('Đặt lại')}</span>
               </button>
             )}
 
@@ -2858,9 +3038,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </td>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                            {lead.phone || '-'}
+                            {canUserSeeFullPhone(user, undefined, lead.takers, lead.assigned_to) ? (lead.phone || '-') : maskPhone(lead.phone)}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email || '-'}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{canUserSeeFullPhone(user, undefined, lead.takers, lead.assigned_to) ? (lead.email || '-') : maskEmail(lead.email)}</div>
                         </td>
                         <td style={{ padding: '12px 16px' }}>
                           <span className="badge" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}>
@@ -3298,9 +3478,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                            {maskPhone(lead.phone)}
+                            {canUserSeeFullPhone(user, undefined, lead.takers, lead.assigned_to) ? (lead.phone || '-') : maskPhone(lead.phone)}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{maskEmail(lead.email)}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{canUserSeeFullPhone(user, undefined, lead.takers, lead.assigned_to) ? (lead.email || '-') : maskEmail(lead.email)}</div>
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
@@ -8240,40 +8420,366 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         document.body
       )}
 
+      {/* Advanced Filter Drawer Portal (Slide-Over from Right) */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showAdvancedFilterDrawer && (
+            <div 
+              style={{ position: 'fixed', inset: 0, zIndex: 99999999, display: 'flex', justifyContent: 'flex-end' }}
+            >
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setShowAdvancedFilterDrawer(false)}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  backdropFilter: 'blur(4px)',
+                  WebkitBackdropFilter: 'blur(4px)',
+                  zIndex: 99999999
+                }}
+              />
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  maxWidth: '430px',
+                  height: '100%',
+                  background: 'var(--color-surface)',
+                  borderLeft: '1px solid var(--color-border)',
+                  boxShadow: '-4px 0 32px rgba(0, 0, 0, 0.25)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  zIndex: 100000000
+                }}
+              >
+                {/* Header */}
+                <div style={{
+                  padding: '1.15rem 1.4rem',
+                  borderBottom: '1px solid var(--color-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'var(--color-bg-secondary, rgba(0,0,0,0.02))'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '10px',
+                      background: 'var(--color-primary-light)',
+                      color: 'var(--color-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <SlidersHorizontal size={18} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        {t('Bộ lọc chi tiết')}
+                      </h3>
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                        {t('Tùy chỉnh tiêu chí tìm kiếm Data & Lead')}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {activeFiltersCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleResetAllFilters}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--color-danger, #ef4444)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 8px',
+                          borderRadius: '6px'
+                        }}
+                        title={t('Đặt lại toàn bộ')}
+                      >
+                        <RotateCcw size={12} />
+                        <span>{t('Đặt lại')}</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedFilterDrawer(false)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--color-text-muted)',
+                        cursor: 'pointer',
+                        padding: '6px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.4rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                  {/* Card 1: Dự án & Phân loại & Đơn vị chạy */}
+                  <div style={{
+                    padding: '1rem',
+                    background: 'var(--color-bg)',
+                    borderRadius: '12px',
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                      <Building2 size={15} />
+                      <span>{t('Dự án & Nguồn Data')}</span>
+                    </div>
+
+                    {/* Dự án */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Dự án giao dịch')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'all', label: t('Tất cả dự án'), icon: <Building2 size={14} /> },
+                          ...projectsList.map(p => ({
+                            value: String(p.id || p.name),
+                            label: p.name
+                          }))
+                        ]}
+                        value={projectFilter}
+                        onChange={val => updateParams('project', val.toString())}
+                        searchable={true}
+                        width="100%"
+                      />
+                    </div>
+
+                    {/* Phân loại Lead */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Phân loại Lead')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'all', label: t('Tất cả phân loại'), icon: <Tag size={14} /> },
+                          ...Array.from(new Set([
+                            ...availableLeadPhanLoai,
+                            ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
+                            'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
+                          ])).map(pl => ({ value: pl, label: pl }))
+                        ]}
+                        value={leadPhanLoaiFilter}
+                        onChange={val => updateParams('lead_phan_loai', val.toString())}
+                        searchable={true}
+                        width="100%"
+                      />
+                    </div>
+
+                    {/* Đơn vị chạy */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đơn vị chạy')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'all', label: t('Tất cả đơn vị'), icon: <Layers size={14} /> },
+                          ...Array.from(new Set([
+                            ...availableDonviChay,
+                            ...leads.map(l => l.donvi_chay).filter(Boolean)
+                          ])).map(dv => ({ value: dv, label: dv }))
+                        ]}
+                        value={donviChayFilter}
+                        onChange={val => updateParams('donvi_chay', val.toString())}
+                        searchable={true}
+                        width="100%"
+                      />
+                    </div>
+
+                    {/* Nguồn / Kênh data */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Nguồn lead / Nền tảng')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'all', label: t('Tất cả nguồn'), icon: <Globe size={14} /> },
+                          { value: 'R3_Fb', label: 'R3_Fb (Facebook Ads)' },
+                          { value: 'facebook', label: 'Facebook' },
+                          { value: 'google', label: 'Google Ads' },
+                          { value: 'R3_Zalo', label: 'Zalo Ads' },
+                          { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
+                          { value: 'databank', label: 'Kho Data' },
+                          { value: 'website', label: 'Website' },
+                          { value: 'gioi_thieu', label: 'Giới thiệu' },
+                          { value: 'other', label: 'Khác' }
+                        ]}
+                        value={sourceFilter}
+                        onChange={val => updateParams('source', val.toString())}
+                        searchable={true}
+                        width="100%"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Card 2: Vòng phân bổ & Nhân sự */}
+                  <div style={{
+                    padding: '1rem',
+                    background: 'var(--color-bg)',
+                    borderRadius: '12px',
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                      <Users size={15} />
+                      <span>{t('Phân bổ & Nhân sự')}</span>
+                    </div>
+
+                    {/* Vòng phân bổ */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Vòng phân bổ')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'all', label: t('Tất cả vòng'), icon: <Tag size={14} /> },
+                          ...rounds.map(r => ({
+                            value: r.round_name,
+                            label: r.round_name
+                          }))
+                        ]}
+                        value={roundFilter}
+                        onChange={val => updateParams('round', val.toString())}
+                        searchable={true}
+                        width="100%"
+                      />
+                    </div>
+
+                    {/* Tư vấn viên */}
+                    {user?.role !== 'sale' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên / Sale phụ trách')}</label>
+                        <CustomSelect
+                          options={[
+                            { value: 'all', label: t('Tất cả TVV'), icon: <User size={14} /> },
+                            ...consultants.map(c => ({
+                              value: c.name,
+                              label: c.name,
+                              avatar: c.avatar
+                            }))
+                          ]}
+                          value={consultantFilter}
+                          onChange={val => updateParams('consultant', val.toString())}
+                          showAvatars={true}
+                          searchable={true}
+                          width="100%"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card 3: Thời gian & Trạng thái */}
+                  <div style={{
+                    padding: '1rem',
+                    background: 'var(--color-bg)',
+                    borderRadius: '12px',
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                      <Clock size={15} />
+                      <span>{t('Thời gian & Trạng thái')}</span>
+                    </div>
+
+                    {/* Thời gian */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Khoảng thời gian')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={14} /> },
+                          { value: 'Hôm nay', label: t('Hôm nay') },
+                          { value: 'Hôm qua', label: t('Hôm qua') },
+                          { value: 'Tuần này', label: t('Tuần này') },
+                          { value: 'Tuần trước', label: t('Tuần trước') },
+                          { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
+                          { value: '7 ngày qua', label: t('7 ngày qua') },
+                          { value: '30 ngày qua', label: t('30 ngày qua') },
+                          { value: 'Tháng này', label: t('Tháng này') },
+                          { value: 'Tháng trước', label: t('Tháng trước') }
+                        ]}
+                        value={dateFilter}
+                        onChange={val => updateParams('date', val.toString())}
+                        width="100%"
+                      />
+                    </div>
+
+                    {/* Trạng thái */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái Lead')}</label>
+                      <CustomSelect
+                        options={LEAD_STATUS_TABS.map(tab => ({
+                          value: tab.id,
+                          label: t(tab.label)
+                        }))}
+                        value={statusFilter}
+                        onChange={val => updateParams('status', val.toString())}
+                        width="100%"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div style={{
+                  padding: '1rem 1.4rem',
+                  borderTop: '1px solid var(--color-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: 'var(--color-surface)'
+                }}>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => {
+                      handleResetAllFilters();
+                      setShowAdvancedFilterDrawer(false);
+                    }}
+                    style={{ flex: 1, height: '42px', fontWeight: 600 }}
+                  >
+                    {t('Đặt lại')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => setShowAdvancedFilterDrawer(false)}
+                    style={{ flex: 2, height: '42px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <Check size={16} />
+                    <span>{t('Áp dụng bộ lọc')}</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
     </div>
   );
 };
 
-const DataListGuarded = (props: any) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { t } = useLanguage();
-  const role = String(user?.role || '').toLowerCase();
-  const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
+export const DataList = withRouterFreezer(DataListInner, (path) => path === '/data' || path === '/calendar');
 
-  if (!isAdmin) {
-    return (
-      <div className="p-8 max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4 text-red-600 dark:text-red-400">
-          <ShieldAlert size={32} />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          {t('Không có quyền truy cập')}
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-          {t('Chỉ Quản trị viên (Admin) mới có quyền truy cập Quản Lý Lead. Vui lòng liên hệ Admin để được hỗ trợ.')}
-        </p>
-        <button
-          onClick={() => navigate('/workspace')}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-        >
-          {t('Quay lại Bàn làm việc')}
-        </button>
-      </div>
-    );
-  }
-
-  return <DataListInner {...props} />;
-};
-
-export const DataList = withRouterFreezer(DataListGuarded, (path) => path === '/data' || path === '/calendar');

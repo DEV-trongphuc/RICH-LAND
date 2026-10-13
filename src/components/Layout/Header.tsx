@@ -1823,11 +1823,13 @@ export const Header = ({
                 'Bàn làm việc',
                 'Dashboard',
                 'Báo cáo',
+                'Khách hàng',
                 'Giỏ hàng',
                 'Kho Databank',
                 'Dự án',
                 'Nhân viên kinh doanh',
                 'Quản lý chấm công',
+                'Đối soát công bằng',
                 'Phiếu đặt cọc',
                 'Lịch trình'
               ];
@@ -1837,6 +1839,7 @@ export const Header = ({
                 'Bàn làm việc',
                 'Dashboard',
                 'Báo cáo',
+                'Khách hàng',
                 'Giỏ hàng',
                 'Kho Databank',
                 'Dự án',

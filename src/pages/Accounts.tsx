@@ -534,7 +534,7 @@ const AccountsInner = () => {
   const openEditModal = (acc: any) => {
     setEditingAccount(acc);
     setFormData({
-      username: acc.username,
+      username: acc.username || (acc.email ? acc.email.split('@')[0] : ''),
       password: '',
       name: acc.name,
       email: acc.email || '',

@@ -1752,11 +1752,6 @@ class ContactController {
             return 'all';
         }
 
-        // Strict business rule: Manager, Director, Assistant are NOT allowed to see or manage leads/contacts/customers
-        if (in_array($auth['role'], ['manager', 'director', 'assistant'], true) && in_array($module, ['leads', 'contacts', 'customers'], true)) {
-            return 'none';
-        }
-
         if (in_array($auth['role'], ['sale', 'sales'], true) && ($module === 'deals' || $module === 'leads' || $module === 'contacts' || $module === 'customers')) {
             return $action === 'delete' ? 'none' : 'own';
         }
@@ -1764,10 +1759,7 @@ class ContactController {
         if ($permissionsJson && isset($permissionsJson[$module][$action])) {
             $val = $permissionsJson[$module][$action];
             if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
-                if (in_array($auth['role'], ['manager', 'director', 'assistant'], true) && in_array($module, ['leads', 'contacts', 'customers'], true)) {
-                    return 'none';
-                }
-                if ($action !== 'delete' && $val === 'none' && in_array($auth['role'], ['sale', 'sales'], true)) {
+                if ($action !== 'delete' && $val === 'none' && in_array($auth['role'], ['sale', 'sales', 'manager', 'director', 'assistant'], true)) {
                     return 'own';
                 }
                 return $val;
@@ -1777,20 +1769,16 @@ class ContactController {
         // Default fallbacks
         $role = $auth['role'];
         if ($role === 'director') {
-            if ($module === 'settings' || in_array($module, ['leads', 'contacts', 'customers'], true)) {
+            if ($module === 'settings') {
                 return 'none';
             }
             return 'all';
         }
         if ($role === 'assistant') {
-            if (in_array($module, ['leads', 'contacts', 'customers'], true)) return 'none';
             return $action === 'delete' ? 'none' : 'all';
         }
         if ($role === 'manager') {
-            if (in_array($module, ['leads', 'contacts', 'customers'], true) || $action === 'delete') {
-                return 'none';
-            }
-            return 'team';
+            return $action === 'delete' ? 'none' : 'team';
         }
         if (in_array($role, ['sale', 'sales'], true)) {
             if ($module === 'projects') {

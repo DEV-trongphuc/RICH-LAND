@@ -24,6 +24,7 @@ import api from '../api/axios';
 import { fetchAPI } from '../utils/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../contexts/AuthContext';
+import { maskPhoneNumber, canUserSeeFullPhone } from '../utils/phoneHelper';
 import toast from 'react-hot-toast';
 
 const PAGE_SIZE = 10;
@@ -192,7 +193,7 @@ const FMT_VND = (n: any) => {
 };
 const AGO_DAYS = (d: string) => d ? Math.floor((Date.now()-new Date(d).getTime())/86400000) : 999;
 
-const ContactsPageInner: React.FC = () => {
+export const ContactsPage: React.FC = () => {
   const { user } = useAuth();
   const isSale = (user?.role as string) === 'sale' || (user?.role as string) === 'sales' || (user?.role as string) === 'telesale';
   const navigate = useNavigate();
@@ -3326,7 +3327,7 @@ const ContactsPageInner: React.FC = () => {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                               {columns.find(col => col.id === 'phone')?.visible && c.phone ? (
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                  <PhoneLink phone={c.phone} style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }} />
+                                  <PhoneLink phone={c.phone} ownerId={c.owner_id} style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }} />
                                 </div>
                               ) : null}
                               {columns.find(col => col.id === 'email')?.visible && c.email ? (
@@ -3651,7 +3652,7 @@ const ContactsPageInner: React.FC = () => {
                                 {fullName}
                               </span>
                               <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                                Điện thoại: {c.phone || '—'}
+                                Điện thoại: {canUserSeeFullPhone(user, c.owner_id) ? (c.phone || '—') : maskPhoneNumber(c.phone)}
                               </span>
                             </div>
                           </div>
@@ -3752,7 +3753,7 @@ const ContactsPageInner: React.FC = () => {
                               {c.phone && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--color-text)', fontWeight: 600 }}>
                                   <Phone size={12} style={{ color: 'var(--color-text-muted)' }} />
-                                  <span>{c.phone}</span>
+                                  <span>{canUserSeeFullPhone(user, c.owner_id) ? c.phone : maskPhoneNumber(c.phone)}</span>
                                 </div>
                               )}
                               {c.email && (
@@ -4245,35 +4246,4 @@ const ContactsPageInner: React.FC = () => {
     , document.body)}
     </div>
   );
-};
-
-export const ContactsPage: React.FC = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const role = String(user?.role || '').toLowerCase();
-  const isBlocked = ['manager', 'director', 'assistant', 'viewer'].includes(role);
-
-  if (isBlocked) {
-    return (
-      <div className="p-8 max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4 text-red-600 dark:text-red-400">
-          <AlertTriangle size={32} />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          Không có quyền truy cập
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-          Mục Khách hàng chỉ dành cho Admin và Nhân viên kinh doanh (Sales). Vui lòng liên hệ Admin để được hỗ trợ.
-        </p>
-        <button
-          onClick={() => navigate('/workspace')}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-        >
-          Quay lại Bàn làm việc
-        </button>
-      </div>
-    );
-  }
-
-  return <ContactsPageInner />;
 };

@@ -315,3 +315,53 @@ export function detectCountryFromPhone(phone: string | undefined): CountryInfo |
 
   return null;
 }
+
+export const maskPhoneNumber = (phone: string | null | undefined): string => {
+  if (!phone || phone === '-') return phone || '—';
+  const clean = String(phone).trim();
+  const digits = clean.replace(/[^\d+]/g, '');
+  if (digits.length < 7) return digits;
+  const start = digits.slice(0, 3);
+  const end = digits.slice(-3);
+  return `${start}****${end}`;
+};
+
+export const canUserSeeFullPhone = (
+  user: any,
+  itemOwnerId?: number | string | null,
+  itemTakers?: any[],
+  itemAssignedTo?: number | string | null
+): boolean => {
+  if (!user) return false;
+  const role = String(user.role || '').toLowerCase();
+  
+  // 1. Admin & Superadmin thấy 100%
+  if (role === 'admin' || role === 'superadmin' || role === 'super_admin') {
+    return true;
+  }
+  
+  // 2. Giám đốc, Quản lý, Trưởng phòng, Trợ lý, Viewer: KHÔNG ĐƯỢC THẤY (Bị Mask)
+  if (['director', 'manager', 'assistant', 'leader', 'viewer'].includes(role)) {
+    return false;
+  }
+  
+  // 3. Saler: Thấy số của khách/lead mình phụ trách
+  if (role === 'sale' || role === 'sales' || role === 'telesale') {
+    const userId = Number(user.id || 0);
+    const consultantId = Number(user.consultant_id || 0);
+    
+    if (itemOwnerId && (Number(itemOwnerId) === userId || Number(itemOwnerId) === consultantId)) {
+      return true;
+    }
+    if (itemAssignedTo && (Number(itemAssignedTo) === userId || Number(itemAssignedTo) === consultantId)) {
+      return true;
+    }
+    if (Array.isArray(itemTakers) && itemTakers.some((t: any) => Number(t.id) === userId || Number(t.id) === consultantId)) {
+      return true;
+    }
+    return false;
+  }
+  
+  return false;
+};
+

@@ -11,11 +11,6 @@ if (!function_exists('getModulePermissionScope')) {
         if ($role === 'superadmin' || $role === 'admin' || $role === 'super_admin') {
             return 'all';
         }
-
-        // Strict business rule: Manager, Director, Assistant are NOT allowed to see or manage leads/contacts/customers
-        if (in_array($role, ['manager', 'director', 'assistant'], true) && in_array($module, ['leads', 'contacts', 'customers'], true)) {
-            return 'none';
-        }
         
         if (($role === 'sale' || $role === 'sales') && in_array($module, ['deals', 'leads', 'contacts', 'customers'], true)) {
             return $action === 'delete' ? 'none' : 'own';
@@ -26,28 +21,22 @@ if (!function_exists('getModulePermissionScope')) {
         if (isset($permissions) && is_array($permissions)) {
             $val = $permissions[$module][$action] ?? null;
             if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
-                if (in_array($role, ['manager', 'director', 'assistant'], true) && in_array($module, ['leads', 'contacts', 'customers'], true)) {
-                    return 'none';
-                }
                 return $val;
             }
         }
         
         // Fallback based on role
         if ($role === 'director') {
-            if ($module === 'settings' || in_array($module, ['leads', 'contacts', 'customers'], true)) {
+            if ($module === 'settings') {
                 return 'none';
             }
             return 'all';
         }
         if ($role === 'manager') {
-            if (in_array($module, ['leads', 'contacts', 'customers'], true) || $action === 'delete') {
-                return 'none';
-            }
-            return 'team';
+            return $action === 'delete' ? 'none' : 'team';
         }
         if ($role === 'assistant') {
-            if (in_array($module, ['leads', 'contacts', 'customers'], true)) return 'none';
+            if ($module === 'leads') return $action === 'delete' ? 'none' : 'all';
             if ($module === 'deals') return 'all';
             return $action === 'delete' ? 'none' : 'all';
         }

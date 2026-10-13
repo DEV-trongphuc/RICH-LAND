@@ -2933,17 +2933,21 @@ switch ($action) {
         $stmtLeads->close();
 
         if (!empty($personIds)) {
-            $personIds = array_unique($personIds);
-            $tQuery = "SELECT c.person_id, c.id as contact_id, c.owner_id as id, 
-                       COALESCE(NULLIF(cons.name, ''), NULLIF(u.name, ''), NULLIF(u.full_name, ''), 'Tư vấn viên') as name, 
-                       COALESCE(cons.avatar, u.avatar, u.avatar_url) as avatar, 
-                       COALESCE(cons.phone, u.phone) as consultant_phone,
-                       c.created_at as claimed_at 
-                       FROM contacts c
-                       LEFT JOIN users u ON c.owner_id = u.id
-                       LEFT JOIN consultants cons ON (cons.id = c.owner_id OR u.email = cons.email OR u.id = cons.id)
-                       WHERE c.person_id IN ($inClause) AND (c.deleted_at IS NULL OR c.pipeline_status = 'not_lead')";
-            $tRes = $conn->query($tQuery);
+            $validPersonIds = array_values(array_filter(array_unique(array_map('intval', $personIds)), function($id) {
+                return $id > 0;
+            }));
+            if (!empty($validPersonIds)) {
+                $inClause = implode(',', $validPersonIds);
+                $tQuery = "SELECT c.person_id, c.id as contact_id, c.owner_id as id, 
+                           COALESCE(NULLIF(cons.name, ''), NULLIF(u.full_name, ''), 'Tư vấn viên') as name, 
+                           COALESCE(cons.avatar, u.avatar_url) as avatar, 
+                           COALESCE(cons.phone, u.phone) as consultant_phone,
+                           c.created_at as claimed_at 
+                           FROM contacts c
+                           LEFT JOIN users u ON c.owner_id = u.id
+                           LEFT JOIN consultants cons ON (cons.id = c.owner_id OR u.email = cons.email OR u.id = cons.id)
+                           WHERE c.person_id IN ($inClause) AND (c.deleted_at IS NULL OR c.pipeline_status = 'not_lead')";
+                $tRes = $conn->query($tQuery);
             if ($tRes) {
                 $takersMap = [];
                 while ($tRow = $tRes->fetch_assoc()) {
@@ -2960,6 +2964,7 @@ switch ($action) {
                 unset($row);
             }
         }
+    }
 
         // 2. Query rounds
         if ($isSale) {
@@ -3610,21 +3615,78 @@ switch ($action) {
             $isFilteringActive = true;
         }
 
+        // Filter by Project
+        if (isset($_GET['project']) && $_GET['project'] !== '' && $_GET['project'] !== 'all') {
+            $projVal = $conn->real_escape_string(trim($_GET['project']));
+            if (is_numeric($projVal)) {
+                $projId = (int)$projVal;
+                $extraCondition .= " AND (l.project_id = $projId OR proj.id = $projId)";
+            } else {
+                $extraCondition .= " AND (l.preferred_location LIKE '%$projVal%' OR proj.name LIKE '%$projVal%')";
+            }
+            $isFilteringActive = true;
+        }
+
+        // Filter by Lead Classification (lead_phan_loai / loai_lead)
+        if (isset($_GET['lead_phan_loai']) && $_GET['lead_phan_loai'] !== '' && $_GET['lead_phan_loai'] !== 'all') {
+            $phanLoai = $conn->real_escape_string(trim($_GET['lead_phan_loai']));
+            $extraCondition .= " AND (l.lead_phan_loai = '$phanLoai' OR l.loai_lead = '$phanLoai')";
+            $isFilteringActive = true;
+        }
+
+        // Filter by Running Unit (donvi_chay)
+        if (isset($_GET['donvi_chay']) && $_GET['donvi_chay'] !== '' && $_GET['donvi_chay'] !== 'all') {
+            $donvi = $conn->real_escape_string(trim($_GET['donvi_chay']));
+            $extraCondition .= " AND l.donvi_chay = '$donvi'";
+            $isFilteringActive = true;
+        }
+
+        // Filter by Source (source)
+        if (isset($_GET['source']) && $_GET['source'] !== '' && $_GET['source'] !== 'all') {
+            $src = $conn->real_escape_string(trim($_GET['source']));
+            $extraCondition .= " AND l.source = '$src'";
+            $isFilteringActive = true;
+        }
+
         // Apply silent exclusion rule only if explicitly requested
         if (isset($_GET['exclude_silent']) && $_GET['exclude_silent'] == '1') {
             $extraCondition .= " AND dl.status != 'silent'";
         }
 
-        // Strict access control: Only Admin sees all logs, Sale sees own logs, Manager/Director/Assistant are NOT allowed to see lead management
-        $curRole = $decodedUser['role'] ?? 'viewer';
-        if (in_array($curRole, ['manager', 'director', 'assistant', 'viewer'], true)) {
-            $extraCondition .= " AND 1=0";
-        } elseif (in_array($curRole, ['sale', 'sales'], true)) {
+        // Security check for Sale and Manager roles
+        if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale') {
             $extraCondition .= " AND dl.assigned_to = " . (int)($currentSaleConsultantId ?? 0);
+        } elseif (isset($decodedUser['role']) && $decodedUser['role'] === 'manager') {
+            $teamMemberIds = [];
+            $stmtTeam = $conn->prepare("SELECT id FROM consultants WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->bind_param("i", $decodedUser['user_id']);
+            $stmtTeam->execute();
+            $resTeam = $stmtTeam->get_result();
+            while ($tRow = $resTeam->fetch_assoc()) {
+                $teamMemberIds[] = (int)$tRow['id'];
+            }
+            $stmtTeam->close();
+            
+            // Also include the manager's own consultant ID
+            $stmtSelf = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+            $stmtSelf->bind_param("s", $decodedUser['email']);
+            $stmtSelf->execute();
+            $selfRow = $stmtSelf->get_result()->fetch_assoc();
+            $stmtSelf->close();
+            if ($selfRow) {
+                $teamMemberIds[] = (int)$selfRow['id'];
+            }
+            
+            $teamMemberIds = array_unique(array_filter($teamMemberIds));
+            if (!empty($teamMemberIds)) {
+                $extraCondition .= " AND dl.assigned_to IN (" . implode(',', $teamMemberIds) . ")";
+            } else {
+                $extraCondition .= " AND dl.assigned_to = " . (int)($selfRow ? $selfRow['id'] : 0);
+            }
         }
 
         // Get total count first with all active filters
-        $joinLeads = (strpos($extraCondition, 'l.') !== false || strpos($extraCondition, 'p.') !== false) ? "LEFT JOIN leads l ON dl.lead_id = l.id LEFT JOIN persons p ON l.person_id = p.id" : "";
+        $joinLeads = (strpos($extraCondition, 'l.') !== false || strpos($extraCondition, 'p.') !== false || strpos($extraCondition, 'proj.') !== false) ? "LEFT JOIN leads l ON dl.lead_id = l.id LEFT JOIN projects proj ON l.project_id = proj.id LEFT JOIN persons p ON l.person_id = p.id" : "";
         $joinConsultants = (strpos($extraCondition, 'c.') !== false) ? "LEFT JOIN consultants c ON dl.assigned_to = c.id" : "";
         $joinRounds = (strpos($extraCondition, 'dr.') !== false) ? "LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id" : "";
 
@@ -4001,7 +4063,33 @@ switch ($action) {
         }
         unset($row);
 
-        echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'status_counts' => $statusCounts, 'limit' => $responseLimit]);
+        $distinctDonvi = [];
+        $dvRes = $conn->query("SELECT DISTINCT donvi_chay FROM leads WHERE donvi_chay IS NOT NULL AND TRIM(donvi_chay) != '' ORDER BY donvi_chay ASC LIMIT 50");
+        if ($dvRes) {
+            while ($dvRow = $dvRes->fetch_assoc()) {
+                $val = trim($dvRow['donvi_chay']);
+                if ($val !== '') $distinctDonvi[] = $val;
+            }
+        }
+
+        $distinctPhanLoai = [];
+        $plRes = $conn->query("SELECT DISTINCT lead_phan_loai FROM leads WHERE lead_phan_loai IS NOT NULL AND TRIM(lead_phan_loai) != '' ORDER BY lead_phan_loai ASC LIMIT 50");
+        if ($plRes) {
+            while ($plRow = $plRes->fetch_assoc()) {
+                $val = trim($plRow['lead_phan_loai']);
+                if ($val !== '') $distinctPhanLoai[] = $val;
+            }
+        }
+
+        echo json_encode([
+            'success' => true, 
+            'data' => $data, 
+            'total_count' => $totalCount, 
+            'status_counts' => $statusCounts, 
+            'limit' => $responseLimit,
+            'available_donvi_chay' => array_values(array_unique($distinctDonvi)),
+            'available_lead_phan_loai' => array_values(array_unique($distinctPhanLoai))
+        ]);
         break;
 
     case 'get_lead_notification_status':
@@ -6574,6 +6662,7 @@ switch ($action) {
         $res = $conn->query("
             SELECT 
                 c.id, 
+                c.username,
                 c.full_name AS name, 
                 c.email, 
                 c.phone, 
@@ -6588,6 +6677,7 @@ switch ($action) {
                 c.vacation_mode, 
                 c.overtime_mode,
                 c.status,
+                c.is_active,
                 c.last_login_at AS last_login,
                 IF(c.use_custom_work_hours = 1, c.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time,
                 IF(c.use_custom_work_hours = 1, c.work_end_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_end_time' LIMIT 1)) AS work_end_time,
@@ -14051,6 +14141,18 @@ switch ($action) {
             if (isset($row['role']) && $row['role'] === 'sales') {
                 $row['role'] = 'sale';
             }
+            if (empty($row['username']) && !empty($row['email'])) {
+                $row['username'] = explode('@', $row['email'])[0];
+            }
+            if (empty($row['phone']) && !empty($row['address'])) {
+                $addrDec = json_decode($row['address'], true);
+                if (!empty($addrDec['erp_profile']['personal_phone'])) {
+                    $row['phone'] = $addrDec['erp_profile']['personal_phone'];
+                }
+            }
+            if (!isset($row['is_active']) || $row['is_active'] === null) {
+                $row['is_active'] = 1;
+            }
             $data[] = $row;
         }
         echo json_encode(['success' => true, 'data' => $data]);
@@ -15005,8 +15107,11 @@ switch ($action) {
             $isTargetSelf = $id === (int)$decodedUser['id'];
             $isAdmin = $decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'super_admin';
 
-            // Fetch target user's current role
-            $exRes = $conn->query("SELECT role, is_active, username FROM accounts WHERE id = " . $id);
+            // Fetch target user's current role from users table (or accounts view)
+            $exRes = $conn->query("SELECT role, is_active, username, phone FROM users WHERE id = " . $id);
+            if (!$exRes || $exRes->num_rows === 0) {
+                $exRes = $conn->query("SELECT role, is_active, username, phone FROM accounts WHERE id = " . $id);
+            }
             $exRow = $exRes ? $exRes->fetch_assoc() : null;
             $targetRole = $exRow ? $exRow['role'] : '';
 
@@ -15047,16 +15152,41 @@ switch ($action) {
                 $is_active = $exRow ? (int)$exRow['is_active'] : 1;
                 $username = $exRow ? $exRow['username'] : '';
             } else {
-                $is_active = isset($input['is_active']) ? (int)$input['is_active'] : 1;
+                if (isset($input['is_active']) && $input['is_active'] !== '') {
+                    $is_active = (int)$input['is_active'];
+                } else if ($exRow && isset($exRow['is_active'])) {
+                    $is_active = (int)$exRow['is_active'];
+                } else {
+                    $is_active = 1;
+                }
             }
 
             $email = trim($input['email'] ?? '');
+            if (empty($username) && $exRow && !empty($exRow['username'])) {
+                $username = $exRow['username'];
+            }
+            if (empty($username) && !empty($email)) {
+                $username = explode('@', $email)[0];
+            }
+
             $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
             $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
             if ($avatar === '')
                 $avatar = null;
 
             $phone = trim($input['phone'] ?? '');
+            if (empty($phone) && !empty($input['personal_phone'])) {
+                $phone = trim($input['personal_phone']);
+            }
+            if (empty($phone) && !empty($input['address'])) {
+                $addrDec = json_decode($input['address'], true);
+                if (!empty($addrDec['erp_profile']['personal_phone'])) {
+                    $phone = trim($addrDec['erp_profile']['personal_phone']);
+                }
+            }
+            if (empty($phone) && $exRow && !empty($exRow['phone'])) {
+                $phone = $exRow['phone'];
+            }
             $dob = !empty($input['dob']) ? trim($input['dob']) : null;
             $gender = !empty($input['gender']) ? trim($input['gender']) : null;
             $citizen_id = !empty($input['citizen_id']) ? trim($input['citizen_id']) : null;
@@ -15307,11 +15437,58 @@ switch ($action) {
             exit;
         }
 
-        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.job_title, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.signature_url, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, COALESCE(NULLIF(TRIM(u.telegram_chat_id), ''), NULLIF(TRIM(c.telegram_chat_id), '')) AS telegram_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours, u.bio FROM users u LEFT JOIN accounts a ON u.id = a.id LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id) WHERE u.id = ?");
+        $stmtP = $conn->prepare("SELECT 
+            u.id, 
+            u.username,
+            u.full_name AS name, 
+            u.email, 
+            COALESCE(NULLIF(TRIM(u.phone), ''), NULLIF(TRIM(c.phone), '')) AS phone,
+            COALESCE(NULLIF(TRIM(u.role), ''), NULLIF(TRIM(a.role), ''), 'sale') AS role, 
+            u.job_title, 
+            u.status, 
+            u.is_active,
+            u.leave_start, 
+            u.leave_end, 
+            u.work_start_time, 
+            u.work_end_time, 
+            u.work_schedule, 
+            u.avatar_url AS avatar, 
+            u.signature_url, 
+            u.vacation_mode, 
+            u.dob, 
+            u.gender, 
+            u.citizen_id, 
+            u.address, 
+            u.bank_name, 
+            u.bank_account, 
+            u.zalo_chat_id, 
+            COALESCE(NULLIF(TRIM(u.telegram_chat_id), ''), NULLIF(TRIM(c.telegram_chat_id), '')) AS telegram_chat_id, 
+            u.overtime_mode, 
+            u.permissions_json, 
+            u.extra_fields_json, 
+            u.manager_behavior_mode, 
+            u.use_custom_work_hours, 
+            u.bio 
+        FROM users u 
+        LEFT JOIN accounts a ON u.id = a.id 
+        LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id) 
+        WHERE u.id = ?");
         $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
         if ($consultantProfile) {
+            if (empty($consultantProfile['username']) && !empty($consultantProfile['email'])) {
+                $consultantProfile['username'] = explode('@', $consultantProfile['email'])[0];
+            }
+            if (empty($consultantProfile['phone']) && !empty($consultantProfile['address'])) {
+                $addrObj = json_decode($consultantProfile['address'], true);
+                if (!empty($addrObj['erp_profile']['personal_phone'])) {
+                    $consultantProfile['phone'] = $addrObj['erp_profile']['personal_phone'];
+                }
+            }
+            if (!isset($consultantProfile['is_active']) || $consultantProfile['is_active'] === null) {
+                $consultantProfile['is_active'] = 1;
+            }
             if ((int)($consultantProfile['use_custom_work_hours'] ?? 0) !== 1) {
                 $sysSettingsRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('global_work_start_time', 'global_work_end_time', 'global_work_schedule')");
                 $sysMap = [];

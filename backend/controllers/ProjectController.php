@@ -167,7 +167,7 @@ class ProjectController {
         // Fetch roster
         try {
             $rStmt = $this->db->prepare("
-                SELECT u.id, u.name as full_name, u.email, u.role, u.avatar_url
+                SELECT u.id, u.full_name, u.email, u.role, u.avatar_url
                 FROM users u
                 JOIN project_roster pr ON u.id = pr.user_id
                 WHERE pr.project_id = ?
