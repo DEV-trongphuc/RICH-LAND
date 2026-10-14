@@ -1408,6 +1408,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const [currentPage, setCurrentPage] = useState(1);
   const [databankPage, setDatabankPage] = useState(1);
+  const [databankPageSize, setDatabankPageSize] = useState<number>(() => Number(localStorage.getItem('richland_databank_page_size')) || 25);
   const [selectedPublicLeads, setSelectedPublicLeads] = useState<number[]>([]);
   const [calendarSubTab, setCalendarSubTab] = useState<'calendar' | 'attendance'>('calendar');
   const [wsTaskFilter, setWsTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
@@ -8419,13 +8420,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
   const renderDatabankView = () => {
-    const DATABANK_ITEMS_PER_PAGE = 10;
     const filteredPublicLeads = publicLeads.filter(lead => {
       if (!databankProjectFilter || databankProjectFilter === 'all') return true;
       return String(lead.project_id || '') === String(databankProjectFilter) || String(lead.project_name || '') === String(databankProjectFilter);
     });
-    const databankTotalPages = Math.ceil(filteredPublicLeads.length / DATABANK_ITEMS_PER_PAGE);
-    const paginatedPublicLeads = filteredPublicLeads.slice((databankPage - 1) * DATABANK_ITEMS_PER_PAGE, databankPage * DATABANK_ITEMS_PER_PAGE);
+    const databankTotalPages = Math.ceil(filteredPublicLeads.length / databankPageSize);
+    const paginatedPublicLeads = filteredPublicLeads.slice((databankPage - 1) * databankPageSize, databankPage * databankPageSize);
     const isAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
     const isQuotaExceeded = !isAdmin && publicQuota && (
       (publicQuota.claims_hour !== undefined && publicQuota.limit_hour !== undefined && Number(publicQuota.claims_hour) >= Number(publicQuota.limit_hour)) ||
@@ -9167,9 +9167,41 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* Pagination */}
             {databankTotalPages > 1 && (
-              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                  {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(databankPage - 1) * DATABANK_ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(databankPage * DATABANK_ITEMS_PER_PAGE, publicLeads.length)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{publicLeads.length}</span>
+              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0, flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span>
+                    {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(databankPage - 1) * databankPageSize + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(databankPage * databankPageSize, publicLeads.length)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{publicLeads.length}</span>
+                  </span>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>| Mỗi trang:</span>
+                    <select
+                      value={databankPageSize}
+                      onChange={e => {
+                        const newSize = Number(e.target.value);
+                        setDatabankPageSize(newSize);
+                        localStorage.setItem('richland_databank_page_size', String(newSize));
+                        setDatabankPage(1);
+                      }}
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        height: '26px'
+                      }}
+                    >
+                      <option value={10}>10 dòng</option>
+                      <option value={20}>20 dòng</option>
+                      <option value={25}>25 dòng</option>
+                      <option value={50}>50 dòng</option>
+                      <option value={100}>100 dòng</option>
+                    </select>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button onClick={() => setDatabankPage(prev => Math.max(prev - 1, 1))} disabled={databankPage === 1} className="btn sm secondary" style={{ height: 32, width: 32, padding: 0 }}>

@@ -63,11 +63,38 @@ export const Pagination: React.FC<PaginationProps> = ({
           color: 'var(--color-text-muted)',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.25rem',
+          gap: '0.4rem',
           flexWrap: 'wrap'
         }}
       >
-        Hiển thị <strong>{start}</strong> - <strong>{end}</strong> trên <strong>{total}</strong>
+        <span>Hiển thị <strong>{start}</strong> - <strong>{end}</strong> trên <strong>{total}</strong></span>
+        {showSizeChanger && onPageSizeChange && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>| Mỗi trang:</span>
+            <select
+              value={pageSize}
+              onChange={e => onPageSizeChange(Number(e.target.value))}
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: '6px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                cursor: 'pointer',
+                outline: 'none',
+                height: '26px'
+              }}
+            >
+              <option value={10}>10 dòng</option>
+              <option value={20}>20 dòng</option>
+              <option value={25}>25 dòng</option>
+              <option value={50}>50 dòng</option>
+              <option value={100}>100 dòng</option>
+            </select>
+          </div>
+        )}
       </div>
 
       <div 

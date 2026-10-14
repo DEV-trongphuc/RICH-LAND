@@ -292,7 +292,8 @@ export const ContactsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search.trim(), 300); // 300ms debounce
   const [pageSize, setPageSize] = useState<number>(() => {
-    return Number(localStorage.getItem('richland_contacts_page_size')) || 10;
+    const saved = Number(localStorage.getItem('richland_contacts_page_size'));
+    return (saved && saved > 10) ? saved : 25;
   });
 
   const [searchParams, setSearchParams] = useSearchParams();
