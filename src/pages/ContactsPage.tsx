@@ -33,7 +33,8 @@ const STATUS_LABEL: Record<string,string> = { lead:'Lead mới', qualified:'Đ�
 const STATUS_CLASS: Record<string,string> = { lead:'info', qualified:'warning', customer:'success', churned:'danger' };
 
 const getInteractionTime = (lastContact: string | null, updatedAt: string, createdAt: string) => {
-  if (!lastContact) return updatedAt || createdAt;
+  // Không fallback về updatedAt vì updatedAt thay đổi khi chạy script di trú / cập nhật trường
+  if (!lastContact) return null;
   const contactDate = lastContact.slice(0, 10);
   const updateDate = (updatedAt || '').slice(0, 10);
   if (contactDate === updateDate) {
@@ -131,7 +132,7 @@ const calcScore = (c: any, rules: any, decayDays = 5) => {
   if (tagList.length > 0) s += Number(r.has_tags ?? 10);
 
   // 10. Rớt nhiệt do quá X ngày không tương tác
-  const lastInteractionTime = c.last_contact || c.updated_at || c.created_at;
+  const lastInteractionTime = c.last_contact || c.created_at;
   if (lastInteractionTime) {
     const decayDaysInMs = decayDays * 24 * 60 * 60 * 1000;
     const isDecayed = (new Date().getTime() - new Date(lastInteractionTime).getTime()) > decayDaysInMs;
@@ -3432,7 +3433,7 @@ export const ContactsPage: React.FC = () => {
                                         </span>
                                       </span>
                                       <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                        Tương tác: {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
+                                        {getInteractionTime(c.last_contact, c.updated_at, c.created_at) ? `Tương tác: ${formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at)!)}` : 'Chưa tương tác'}
                                       </span>
                                     </div>
                                   </div>
@@ -3445,7 +3446,7 @@ export const ContactsPage: React.FC = () => {
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                     <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{c.owner_name}</span>
                                     <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                      Tương tác: {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
+                                      {getInteractionTime(c.last_contact, c.updated_at, c.created_at) ? `Tương tác: ${formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at)!)}` : 'Chưa tương tác'}
                                     </span>
                                   </div>
                                 </div>
@@ -3458,7 +3459,7 @@ export const ContactsPage: React.FC = () => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                   <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa giao</span>
                                   <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                                    Tương tác: {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
+                                    {getInteractionTime(c.last_contact, c.updated_at, c.created_at) ? `Tương tác: ${formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at)!)}` : 'Chưa tương tác'}
                                   </span>
                                 </div>
                               </div>
@@ -3833,7 +3834,7 @@ export const ContactsPage: React.FC = () => {
                               <div>
                                 <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Tương tác cuối</p>
                                 <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
+                                  {getInteractionTime(c.last_contact, c.updated_at, c.created_at) ? formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at)!) : 'Chưa tương tác'}
                                 </p>
                               </div>
                             </div>
