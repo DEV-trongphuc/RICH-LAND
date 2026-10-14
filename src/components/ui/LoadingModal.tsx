@@ -6,18 +6,33 @@ interface LoadingModalProps {
   isOpen?: boolean;
   text?: string;
   subText?: string;
+  badge?: string;
+  isMaintenance?: boolean;
 }
 
 export const LoadingModal: React.FC<LoadingModalProps> = ({ 
   isOpen: propsIsOpen, 
   text: propsText, 
-  subText: propsSubText 
+  subText: propsSubText,
+  badge: propsBadge,
+  isMaintenance = false
 }) => {
   const storeLoading = useUIStore((s) => s.loadingModal);
 
   const isOpen = propsIsOpen !== undefined ? propsIsOpen : storeLoading.isOpen;
-  const text = propsText || storeLoading.text || 'Đang xử lý dữ liệu...';
-  const subText = propsSubText || storeLoading.subText || 'Hệ thống đang đồng bộ và tính toán, vui lòng chờ trong giây lát';
+  const text = propsText || storeLoading.text || (isMaintenance ? 'Hệ Thống Đang Bảo Trì & Nâng Cấp' : 'Đang xử lý dữ liệu...');
+  const subText = propsSubText || storeLoading.subText || (isMaintenance ? 'RichLand CRM đang tiến hành bảo trì nâng cấp và đồng bộ hóa cơ sở dữ liệu lớn. Hệ thống tạm khóa truy cập để bảo vệ an toàn dữ liệu. Vui lòng quay lại sau ít phút!' : 'Hệ thống đang đồng bộ và tính toán, vui lòng chờ trong giây lát');
+  const badge = propsBadge || (isMaintenance ? '🛠️ CHẾ ĐỘ BẢO TRÌ HỆ THỐNG' : null);
+
+  const handleAdminBypass = () => {
+    const code = window.prompt('Nhập mã quản trị viên để mở khóa (Admin Bypass):');
+    if (code === 'richland2026' || code === 'mtp2026') {
+      localStorage.setItem('richland_maintenance_bypass', '1');
+      window.location.reload();
+    } else if (code) {
+      alert('Mã quản trị viên không chính xác!');
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -79,6 +94,30 @@ export const LoadingModal: React.FC<LoadingModalProps> = ({
             pointerEvents: 'none'
           }}
         />
+
+        {badge && (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 12px',
+              borderRadius: '999px',
+              background: 'rgba(239, 68, 68, 0.16)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              color: '#fca5a5',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              marginBottom: '1rem',
+              boxShadow: '0 0 16px rgba(239, 68, 68, 0.2)'
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 8px #ef4444' }} />
+            {badge}
+          </div>
+        )}
 
         {/* Multi-layered Animated Spinner Orb */}
         <div style={{ position: 'relative', width: '76px', height: '76px', marginBottom: '1.5rem', contain: 'strict' }}>
@@ -203,6 +242,34 @@ export const LoadingModal: React.FC<LoadingModalProps> = ({
             }}
           />
         </div>
+
+        {isMaintenance && (
+          <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.45)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>⏳ Trạng thái: Đang bảo trì nâng cấp</span>
+              <span>•</span>
+              <span>Dự kiến: Ít phút</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAdminBypass}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'rgba(255, 255, 255, 0.25)',
+                fontSize: '0.68rem',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.25)')}
+            >
+              Quản trị viên (Bypass)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

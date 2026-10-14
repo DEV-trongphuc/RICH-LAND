@@ -500,7 +500,20 @@ const KeyboardShortcutsController = () => {
 
 import { UploadProgressProvider } from './contexts/UploadProgressContext';
 
+// Maintenance Mode Flag - Toggle to false when maintenance is completed
+const IS_MAINTENANCE_MODE = true;
+
 export default function App() {
+  const [isBypassed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('bypass') === '1' || urlParams.get('admin') === '1') {
+      localStorage.setItem('richland_maintenance_bypass', '1');
+      return true;
+    }
+    return localStorage.getItem('richland_maintenance_bypass') === '1';
+  });
+
   useEffect(() => {
     const localTheme = localStorage.getItem('richland_theme') as 'light' | 'dark';
     if (localTheme) {
@@ -547,7 +560,16 @@ export default function App() {
             <GlobalConfirmModal />
             <QRCodeCallModal />
             <ProfileModal />
-            <LoadingModal />
+            {IS_MAINTENANCE_MODE && !isBypassed ? (
+              <LoadingModal 
+                isOpen={true}
+                isMaintenance={true}
+                text="Hệ Thống Đang Bảo Trì & Nâng Cấp"
+                subText="RichLand CRM đang tiến hành bảo trì định kỳ và đồng bộ hóa cơ sở dữ liệu lớn. Hệ thống tạm khóa truy cập để bảo vệ an toàn dữ liệu tuyệt đối. Dự kiến hoàn tất trong ít phút, vui lòng quay lại sau!"
+              />
+            ) : (
+              <LoadingModal />
+            )}
             <AutoUpdateChecker />
           </UploadProgressProvider>
         </AuthProvider>
