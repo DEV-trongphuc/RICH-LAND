@@ -439,7 +439,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('richland_global_date') || getDefaultDateFilter();
+    return searchParams.get('date') || 'all';
   });
 
   const handleUpdateDateFilter = (val: string) => {
@@ -718,9 +718,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
   useEffect(() => {
     if (isActive) {
-      const saved = localStorage.getItem('richland_global_date') || getDefaultDateFilter();
-      if (saved && saved !== dateFilter) {
-        setDateFilter(saved);
+      const urlDate = searchParams.get('date');
+      if (urlDate && urlDate !== dateFilter) {
+        setDateFilter(urlDate);
       } else {
         fetchLeads();
       }

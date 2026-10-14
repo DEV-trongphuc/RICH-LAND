@@ -45,7 +45,8 @@ export function parseWebhookData(note: string | null | undefined): ParsedWebhook
     'tinh_trang', 'link_fb', 'link_video_ads'
   ]);
 
-  const lines = note.split('\n');
+  const cleanRaw = String(note || '').replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '');
+  const lines = cleanRaw.split('\n');
   let inWebhookSection = false;
 
   for (const rawLine of lines) {
@@ -2033,21 +2034,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     try {
       if (contact.ttl1_data) {
         const parsed = typeof contact.ttl1_data === 'string' ? JSON.parse(contact.ttl1_data) : contact.ttl1_data;
+        const cleanStr = (s: any) => typeof s === 'string' ? s.replace(/\\n/g, '\n').replace(/\\r/g, '').trim() : (s || '');
         return {
           group1: Boolean(parsed.group1),
           group2: Boolean(parsed.group2),
           group3: Boolean(parsed.group3),
           group4: Boolean(parsed.group4),
           group5: Boolean(parsed.group5),
-          o_dau: parsed.o_dau || contact.address || '',
-          lam_gi: parsed.lam_gi || contact.job_title || '',
-          gia_dinh: parsed.gia_dinh || '',
-          hien_trang: parsed.hien_trang || '',
-          nhu_cau: parsed.nhu_cau || '',
-          rao_can: parsed.rao_can || '',
-          thong_tin_bo_sung: parsed.thong_tin_bo_sung || '',
-          giai_phap: parsed.giai_phap || '',
-          ngan_sach: parsed.ngan_sach || contact.budget || ''
+          o_dau: cleanStr(parsed.o_dau || contact.address || ''),
+          lam_gi: cleanStr(parsed.lam_gi || contact.job_title || ''),
+          gia_dinh: cleanStr(parsed.gia_dinh || ''),
+          hien_trang: cleanStr(parsed.hien_trang || ''),
+          nhu_cau: cleanStr(parsed.nhu_cau || ''),
+          rao_can: cleanStr(parsed.rao_can || ''),
+          thong_tin_bo_sung: cleanStr(parsed.thong_tin_bo_sung || ''),
+          giai_phap: cleanStr(parsed.giai_phap || ''),
+          ngan_sach: cleanStr(parsed.ngan_sach || contact.budget || '')
         };
       }
     } catch {}
@@ -3235,10 +3237,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const formatNote = (text: string) => {
     if (!text) return '';
-    if (/<[a-z][\s\S]*>/i.test(text)) {
-      return <span className="rich-text-editor-content" dangerouslySetInnerHTML={{ __html: text }} style={{ display: 'block', wordBreak: 'break-word' }} />;
+    const cleanText = String(text).replace(/\\n/g, '\n').replace(/\\r/g, '');
+    if (/<[a-z][\s\S]*>/i.test(cleanText)) {
+      return <span className="rich-text-editor-content" dangerouslySetInnerHTML={{ __html: cleanText }} style={{ display: 'block', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }} />;
     }
-    const parts = text.split(/(@[a-zA-Z0-9_\u00C0-\u1EF9]+)/g);
+    const parts = cleanText.split(/(@[a-zA-Z0-9_\u00C0-\u1EF9]+)/g);
     return parts.map((part, i) => {
       if (part.startsWith('@')) {
         const name = part.substring(1);
@@ -3387,21 +3390,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             setBaseData(freshContact);
             lastLoadedContactIdRef.current = freshContact.id;
             try {
+              const cleanStr = (s: any) => typeof s === 'string' ? s.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '').trim() : (s || '');
               if (freshContact.ttl1_data) {
                 const parsed = typeof freshContact.ttl1_data === 'string' ? JSON.parse(freshContact.ttl1_data) : freshContact.ttl1_data;
                 if (parsed && typeof parsed === 'object') {
                   setTtl1Data(prev => ({
                     ...prev,
-                    ...parsed,
-                    o_dau: parsed.o_dau || freshContact.address || prev.o_dau || '',
-                    lam_gi: parsed.lam_gi || freshContact.job_title || prev.lam_gi || ''
+                    group1: Boolean(parsed.group1),
+                    group2: Boolean(parsed.group2),
+                    group3: Boolean(parsed.group3),
+                    group4: Boolean(parsed.group4),
+                    group5: Boolean(parsed.group5),
+                    o_dau: cleanStr(parsed.o_dau || freshContact.address || prev.o_dau || ''),
+                    lam_gi: cleanStr(parsed.lam_gi || freshContact.job_title || prev.lam_gi || ''),
+                    gia_dinh: cleanStr(parsed.gia_dinh || prev.gia_dinh || ''),
+                    hien_trang: cleanStr(parsed.hien_trang || prev.hien_trang || ''),
+                    nhu_cau: cleanStr(parsed.nhu_cau || prev.nhu_cau || ''),
+                    rao_can: cleanStr(parsed.rao_can || prev.rao_can || ''),
+                    thong_tin_bo_sung: cleanStr(parsed.thong_tin_bo_sung || prev.thong_tin_bo_sung || ''),
+                    giai_phap: cleanStr(parsed.giai_phap || prev.giai_phap || ''),
+                    ngan_sach: cleanStr(parsed.ngan_sach || prev.ngan_sach || '')
                   }));
                 }
               } else if (freshContact.address || freshContact.job_title) {
                 setTtl1Data(prev => ({
                   ...prev,
-                  o_dau: freshContact.address || prev.o_dau || '',
-                  lam_gi: freshContact.job_title || prev.lam_gi || ''
+                  o_dau: cleanStr(freshContact.address || prev.o_dau || ''),
+                  lam_gi: cleanStr(freshContact.job_title || prev.lam_gi || '')
                 }));
               }
             } catch {}
@@ -3812,12 +3827,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setBaseData(mergedContact);
       setBaseTags(contact.tags || []);
       
-      let initialTtl1 = { group1: false, group2: false, group3: false, group4: false, group5: false, o_dau: '', lam_gi: '', gia_dinh: '', hien_trang: '', nhu_cau: '', rao_can: '', thong_tin_bo_sung: '', giai_phap: '' };
+      let initialTtl1 = { group1: false, group2: false, group3: false, group4: false, group5: false, o_dau: '', lam_gi: '', gia_dinh: '', hien_trang: '', nhu_cau: '', rao_can: '', thong_tin_bo_sung: '', giai_phap: '', ngan_sach: '' };
       try {
+        const cleanStr = (s: any) => typeof s === 'string' ? s.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '').trim() : (s || '');
         if (contact.ttl1_data) {
           const parsed = typeof contact.ttl1_data === 'string' ? JSON.parse(contact.ttl1_data) : contact.ttl1_data;
           if (parsed && typeof parsed === 'object') {
-            initialTtl1 = { ...initialTtl1, ...parsed };
+            initialTtl1 = {
+              group1: Boolean(parsed.group1),
+              group2: Boolean(parsed.group2),
+              group3: Boolean(parsed.group3),
+              group4: Boolean(parsed.group4),
+              group5: Boolean(parsed.group5),
+              o_dau: cleanStr(parsed.o_dau || contact.address || ''),
+              lam_gi: cleanStr(parsed.lam_gi || contact.job_title || ''),
+              gia_dinh: cleanStr(parsed.gia_dinh || ''),
+              hien_trang: cleanStr(parsed.hien_trang || ''),
+              nhu_cau: cleanStr(parsed.nhu_cau || ''),
+              rao_can: cleanStr(parsed.rao_can || ''),
+              thong_tin_bo_sung: cleanStr(parsed.thong_tin_bo_sung || ''),
+              giai_phap: cleanStr(parsed.giai_phap || ''),
+              ngan_sach: cleanStr(parsed.ngan_sach || contact.budget || '')
+            };
           }
         }
       } catch {}

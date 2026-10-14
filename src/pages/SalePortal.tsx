@@ -8823,15 +8823,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             border: '1px solid var(--color-border)',
             borderRadius: '16px',
             overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
+            boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: 'calc(100vh - 270px)',
+            minHeight: '400px'
           }}>
             <div style={{
               overflowX: 'auto',
-              maxHeight: '680px',
+              flex: 1,
               overflowY: 'auto'
             }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
-                <thead>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
                     {isAdmin && (
                       <th style={{ padding: '1rem', width: '40px' }}>
@@ -9154,7 +9158,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* Pagination */}
             {databankTotalPages > 1 && (
-              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)' }}>
+              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
                   {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(databankPage - 1) * DATABANK_ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(databankPage * DATABANK_ITEMS_PER_PAGE, publicLeads.length)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{publicLeads.length}</span>
                 </div>
