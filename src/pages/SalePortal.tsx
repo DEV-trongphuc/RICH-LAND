@@ -4833,7 +4833,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         if (res.quota) {
           setPublicQuota(res.quota);
         } else if (res.max_parallel_claims) {
-          setPublicQuota((prev: any) => ({ ...prev, max_parallel_sales_per_client: Number(res.max_parallel_claims) }));
+          setPublicQuota((prev: any) => ({
+            ...prev,
+            claims_hour: prev?.claims_hour ?? 0,
+            limit_hour: prev?.limit_hour ?? 5,
+            claims_day: prev?.claims_day ?? 0,
+            limit_day: prev?.limit_day ?? 20,
+            claims_month: prev?.claims_month ?? 0,
+            limit_month: prev?.limit_month ?? 300,
+            max_parallel_sales_per_client: Number(res.max_parallel_claims)
+          }));
         }
       }
     } catch (e) {
@@ -8510,22 +8519,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {[
                     {
                       label: t('Giờ'),
-                      value: publicQuota.claims_hour,
-                      limit: publicQuota.limit_hour,
+                      value: publicQuota.claims_hour ?? 0,
+                      limit: publicQuota.limit_hour ?? 5,
                       icon: <Clock size={12} />,
                       color: 'var(--color-primary)',
                     },
                     {
                       label: t('Ngày'),
-                      value: publicQuota.claims_day,
-                      limit: publicQuota.limit_day,
+                      value: publicQuota.claims_day ?? 0,
+                      limit: publicQuota.limit_day ?? 20,
                       icon: <Calendar size={12} />,
                       color: '#d97706',
                     },
                     {
                       label: t('Tháng'),
-                      value: publicQuota.claims_month,
-                      limit: publicQuota.limit_month,
+                      value: publicQuota.claims_month ?? 0,
+                      limit: publicQuota.limit_month ?? 300,
                       icon: <Layers size={12} />,
                       color: '#2563eb',
                     }
