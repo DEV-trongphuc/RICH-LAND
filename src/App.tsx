@@ -501,7 +501,7 @@ const KeyboardShortcutsController = () => {
 import { UploadProgressProvider } from './contexts/UploadProgressContext';
 
 // Maintenance Mode Flag - Toggle to false when maintenance is completed
-const IS_MAINTENANCE_MODE = true;
+const IS_MAINTENANCE_MODE = false;
 
 export default function App() {
   const [isBypassed] = useState<boolean>(() => {
