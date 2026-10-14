@@ -2921,7 +2921,7 @@ switch ($action) {
             SELECT dl.id as log_id, dl.received_at, dl.status, dl.message, dl.round_id, dl.assigned_to,
                    l.id as lead_id, l.name as lead_name, l.phone, l.email as lead_email, l.source, l.type, l.note,
                    COALESCE(l.created_at, dl.received_at) as created_at,
-                   l.is_accepted, l.accepted_at, l.last_interaction_date, l.person_id,
+                   l.is_accepted, l.accepted_at, l.last_assigned_at, l.last_interaction_date, l.person_id,
                    r.round_name,
                    c.name as sale_name, c.email as sale_email, c.avatar as sale_avatar,
                    dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason, dr.created_at as report_created_at,
@@ -4081,7 +4081,7 @@ switch ($action) {
                 }
             }
 
-            // Fallback for persons with Not Lead status where contact was detached or unassigned
+            // Fallback for persons without created contacts yet (e.g. pending acceptance, reallocated or reported)
             foreach ($personIds as $pId) {
                 if (empty($takersMap[$pId])) {
                     $histQuery = "SELECT 
@@ -4091,13 +4091,23 @@ switch ($action) {
                                     COALESCE(cons.phone, u.phone) as consultant_phone,
                                     tm.name as team_name,
                                     COALESCE(dr.round_name, (SELECT dr2.round_name FROM distribution_rounds dr2 WHERE dr2.id = rpt.round_id LIMIT 1)) as round_name,
-                                    'not_lead' as pipeline_status,
-                                    'not_lead' as contact_status,
+                                    CASE 
+                                        WHEN (p.is_blocked = 1 OR rpt.status = 'approved' OR l.status = 'not_lead') THEN 'not_lead'
+                                        WHEN (l.is_accepted = 0 OR dl.status = 'assigned') THEN 'assigned'
+                                        ELSE 'chua_xac_dinh'
+                                    END as pipeline_status,
+                                    CASE 
+                                        WHEN (p.is_blocked = 1 OR rpt.status = 'approved' OR l.status = 'not_lead') THEN 'not_lead'
+                                        WHEN (l.is_accepted = 0 OR dl.status = 'assigned') THEN 'assigned'
+                                        ELSE 'chua_xac_dinh'
+                                    END as contact_status,
+                                    l.is_accepted,
                                     l.lead_phan_loai,
                                     l.source,
                                     COALESCE(dl.received_at, rpt.created_at, l.created_at) as claimed_at,
                                     COALESCE(dl.received_at, rpt.created_at, l.created_at) as updated_at
                                   FROM leads l
+                                  LEFT JOIN persons p ON l.person_id = p.id
                                   LEFT JOIN distribution_logs dl ON (dl.lead_id = l.id AND dl.assigned_to > 0)
                                   LEFT JOIN data_reports rpt ON (rpt.lead_id = l.id AND rpt.consultant_id > 0)
                                   LEFT JOIN users u ON (dl.assigned_to = u.id OR rpt.consultant_id = u.id)
@@ -18669,7 +18679,7 @@ switch ($action) {
                             $upLead->close();
 
                             $logMsgAppend = "\n[Phân bổ tự động qua vòng xoay " . $roundName . " cho TVV " . ($whRow['name'] ?? '') . " lúc " . date('Y-m-d H:i:s') . "]";
-                            $upLog = $conn->prepare("UPDATE distribution_logs SET status = ?, round_id = ?, assigned_to = ?, message = CONCAT(COALESCE(message, ''), ?) WHERE id = ?");
+                            $upLog = $conn->prepare("UPDATE distribution_logs SET status = ?, round_id = ?, assigned_to = ?, received_at = NOW(), message = CONCAT(COALESCE(message, ''), ?) WHERE id = ?");
                             $upLog->bind_param("siisi", $logStatus, $target_round_id, $assignedConsultantId, $logMsgAppend, $log_id);
                             $upLog->execute();
                             $upLog->close();

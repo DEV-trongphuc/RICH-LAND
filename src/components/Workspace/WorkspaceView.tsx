@@ -731,7 +731,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             const validPending = (pendingLeadsToAccept || []).filter((lead: any) => {
               const leadRecallMins = Number(lead.lead_recall_minutes) || 2;
               const limitMs = leadRecallMins * 60 * 1000;
-              const targetDate = parseServerDate(lead.received_at || lead.last_assigned_at || lead.last_interaction_date).getTime();
+              const targetDate = parseServerDate(lead.last_assigned_at || lead.last_interaction_date || lead.received_at).getTime();
               const isOverdue = limitMs > 0 && targetDate > 0 && (Date.now() - targetDate) >= limitMs;
               return !isOverdue;
             });
@@ -788,7 +788,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                     const leadId = Number(lead.lead_id || lead.id);
                     const leadRecallMins = Number(lead.lead_recall_minutes) || 2;
                     const limitMs = leadRecallMins * 60 * 1000;
-                    const targetDate = parseServerDate(lead.received_at || lead.last_assigned_at || lead.last_interaction_date).getTime();
+                    const targetDate = parseServerDate(lead.last_assigned_at || lead.last_interaction_date || lead.received_at).getTime();
                     const remainingMs = Math.max(0, limitMs - (Date.now() - targetDate));
                     const totalSecs = Math.floor(remainingMs / 1000);
                     const mins = Math.floor(totalSecs / 60);

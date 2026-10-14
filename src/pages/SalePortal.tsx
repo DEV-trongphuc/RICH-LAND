@@ -3026,7 +3026,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const activeOffers = unacceptedLeads.map((lead: any) => {
       const leadRecallMins = Number(lead.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
       const limitMs = leadRecallMins * 60 * 1000;
-      const targetDate = parseServerDate(lead.received_at || lead.last_assigned_at || lead.last_interaction_date).getTime();
+      const targetDate = parseServerDate(lead.last_assigned_at || lead.last_interaction_date || lead.received_at).getTime();
       const elapsedMs = now - targetDate;
       const remainingMs = limitMs - elapsedMs;
       return { lead, remainingMs, leadRecallMins, limitMs };
@@ -3049,7 +3049,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       // Hết hạn rồi thì vứt, không hiển thị ở bàn làm việc hay badge
       const leadRecallMins = Number(l.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
       const limitMs = leadRecallMins * 60 * 1000;
-      const targetDate = parseServerDate(l.received_at || l.last_assigned_at || l.last_interaction_date).getTime();
+      const targetDate = parseServerDate(l.last_assigned_at || l.last_interaction_date || l.received_at).getTime();
       const elapsedMs = now - targetDate;
       if (limitMs > 0 && targetDate > 0 && elapsedMs >= limitMs) {
         return false;
@@ -18561,7 +18561,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     alignItems: 'center',
                     gap: '4px'
                   }}>
-                    <Clock size={12} /> {t('Được chia lúc:')} {parseServerDate(activeIncomingOffer.lead.received_at || activeIncomingOffer.lead.last_assigned_at || activeIncomingOffer.lead.last_interaction_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    <Clock size={12} /> {t('Được chia lúc:')} {parseServerDate(activeIncomingOffer.lead.last_assigned_at || activeIncomingOffer.lead.last_interaction_date || activeIncomingOffer.lead.received_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               </div>

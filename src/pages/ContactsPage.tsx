@@ -220,7 +220,7 @@ export const ContactsPage: React.FC = () => {
               // Hết hạn rồi thì vứt, không hiển thị banner
               const leadRecallMins = Number(l.lead_recall_minutes) || 2;
               const limitMs = leadRecallMins * 60 * 1000;
-              const targetDate = new Date((l.received_at || l.last_assigned_at || l.last_interaction_date || '').replace(/-/g, '/')).getTime();
+              const targetDate = new Date((l.last_assigned_at || l.last_interaction_date || l.received_at || '').replace(/-/g, '/')).getTime();
               if (limitMs > 0 && targetDate > 0 && (Date.now() - targetDate) >= limitMs) {
                 return false;
               }

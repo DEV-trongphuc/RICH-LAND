@@ -5493,7 +5493,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
                                   {/* 3. Trạng thái của Sale */}
                                   <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
-                                    {getHighestStatusBadge(tk.pipeline_status || tk.contact_status)}
+                                    {getHighestStatusBadge(tk.pipeline_status || tk.contact_status, tk)}
                                   </td>
 
                                   {/* 4. Phân loại */}
