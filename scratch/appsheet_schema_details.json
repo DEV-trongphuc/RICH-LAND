@@ -1,0 +1,1544 @@
+[
+  {
+    "name": "BAN_HANG",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'PK, vd BH507071030123456'"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'FK -> DU_AN.id'"
+      },
+      {
+        "name": "ma_can",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL"
+      },
+      {
+        "name": "toa",
+        "type": "varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL"
+      },
+      {
+        "name": "quycan_id",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'FK -> QUY_CAN.id (nếu căn có trong quỹ)'"
+      },
+      {
+        "name": "khach_hang",
+        "type": "varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Tên khách hàng'"
+      },
+      {
+        "name": "khtn_id",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'FK -> KHTN.id (nếu khách từ hệ thống)'"
+      },
+      {
+        "name": "lsgd_id",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'FK -> LS_GIAODICH.id sau khi map'"
+      },
+      {
+        "name": "team_id",
+        "type": "varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'FK -> TEAM.id'"
+      },
+      {
+        "name": "ma_nv",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'FK -> NHAN_VIEN.id, sales chính'"
+      },
+      {
+        "name": "chia_hoahong",
+        "type": "varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Chia hoa hồng, vd NGHIA93 80 VAN95 20'"
+      },
+      {
+        "name": "nguon_khach",
+        "type": "varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'MKT / Cá nhân / SLK...'"
+      },
+      {
+        "name": "gio_hang",
+        "type": "varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Giỏ hàng/sàn: Rich Land, Đông Đô Land, SLK...'"
+      },
+      {
+        "name": "tinh_trang",
+        "type": "varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'VBTT / CN VBTT / XNĐK / coc_treo / thanh_ly'"
+      },
+      {
+        "name": "dat_coc",
+        "type": "bigint DEFAULT NULL COMMENT 'Tiền đặt cọc (VND)'"
+      },
+      {
+        "name": "doanh_thu",
+        "type": "bigint DEFAULT NULL COMMENT 'Tổng doanh thu tạm tính (VND) - map phi_tamtinh'"
+      },
+      {
+        "name": "thuong",
+        "type": "bigint DEFAULT NULL COMMENT 'Thưởng (VND)'"
+      },
+      {
+        "name": "ty_le_phi",
+        "type": "decimal(6,3) DEFAULT NULL COMMENT 'Tỷ lệ phí %, vd 4.5'"
+      },
+      {
+        "name": "phi_nvkd",
+        "type": "bigint DEFAULT NULL COMMENT 'Doanh thu/phí NVKD (VND)'"
+      },
+      {
+        "name": "ngay_datcoc",
+        "type": "date DEFAULT NULL"
+      },
+      {
+        "name": "ngay_xndk",
+        "type": "date DEFAULT NULL COMMENT 'Ngày ký XNĐK'"
+      },
+      {
+        "name": "ngay_ky_hdmb",
+        "type": "date DEFAULT NULL COMMENT 'Ngày ký HĐMB'"
+      },
+      {
+        "name": "ngay_thanhly",
+        "type": "date DEFAULT NULL"
+      },
+      {
+        "name": "ghi_chu",
+        "type": "text COLLATE utf8mb4_unicode_ci"
+      },
+      {
+        "name": "deleted",
+        "type": "tinyint NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "ngay_tao",
+        "type": "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "nguoi_tao",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci DEFAULT NULL"
+      },
+      {
+        "name": "last_update",
+        "type": "datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP"
+      }
+    ],
+    "insertCount": 0
+  },
+  {
+    "name": "BOTCALL",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(25) NOT NULL"
+      },
+      {
+        "name": "phone",
+        "type": "varchar(20) NOT NULL"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(25) NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "team_id",
+        "type": "varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "lead_id",
+        "type": "varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      }
+    ],
+    "insertCount": 0
+  },
+  {
+    "name": "CAMPAIGN",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(25) NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "is_active",
+        "type": "tinyint(1) NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "duan_cover",
+        "type": "varchar(255) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "CHIPHI_DUAN",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(30) NOT NULL"
+      },
+      {
+        "name": "date",
+        "type": "varchar(20) DEFAULT NULL"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(25) DEFAULT NULL"
+      },
+      {
+        "name": "spend",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "phan_loai",
+        "type": "varchar(10) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 4
+  },
+  {
+    "name": "DASHBOARD",
+    "cols": [
+      {
+        "name": "id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "link",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "hien_thi",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "mo_ta",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "icon",
+        "type": "varchar(300) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "DOT_THANHTOAN",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'PK, vd DTT507071030123456'"
+      },
+      {
+        "name": "banhang_id",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'FK -> BAN_HANG.id'"
+      },
+      {
+        "name": "dot_so",
+        "type": "int NOT NULL COMMENT 'Đợt thứ mấy: 1,2,3...'"
+      },
+      {
+        "name": "loai_tinh",
+        "type": "varchar(15) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'phan_tram' COMMENT 'phan_tram / co_dinh (luật gốc của CĐT)'"
+      },
+      {
+        "name": "gia_tri",
+        "type": "decimal(15,2) DEFAULT NULL COMMENT 'Giá trị luật: % (vd 10.00) hoặc VND nếu co_dinh'"
+      },
+      {
+        "name": "sotien_dukien",
+        "type": "bigint DEFAULT NULL COMMENT 'Số tiền phải thu (VND), tính sẵn khi sinh đợt'"
+      },
+      {
+        "name": "ngay_dukien",
+        "type": "date DEFAULT NULL COMMENT 'Hạn thu'"
+      },
+      {
+        "name": "sotien_thucthu",
+        "type": "bigint DEFAULT NULL COMMENT 'Số tiền thực thu (VND)'"
+      },
+      {
+        "name": "ngay_thucthu",
+        "type": "date DEFAULT NULL COMMENT 'Ngày thực thu'"
+      },
+      {
+        "name": "hinh_thuc",
+        "type": "varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'TT / UNC'"
+      },
+      {
+        "name": "dung_han",
+        "type": "tinyint GENERATED ALWAYS AS ((case when ((`ngay_thucthu` is null) or (`ngay_dukien` is null)) then NULL when ((`ngay_thucthu` <= `ngay_dukien`) and (coalesce(`sotien_thucthu`,0) >= coalesce(`sotien_dukien`,0))) then 1 else 0 end)) STORED COMMENT '1=đúng hạn đủ tiền, 0=trễ/thiếu, NULL=chưa thu/chưa có hạn'"
+      },
+      {
+        "name": "ghi_chu",
+        "type": "text COLLATE utf8mb4_unicode_ci"
+      },
+      {
+        "name": "deleted",
+        "type": "tinyint NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "ngay_tao",
+        "type": "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "nguoi_tao",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci DEFAULT NULL"
+      },
+      {
+        "name": "last_update",
+        "type": "datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP"
+      }
+    ],
+    "insertCount": 0
+  },
+  {
+    "name": "DUYET_NOTLEAD",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(300) NOT NULL"
+      },
+      {
+        "name": "lead_id",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "phone",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "yeu_cau",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "noi_dung",
+        "type": "text"
+      },
+      {
+        "name": "trangthai_duyet",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "team_id",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "ngay_tao",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "khtn_id",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "nguoi_bao_cao",
+        "type": "varchar(150) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 9
+  },
+  {
+    "name": "DU_AN",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(300) NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "name_n8n",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "domain_name",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "dongia",
+        "type": "int DEFAULT '10'"
+      },
+      {
+        "name": "campaign",
+        "type": "varchar(25) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "HOA_HONG",
+    "cols": [
+      {
+        "name": "id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "ma_can",
+        "type": "varchar(25) DEFAULT NULL"
+      },
+      {
+        "name": "ngay_ghi_nhan",
+        "type": "date DEFAULT NULL"
+      },
+      {
+        "name": "sales",
+        "type": "varchar(50) DEFAULT NULL"
+      },
+      {
+        "name": "loai_gd",
+        "type": "varchar(50) DEFAULT NULL"
+      },
+      {
+        "name": "nguon",
+        "type": "varchar(50) DEFAULT NULL"
+      },
+      {
+        "name": "ghinhan_doanhthu",
+        "type": "float DEFAULT NULL"
+      },
+      {
+        "name": "TNTL_truocdong",
+        "type": "float DEFAULT NULL"
+      },
+      {
+        "name": "dang",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "hoahong",
+        "type": "float DEFAULT NULL"
+      },
+      {
+        "name": "tien_hoahong",
+        "type": "float DEFAULT NULL"
+      },
+      {
+        "name": "ma_nv",
+        "type": "varchar(25) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "KHTN",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "name": "lead_id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "team_id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "ngay_tao",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "full_name",
+        "type": "varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "phone",
+        "type": "varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "chan_dung",
+        "type": "text"
+      },
+      {
+        "name": "phan_loai_lead",
+        "type": "varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "trang_thai",
+        "type": "varchar(5) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "duan_chamsoc",
+        "type": "varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "phone_more",
+        "type": "varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "name_real",
+        "type": "varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "csdh_time",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "quantam_time",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "dongygap_time",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "dagap_time",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "booking_time",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "datcoc_time",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "image_dongygap",
+        "type": "varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "image_dagap",
+        "type": "varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "image_UNC",
+        "type": "varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "nguoi_nhan",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "loai_lead",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "deleted",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "huy_cham_soc",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "thoi_gian_nhan",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "ghim_trongdiem",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "thongtin_kh_origin",
+        "type": "text"
+      },
+      {
+        "name": "link_fb",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "nguon_gioithieu",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "id_bangoc",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "thuhoi",
+        "type": "tinyint(1) DEFAULT '0'"
+      },
+      {
+        "name": "campaign",
+        "type": "varchar(25) DEFAULT NULL"
+      },
+      {
+        "name": "old_campaign",
+        "type": "varchar(25) DEFAULT NULL"
+      },
+      {
+        "name": "duyetgiaodich",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "sl_booking",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "cooperator",
+        "type": "varchar(200) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 114
+  },
+  {
+    "name": "KHTN_GDSAN",
+    "cols": [
+      {
+        "name": "CREATE",
+        "type": "TABLE `LEADS` ("
+      },
+      {
+        "name": "id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "name": "create_time",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "fullname",
+        "type": "varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "email",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "phone",
+        "type": "varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "loai_lead",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "kenh",
+        "type": "varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "lead_phan_loai",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "team_nhap",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "mkt_chiateam",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "trang_thai",
+        "type": "varchar(5) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "databank",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "notlead",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "kho_lead",
+        "type": "varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "nhap_thu_cong",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "loop",
+        "type": "varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "birthday",
+        "type": "date DEFAULT NULL"
+      },
+      {
+        "name": "country",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "loai_hinh",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "hinh_thuc_tt",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "time_lienhe",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "app_lienhe",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "nhu_cau",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "tieu_chi",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "san_pham",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "link_fb",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "form_dangky",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "time_databank",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "donvi_chay",
+        "type": "varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "lead_tindung",
+        "type": "varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "city",
+        "type": "varchar(50) DEFAULT NULL"
+      },
+      {
+        "name": "client_context",
+        "type": "text"
+      },
+      {
+        "name": "ad_id",
+        "type": "varchar(20) DEFAULT NULL"
+      },
+      {
+        "name": "campaign",
+        "type": "varchar(25) DEFAULT NULL"
+      },
+      {
+        "name": "ad_name",
+        "type": "varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "inbox_url",
+        "type": "varchar(150) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 0
+  },
+  {
+    "name": "LEADS_GDSAN",
+    "cols": [
+      {
+        "name": "CREATE",
+        "type": "TABLE `LEADS_KHOCHUNG` ("
+      },
+      {
+        "name": "id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "name": "ngay_tao",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "lead_id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "kho_lead",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(25) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 0
+  },
+  {
+    "name": "LICH",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(300) NOT NULL"
+      },
+      {
+        "name": "tu_ngay",
+        "type": "date DEFAULT NULL"
+      },
+      {
+        "name": "toi_ngay",
+        "type": "date DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "LOC",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(300) NOT NULL"
+      },
+      {
+        "name": "lich_id",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "tu_ngay",
+        "type": "date DEFAULT NULL"
+      },
+      {
+        "name": "toi_ngay",
+        "type": "date DEFAULT NULL"
+      },
+      {
+        "name": "trang_thai",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "thong_tin",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "ghim",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "team",
+        "type": "varchar(150) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "LS_CSKH",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "name": "khtn_id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "trang_thai",
+        "type": "varchar(5) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "ngay_chamsoc",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "noi_dung",
+        "type": "text"
+      },
+      {
+        "name": "nguoi_tao",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "khtn_parent_id",
+        "type": "varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "lead_id",
+        "type": "varchar(25) DEFAULT NULL"
+      },
+      {
+        "name": "campaign",
+        "type": "varchar(25) DEFAULT NULL"
+      },
+      {
+        "name": "phanhoi_kh",
+        "type": "text"
+      },
+      {
+        "name": "trangthai_kh",
+        "type": "varchar(50) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 186
+  },
+  {
+    "name": "LS_CSKH_bangphu",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "name": "khtn_id",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "trang_thai",
+        "type": "varchar(5) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "ngay_chamsoc",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "noi_dung",
+        "type": "text"
+      },
+      {
+        "name": "nguoi_tao",
+        "type": "varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "khtn_parent_id",
+        "type": "varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "lead_id",
+        "type": "varchar(25) DEFAULT NULL"
+      },
+      {
+        "name": "campaign",
+        "type": "varchar(25) DEFAULT NULL"
+      },
+      {
+        "name": "phanhoi_kh",
+        "type": "text"
+      },
+      {
+        "name": "trangthai_kh",
+        "type": "varchar(50) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 56
+  },
+  {
+    "name": "LS_GIAODICH",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(20) NOT NULL"
+      },
+      {
+        "name": "khtn_id",
+        "type": "varchar(20) NOT NULL"
+      },
+      {
+        "name": "lead_id",
+        "type": "varchar(20) DEFAULT NULL"
+      },
+      {
+        "name": "macan",
+        "type": "text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"
+      },
+      {
+        "name": "giatien",
+        "type": "bigint DEFAULT NULL"
+      },
+      {
+        "name": "ngay_giaodich",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "phi_tamtinh",
+        "type": "bigint DEFAULT NULL"
+      },
+      {
+        "name": "duan",
+        "type": "varchar(20) NOT NULL"
+      },
+      {
+        "name": "nguon_giohang",
+        "type": "text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"
+      },
+      {
+        "name": "team_hoptac",
+        "type": "varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "khtn_parent_id",
+        "type": "varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "LS_THANHTOAN",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(50) NOT NULL"
+      },
+      {
+        "name": "ngay_tao",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "team_id",
+        "type": "varchar(50) NOT NULL"
+      },
+      {
+        "name": "noidung",
+        "type": "varchar(1000) NOT NULL"
+      },
+      {
+        "name": "thaydoi_sodu",
+        "type": "int NOT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "MAU_LICH_TT",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'PK, vd ML507071030123456'"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'FK -> DU_AN.id'"
+      },
+      {
+        "name": "dot_so",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "loai_tinh",
+        "type": "varchar(15) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'phan_tram / co_dinh'"
+      },
+      {
+        "name": "gia_tri",
+        "type": "decimal(15,2) NOT NULL COMMENT '% (vd 10.00) hoặc VND nếu co_dinh'"
+      },
+      {
+        "name": "so_ngay_han",
+        "type": "int DEFAULT NULL COMMENT 'Số ngày sau mốc trước để ra ngay_dukien (tuỳ chọn)'"
+      },
+      {
+        "name": "ghi_chu",
+        "type": "varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Vd: Đặt cọc, Ký HĐMB...'"
+      },
+      {
+        "name": "deleted",
+        "type": "tinyint NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "ngay_tao",
+        "type": "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "nguoi_tao",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci DEFAULT NULL"
+      },
+      {
+        "name": "last_update",
+        "type": "datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP"
+      }
+    ],
+    "insertCount": 0
+  },
+  {
+    "name": "MENU",
+    "cols": [
+      {
+        "name": "id",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "hien_thi",
+        "type": "varchar(300) NOT NULL"
+      },
+      {
+        "name": "nhom",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "view",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "appid",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "icon",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "mo_ta",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "database",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "phan_quyen",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "layer1",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "hinh_anh_layer",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "lastSelected",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "CRM",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "KH_CRM",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "campaign",
+        "type": "varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "NHAN_VIEN",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(300) NOT NULL"
+      },
+      {
+        "name": "ho_ten",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "gioi_tinh",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "avatar",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "phong_ban",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "chuc_vu",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "phe_duyet",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "phan_quyen",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "trang_thai_lam_viec",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "username",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "password",
+        "type": "varchar(50) DEFAULT NULL"
+      },
+      {
+        "name": "email",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "ngay_vao_lam",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "ngan_hang",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "quyen_xem",
+        "type": "varchar(1000) DEFAULT NULL"
+      },
+      {
+        "name": "quyen_sua",
+        "type": "varchar(1000) DEFAULT NULL"
+      },
+      {
+        "name": "quyen_xoa",
+        "type": "varchar(1000) DEFAULT NULL"
+      },
+      {
+        "name": "ngay_tao",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "nguoi_tao",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "last_update",
+        "type": "datetime DEFAULT NULL"
+      },
+      {
+        "name": "team_id",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "floor_director",
+        "type": "varchar(255) DEFAULT NULL"
+      },
+      {
+        "name": "leader",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "mode",
+        "type": "bit(1) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "QUY_CAN",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'PK, vd QC507071030123456'"
+      },
+      {
+        "name": "du_an",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'FK -> DU_AN.id'"
+      },
+      {
+        "name": "toa",
+        "type": "varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Tòa, vd L1, Z3'"
+      },
+      {
+        "name": "ma_can",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Mã căn, vd C5L1-03-02'"
+      },
+      {
+        "name": "gia_vat",
+        "type": "bigint DEFAULT NULL COMMENT 'Giá VAT (đơn vị theo file gốc)'"
+      },
+      {
+        "name": "gia_tts",
+        "type": "bigint DEFAULT NULL COMMENT 'Giá TTS'"
+      },
+      {
+        "name": "gia_tttd",
+        "type": "bigint DEFAULT NULL COMMENT 'Giá TTTĐ'"
+      },
+      {
+        "name": "vay_70",
+        "type": "bigint DEFAULT NULL COMMENT 'Vay 70%'"
+      },
+      {
+        "name": "link_veview",
+        "type": "varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Link vẽ view'"
+      },
+      {
+        "name": "link_video",
+        "type": "varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Link video'"
+      },
+      {
+        "name": "link_ptg",
+        "type": "varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Link PTG'"
+      },
+      {
+        "name": "loai_can",
+        "type": "varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Studio / 1PN+1 / 2PN+1 / 2N2VS / 4PN...'"
+      },
+      {
+        "name": "view_can",
+        "type": "varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Nội Khu / Ngoại Khu'"
+      },
+      {
+        "name": "huong",
+        "type": "varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Hướng: TN, ĐB, ĐN, TB...'"
+      },
+      {
+        "name": "dt_tt",
+        "type": "decimal(10,2) DEFAULT NULL COMMENT 'Diện tích thông thủy m2'"
+      },
+      {
+        "name": "loai_hinh",
+        "type": "varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'CN VBTT / Mới CĐT...'"
+      },
+      {
+        "name": "thuong_sale",
+        "type": "bigint DEFAULT NULL COMMENT 'Thưởng sale (VND), NULL = không có'"
+      },
+      {
+        "name": "csbh",
+        "type": "varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'CSBH áp dụng, vd T1/2026'"
+      },
+      {
+        "name": "loai_ky",
+        "type": "varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Loại ký'"
+      },
+      {
+        "name": "trang_thai_can",
+        "type": "varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'con_hang' COMMENT 'con_hang / lock / da_ban'"
+      },
+      {
+        "name": "ghi_chu",
+        "type": "text COLLATE utf8mb4_unicode_ci"
+      },
+      {
+        "name": "deleted",
+        "type": "tinyint NOT NULL DEFAULT '0'"
+      },
+      {
+        "name": "ngay_tao",
+        "type": "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "nguoi_tao",
+        "type": "varchar(25) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'FK -> NHAN_VIEN.id'"
+      },
+      {
+        "name": "last_update",
+        "type": "datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP"
+      }
+    ],
+    "insertCount": 0
+  },
+  {
+    "name": "TAI_LIEU",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(25) NOT NULL"
+      },
+      {
+        "name": "name",
+        "type": "varchar(50) NOT NULL"
+      },
+      {
+        "name": "decription",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "url",
+        "type": "varchar(200) DEFAULT NULL"
+      },
+      {
+        "name": "category",
+        "type": "varchar(50) DEFAULT NULL"
+      },
+      {
+        "name": "phan_quyen",
+        "type": "varchar(20) DEFAULT NULL"
+      },
+      {
+        "name": "icon",
+        "type": "varchar(300) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "TEAM",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(300) NOT NULL"
+      },
+      {
+        "name": "team_name",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "team_avatar",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "chat_id",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "stt_R3",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "stt_R2",
+        "type": "int DEFAULT NULL"
+      },
+      {
+        "name": "R3",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "R2",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "rich_coint",
+        "type": "int DEFAULT '0'"
+      },
+      {
+        "name": "rich_coint_vip",
+        "type": "int DEFAULT '0'"
+      },
+      {
+        "name": "richcoin_change",
+        "type": "int DEFAULT '0'"
+      },
+      {
+        "name": "duan_phutrach",
+        "type": "varchar(500) DEFAULT NULL"
+      },
+      {
+        "name": "lead_khadung",
+        "type": "int DEFAULT '1'"
+      },
+      {
+        "name": "uutien_R3",
+        "type": "tinyint(1) DEFAULT NULL"
+      },
+      {
+        "name": "sl_lead_1lan",
+        "type": "int DEFAULT '1'"
+      },
+      {
+        "name": "leadnhan_month",
+        "type": "varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL"
+      },
+      {
+        "name": "botcall",
+        "type": "bit(1) DEFAULT NULL"
+      },
+      {
+        "name": "truclead",
+        "type": "bit(1) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "THONG_TIN_CTY",
+    "cols": [
+      {
+        "name": "id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "ten_cty",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "ten_day_du",
+        "type": "text"
+      },
+      {
+        "name": "nguoi_dai_dien",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "dia_chi",
+        "type": "text"
+      },
+      {
+        "name": "email",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "website",
+        "type": "varchar(150) DEFAULT NULL"
+      },
+      {
+        "name": "logo",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "image",
+        "type": "varchar(300) DEFAULT NULL"
+      },
+      {
+        "name": "ngay_thanh_lap",
+        "type": "date DEFAULT NULL"
+      },
+      {
+        "name": "gioi_thieu",
+        "type": "text"
+      }
+    ],
+    "insertCount": 1
+  },
+  {
+    "name": "THU_HOI_LOGS",
+    "cols": [
+      {
+        "name": "id",
+        "type": "varchar(25) NOT NULL"
+      },
+      {
+        "name": "team_name",
+        "type": "varchar(18) NOT NULL"
+      },
+      {
+        "name": "date_time",
+        "type": "datetime NOT NULL"
+      },
+      {
+        "name": "lead_name",
+        "type": "varchar(50) NOT NULL"
+      },
+      {
+        "name": "phone",
+        "type": "varchar(20) NOT NULL"
+      },
+      {
+        "name": "lead_id",
+        "type": "varchar(25) NOT NULL"
+      }
+    ],
+    "insertCount": 5
+  },
+  {
+    "name": "TRANG_THAI",
+    "cols": [
+      {
+        "name": "id",
+        "type": "int NOT NULL"
+      },
+      {
+        "name": "ten_trang_thai",
+        "type": "varchar(300) DEFAULT NULL"
+      }
+    ],
+    "insertCount": 1
+  }
+]

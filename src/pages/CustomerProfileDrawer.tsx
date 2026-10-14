@@ -3045,7 +3045,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const [drawerTaskFilter, setDrawerTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [timelineFilter, setTimelineFilter] = useState<'all' | 'call' | 'email' | 'meeting' | 'task'>('all');
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'call' | 'note' | 'email' | 'meeting' | 'task'>('all');
   const [viewExpense, setViewExpense] = useState<any>(null);
   const [rejectingExpense, setRejectingExpense] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -4193,7 +4193,37 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       };
     };
 
-    let source = drawerActivities;
+    let source = [...drawerActivities];
+
+    // Merge notes from notes table into timeline
+    if (Array.isArray(notes) && notes.length > 0) {
+      const noteActivities = notes.map((n: any) => {
+        const isCall = n.channel === 'call';
+        const isZalo = n.channel === 'zalo' || n.channel === 'zalo_connect';
+        return {
+          id: `note_${n.id}`,
+          subject: isCall ? 'Cuộc gọi chăm sóc' : isZalo ? 'Tương tác Zalo' : (n.stuck_tag ? `Ghi chú: ${n.stuck_tag}` : (n.note_type && n.note_type !== 'normal' ? `Ghi chú (${n.note_type})` : 'Ghi chú chăm sóc')),
+          type: isCall ? 'call' : isZalo ? 'zalo_connect' : 'note',
+          status: 'done',
+          user_name: n.user || 'Nhân sự',
+          avatar_url: n.user_avatar,
+          created_at: n.time,
+          time: n.time,
+          body: n.text,
+          channel: n.channel,
+          note_type: n.note_type,
+          duration_minutes: n.duration_minutes,
+          stuck_tag: n.stuck_tag,
+          sale_temperature: n.sale_temperature,
+          suggested_temperature: n.suggested_temperature,
+          attachment_url: n.attachment_url,
+          is_note: true,
+          rawNote: n
+        };
+      });
+      source = [...source, ...noteActivities];
+    }
+
     // Filter out automated pipeline transition notes per sales feedback
     source = source.filter((a: any) => {
       const subj = (a.subject || '').trim();
@@ -4233,7 +4263,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         rawActivity: a
       };
     }).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-  }, [drawerActivities, contact?.id, timelineFilter, pipelineStages, formData.pipeline_status, contact?.pipeline_status]);
+  }, [drawerActivities, notes, contact?.id, timelineFilter, pipelineStages, formData.pipeline_status, contact?.pipeline_status]);
   const fullName = `${formData.last_name || ''} ${formData.first_name || ''}`.trim() || 'Chưa cập nhật tên';
   const ownerUser = users.find(u => u.full_name === formData.owner_name || u.name === formData.owner_name || u.username === formData.owner_name);
   const ownerAvatarUrl = ownerUser?.avatar_url || ownerUser?.avatar || undefined;
@@ -4983,19 +5013,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
 
 
-  const deleteActivity = async (id: number) => {
+  const deleteActivity = async (id: any) => {
+    const isNote = typeof id === 'string' && id.startsWith('note_');
+    const noteId = isNote ? id.replace('note_', '') : id;
     showConfirm({
-      title: 'Xóa hoạt động',
-      message: 'Bạn có chắc chắn muốn xóa hoạt động này khỏi nhật ký?',
+      title: isNote ? 'Xóa ghi chú' : 'Xóa hoạt động',
+      message: isNote ? 'Bạn có chắc chắn muốn xóa ghi chú này khỏi nhật ký?' : 'Bạn có chắc chắn muốn xóa hoạt động này khỏi nhật ký?',
       isDanger: true,
       confirmText: 'Xóa',
       onConfirm: async () => {
         try {
-          await api.delete(`/activities/${id}`);
+          if (isNote) {
+            await api.delete(`/notes/${noteId}`);
+          } else {
+            await api.delete(`/activities/${id}`);
+          }
           fetchData();
-          addToast('Đã xóa hoạt động', 'success');
+          addToast(isNote ? 'Đã xóa ghi chú' : 'Đã xóa hoạt động', 'success');
         } catch (e: any) {
-          addToast('Lỗi khi xóa hoạt động', 'error');
+          addToast(isNote ? 'Lỗi khi xóa ghi chú' : 'Lỗi khi xóa hoạt động', 'error');
         }
       }
     });
@@ -8819,6 +8855,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                         {renderMarketingNoteSection('0 0 1.5rem 0')}
 
+                        {notes.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                            {notes.map((n: any) => (
+                              <div key={n.id} style={{ padding: '10px 14px', background: 'var(--color-bg)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>{n.user}</span>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{new Date(n.time).toLocaleString('vi-VN')}</span>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{n.text}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                       </div>
                     </div>
                   )}
@@ -9930,6 +9980,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <span>{
                                 timelineFilter === 'all' ? 'Tất cả' :
                                 timelineFilter === 'call' ? 'Cuộc gọi' :
+                                timelineFilter === 'note' ? 'Ghi chú' :
                                 timelineFilter === 'email' ? 'Email' :
                                 timelineFilter === 'meeting' ? 'Gặp gỡ' : 'Công việc'
                               }</span>
@@ -9970,6 +10021,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   {[
                                     { value: 'all', label: 'Tất cả', icon: null },
                                     { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
+                                    { value: 'note', label: 'Ghi chú', icon: <FileText size={13} /> },
                                     { value: 'email', label: 'Email', icon: <Mail size={13} /> },
                                     { value: 'meeting', label: 'Gặp gỡ', icon: <Users size={13} /> },
                                     { value: 'task', label: 'Công việc', icon: <CheckSquare size={13} /> }

@@ -28,7 +28,7 @@ export const showSplashScreen = (statusText: string = 'Đang tải dữ liệu..
 };
 
 // Maintenance Mode Lock - Keep user outside on Mascot Splash Screen
-export const IS_MAINTENANCE_LOCK = false;
+export const IS_MAINTENANCE_LOCK = true;
 
 export const checkMaintenanceBypass = (): boolean => {
   if (typeof window === 'undefined') return false;
