@@ -27,8 +27,26 @@ export const showSplashScreen = (statusText: string = 'Đang tải dữ liệu..
   }
 };
 
+// Maintenance Mode Lock - Keep user outside on Mascot Splash Screen
+export const IS_MAINTENANCE_LOCK = true;
+
+export const checkMaintenanceBypass = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('bypass') === '1' || urlParams.get('admin') === '1') {
+    localStorage.setItem('richland_maintenance_bypass', '1');
+    return true;
+  }
+  return localStorage.getItem('richland_maintenance_bypass') === '1';
+};
+
 // Smoothly dismiss the instant Mascot Splash Screen (min 3.0 seconds display time)
 export const hideSplashScreen = (force: boolean = false) => {
+  if (IS_MAINTENANCE_LOCK && !checkMaintenanceBypass() && !force) {
+    // Lock outside! Do not dismiss splash screen!
+    return;
+  }
+
   const doHide = () => {
     const splash = document.getElementById('richland-splash-screen');
     if (splash && !splash.classList.contains('splash-fade-out')) {
@@ -70,6 +88,7 @@ createRoot(document.getElementById('root')!).render(
 
 // Safety fallback timeout (6s) in case of unexpected network failure
 setTimeout(() => {
+  if (IS_MAINTENANCE_LOCK && !checkMaintenanceBypass()) return;
   if (typeof (window as any).hideSplashScreen === 'function') {
     (window as any).hideSplashScreen();
   }
