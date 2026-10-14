@@ -21269,22 +21269,22 @@ switch ($action) {
             $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at, p.deleted_from_databank, p.is_blocked,
                            COALESCE(
                                (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1),
-                               (SELECT project_id FROM leads WHERE (person_id = p.id OR phone = p.phone) AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1)
+                               (SELECT project_id FROM leads WHERE person_id = p.id AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1)
                            ) as project_id,
                            COALESCE(
                                (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1)),
-                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM leads WHERE (person_id = p.id OR phone = p.phone) AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1))
+                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM leads WHERE person_id = p.id AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1))
                            ) as project_name,
                            COALESCE(
                                (SELECT source FROM contacts WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' LIMIT 1),
-                               (SELECT source FROM leads WHERE (person_id = p.id OR phone = p.phone) AND source IS NOT NULL AND source != '' AND source != 'databank' ORDER BY id DESC LIMIT 1),
+                               (SELECT source FROM leads WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' ORDER BY id DESC LIMIT 1),
                                'databank'
                            ) as original_source,
-                           (SELECT type FROM leads WHERE (person_id = p.id OR phone = p.phone) AND type IS NOT NULL AND type != '' ORDER BY id DESC LIMIT 1) as customer_type,
-                           (SELECT lead_phan_loai FROM leads WHERE (person_id = p.id OR phone = p.phone) AND lead_phan_loai IS NOT NULL AND lead_phan_loai != '' ORDER BY id DESC LIMIT 1) as lead_phan_loai,
-                           (SELECT facebook_link FROM leads WHERE (person_id = p.id OR phone = p.phone) AND facebook_link IS NOT NULL AND facebook_link != '' ORDER BY id DESC LIMIT 1) as facebook_link,
-                           (SELECT link_video_ads FROM leads WHERE (person_id = p.id OR phone = p.phone) AND link_video_ads IS NOT NULL AND link_video_ads != '' ORDER BY id DESC LIMIT 1) as link_video_ads,
-                           (SELECT note FROM leads WHERE (person_id = p.id OR phone = p.phone) AND note IS NOT NULL AND note != '' ORDER BY id DESC LIMIT 1) as note,
+                           (SELECT type FROM leads WHERE person_id = p.id AND type IS NOT NULL AND type != '' ORDER BY id DESC LIMIT 1) as customer_type,
+                           (SELECT lead_phan_loai FROM leads WHERE person_id = p.id AND lead_phan_loai IS NOT NULL AND lead_phan_loai != '' ORDER BY id DESC LIMIT 1) as lead_phan_loai,
+                           (SELECT facebook_link FROM leads WHERE person_id = p.id AND facebook_link IS NOT NULL AND facebook_link != '' ORDER BY id DESC LIMIT 1) as facebook_link,
+                           (SELECT link_video_ads FROM leads WHERE person_id = p.id AND link_video_ads IS NOT NULL AND link_video_ads != '' ORDER BY id DESC LIMIT 1) as link_video_ads,
+                           (SELECT note FROM leads WHERE person_id = p.id AND note IS NOT NULL AND note != '' ORDER BY id DESC LIMIT 1) as note,
                            EXISTS (
                                SELECT 1 FROM contacts 
                                WHERE person_id = p.id 
@@ -21301,22 +21301,22 @@ switch ($action) {
             $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
                            COALESCE(
                                (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1),
-                               (SELECT project_id FROM leads WHERE (person_id = p.id OR phone = p.phone) AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1)
+                               (SELECT project_id FROM leads WHERE person_id = p.id AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1)
                            ) as project_id,
                            COALESCE(
                                (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1)),
-                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM leads WHERE (person_id = p.id OR phone = p.phone) AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1))
+                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM leads WHERE person_id = p.id AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1))
                            ) as project_name,
                            COALESCE(
                                (SELECT source FROM contacts WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' LIMIT 1),
-                               (SELECT source FROM leads WHERE (person_id = p.id OR phone = p.phone) AND source IS NOT NULL AND source != '' AND source != 'databank' ORDER BY id DESC LIMIT 1),
+                               (SELECT source FROM leads WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' ORDER BY id DESC LIMIT 1),
                                'databank'
                            ) as original_source,
-                           (SELECT type FROM leads WHERE (person_id = p.id OR phone = p.phone) AND type IS NOT NULL AND type != '' ORDER BY id DESC LIMIT 1) as customer_type,
-                           (SELECT lead_phan_loai FROM leads WHERE (person_id = p.id OR phone = p.phone) AND lead_phan_loai IS NOT NULL AND lead_phan_loai != '' ORDER BY id DESC LIMIT 1) as lead_phan_loai,
-                           (SELECT facebook_link FROM leads WHERE (person_id = p.id OR phone = p.phone) AND facebook_link IS NOT NULL AND facebook_link != '' ORDER BY id DESC LIMIT 1) as facebook_link,
-                           (SELECT link_video_ads FROM leads WHERE (person_id = p.id OR phone = p.phone) AND link_video_ads IS NOT NULL AND link_video_ads != '' ORDER BY id DESC LIMIT 1) as link_video_ads,
-                           (SELECT note FROM leads WHERE (person_id = p.id OR phone = p.phone) AND note IS NOT NULL AND note != '' ORDER BY id DESC LIMIT 1) as note
+                           (SELECT type FROM leads WHERE person_id = p.id AND type IS NOT NULL AND type != '' ORDER BY id DESC LIMIT 1) as customer_type,
+                           (SELECT lead_phan_loai FROM leads WHERE person_id = p.id AND lead_phan_loai IS NOT NULL AND lead_phan_loai != '' ORDER BY id DESC LIMIT 1) as lead_phan_loai,
+                           (SELECT facebook_link FROM leads WHERE person_id = p.id AND facebook_link IS NOT NULL AND facebook_link != '' ORDER BY id DESC LIMIT 1) as facebook_link,
+                           (SELECT link_video_ads FROM leads WHERE person_id = p.id AND link_video_ads IS NOT NULL AND link_video_ads != '' ORDER BY id DESC LIMIT 1) as link_video_ads,
+                           (SELECT note FROM leads WHERE person_id = p.id AND note IS NOT NULL AND note != '' ORDER BY id DESC LIMIT 1) as note
                     FROM persons p
                     WHERE p.is_public = 1
                       AND NOT EXISTS (
@@ -21328,6 +21328,25 @@ switch ($action) {
                     ORDER BY p.released_to_kho_at DESC";
         }
 
+        // Batch-fetch all takers in 1 single fast query to eliminate N+1 loop
+        $allTakers = [];
+        $tRes = $conn->query("SELECT c.person_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
+                              FROM contacts c
+                              JOIN users u ON c.owner_id = u.id
+                              JOIN consultants cons ON u.email = cons.email
+                              WHERE c.deleted_at IS NULL");
+        if ($tRes) {
+            while ($tRow = $tRes->fetch_assoc()) {
+                $pid = (int)$tRow['person_id'];
+                $allTakers[$pid][] = [
+                    'id' => (int)$tRow['id'],
+                    'name' => $tRow['name'],
+                    'avatar' => $tRow['avatar'],
+                    'claimed_at' => $tRow['claimed_at']
+                ];
+            }
+        }
+
         $res = $conn->query($sql);
         $publicLeads = [];
         if ($res) {
@@ -21337,23 +21356,7 @@ switch ($action) {
                     $row['email'] = maskEmail($row['email']);
                 }
                 $personId = (int)$row['id'];
-                $takers = [];
-                if ($personId > 0) {
-                    $tQuery = "SELECT c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
-                               FROM contacts c
-                               JOIN users u ON c.owner_id = u.id
-                               JOIN consultants cons ON u.email = cons.email
-                               WHERE c.person_id = ? AND c.deleted_at IS NULL";
-                    $tStmt = $conn->prepare($tQuery);
-                    $tStmt->bind_param("i", $personId);
-                    $tStmt->execute();
-                    $tRes = $tStmt->get_result();
-                    while ($tRow = $tRes->fetch_assoc()) {
-                        $takers[] = $tRow;
-                    }
-                    $tStmt->close();
-                }
-                $row['takers'] = $takers;
+                $row['takers'] = $allTakers[$personId] ?? [];
                 $publicLeads[] = $row;
             }
         }

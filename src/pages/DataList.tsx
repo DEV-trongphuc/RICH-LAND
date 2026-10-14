@@ -727,17 +727,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     }
   }, [searchParams, dateFilter, isActive]);
 
-  useEffect(() => {
-    if (!isActive) return;
-    const handleGlobalDate = (e: any) => {
-      const newDate = e.detail;
-      if (newDate && newDate !== dateFilter) {
-        setDateFilter(newDate);
-      }
-    };
-    window.addEventListener('global-date-change', handleGlobalDate);
-    return () => window.removeEventListener('global-date-change', handleGlobalDate);
-  }, [dateFilter, isActive]);
+  // DataList retains its own filter state defaulting to 'all' (Tất cả thời gian)
+  // so users see all leads without being silently filtered by dashboard date presets
 
   useEffect(() => {
     fetchConsultants();
