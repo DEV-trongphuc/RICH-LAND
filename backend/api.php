@@ -3948,113 +3948,12 @@ switch ($action) {
                         c.person_id, 
                         c.id as contact_id, 
                         c.lead_id,
-                        COALESCE(NULLIF(c.owner_id, 0), NULLIF(c.not_lead_proposed_by, 0), (
-                            SELECT dl2.assigned_to 
-                            FROM distribution_logs dl2 
-                            WHERE (dl2.lead_id = c.lead_id OR (c.person_id > 0 AND dl2.lead_id IN (SELECT ld2.id FROM leads ld2 WHERE ld2.person_id = c.person_id))) AND dl2.assigned_to > 0
-                            ORDER BY dl2.id DESC LIMIT 1
-                        ), (
-                            SELECT r2.consultant_id 
-                            FROM data_reports r2 
-                            WHERE (r2.lead_id = c.lead_id OR (c.person_id > 0 AND r2.lead_id IN (SELECT ld3.id FROM leads ld3 WHERE ld3.person_id = c.person_id))) AND r2.consultant_id > 0
-                            ORDER BY r2.id DESC LIMIT 1
-                        ), 0) as id, 
-                        COALESCE(NULLIF(cons.name, ''), NULLIF(u.full_name, ''), NULLIF(consNL.name, ''), NULLIF(uNL.full_name, ''), (
-                            SELECT COALESCE(NULLIF(cons3.name, ''), NULLIF(u3.full_name, ''))
-                            FROM distribution_logs dl3
-                            LEFT JOIN users u3 ON dl3.assigned_to = u3.id
-                            LEFT JOIN consultants cons3 ON (cons3.id = dl3.assigned_to OR u3.email = cons3.email OR u3.id = cons3.id)
-                            WHERE (dl3.lead_id = c.lead_id OR (c.person_id > 0 AND dl3.lead_id IN (SELECT ld_sub.id FROM leads ld_sub WHERE ld_sub.person_id = c.person_id))) AND dl3.assigned_to > 0
-                            ORDER BY dl3.id DESC LIMIT 1
-                        ), (
-                            SELECT COALESCE(NULLIF(cons4.name, ''), NULLIF(u4.full_name, ''))
-                            FROM data_reports r4
-                            LEFT JOIN consultants cons4 ON cons4.id = r4.consultant_id
-                            LEFT JOIN users u4 ON (u4.id = r4.consultant_id OR (cons4.email IS NOT NULL AND cons4.email = u4.email))
-                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld_sub2.id FROM leads ld_sub2 WHERE ld_sub2.person_id = c.person_id))) AND r4.consultant_id > 0
-                            ORDER BY r4.id DESC LIMIT 1
-                        ), (
-                            SELECT COALESCE(NULLIF(cons5.name, ''), NULLIF(u5.full_name, ''))
-                            FROM leads ld5
-                            LEFT JOIN consultants cons5 ON cons5.id = ld5.assigned_to
-                            LEFT JOIN users u5 ON (u5.id = ld5.assigned_to OR (cons5.email IS NOT NULL AND cons5.email = u5.email))
-                            WHERE (ld5.id = c.lead_id OR (c.person_id > 0 AND ld5.person_id = c.person_id)) AND ld5.assigned_to > 0
-                            ORDER BY ld5.id DESC LIMIT 1
-                        ), 'Tư vấn viên') as name, 
-                        COALESCE(cons.avatar, u.avatar_url, consNL.avatar, uNL.avatar_url, (
-                            SELECT COALESCE(cons3.avatar, u3.avatar_url)
-                            FROM distribution_logs dl3
-                            LEFT JOIN users u3 ON dl3.assigned_to = u3.id
-                            LEFT JOIN consultants cons3 ON (cons3.id = dl3.assigned_to OR u3.email = cons3.email OR u3.id = cons3.id)
-                            WHERE (dl3.lead_id = c.lead_id OR (c.person_id > 0 AND dl3.lead_id IN (SELECT ld_sub.id FROM leads ld_sub WHERE ld_sub.person_id = c.person_id))) AND dl3.assigned_to > 0
-                            ORDER BY dl3.id DESC LIMIT 1
-                        ), (
-                            SELECT COALESCE(cons4.avatar, u4.avatar_url)
-                            FROM data_reports r4
-                            LEFT JOIN consultants cons4 ON cons4.id = r4.consultant_id
-                            LEFT JOIN users u4 ON (u4.id = r4.consultant_id OR (cons4.email IS NOT NULL AND cons4.email = u4.email))
-                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld_sub2.id FROM leads ld_sub2 WHERE ld_sub2.person_id = c.person_id))) AND r4.consultant_id > 0
-                            ORDER BY r4.id DESC LIMIT 1
-                        ), (
-                            SELECT COALESCE(cons5.avatar, u5.avatar_url)
-                            FROM leads ld5
-                            LEFT JOIN consultants cons5 ON cons5.id = ld5.assigned_to
-                            LEFT JOIN users u5 ON (u5.id = ld5.assigned_to OR (cons5.email IS NOT NULL AND cons5.email = u5.email))
-                            WHERE (ld5.id = c.lead_id OR (c.person_id > 0 AND ld5.person_id = c.person_id)) AND ld5.assigned_to > 0
-                            ORDER BY ld5.id DESC LIMIT 1
-                        )) as avatar, 
-                        COALESCE(cons.phone, u.phone, consNL.phone, uNL.phone, (
-                            SELECT COALESCE(cons3.phone, u3.phone)
-                            FROM distribution_logs dl3
-                            LEFT JOIN users u3 ON dl3.assigned_to = u3.id
-                            LEFT JOIN consultants cons3 ON (cons3.id = dl3.assigned_to OR u3.email = cons3.email OR u3.id = cons3.id)
-                            WHERE (dl3.lead_id = c.lead_id OR (c.person_id > 0 AND dl3.lead_id IN (SELECT ld_sub.id FROM leads ld_sub WHERE ld_sub.person_id = c.person_id))) AND dl3.assigned_to > 0
-                            ORDER BY dl3.id DESC LIMIT 1
-                        ), (
-                            SELECT COALESCE(cons4.phone, u4.phone)
-                            FROM data_reports r4
-                            LEFT JOIN consultants cons4 ON cons4.id = r4.consultant_id
-                            LEFT JOIN users u4 ON (u4.id = r4.consultant_id OR (cons4.email IS NOT NULL AND cons4.email = u4.email))
-                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld_sub2.id FROM leads ld_sub2 WHERE ld_sub2.person_id = c.person_id))) AND r4.consultant_id > 0
-                            ORDER BY r4.id DESC LIMIT 1
-                        ), (
-                            SELECT COALESCE(cons5.phone, u5.phone)
-                            FROM leads ld5
-                            LEFT JOIN consultants cons5 ON cons5.id = ld5.assigned_to
-                            LEFT JOIN users u5 ON (u5.id = ld5.assigned_to OR (cons5.email IS NOT NULL AND cons5.email = u5.email))
-                            WHERE (ld5.id = c.lead_id OR (c.person_id > 0 AND ld5.person_id = c.person_id)) AND ld5.assigned_to > 0
-                            ORDER BY ld5.id DESC LIMIT 1
-                        )) as consultant_phone,
-                        COALESCE(tm.name, tmNL.name, (
-                            SELECT tm3.name
-                            FROM distribution_logs dl3
-                            LEFT JOIN users u3 ON dl3.assigned_to = u3.id
-                            LEFT JOIN consultants cons3 ON (cons3.id = dl3.assigned_to OR u3.email = cons3.email OR u3.id = cons3.id)
-                            LEFT JOIN teams tm3 ON (cons3.team_id = tm3.id OR u3.team_id = tm3.id)
-                            WHERE (dl3.lead_id = c.lead_id OR (c.person_id > 0 AND dl3.lead_id IN (SELECT ld_sub.id FROM leads ld_sub WHERE ld_sub.person_id = c.person_id))) AND dl3.assigned_to > 0
-                            ORDER BY dl3.id DESC LIMIT 1
-                        ), (
-                            SELECT tm4.name
-                            FROM data_reports r4
-                            LEFT JOIN users u4 ON r4.consultant_id = u4.id
-                            LEFT JOIN consultants cons4 ON (cons4.id = r4.consultant_id OR u4.email = cons4.email OR u4.id = cons4.id)
-                            LEFT JOIN teams tm4 ON (cons4.team_id = tm4.id OR u4.team_id = tm4.id)
-                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld_sub2.id FROM leads ld_sub2 WHERE ld_sub2.person_id = c.person_id))) AND r4.consultant_id > 0
-                            ORDER BY r4.id DESC LIMIT 1
-                        )) as team_name, 
-                        COALESCE(dr.round_name, (
-                            SELECT dr2.round_name 
-                            FROM distribution_logs dl2 
-                            JOIN distribution_rounds dr2 ON dl2.round_id = dr2.id 
-                            WHERE (dl2.lead_id = c.lead_id OR (c.person_id > 0 AND dl2.lead_id IN (SELECT ld2.id FROM leads ld2 WHERE ld2.person_id = c.person_id)))
-                            ORDER BY dl2.id DESC LIMIT 1
-                        ), (
-                            SELECT dr4.round_name
-                            FROM data_reports r4
-                            JOIN distribution_rounds dr4 ON r4.round_id = dr4.id
-                            WHERE (r4.lead_id = c.lead_id OR (c.person_id > 0 AND r4.lead_id IN (SELECT ld4.id FROM leads ld4 WHERE ld4.person_id = c.person_id)))
-                            ORDER BY r4.id DESC LIMIT 1
-                        )) as round_name,
+                        COALESCE(NULLIF(c.owner_id, 0), NULLIF(c.not_lead_proposed_by, 0), 0) as id, 
+                        COALESCE(NULLIF(cons.name, ''), NULLIF(u.full_name, ''), NULLIF(consNL.name, ''), NULLIF(uNL.full_name, ''), 'Tư vấn viên') as name, 
+                        COALESCE(cons.avatar, u.avatar_url, consNL.avatar, uNL.avatar_url) as avatar, 
+                        COALESCE(cons.phone, u.phone, consNL.phone, uNL.phone) as consultant_phone,
+                        COALESCE(tm.name, tmNL.name) as team_name, 
+                        COALESCE(dr.round_name, '') as round_name,
                         c.pipeline_status, 
                         c.status as contact_status, 
                         c.lead_phan_loai, 
@@ -4078,48 +3977,6 @@ switch ($action) {
                     $pid = $tRow['person_id'];
                     unset($tRow['person_id']);
                     $takersMap[$pid][] = $tRow;
-                }
-            }
-
-            // Fallback for persons without created contacts yet (e.g. pending acceptance, reallocated or reported)
-            foreach ($personIds as $pId) {
-                if (empty($takersMap[$pId])) {
-                    $histQuery = "SELECT 
-                                    COALESCE(NULLIF(dl.assigned_to, 0), NULLIF(rpt.consultant_id, 0), 0) as id,
-                                    COALESCE(NULLIF(cons.name, ''), NULLIF(u.full_name, ''), 'Tư vấn viên') as name,
-                                    COALESCE(cons.avatar, u.avatar_url) as avatar,
-                                    COALESCE(cons.phone, u.phone) as consultant_phone,
-                                    tm.name as team_name,
-                                    COALESCE(dr.round_name, (SELECT dr2.round_name FROM distribution_rounds dr2 WHERE dr2.id = rpt.round_id LIMIT 1)) as round_name,
-                                    CASE 
-                                        WHEN (p.is_blocked = 1 OR rpt.status = 'approved' OR l.status = 'not_lead') THEN 'not_lead'
-                                        WHEN (l.is_accepted = 0 OR dl.status = 'assigned') THEN 'assigned'
-                                        ELSE 'chua_xac_dinh'
-                                    END as pipeline_status,
-                                    CASE 
-                                        WHEN (p.is_blocked = 1 OR rpt.status = 'approved' OR l.status = 'not_lead') THEN 'not_lead'
-                                        WHEN (l.is_accepted = 0 OR dl.status = 'assigned') THEN 'assigned'
-                                        ELSE 'chua_xac_dinh'
-                                    END as contact_status,
-                                    l.is_accepted,
-                                    l.lead_phan_loai,
-                                    l.source,
-                                    COALESCE(dl.received_at, rpt.created_at, l.created_at) as claimed_at,
-                                    COALESCE(dl.received_at, rpt.created_at, l.created_at) as updated_at
-                                  FROM leads l
-                                  LEFT JOIN persons p ON l.person_id = p.id
-                                  LEFT JOIN distribution_logs dl ON (dl.lead_id = l.id AND dl.assigned_to > 0)
-                                  LEFT JOIN data_reports rpt ON (rpt.lead_id = l.id AND rpt.consultant_id > 0)
-                                  LEFT JOIN users u ON (dl.assigned_to = u.id OR rpt.consultant_id = u.id)
-                                  LEFT JOIN consultants cons ON (cons.id = dl.assigned_to OR cons.id = rpt.consultant_id OR u.email = cons.email OR u.id = cons.id)
-                                  LEFT JOIN teams tm ON (cons.team_id = tm.id OR u.team_id = tm.id)
-                                  LEFT JOIN distribution_rounds dr ON (dl.round_id = dr.id OR rpt.round_id = dr.id)
-                                  WHERE l.person_id = $pId
-                                  ORDER BY COALESCE(dl.id, 0) DESC, COALESCE(rpt.id, 0) DESC LIMIT 1";
-                    $hRes = $conn->query($histQuery);
-                    if ($hRes && $hRow = $hRes->fetch_assoc()) {
-                        $takersMap[$pId][] = $hRow;
-                    }
                 }
             }
         }
