@@ -18,8 +18,18 @@ class SearchController {
         $results = [];
 
         // Contacts
-        $sqlC = "SELECT id, CONCAT(first_name,' ',last_name) as label, email as sublabel, 'contact' as type, status FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND (CONCAT(first_name,' ',last_name) LIKE ? OR email LIKE ? OR phone LIKE ?)";
-        $pC = [$tid, $like, $like, $like];
+        $cleanQ = preg_replace('/[^\d]/', '', $q);
+        $phoneLike = (strlen($cleanQ) >= 3) ? "%{$cleanQ}%" : $like;
+        $sqlC = "SELECT id, CONCAT(COALESCE(last_name, ''), ' ', COALESCE(first_name, '')) as label, email as sublabel, 'contact' as type, status FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND (
+            CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ? 
+            OR CONCAT(COALESCE(last_name, ''), ' ', COALESCE(first_name, '')) LIKE ? 
+            OR email LIKE ? 
+            OR phone LIKE ? 
+            OR mobile LIKE ? 
+            OR phone LIKE ?
+            OR mobile LIKE ?
+        )";
+        $pC = [$tid, $like, $like, $like, $like, $like, $phoneLike, $phoneLike];
         if ($isSale) { 
             $sqlC .= ' AND (owner_id=? OR id IN (
                 SELECT contact_id FROM cooperation_slips 

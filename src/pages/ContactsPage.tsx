@@ -3338,11 +3338,10 @@ export const ContactsPage: React.FC = () => {
                     {/* Hiding actions column header */}
                   </tr>
                 </thead>
-
                 <tbody>
                   {paged.map(c => {
                     const days = AGO_DAYS(c.last_contact);
-                    const fullName = `${c.last_name} ${c.first_name}`;
+                    const fullName = `${c.last_name || ''} ${c.first_name || ''}`.trim() || 'Khách chưa đặt tên';
                     return (
                       <motion.tr key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                          style={{ transition: 'background 0.2s', cursor: 'pointer' }}
@@ -3662,7 +3661,7 @@ export const ContactsPage: React.FC = () => {
               <div className="grid-cards-responsive">
                 {paged.map(c => {
                   const days = AGO_DAYS(c.last_contact);
-                  const fullName = `${c.last_name} ${c.first_name}`;
+                  const fullName = `${c.last_name || ''} ${c.first_name || ''}`.trim() || 'Khách chưa đặt tên';
                   return (
                     <motion.div 
                       key={c.id} 

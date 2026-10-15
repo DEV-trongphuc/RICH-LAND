@@ -726,7 +726,7 @@ function deleteLeadInternalSafe($conn, $leadId, $dlId, $decodedUser) {
         }
     }
 
-    // Find linked contacts
+    // Find linked contacts by person_id AND by phone
     $contactIds = [];
     if ($personId > 0) {
         $stmtC = $conn->prepare("SELECT id FROM contacts WHERE person_id = ?");
@@ -739,18 +739,35 @@ function deleteLeadInternalSafe($conn, $leadId, $dlId, $decodedUser) {
             }
             $stmtC->close();
         }
-    } else if (!empty($leadPhone)) {
-        $stmtC = $conn->prepare("SELECT id FROM contacts WHERE phone = ? AND phone IS NOT NULL AND phone != ''");
-        if ($stmtC) {
-            $stmtC->bind_param("s", $leadPhone);
-            $stmtC->execute();
-            $cRes = $stmtC->get_result();
-            while ($cRow = $cRes->fetch_assoc()) {
-                $contactIds[] = (int)$cRow['id'];
+    }
+    if (!empty($leadPhone)) {
+        $cleanPhone = preg_replace('/[^\d]/', '', $leadPhone);
+        if (strlen($cleanPhone) >= 9) {
+            $likePhone = '%' . substr($cleanPhone, -9);
+            $stmtC = $conn->prepare("SELECT id FROM contacts WHERE phone = ? OR phone LIKE ?");
+            if ($stmtC) {
+                $stmtC->bind_param("ss", $leadPhone, $likePhone);
+                $stmtC->execute();
+                $cRes = $stmtC->get_result();
+                while ($cRow = $cRes->fetch_assoc()) {
+                    $contactIds[] = (int)$cRow['id'];
+                }
+                $stmtC->close();
             }
-            $stmtC->close();
+        } else {
+            $stmtC = $conn->prepare("SELECT id FROM contacts WHERE phone = ?");
+            if ($stmtC) {
+                $stmtC->bind_param("s", $leadPhone);
+                $stmtC->execute();
+                $cRes = $stmtC->get_result();
+                while ($cRow = $cRes->fetch_assoc()) {
+                    $contactIds[] = (int)$cRow['id'];
+                }
+                $stmtC->close();
+            }
         }
     }
+    $contactIds = array_unique(array_filter($contactIds));
 
     // Check financial safety: If contact has active deposits or paid invoices, block deletion
     if (!empty($contactIds)) {
@@ -3757,6 +3774,18 @@ switch ($action) {
         if (isset($_GET['exclude_public']) && $_GET['exclude_public'] == '1') {
             $extraCondition .= " AND (p.is_public IS NULL OR p.is_public = 0) AND dl.status != 'released_to_kho' AND dl.status != 'databank'";
         }
+        // Exclude leads whose associated customer contact has already been moved to trash / deleted
+        $extraCondition .= " AND NOT (
+            (
+                (l.person_id IS NOT NULL AND EXISTS (SELECT 1 FROM contacts c_del WHERE c_del.person_id = l.person_id AND c_del.deleted_at IS NOT NULL))
+                OR (l.phone IS NOT NULL AND l.phone != '' AND EXISTS (SELECT 1 FROM contacts c_del2 WHERE c_del2.phone = l.phone AND c_del2.deleted_at IS NOT NULL))
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM contacts c_act 
+                WHERE (c_act.person_id = l.person_id OR (l.phone IS NOT NULL AND l.phone != '' AND c_act.phone = l.phone)) 
+                AND c_act.deleted_at IS NULL
+            )
+        )";
         $isFilteringActive = false;
 
         $leadPipelineExpr = "

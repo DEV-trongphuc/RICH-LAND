@@ -88,24 +88,8 @@ class ContactController {
             $where[] = '1=0';
         }
 
-        if ($search) {
-            if (is_numeric($search)) {
-                $where[]  = '(CONCAT(c.first_name, \' \', c.last_name) LIKE ? OR c.phone LIKE ? OR c.mobile LIKE ? OR c.email LIKE ? OR c.id = ? OR c.person_id = ?)';
-                $params[] = "%$search%";
-                $params[] = "%$search%";
-                $params[] = "%$search%";
-                $params[] = "%$search%";
-                $params[] = (int)$search;
-                $params[] = (int)$search;
-            } else {
-                $where[]  = '(CONCAT(c.first_name, \' \', c.last_name) LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ? OR c.phone LIKE ? OR c.mobile LIKE ? OR c.email LIKE ?)';
-                $params[] = "%$search%";
-                $params[] = "%$search%";
-                $params[] = "%$search%";
-                $params[] = "%$search%";
-                $params[] = "%$search%";
-                $params[] = "%$search%";
-            }
+        if (!empty($search)) {
+            $this->applySmartSearch((string)$search, $where, $params);
         }
         $knownPipelineStatuses = [
             'chua_xac_dinh', 'cham_soc_dai_han', 'quan_tam', 'dong_y_gap', 'thien_chi',
@@ -277,6 +261,22 @@ class ContactController {
             $stageCounts = [];
         }
 
+        $orderSql = "c.$sortBy $order";
+        if (!empty($search)) {
+            $cleanSearch = trim($search);
+            $cleanSearchQuoted = $this->db->quote($cleanSearch);
+            $cleanSearchPrefix = $this->db->quote($cleanSearch . '%');
+            $orderSql = "
+                CASE 
+                    WHEN c.phone = $cleanSearchQuoted THEN 1
+                    WHEN CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, '')) = $cleanSearchQuoted THEN 2
+                    WHEN CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')) = $cleanSearchQuoted THEN 3
+                    WHEN CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, '')) LIKE $cleanSearchPrefix THEN 4
+                    WHEN CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')) LIKE $cleanSearchPrefix THEN 5
+                    ELSE 6
+                END ASC, c.$sortBy $order";
+        }
+
         $stmt = $this->db->prepare("
             SELECT c.*, 
                    CASE 
@@ -340,7 +340,7 @@ class ContactController {
                 WHERE lead_id = l.id AND consultant_id = c.owner_id
             )
             WHERE $whereStr
-            ORDER BY c.$sortBy $order
+            ORDER BY $orderSql
             LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
@@ -389,6 +389,106 @@ class ContactController {
             'total_pages' => ceil($total / $limit),
             'stage_counts' => $stageCounts
         ]);
+    }
+
+    private function applySmartSearch(string $search, array &$where, array &$params): void {
+        $search = trim($search);
+        if ($search === '') return;
+
+        $conds = [];
+        $searchParams = [];
+
+        // 1. Direct ID or Person ID if numeric
+        if (ctype_digit($search)) {
+            $conds[] = "c.id = ?";
+            $searchParams[] = (int)$search;
+            $conds[] = "c.person_id = ?";
+            $searchParams[] = (int)$search;
+        }
+
+        // 2. Clean digits for phone numbers (strip spaces, dots, dashes, parentheses, +84)
+        $cleanDigits = preg_replace('/[^\d]/', '', $search);
+        if (strlen($cleanDigits) >= 3) {
+            $conds[] = "c.phone LIKE ?";
+            $searchParams[] = "%{$cleanDigits}%";
+            $conds[] = "c.mobile LIKE ?";
+            $searchParams[] = "%{$cleanDigits}%";
+
+            // If 9 or more digits, match last 9 digits (handles 09xx vs +849xx vs 849xx)
+            if (strlen($cleanDigits) >= 9) {
+                $last9 = substr($cleanDigits, -9);
+                $conds[] = "c.phone LIKE ?";
+                $searchParams[] = "%{$last9}%";
+                $conds[] = "c.mobile LIKE ?";
+                $searchParams[] = "%{$last9}%";
+            }
+        }
+
+        // 3. Search variants (handling Vietnamese 'd' <-> 'đ')
+        $variants = [$search];
+        if (mb_stripos($search, 'd') !== false) {
+            $variants[] = str_ireplace('d', 'đ', $search);
+        }
+        if (mb_stripos($search, 'đ') !== false) {
+            $variants[] = str_ireplace(['đ', 'Đ'], ['d', 'D'], $search);
+        }
+        $variants = array_unique($variants);
+
+        foreach ($variants as $sv) {
+            // Forward name (first_name + last_name)
+            $conds[] = "CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')) LIKE ?";
+            $searchParams[] = "%{$sv}%";
+
+            // Reverse name (last_name + first_name, standard Vietnamese display)
+            $conds[] = "CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, '')) LIKE ?";
+            $searchParams[] = "%{$sv}%";
+
+            // Individual fields
+            $conds[] = "c.first_name LIKE ?";
+            $searchParams[] = "%{$sv}%";
+            $conds[] = "c.last_name LIKE ?";
+            $searchParams[] = "%{$sv}%";
+            $conds[] = "c.phone LIKE ?";
+            $searchParams[] = "%{$sv}%";
+            $conds[] = "c.mobile LIKE ?";
+            $searchParams[] = "%{$sv}%";
+            $conds[] = "c.email LIKE ?";
+            $searchParams[] = "%{$sv}%";
+
+            // Persons full_name and phone
+            $conds[] = "EXISTS (SELECT 1 FROM persons p WHERE p.id = c.person_id AND (p.full_name LIKE ? OR p.phone LIKE ?))";
+            $searchParams[] = "%{$sv}%";
+            $searchParams[] = "%{$sv}%";
+
+            // Multi-word permutation & wildcarding
+            $words = array_values(array_filter(preg_split('/\s+/u', $sv)));
+            if (count($words) >= 2) {
+                // Inverted phrase e.g. "Thanh Anh" <-> "Anh Thanh"
+                $reversedPhrase = implode(' ', array_reverse($words));
+                $conds[] = "CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')) LIKE ?";
+                $searchParams[] = "%{$reversedPhrase}%";
+                $conds[] = "CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, '')) LIKE ?";
+                $searchParams[] = "%{$reversedPhrase}%";
+
+                // Wildcard permutations across name combinations
+                $fwdWildcard = '%' . implode('%', $words) . '%';
+                $conds[] = "CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')) LIKE ?";
+                $searchParams[] = $fwdWildcard;
+                $conds[] = "CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, '')) LIKE ?";
+                $searchParams[] = $fwdWildcard;
+
+                $revWildcard = '%' . implode('%', array_reverse($words)) . '%';
+                $conds[] = "CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')) LIKE ?";
+                $searchParams[] = $revWildcard;
+                $conds[] = "CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, '')) LIKE ?";
+                $searchParams[] = $revWildcard;
+            }
+        }
+
+        if (!empty($conds)) {
+            $where[] = '(' . implode(' OR ', $conds) . ')';
+            $params = array_merge($params, $searchParams);
+        }
     }
 
     private function resolveCompanyId(array $auth, array $b): ?int {
@@ -1419,6 +1519,10 @@ class ContactController {
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy liên hệ hoặc không có quyền xóa', false);
         
         $this->restorePersonPublicStatus($id, $auth['tenant_id']);
+
+        if ($auth['role'] === 'admin' || $auth['role'] === 'superadmin') {
+            $this->cleanupLeadsForContactId((int)$id, $auth['tenant_id']);
+        }
         
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'contact', $id, json_encode(['id' => $id]));
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Liên hệ', "Một liên hệ đã bị đưa vào thùng rác.", 'contact', $id);
@@ -1457,10 +1561,56 @@ class ContactController {
         
         foreach ($ids as $cid) {
             $this->restorePersonPublicStatus((int)$cid, $auth['tenant_id']);
+            if ($auth['role'] === 'admin' || $auth['role'] === 'superadmin') {
+                $this->cleanupLeadsForContactId((int)$cid, $auth['tenant_id']);
+            }
         }
         
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'BULK_DELETE', 'contact', null, json_encode(['ids' => $ids]));
         respond(200, null, "Đã xóa " . $stmt->rowCount() . " liên hệ");
+    }
+
+    private function cleanupLeadsForContactId(int $contactId, int $tenantId): void {
+        try {
+            $stmtC = $this->db->prepare("SELECT person_id, phone FROM contacts WHERE id = ? LIMIT 1");
+            $stmtC->execute([$contactId]);
+            $cRow = $stmtC->fetch(PDO::FETCH_ASSOC);
+            if (!$cRow) return;
+
+            $personId = (int)($cRow['person_id'] ?? 0);
+            $phone = $cRow['phone'] ?? '';
+
+            $leadIds = [];
+            if ($personId > 0) {
+                $stmtL = $this->db->prepare("SELECT id FROM leads WHERE person_id = ?");
+                $stmtL->execute([$personId]);
+                $leadIds = array_merge($leadIds, $stmtL->fetchAll(PDO::FETCH_COLUMN));
+            }
+            if (!empty($phone)) {
+                $cleanPhone = preg_replace('/[^\d]/', '', $phone);
+                if (strlen($cleanPhone) >= 9) {
+                    $likePhone = '%' . substr($cleanPhone, -9);
+                    $stmtL = $this->db->prepare("SELECT id FROM leads WHERE phone = ? OR phone LIKE ?");
+                    $stmtL->execute([$phone, $likePhone]);
+                    $leadIds = array_merge($leadIds, $stmtL->fetchAll(PDO::FETCH_COLUMN));
+                }
+            }
+            $leadIds = array_unique(array_filter(array_map('intval', $leadIds)));
+
+            foreach ($leadIds as $lid) {
+                $this->db->exec("DELETE FROM lead_offers WHERE lead_id = $lid");
+                $this->db->exec("DELETE FROM data_reports WHERE lead_id = $lid");
+                $this->db->exec("DELETE FROM communication_logs WHERE lead_id = $lid");
+                $this->db->exec("DELETE FROM distribution_logs WHERE lead_id = $lid");
+                $this->db->exec("DELETE FROM telegram_queue WHERE lead_id = $lid");
+                $this->db->exec("DELETE FROM zalo_queue WHERE lead_id = $lid");
+                $this->db->exec("DELETE FROM mail_queue WHERE lead_id = $lid");
+                $this->db->exec("DELETE FROM sync_queue WHERE lead_id = $lid");
+                $this->db->exec("DELETE FROM leads WHERE id = $lid");
+            }
+        } catch (\Throwable $e) {
+            error_log("Error in cleanupLeadsForContactId: " . $e->getMessage());
+        }
     }
 
     private function getSetting(string $key, string $default): string {
