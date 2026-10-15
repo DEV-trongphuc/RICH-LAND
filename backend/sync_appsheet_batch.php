@@ -15,6 +15,12 @@ if ($key !== 'richland2026') {
     exit;
 }
 
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle) {
+        return (string)$needle === '' || strpos($haystack, $needle) === 0;
+    }
+}
+
 $rawInput = file_get_contents('php://input');
 $input = json_decode($rawInput, true);
 $items = $input['items'] ?? [];
@@ -161,12 +167,12 @@ try {
         $phoneZero = '';
         $phonePlain = '';
         if (!empty($digits)) {
-            if (str_starts_with($digits, '84') && strlen($digits) >= 11) {
+            if (substr($digits, 0, 2) === '84' && strlen($digits) >= 11) {
                 $base = substr($digits, 2);
                 $phonePlus84 = '+84' . $base;
                 $phoneZero = '0' . $base;
                 $phonePlain = $base;
-            } elseif (str_starts_with($digits, '0')) {
+            } elseif (substr($digits, 0, 1) === '0') {
                 $base = substr($digits, 1);
                 $phonePlus84 = '+84' . $base;
                 $phoneZero = '0' . $base;
