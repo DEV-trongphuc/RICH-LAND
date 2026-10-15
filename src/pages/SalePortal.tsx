@@ -9172,36 +9172,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <span>
                     {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(databankPage - 1) * databankPageSize + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(databankPage * databankPageSize, publicLeads.length)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{publicLeads.length}</span>
                   </span>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>| Mỗi trang:</span>
-                    <select
-                      value={databankPageSize}
-                      onChange={e => {
-                        const newSize = Number(e.target.value);
-                        setDatabankPageSize(newSize);
-                        localStorage.setItem('richland_databank_page_size', String(newSize));
-                        setDatabankPage(1);
-                      }}
-                      style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--color-border)',
-                        background: 'var(--color-surface)',
-                        color: 'var(--color-text)',
-                        cursor: 'pointer',
-                        outline: 'none',
-                        height: '26px'
-                      }}
-                    >
-                      <option value={10}>10 dòng</option>
-                      <option value={20}>20 dòng</option>
-                      <option value={25}>25 dòng</option>
-                      <option value={50}>50 dòng</option>
-                      <option value={100}>100 dòng</option>
-                    </select>
-                  </div>
+                  <select
+                    value={databankPageSize}
+                    onChange={e => {
+                      const newSize = Number(e.target.value);
+                      setDatabankPageSize(newSize);
+                      localStorage.setItem('richland_databank_page_size', String(newSize));
+                      setDatabankPage(1);
+                    }}
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      height: '26px',
+                      marginLeft: '6px'
+                    }}
+                  >
+                    <option value={10}>10 dòng</option>
+                    <option value={20}>20 dòng</option>
+                    <option value={25}>25 dòng</option>
+                    <option value={50}>50 dòng</option>
+                    <option value={100}>100 dòng</option>
+                  </select>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button onClick={() => setDatabankPage(prev => Math.max(prev - 1, 1))} disabled={databankPage === 1} className="btn sm secondary" style={{ height: 32, width: 32, padding: 0 }}>
