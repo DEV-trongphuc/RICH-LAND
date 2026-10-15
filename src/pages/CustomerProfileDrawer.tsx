@@ -8198,7 +8198,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 { key: 'nhu_cau', label: 'Nhu cầu' },
                                 { key: 'tieu_chi', label: 'Tiêu chí' },
                                 { key: 'san_pham', label: 'Sản phẩm' },
-                                { key: 'tinh_trang', label: 'Tình trạng' }
+                                { key: 'tinh_trang', label: 'Tình trạng' },
+                                { key: 'client_context', label: 'Khảo sát / Ngữ cảnh', fullWidth: true },
+                                { key: 'chan_dung', label: 'Chân dung khách', fullWidth: true },
+                                { key: 'thongtin_kh_origin', label: 'Thông tin gốc form', fullWidth: true }
                               ];
 
                               const getFormVal = (k: string) => {
@@ -8227,6 +8230,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 if (k === 'tinh_trang') return webhookData.parsed['tinh_trang'] || formData.tinh_trang || contact?.tinh_trang || '';
                                 if (k === 'hinh_thuc_tt') return webhookData.parsed['hinh_thuc_tt'] || formData.hinh_thuc_tt || contact?.hinh_thuc_tt || '';
                                 if (k === 'time_lienhe') return webhookData.parsed['time_lienhe'] || formData.time_lienhe || contact?.time_lienhe || '';
+                                if (k === 'client_context') return webhookData.parsed['client_context'] || formData.client_context || contact?.client_context || '';
+                                if (k === 'chan_dung') return webhookData.parsed['chan_dung'] || formData.chan_dung || contact?.chan_dung || '';
+                                if (k === 'thongtin_kh_origin') return webhookData.parsed['thongtin_kh_origin'] || formData.thongtin_kh_origin || contact?.thongtin_kh_origin || '';
                                 if (k === 'app_lienhe') {
                                   const wbApp = webhookData.parsed['app_lienhe'] || webhookData.parsed['ung_dung_lien_he'] || webhookData.parsed['app'] || formData.app_lienhe || contact?.app_lienhe || '';
                                   if (wbApp) return wbApp;

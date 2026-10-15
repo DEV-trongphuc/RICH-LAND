@@ -99,6 +99,18 @@ type Lead = {
   tieu_chi?: string;
   san_pham?: string;
   tinh_trang?: string;
+  ad_id?: string;
+  campaign_id?: string;
+  inbox_url?: string;
+  client_context?: string;
+  mkt_chiateam?: string;
+  kho_lead?: string;
+  kenh?: string;
+  lead_tindung?: string;
+  time_databank?: string;
+  appsheet_id?: string;
+  chan_dung?: string;
+  thongtin_kh_origin?: string;
   webhook_data?: any;
 };
 
@@ -700,7 +712,19 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           nhu_cau: item.nhu_cau || item.demand_type || '',
           tieu_chi: item.tieu_chi || '',
           san_pham: item.san_pham || '',
-          tinh_trang: item.tinh_trang || ''
+          tinh_trang: item.tinh_trang || '',
+          ad_id: item.ad_id || '',
+          campaign_id: item.campaign_id || '',
+          inbox_url: item.inbox_url || '',
+          client_context: item.client_context || '',
+          mkt_chiateam: item.mkt_chiateam || '',
+          kho_lead: item.kho_lead || '',
+          kenh: item.kenh || item.platform || '',
+          lead_tindung: item.lead_tindung || '',
+          time_databank: item.time_databank || '',
+          appsheet_id: item.appsheet_id || '',
+          chan_dung: item.chan_dung || '',
+          thongtin_kh_origin: item.thongtin_kh_origin || ''
         }));
         setLeads(mappedLeads);
         setTotalCount(json.total_count ?? mappedLeads.length);
@@ -4761,7 +4785,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       { key: 'nhu_cau', label: t('Nhu cầu') },
                       { key: 'tieu_chi', label: t('Tiêu chí') },
                       { key: 'san_pham', label: t('Sản phẩm') },
-                      { key: 'tinh_trang', label: t('Tình trạng') }
+                      { key: 'tinh_trang', label: t('Tình trạng') },
+                      { key: 'client_context', label: t('Khảo sát / Ngữ cảnh'), fullWidth: true },
+                      { key: 'chan_dung', label: t('Chân dung khách'), fullWidth: true },
+                      { key: 'thongtin_kh_origin', label: t('Thông tin gốc form'), fullWidth: true }
                     ];
 
                     let wb: any = {};
@@ -4797,6 +4824,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       if (k === 'tinh_trang') return wb['tinh_trang'] || selectedLead.tinh_trang || '';
                       if (k === 'hinh_thuc_tt') return wb['hinh_thuc_tt'] || selectedLead.hinh_thuc_tt || '';
                       if (k === 'time_lienhe') return wb['time_lienhe'] || selectedLead.time_lienhe || '';
+                      if (k === 'client_context') return wb['client_context'] || selectedLead.client_context || '';
+                      if (k === 'chan_dung') return wb['chan_dung'] || selectedLead.chan_dung || '';
+                      if (k === 'thongtin_kh_origin') return wb['thongtin_kh_origin'] || selectedLead.thongtin_kh_origin || '';
                       if (k === 'app_lienhe') {
                         const wbApp = wb['app_lienhe'] || wb['ung_dung_lien_he'] || wb['app'] || selectedLead.app_lienhe || '';
                         if (wbApp) return wbApp;
@@ -4912,6 +4942,114 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* BLOCK 3: THÔNG TIN ĐO LƯỜNG & CHIẾN DỊCH (MARKETING & TRACKING) */}
+                <div style={{
+                  background: theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                  borderRadius: '12px',
+                  border: '1px solid var(--color-border)',
+                  padding: '12px 14px',
+                  marginBottom: '1rem',
+                  boxSizing: 'border-box'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      <BarChart2 size={14} style={{ color: '#0ea5e9' }} />
+                      <span>{t('Thông Tin Đo Lường & Chiến Dịch')}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px', fontSize: '0.75rem', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+                    {/* Ad ID */}
+                    <div style={{ background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{t('Mã Quảng Cáo (Ad ID)')}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '2px', wordBreak: 'break-all' }}>
+                        {selectedLead.ad_id || '—'}
+                      </div>
+                    </div>
+
+                    {/* Campaign ID */}
+                    <div style={{ background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{t('Mã Chiến Dịch (Campaign ID)')}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '2px', wordBreak: 'break-all' }}>
+                        {selectedLead.campaign_id || selectedLead.utm_campaign || '—'}
+                      </div>
+                    </div>
+
+                    {/* Kênh */}
+                    <div style={{ background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{t('Kênh / Nền tảng')}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '2px' }}>
+                        {selectedLead.kenh || selectedLead.platform || '—'}
+                      </div>
+                    </div>
+
+                    {/* Team chia MKT */}
+                    <div style={{ background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{t('Team Chia (MKT)')}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '2px' }}>
+                        {selectedLead.mkt_chiateam || '—'}
+                      </div>
+                    </div>
+
+                    {/* Kho Lead */}
+                    <div style={{ background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{t('Kho Lead Nguồn')}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '2px' }}>
+                        {selectedLead.kho_lead || '—'}
+                      </div>
+                    </div>
+
+                    {/* Tín dụng lead */}
+                    <div style={{ background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{t('Tín Dụng Lead (Score)')}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '2px' }}>
+                        {selectedLead.lead_tindung || '—'}
+                      </div>
+                    </div>
+
+                    {/* Thời gian vào Databank */}
+                    {selectedLead.time_databank && (
+                      <div style={{ background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)', gridColumn: 'span 2' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{t('Thời Gian Vào Databank')}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '2px' }}>
+                          {selectedLead.time_databank}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Link Inbox Chat */}
+                    {selectedLead.inbox_url && (
+                      <div style={{ background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)', gridColumn: 'span 2' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{t('Link Chat Hộp Thư (Inbox)')}</div>
+                        <div style={{ marginTop: '4px' }}>
+                          <a
+                            href={selectedLead.inbox_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              background: 'rgba(14, 165, 233, 0.1)',
+                              color: '#0284c7',
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              textDecoration: 'none',
+                              border: '1px solid rgba(14, 165, 233, 0.25)'
+                            }}
+                          >
+                            <MessageSquare size={13} />
+                            <span>{t('Mở Hộp Thư Trò Chuyện')}</span>
+                            <ExternalLink size={12} />
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

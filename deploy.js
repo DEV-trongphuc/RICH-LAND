@@ -255,7 +255,7 @@ function runCommand(cmd, cwdOrTimeout = ROOT_DIR, timeoutMs = 180000) {
     cwd = cwdOrTimeout;
   }
   console.log(`> ${cmd}`);
-  execSync(cmd, { stdio: 'inherit', cwd, timeout });
+  execSync(cmd, { stdio: 'inherit', cwd, timeout, env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' } });
 }
 
 function fetchUrl(url, extraHeaders = {}) {
