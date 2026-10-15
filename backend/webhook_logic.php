@@ -1470,9 +1470,6 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
 
     $consultants = [];
     while ($row = $cRes->fetch_assoc()) {
-        if (!empty($excludeIds) && in_array((int)$row['id'], $excludeIds, true)) {
-            continue;
-        }
         $consultants[] = $row;
     }
     if (isset($cStmt)) {
@@ -1560,7 +1557,8 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
 
         // Trong ca trực đêm: BẮT BUỘC phải có duyệt đăng ký ca đêm ($isNightShiftActive). Khung giờ ngày KHÔNG được dùng!
         $isOnDuty = $isNightShiftNow ? $isNightShiftActive : ($isInWorkHours || $isGoldenHoursTime);
-        $isAvailable = !$isOnVacation && $isGatePassed && $isOnDuty && !$isCool;
+        $isExcluded = (!empty($excludeIds) && in_array((int)$row['id'], $excludeIds, true));
+        $isAvailable = !$isExcluded && !$isOnVacation && $isGatePassed && $isOnDuty && !$isCool;
 
         // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale. 
@@ -1627,17 +1625,31 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
     }
 
     // === PRIORITY 4: ROUND-ROBIN — Find next consultant by receive_ratio ===
-    $nextIdx = 0;
+    $totalCount = count($consultants);
+    $lastIdx = -1;
     if ($lastAssignedId) {
         foreach ($consultants as $i => $c) {
-            if ($c['id'] == $lastAssignedId) {
-                $nextIdx = ($i + 1) % count($consultants);
+            if ((int)$c['id'] === (int)$lastAssignedId) {
+                $lastIdx = $i;
                 break;
             }
         }
     }
 
-    $startIdx = $nextIdx;
+    $startIdx = 0;
+    if ($lastIdx !== -1) {
+        $startIdx = ($lastIdx + 1) % $totalCount;
+    } else if ($lastAssignedId) {
+        // If lastAssignedId not in array, find first consultant with id > lastAssignedId
+        for ($i = 0; $i < $totalCount; $i++) {
+            if ((int)$consultants[$i]['id'] > (int)$lastAssignedId) {
+                $startIdx = $i;
+                break;
+            }
+        }
+    }
+
+    $nextIdx = $startIdx;
     $chosenConsultant = null;
     $skippedConsultants = [];
 
@@ -1646,34 +1658,41 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
 
     do {
         $candidate = $consultants[$nextIdx];
+        $candId = (int)$candidate['id'];
+        $isExcluded = (!empty($excludeIds) && in_array($candId, $excludeIds, true));
 
-        // Check availability (only vacation/leave counts as unavailable for skipping)
-        $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
-        $isGatePassed = (checkConsultantGates($conn, (int)$candidate['id'], $lead) === true);
-        $isAvailable = !$isOnVacation && $isGatePassed;
+        if (!$isExcluded) {
+            $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
+            $isGatePassed = (checkConsultantGates($conn, $candId, $lead) === true);
+            $cInWorkHours = isConsultantInWorkHours($currentTime, $candidate['work_start_time'], $candidate['work_end_time'], $candidate['work_schedule']);
+            $cNightShift = checkNightShiftAvailability($conn, $candId, $currentTime);
+            $isCool = isConsultantOnNormalCooldown($conn, $candId, $roundId, $normalCooldownSec);
+            $isOnDuty = $isNightShiftNow ? $cNightShift : ($cInWorkHours || $isGoldenHoursTime);
+            $isAvailable = !$isOnVacation && $isGatePassed && $isOnDuty && !$isCool;
 
-        if ($isAvailable) {
-            $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
-            $skipCount = (int) ($candidate['skip_count'] ?? 0);
+            if ($isAvailable) {
+                $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
+                $skipCount = (int) ($candidate['skip_count'] ?? 0);
 
-            if ($ratio == 1 || $skipCount >= $ratio - 1) {
-                $chosenConsultant = $candidate;
-                $skipResetStmt->bind_param("ii", $roundId, $candidate['id']);
-                $skipResetStmt->execute();
-                break;
+                if ($ratio == 1 || $skipCount >= $ratio - 1) {
+                    $chosenConsultant = $candidate;
+                    $skipResetStmt->bind_param("ii", $roundId, $candId);
+                    $skipResetStmt->execute();
+                    break;
+                } else {
+                    $skipIncrStmt->bind_param("ii", $roundId, $candId);
+                    $skipIncrStmt->execute();
+                }
             } else {
-                $skipIncrStmt->bind_param("ii", $roundId, $candidate['id']);
-                $skipIncrStmt->execute();
-                $nextIdx = ($nextIdx + 1) % count($consultants);
+                // Unavailable or skipped due to consecutive rule
+                if ($starvationEnabled === 1 && !$isAvailable) {
+                    $skippedConsultants[] = $candId;
+                }
             }
-        } else {
-            // Unavailable or skipped due to consecutive rule
-            if ($starvationEnabled === 1 && !$isAvailable) {
-                $skippedConsultants[] = (int) $candidate['id'];
-            }
-            $nextIdx = ($nextIdx + 1) % count($consultants);
         }
-    } while ($nextIdx != $startIdx);
+
+        $nextIdx = ($nextIdx + 1) % $totalCount;
+    } while ($nextIdx !== $startIdx);
 
     // Fallback: everyone is skipped or offline simultaneously
     if (!$chosenConsultant) {

@@ -1589,8 +1589,9 @@ if (!function_exists('recallInactiveLeads')) {
                         $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Không tìm thấy Sale hoạt động khác trong vòng, chuyển lead về trạng thái Chờ xử lý (Pending).";
                     }
                 } else {
-                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
-                    $upLead->bind_param("ii", $newConsultantId, $leadId);
+                    $leadStatusToSet = ($newStatus === 'pending_work_hours') ? 'pending_work_hours' : 'assigned';
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = ?, last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL WHERE id = ?");
+                    $upLead->bind_param("isi", $newConsultantId, $leadStatusToSet, $leadId);
                     $upLead->execute();
                     $upLead->close();
                     
@@ -1615,6 +1616,11 @@ if (!function_exists('recallInactiveLeads')) {
                 require_once __DIR__ . '/webhook_logic.php';
                 if (function_exists('sendSaleLeadRecalledNotification')) {
                     sendSaleLeadRecalledNotification($conn, $leadId, $oldConsultantId, (int)$row['lead_recall_minutes'], $roundName);
+                }
+
+                // Gửi thông báo phân bổ cho Sale mới nếu đã nhận lead thành công
+                if ($newConsultantId > 0 && function_exists('sendDirectSaleLeadNotification')) {
+                    sendDirectSaleLeadNotification($conn, $leadId, $newConsultantId, $roundId);
                 }
 
                 logSync("Recalled lead ID $leadId from sale $oldConsultantName successfully. Sent recall notification.");

@@ -2733,49 +2733,105 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               </div>
             </div>
 
-            {/* Mobile Filter Button (Opens Slide-Over Drawer on Mobile only, as Desktop has full Sidebar) */}
-            {isMobile && (
-              <button
-                type="button"
-                onClick={() => setShowMobileFilterDrawer(true)}
-                style={{
-                  height: '38px',
-                  padding: '0 12px',
+            {/* Desktop / Tablet Quick Filter Dropdowns */}
+            {!isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                {/* 1. Dự án */}
+                <div style={{ width: 155 }}>
+                  <CustomSelect
+                    value={projectFilter}
+                    onChange={val => updateParams('project', val.toString())}
+                    options={[
+                      { value: 'all', label: t('Tất cả dự án'), icon: <Building2 size={13} /> },
+                      ...projectsList.map(p => ({
+                        value: String(p.id || p.name),
+                        label: p.name
+                      }))
+                    ]}
+                    searchable={true}
+                    width="100%"
+                  />
+                </div>
+
+                {/* 2. Phân loại */}
+                <div style={{ width: 145 }}>
+                  <CustomSelect
+                    value={leadPhanLoaiFilter}
+                    onChange={val => updateParams('lead_phan_loai', val.toString())}
+                    options={[
+                      { value: 'all', label: t('Tất cả phân loại'), icon: <Tag size={13} /> },
+                      ...Array.from(new Set([
+                        ...availableLeadPhanLoai,
+                        ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
+                        'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
+                      ])).map(pl => ({ value: pl, label: pl }))
+                    ]}
+                    searchable={true}
+                    width="100%"
+                  />
+                </div>
+
+                {/* 3. Đơn vị chạy */}
+                <div style={{ width: 150 }}>
+                  <CustomSelect
+                    value={donviChayFilter}
+                    onChange={val => updateParams('donvi_chay', val.toString())}
+                    options={[
+                      { value: 'all', label: t('Tất cả đơn vị'), icon: <Layers size={13} /> },
+                      ...Array.from(new Set([
+                        ...availableDonviChay,
+                        ...leads.map(l => l.donvi_chay).filter(Boolean)
+                      ])).map(dv => ({ value: dv, label: dv }))
+                    ]}
+                    searchable={true}
+                    width="100%"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Filter Drawer Button (Detailed filter for Desktop, Quick drawer for Mobile) */}
+            <button
+              type="button"
+              onClick={() => isMobile ? setShowMobileFilterDrawer(true) : setShowAdvancedFilterDrawer(true)}
+              style={{
+                height: '38px',
+                padding: '0 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                border: activeFiltersCount > 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                borderRadius: '8px',
+                background: activeFiltersCount > 0 ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                color: activeFiltersCount > 0 ? 'var(--color-primary)' : 'var(--color-text)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                transition: 'all 0.2s',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+              title={isMobile ? t('Mở bộ lọc') : t('Mở bộ lọc chi tiết chuyên sâu')}
+            >
+              <SlidersHorizontal size={14} />
+              <span className="hide-on-mobile">{t('Bộ lọc chi tiết')}</span>
+              <span className="show-on-mobile" style={{ display: isMobile ? 'inline' : 'none' }}>{t('Bộ lọc')}</span>
+              {activeFiltersCount > 0 && (
+                <span style={{
+                  background: 'var(--color-primary)',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  minWidth: 18,
+                  height: 18,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                  border: activeFiltersCount > 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                  background: activeFiltersCount > 0 ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                  color: activeFiltersCount > 0 ? 'var(--color-primary)' : 'var(--color-text)',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  transition: 'all 0.2s',
-                  boxShadow: 'var(--shadow-sm)'
-                }}
-                title={t('Mở bộ lọc')}
-              >
-                <SlidersHorizontal size={14} />
-                <span>{t('Bộ lọc')}</span>
-                {activeFiltersCount > 0 && (
-                  <span style={{
-                    background: 'var(--color-primary)',
-                    color: '#fff',
-                    borderRadius: '50%',
-                    minWidth: 18,
-                    height: 18,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.65rem',
-                    lineHeight: 1
-                  }}>
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </button>
-            )}
+                  justifyContent: 'center',
+                  fontSize: '0.65rem',
+                  lineHeight: 1
+                }}>
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
 
             {/* Quick Reset All Button */}
             {activeFiltersCount > 0 && (
