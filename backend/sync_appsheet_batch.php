@@ -105,7 +105,7 @@ try {
             dagap_time      = COALESCE(NULLIF(?, ''), dagap_time),
             booking_time    = COALESCE(NULLIF(?, ''), booking_time),
             datcoc_time     = COALESCE(NULLIF(?, ''), datcoc_time),
-            sl_booking      = COALESCE(?, sl_booking),
+            sl_booking      = COALESCE(NULLIF(?, ''), sl_booking),
             chan_dung       = COALESCE(NULLIF(?, ''), chan_dung),
             image_dongygap  = COALESCE(NULLIF(?, ''), image_dongygap),
             image_dagap     = COALESCE(NULLIF(?, ''), image_dagap),
@@ -153,7 +153,7 @@ try {
         $dagapTime    = trim($item['dagap_time'] ?? '');
         $bookingTime  = trim($item['booking_time'] ?? '');
         $datcocTime   = trim($item['datcoc_time'] ?? '');
-        $slBooking    = isset($item['sl_booking']) && is_numeric($item['sl_booking']) ? (int)$item['sl_booking'] : null;
+        $slBooking    = isset($item['sl_booking']) && is_numeric($item['sl_booking']) ? (string)$item['sl_booking'] : '';
         $chanDung     = trim($item['chan_dung'] ?? '');
         $imgDongy     = trim($item['image_dongygap'] ?? '');
         $imgDagap     = trim($item['image_dagap'] ?? '');
@@ -185,9 +185,8 @@ try {
         }
         $rawPayloadSearch = '%"appsheet_id":"' . $appsheetId . '"%';
 
-        // Execute Leads update
-        $stmtLead->bind_param(
-            "sssssssssssssssssssssssssssssssssss",
+        // Params array for Leads
+        $leadParams = [
             $appsheetId, $loaiLead, $leadPhanLoai, $donviChay, $linkFb,
             $formName, $adId, $adName, $campaignId, $campaignId,
             $platform, $platform, $loaiHinh, $hinhThucTt, $timeLienhe,
@@ -195,15 +194,16 @@ try {
             $city, $country, $birthday, $inboxUrl, $clientCtx,
             $mktChiateam, $khoLead, $leadTindung, $timeDatabank,
             $appsheetId, $rawPayloadSearch, $rawPhone, $phonePlus84, $phoneZero
-        );
+        ];
+        $leadTypes = str_repeat('s', count($leadParams));
+        $stmtLead->bind_param($leadTypes, ...$leadParams);
         $stmtLead->execute();
         if ($stmtLead->affected_rows > 0) {
             $updatedLeads += $stmtLead->affected_rows;
         }
 
-        // Execute Contacts update
-        $stmtContact->bind_param(
-            "ssssssssssssssssssssssssisssssssssssss",
+        // Params array for Contacts
+        $contactParams = [
             $appsheetId, $loaiLead, $leadPhanLoai, $donviChay, $linkFb,
             $linkFb, $formName, $adId, $adName, $campaignId,
             $platform, $loaiHinh, $hinhThucTt, $timeLienhe, $appLienhe,
@@ -212,7 +212,9 @@ try {
             $dagapTime, $bookingTime, $datcocTime, $slBooking, $chanDung,
             $imgDongy, $imgDagap, $imgUNC, $originInfo,
             $appsheetId, $rawPhone, $phonePlus84, $phoneZero, $khtnId
-        );
+        ];
+        $contactTypes = str_repeat('s', count($contactParams));
+        $stmtContact->bind_param($contactTypes, ...$contactParams);
         $stmtContact->execute();
         if ($stmtContact->affected_rows > 0) {
             $updatedContacts += $stmtContact->affected_rows;
