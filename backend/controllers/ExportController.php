@@ -97,7 +97,30 @@ class ExportController {
                 $params[] = "%$search%";
                 $params[] = "%$search%";
             }
+            $pipelineStatus = $_GET['pipeline_status'] ?? '';
+            $knownPipelineStatuses = [
+                'chua_xac_dinh', 'cham_soc_dai_han', 'quan_tam', 'dong_y_gap', 'thien_chi',
+                'da_gap', 'booking', 'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead'
+            ];
+            if ($status && in_array($status, $knownPipelineStatuses, true)) {
+                if (empty($pipelineStatus)) {
+                    $pipelineStatus = $status;
+                }
+                $status = '';
+            }
             if ($status) { $where[] = 't.status = ?'; $params[] = $status; }
+            if ($pipelineStatus !== '') {
+                if ($pipelineStatus === 'dong_y_gap' || $pipelineStatus === 'thien_chi') {
+                    $where[] = "(t.pipeline_status IN ('dong_y_gap', 'thien_chi'))";
+                } else if ($pipelineStatus === 'dat_coc' || $pipelineStatus === 'da_coc') {
+                    $where[] = "(t.pipeline_status IN ('dat_coc', 'da_coc'))";
+                } else if ($pipelineStatus === 'dong_deal' || $pipelineStatus === 'thanh_cong') {
+                    $where[] = "(t.pipeline_status IN ('dong_deal', 'thanh_cong'))";
+                } else {
+                    $where[] = 't.pipeline_status = ?';
+                    $params[] = $pipelineStatus;
+                }
+            }
             if ($source) { $where[] = 't.source = ?'; $params[] = $source; }
             if ($owner)  { $where[] = 't.owner_id = ?'; $params[] = (int)$owner; }
             if ($stage)  { $where[] = 't.stage_id = ?'; $params[] = (int)$stage; }

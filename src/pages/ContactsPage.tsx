@@ -32,6 +32,97 @@ const PAGE_SIZE = 10;
 const STATUS_LABEL: Record<string,string> = { lead:'Lead mới', qualified:'Đủ điều kiện', customer:'Khách hàng', churned:'Đã rời' };
 const STATUS_CLASS: Record<string,string> = { lead:'info', qualified:'warning', customer:'success', churned:'danger' };
 
+export const PIPELINE_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  chua_xac_dinh: { label: '2. Chưa xác định', color: '#BD1D2D', bg: 'rgba(189, 29, 45, 0.1)', border: 'rgba(189, 29, 45, 0.2)' },
+  cham_soc_dai_han: { label: '3. Chăm sóc dài hạn', color: '#0D9488', bg: 'rgba(13, 148, 136, 0.12)', border: 'rgba(13, 148, 136, 0.25)' },
+  quan_tam: { label: '4. Quan tâm', color: '#ca8a04', bg: 'rgba(234, 179, 8, 0.12)', border: 'rgba(234, 179, 8, 0.25)' },
+  dong_y_gap: { label: '5. Thiện chí', color: '#ea580c', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.25)' },
+  thien_chi: { label: '5. Thiện chí', color: '#ea580c', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.25)' },
+  da_gap: { label: '6. Đã gặp', color: '#c026d3', bg: 'rgba(192, 38, 211, 0.12)', border: 'rgba(192, 38, 211, 0.25)' },
+  booking: { label: '7. Booking', color: '#2563eb', bg: 'rgba(37, 99, 235, 0.12)', border: 'rgba(37, 99, 235, 0.25)' },
+  dat_coc: { label: '8. Đặt cọc', color: '#059669', bg: 'rgba(5, 150, 105, 0.12)', border: 'rgba(5, 150, 105, 0.3)' },
+  da_coc: { label: '8. Đặt cọc', color: '#059669', bg: 'rgba(5, 150, 105, 0.12)', border: 'rgba(5, 150, 105, 0.3)' },
+  dong_deal: { label: '9. Đã đóng deal', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)' },
+  thanh_cong: { label: '9. Đã đóng deal', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)' },
+  not_lead: { label: 'Not Lead', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.12)', border: 'rgba(107, 114, 128, 0.25)' }
+};
+
+const renderContactStatusBadge = (c: any) => {
+  if (c.report_status === 'approved' || c.report_status === 'approved_no_comp') {
+    return (
+      <span 
+        className="badge" 
+        style={{ 
+          backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+          color: 'var(--color-danger)', 
+          border: '1px solid rgba(239, 68, 68, 0.2)',
+          fontWeight: 700,
+          borderRadius: '12px',
+          padding: '3px 8px',
+          fontSize: '0.72rem'
+        }}
+      >
+        Ticket lỗi
+      </span>
+    );
+  }
+  const st = (c.pipeline_status || '').toLowerCase().trim();
+  const cfg = PIPELINE_STATUS_CONFIG[st];
+  if (cfg) {
+    return (
+      <span 
+        className="badge" 
+        style={{ 
+          backgroundColor: cfg.bg, 
+          color: cfg.color, 
+          border: `1px solid ${cfg.border}`,
+          fontWeight: 700,
+          borderRadius: '12px',
+          padding: '3px 8px',
+          fontSize: '0.72rem'
+        }}
+      >
+        {cfg.label}
+      </span>
+    );
+  }
+  if (c.stage_name) {
+    return (
+      <span 
+        className="badge" 
+        style={{ 
+          backgroundColor: `${c.stage_color || '#64748b'}1a`, 
+          color: c.stage_color || 'var(--color-primary)', 
+          border: `1px solid ${c.stage_color || '#64748b'}33`,
+          fontWeight: 700,
+          borderRadius: '12px',
+          padding: '3px 8px',
+          fontSize: '0.72rem'
+        }}
+      >
+        {c.stage_name}
+      </span>
+    );
+  }
+  return (
+    <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`} style={{ borderRadius: '12px', padding: '3px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
+      {STATUS_LABEL[c.status] || c.status}
+    </span>
+  );
+};
+
+const getContactStatusColor = (c: any) => {
+  const st = (c.pipeline_status || '').toLowerCase().trim();
+  if (PIPELINE_STATUS_CONFIG[st]) {
+    return PIPELINE_STATUS_CONFIG[st].color;
+  }
+  if (c.stage_color) return c.stage_color;
+  if (c.status === 'lead') return 'var(--color-primary)';
+  if (c.status === 'qualified') return 'var(--color-warning)';
+  if (c.status === 'customer') return 'var(--color-success)';
+  return 'var(--color-text-muted)';
+};
+
 const getInteractionTime = (lastContact: string | null, updatedAt: string, createdAt: string) => {
   // Không fallback về updatedAt vì updatedAt thay đổi khi chạy script di trú / cập nhật trường
   if (!lastContact) return null;
@@ -692,6 +783,8 @@ export const ContactsPage: React.FC = () => {
       if (activeFilters.status) {
         if (/^\d+$/.test(activeFilters.status)) {
           params.stage_id = activeFilters.status;
+        } else if (PIPELINE_STATUS_CONFIG[activeFilters.status]) {
+          params.pipeline_status = activeFilters.status;
         } else {
           params.status = activeFilters.status;
         }
@@ -977,9 +1070,14 @@ export const ContactsPage: React.FC = () => {
     params.set('type', 'contact');
     params.set('token', localStorage.getItem('token') || '');
     if (debouncedSearch) params.set('search', debouncedSearch);
+    if (quickPipelineStage && quickPipelineStage !== 'all') {
+      params.set('pipeline_status', quickPipelineStage);
+    }
     if (activeFilters.status) {
       if (/^\d+$/.test(activeFilters.status)) {
         params.set('stage_id', activeFilters.status);
+      } else if (PIPELINE_STATUS_CONFIG[activeFilters.status]) {
+        params.set('pipeline_status', activeFilters.status);
       } else {
         params.set('status', activeFilters.status);
       }
@@ -1596,15 +1694,15 @@ export const ContactsPage: React.FC = () => {
                   options={[
                     { value: '', label: 'Tất cả trạng thái' },
                     { value: 'not_contacted', label: 'Chưa liên hệ' },
-                    ...(pipelineStages.length > 0 
-                      ? pipelineStages.map(s => ({ value: String(s.id), label: s.name }))
-                      : [
-                          { value: 'lead', label: 'Lead mới' },
-                          { value: 'qualified', label: 'Đủ điều kiện' },
-                          { value: 'customer', label: 'Khách hàng VIP' },
-                          { value: 'churned', label: 'Đã rời' }
-                        ]
-                    )
+                    { value: 'chua_xac_dinh', label: '2. Chưa xác định' },
+                    { value: 'cham_soc_dai_han', label: '3. Chăm sóc dài hạn' },
+                    { value: 'quan_tam', label: '4. Quan tâm' },
+                    { value: 'dong_y_gap', label: '5. Thiện chí' },
+                    { value: 'da_gap', label: '6. Đã gặp' },
+                    { value: 'booking', label: '7. Booking' },
+                    { value: 'dat_coc', label: '8. Đặt cọc' },
+                    { value: 'dong_deal', label: '9. Đã đóng deal' },
+                    ...(!isSale ? [{ value: 'not_lead', label: 'Not Lead / Chờ duyệt' }] : [])
                   ]}
                   width="100%"
                 />
@@ -2740,15 +2838,15 @@ export const ContactsPage: React.FC = () => {
                           options={[
                             { value: '', label: 'Tất cả trạng thái' },
                             { value: 'not_contacted', label: 'Chưa liên hệ' },
-                            ...(pipelineStages.length > 0 
-                              ? pipelineStages.map(s => ({ value: String(s.id), label: s.name }))
-                              : [
-                                  { value: 'lead', label: 'Lead mới' },
-                                  { value: 'qualified', label: 'Đủ điều kiện' },
-                                  { value: 'customer', label: 'Khách hàng VIP' },
-                                  { value: 'churned', label: 'Đã rời' }
-                                ]
-                            )
+                            { value: 'chua_xac_dinh', label: '2. Chưa xác định' },
+                            { value: 'cham_soc_dai_han', label: '3. Chăm sóc dài hạn' },
+                            { value: 'quan_tam', label: '4. Quan tâm' },
+                            { value: 'dong_y_gap', label: '5. Thiện chí' },
+                            { value: 'da_gap', label: '6. Đã gặp' },
+                            { value: 'booking', label: '7. Booking' },
+                            { value: 'dat_coc', label: '8. Đặt cọc' },
+                            { value: 'dong_deal', label: '9. Đã đóng deal' },
+                            ...(!isSale ? [{ value: 'not_lead', label: 'Not Lead / Chờ duyệt' }] : [])
                           ]}
                         />
                       </div>
@@ -3349,43 +3447,7 @@ export const ContactsPage: React.FC = () => {
                         )}
                         {columns.find(col => col.id === 'status')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                            {c.report_status === 'approved' || c.report_status === 'approved_no_comp' ? (
-                              <span 
-                                className="badge" 
-                                style={{ 
-                                  backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                                  color: 'var(--color-danger)', 
-                                  border: '1px solid rgba(239, 68, 68, 0.2)'
-                                }}
-                              >
-                                Ticket lỗi
-                              </span>
-                            ) : (c.pipeline_status === 'dat_coc' || c.pipeline_status === 'da_coc') ? (
-                              <span 
-                                className="badge" 
-                                style={{ 
-                                  backgroundColor: 'rgba(16, 185, 129, 0.12)', 
-                                  color: '#10b981', 
-                                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                                  fontWeight: 700
-                                }}
-                              >
-                                Đặt cọc
-                              </span>
-                            ) : c.stage_name ? (
-                              <span 
-                                className="badge" 
-                                style={{ 
-                                  backgroundColor: `${c.stage_color}1a`, 
-                                  color: c.stage_color || 'var(--color-primary)', 
-                                  border: `1px solid ${c.stage_color}33`
-                                }}
-                              >
-                                {c.stage_name}
-                              </span>
-                            ) : (
-                              <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
-                            )}
+                            {renderContactStatusBadge(c)}
                           </td>
                         )}
 
@@ -3671,12 +3733,7 @@ export const ContactsPage: React.FC = () => {
                             left: 0,
                             right: 0,
                             height: '4px',
-                            background: c.stage_color || (
-                                        c.status === 'lead' ? 'var(--color-primary)' :
-                                        c.status === 'qualified' ? 'var(--color-warning)' :
-                                        c.status === 'customer' ? 'var(--color-success)' :
-                                        'var(--color-text-muted)'
-                                        )
+                            background: getContactStatusColor(c)
                           }} />
 
                           {/* Header Section */}
@@ -3770,41 +3827,7 @@ export const ContactsPage: React.FC = () => {
                           {/* Status Badges & Score */}
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                              {c.report_status === 'approved' || c.report_status === 'approved_no_comp' ? (
-                                <span 
-                                  className="badge" 
-                                  style={{ 
-                                    borderRadius: '8px', 
-                                    padding: '4px 8px', 
-                                    fontSize: '0.72rem', 
-                                    fontWeight: 700,
-                                    backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                                    color: 'var(--color-danger)', 
-                                    border: '1px solid rgba(239, 68, 68, 0.2)'
-                                  }}
-                                >
-                                  Ticket lỗi
-                                </span>
-                              ) : c.stage_name ? (
-                                <span 
-                                  className="badge" 
-                                  style={{ 
-                                    borderRadius: '8px', 
-                                    padding: '4px 8px', 
-                                    fontSize: '0.72rem', 
-                                    fontWeight: 700,
-                                    backgroundColor: `${c.stage_color}1a`, 
-                                    color: c.stage_color || 'var(--color-primary)', 
-                                    border: `1px solid ${c.stage_color}33`
-                                  }}
-                                >
-                                  {c.stage_name}
-                                </span>
-                              ) : (
-                                <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`} style={{ borderRadius: '8px', padding: '4px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
-                                  {STATUS_LABEL[c.status] || c.status}
-                                </span>
-                              )}
+                              {renderContactStatusBadge(c)}
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Đánh giá:</span>
                                 <span style={{ 
