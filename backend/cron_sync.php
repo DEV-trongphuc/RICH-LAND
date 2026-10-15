@@ -3079,12 +3079,12 @@ function releaseExpiredLeadsToKho($conn) {
             $publicCount = (int)($personData['public_count'] ?? 0);
             if ($publicCount === 0) {
                 $newPublicCount = 1;
-                $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ?, deleted_from_databank = 0 WHERE id = ?");
+                $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = IFNULL(released_to_kho_at, NOW()), public_count = ?, deleted_from_databank = 0 WHERE id = ?");
                 $upd->bind_param("ii", $newPublicCount, $personId);
                 $upd->execute();
                 $upd->close();
             } else {
-                $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
+                $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = IFNULL(released_to_kho_at, NOW()), deleted_from_databank = 0 WHERE id = ?");
                 $upd->bind_param("i", $personId);
                 $upd->execute();
                 $upd->close();

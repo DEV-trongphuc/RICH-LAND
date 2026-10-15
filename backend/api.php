@@ -3801,7 +3801,7 @@ switch ($action) {
 
         $leadPipelineExpr = "
             CASE 
-                WHEN p.is_blocked = 1 OR l.status = 'not_lead' OR dl.status = 'not_lead' OR EXISTS (SELECT 1 FROM contacts cnl WHERE cnl.person_id = l.person_id AND cnl.pipeline_status = 'not_lead') THEN 'not_lead'
+                WHEN p.is_blocked = 1 THEN 'not_lead'
                 WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'dong_deal' AND c.deleted_at IS NULL) THEN 'dong_deal'
                 WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'dat_coc' AND c.deleted_at IS NULL) THEN 'dat_coc'
                 WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'booking' AND c.deleted_at IS NULL) THEN 'booking'
@@ -3809,6 +3809,7 @@ switch ($action) {
                 WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status IN ('dong_y_gap', 'thien_chi') AND c.deleted_at IS NULL) THEN 'thien_chi'
                 WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'quan_tam' AND c.deleted_at IS NULL) THEN 'quan_tam'
                 WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'cham_soc_dai_han' AND c.deleted_at IS NULL) THEN 'cham_soc_dai_han'
+                WHEN l.status = 'not_lead' OR dl.status = 'not_lead' OR EXISTS (SELECT 1 FROM contacts cnl WHERE cnl.person_id = l.person_id AND cnl.pipeline_status = 'not_lead') THEN 'not_lead'
                 ELSE 'chua_xac_dinh'
             END
         ";
@@ -4205,7 +4206,7 @@ switch ($action) {
             $rowTakers = $takersMap[$pid] ?? [];
             $row['takers'] = $rowTakers;
 
-            $isBlockedNotLead = ((int)($row['is_blocked'] ?? 0) === 1 || ($row['status'] ?? '') === 'not_lead' || ($row['report_status'] ?? '') === 'approved');
+            $isBlockedNotLead = ((int)($row['is_blocked'] ?? 0) === 1 || ($row['report_status'] ?? '') === 'approved');
             
             if ($isBlockedNotLead) {
                 $row['highest_status'] = 'not_lead';
@@ -4217,7 +4218,7 @@ switch ($action) {
                     $st = $tk['pipeline_status'] ?? '';
                     if ($st === 'not_lead') {
                         $hasNotLeadTaker = true;
-                        break;
+                        continue;
                     }
                     $rank = $statusOrder[$st] ?? 0;
                     if ($rank > $maxRank) {
@@ -4225,10 +4226,10 @@ switch ($action) {
                         $highest = $st;
                     }
                 }
-                if ($hasNotLeadTaker) {
-                    $row['highest_status'] = 'not_lead';
-                } else if (!empty($highest)) {
+                if (!empty($highest)) {
                     $row['highest_status'] = $highest;
+                } else if ($hasNotLeadTaker || ($row['status'] ?? '') === 'not_lead') {
+                    $row['highest_status'] = 'not_lead';
                 } else {
                     $row['highest_status'] = $row['status'] ?? 'chua_xac_dinh';
                 }
@@ -11528,6 +11529,26 @@ switch ($action) {
             $conn->commit();
             // Trigger Live Two-Way Sync to Google Sheets
             triggerTwoWaySync($conn, $report['lead_id']);
+
+            // Fire async Meta CAPI event 'BAD' with lead_id to train AI advertising models
+            try {
+                require_once __DIR__ . '/config/CapiHelper.php';
+                $approvedLeadId = (int)$report['lead_id'];
+                $stmtCId = $conn->prepare("SELECT id FROM contacts WHERE person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) LIMIT 1");
+                $fContactId = null;
+                if ($stmtCId) {
+                    $stmtCId->bind_param("i", $approvedLeadId);
+                    $stmtCId->execute();
+                    $cRes = $stmtCId->get_result()->fetch_assoc();
+                    $stmtCId->close();
+                    if ($cRes) {
+                        $fContactId = (int)$cRes['id'];
+                    }
+                }
+                CapiHelper::sendEvent(null, $fContactId, 'BAD', 0.0, 'VND', $approvedLeadId);
+            } catch (\Throwable $capiEx) {
+                error_log("Meta CAPI BAD event dispatch error: " . $capiEx->getMessage());
+            }
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
@@ -21841,8 +21862,8 @@ switch ($action) {
                   throw new Exception("Không thể giải phóng khách hàng đang có phiếu hợp tác hoa hồng!");
               }
 
-             // Update person is_public = 1
-             $stmtU = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
+             // Update person is_public = 1 (preserve first release timestamp)
+             $stmtU = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = IFNULL(released_to_kho_at, NOW()), deleted_from_databank = 0 WHERE id = ?");
              $stmtU->bind_param("i", $personId);
              $stmtU->execute();
              $stmtU->close();

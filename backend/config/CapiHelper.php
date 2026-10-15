@@ -70,7 +70,7 @@ class CapiHelper {
         }
     }
 
-    public static function sendEvent(?PDO $db, ?int $contactId, string $eventName, float $value = 0.0, string $currency = 'VND'): bool {
+    public static function sendEvent(?PDO $db, ?int $contactId, string $eventName, float $value = 0.0, string $currency = 'VND', ?int $rawLeadId = null): bool {
         try {
             if ($db === null) {
                 $db = self::getPdo();
@@ -94,7 +94,7 @@ class CapiHelper {
             }
 
             // Fetch contact details for custom data matching
-            $phone = ''; $email = ''; $firstName = ''; $lastName = ''; $leadId = null;
+            $phone = ''; $email = ''; $firstName = ''; $lastName = ''; $leadId = $rawLeadId;
             if ($contactId) {
                 $stmtC = $db->prepare("SELECT phone, email, first_name, last_name, id FROM contacts WHERE id = ?");
                 $stmtC->execute([$contactId]);
@@ -106,10 +106,22 @@ class CapiHelper {
                     $lastName = $c['last_name'] ?? '';
                 }
 
-                // Try to find the associated raw lead_id
-                $stmtL = $db->prepare("SELECT id FROM leads WHERE person_id = (SELECT person_id FROM contacts WHERE id = ? LIMIT 1) LIMIT 1");
-                $stmtL->execute([$contactId]);
-                $leadId = $stmtL->fetchColumn() ?: null;
+                // Try to find the associated raw lead_id if not explicitly provided
+                if (!$leadId) {
+                    $stmtL = $db->prepare("SELECT id FROM leads WHERE person_id = (SELECT person_id FROM contacts WHERE id = ? LIMIT 1) LIMIT 1");
+                    $stmtL->execute([$contactId]);
+                    $leadId = $stmtL->fetchColumn() ?: null;
+                }
+            } else if ($rawLeadId) {
+                $stmtL = $db->prepare("SELECT phone, email, name, id FROM leads WHERE id = ? LIMIT 1");
+                $stmtL->execute([$rawLeadId]);
+                $l = $stmtL->fetch();
+                if ($l) {
+                    $phone = $l['phone'] ?? '';
+                    $email = $l['email'] ?? '';
+                    $parts = explode(' ', trim($l['name'] ?? ''));
+                    $firstName = count($parts) > 1 ? end($parts) : ($parts[0] ?? '');
+                }
             }
 
             // Guardrail: Forward-only check (Never send duplicate events or status drop events)
@@ -125,6 +137,12 @@ class CapiHelper {
                 $stmtChk->execute([$contactId, $eventName]);
                 if ((int)$stmtChk->fetchColumn() > 0) {
                     // Already sent this event type for this contact! Skip it.
+                    return true;
+                }
+            } else if ($leadId) {
+                $stmtChk = $db->prepare("SELECT COUNT(*) FROM capi_logs WHERE lead_id = ? AND event_name = ?");
+                $stmtChk->execute([$leadId, $eventName]);
+                if ((int)$stmtChk->fetchColumn() > 0) {
                     return true;
                 }
             }

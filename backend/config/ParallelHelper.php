@@ -15,8 +15,8 @@ class ParallelHelper {
         $ownerId = (int)$contact['owner_id'];
         $tid = (int)$contact['tenant_id'];
 
-        // 2. Lock the person (is_public = 0)
-        $stmtUpPerson = $db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
+        // 2. Lock the person permanently (is_public = 0, deleted_from_databank = 1)
+        $stmtUpPerson = $db->prepare("UPDATE persons SET is_public = 0, deleted_from_databank = 1 WHERE id = ?");
         $stmtUpPerson->execute([$personId]);
 
         // 3. Mark the winning contact as non-parallel
