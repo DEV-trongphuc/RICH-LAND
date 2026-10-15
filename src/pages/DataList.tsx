@@ -1,7 +1,7 @@
 import { useState, useEffect, Fragment, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../api/axios';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap, Loader2, Video, StickyNote, ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw, Archive } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap, Loader2, Video, StickyNote, ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw, Archive, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -369,6 +369,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const { user } = useAuth();
   const userRole = user?.role as string;
   const isAdmin = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager' || userRole === 'director';
+  const isAdminOrSuperAdmin = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin';
   const { language, t } = useLanguage();
   const { showConfirm } = useUIStore();
 
@@ -955,8 +956,100 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     });
   };
 
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<number>>(new Set());
 
+  const handleToggleSelectLead = (id: number) => {
+    setSelectedLeadIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
+  const handleToggleSelectAll = () => {
+    if (paginatedLeads.length > 0 && selectedLeadIds.size === paginatedLeads.length) {
+      setSelectedLeadIds(new Set());
+    } else {
+      setSelectedLeadIds(new Set(paginatedLeads.map(l => l.id)));
+    }
+  };
+
+  const handleDeleteLead = (lead: Lead) => {
+    const leadId = lead.lead_id || lead.id;
+    const dlId = lead.id;
+    const leadName = lead.name || t('Khách hàng này');
+
+    showConfirm({
+      title: t('Xác nhận xóa Lead'),
+      message: t('Bạn có chắc chắn muốn xóa vĩnh viễn lead "{name}" (ID: #{id}) không? Dữ liệu phân bổ, lịch sử liên hệ và khách hàng liên kết sẽ được xóa an toàn khỏi hệ thống.').replace('{name}', leadName).replace('{id}', String(leadId)),
+      confirmText: t('Xác nhận xóa'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI('admin_delete_lead', {
+            method: 'POST',
+            body: JSON.stringify({
+              lead_id: leadId,
+              dl_id: dlId
+            })
+          });
+          if (res.success) {
+            toast.success(res.message || t('Đã xóa lead thành công!'));
+            if (selectedLead?.id === lead.id) {
+              setSelectedLead(null);
+            }
+            setSelectedLeadIds(prev => {
+              const next = new Set(prev);
+              next.delete(lead.id);
+              return next;
+            });
+            fetchLeads();
+          } else {
+            toast.error(res.message || t('Không thể xóa lead'));
+          }
+        } catch (err: any) {
+          toast.error(err.message || t('Lỗi kết nối khi xóa lead'));
+        }
+      }
+    });
+  };
+
+  const handleBulkDeleteLeads = () => {
+    if (selectedLeadIds.size === 0) return;
+    const count = selectedLeadIds.size;
+    const selectedItems = leads.filter(l => selectedLeadIds.has(l.id));
+
+    showConfirm({
+      title: t('Xác nhận xóa {count} Lead').replace('{count}', String(count)),
+      message: t('Bạn có chắc chắn muốn xóa vĩnh viễn {count} lead đã chọn không? Thao tác này sẽ xóa an toàn các lead được chọn cùng toàn bộ phân bổ và tương tác liên quan.').replace('{count}', String(count)),
+      confirmText: t('Xóa {count} lead').replace('{count}', String(count)),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const items = selectedItems.map(l => ({
+            lead_id: l.lead_id || l.id,
+            dl_id: l.id
+          }));
+          const res = await fetchAPI('admin_bulk_delete_leads', {
+            method: 'POST',
+            body: JSON.stringify({ items })
+          });
+          if (res.success) {
+            toast.success(res.message || t('Đã xóa các lead đã chọn thành công!'));
+            setSelectedLeadIds(new Set());
+            fetchLeads();
+          } else {
+            toast.error(res.message || t('Lỗi khi xóa danh sách lead'));
+          }
+        } catch (err: any) {
+          toast.error(err.message || t('Lỗi kết nối khi xóa danh sách lead'));
+        }
+      }
+    });
+  };
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [reminderChannels, setReminderChannels] = useState({ zalo: true, email: true, telegram: true });
   const [isSendingReminder, setIsSendingReminder] = useState(false);
@@ -3311,6 +3404,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       {/* Top Row: Avatar + Name + Status Badges */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                          {isAdminOrSuperAdmin && (
+                            <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedLeadIds.has(lead.id)}
+                                onChange={() => handleToggleSelectLead(lead.id)}
+                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
+                              />
+                            </div>
+                          )}
                           <Avatar name={lead.name} size={32} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
@@ -3420,18 +3523,46 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             </div>
                           )}
                         </div>
-                        {lead.round_name && lead.round_name !== '-' && (
-                          <span style={{
-                            padding: '2px 8px',
-                            borderRadius: '6px',
-                            background: '#ffe3e8',
-                            color: '#8a0f1b',
-                            fontSize: '0.65rem',
-                            fontWeight: 700
-                          }}>
-                            {lead.round_name}
-                          </span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {lead.round_name && lead.round_name !== '-' && (
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              background: '#ffe3e8',
+                              color: '#8a0f1b',
+                              fontSize: '0.65rem',
+                              fontWeight: 700
+                            }}>
+                              {lead.round_name}
+                            </span>
+                          )}
+                          {isAdminOrSuperAdmin && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteLead(lead);
+                              }}
+                              title={t("Xóa lead")}
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                background: 'rgba(239, 68, 68, 0.08)',
+                                color: '#ef4444',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Trash2 size={12} />
+                              <span>{t('Xóa')}</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -3449,6 +3580,17 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               <table style={{ width: '100%', minWidth: 1050, borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--color-bg)' }}>
                   <tr>
+                    {isAdminOrSuperAdmin && (
+                      <th style={{ width: '44px', padding: '1rem 0.5rem 1rem 1rem', textAlign: 'center', borderBottom: '1px solid var(--color-border)' }}>
+                        <input
+                          type="checkbox"
+                          checked={paginatedLeads.length > 0 && selectedLeadIds.size === paginatedLeads.length}
+                          onChange={handleToggleSelectAll}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
+                          title={t("Chọn tất cả")}
+                        />
+                      </th>
+                    )}
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Khách hàng')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Liên hệ')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái cao nhất')}</th>
@@ -3456,11 +3598,19 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Phân loại lead')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>{t('Phân bổ cho')}</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>{t('Thời gian nhận')}</th>
+                    {isAdminOrSuperAdmin && (
+                      <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)', width: '70px' }}>{t('Thao tác')}</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? [...Array(8)].map((_, i) => (
                     <tr key={`skel-${i}`}>
+                      {isAdminOrSuperAdmin && (
+                        <td style={{ width: '44px', padding: '1rem 0.5rem 1rem 1rem', textAlign: 'center', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <div style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--skeleton-base)', animation: 'pulse 1.5s infinite', opacity: 0.5, margin: '0 auto' }} />
+                        </td>
+                      )}
                       <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--skeleton-base)', animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
@@ -3492,12 +3642,17 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
                         <div style={{ width: 110, height: 14, background: 'var(--skeleton-base)', borderRadius: 4, animation: 'pulse 1.5s infinite', opacity: 0.5 }} />
                       </td>
+                      {isAdminOrSuperAdmin && (
+                        <td style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--skeleton-base)', animation: 'pulse 1.5s infinite', opacity: 0.5, margin: '0 auto' }} />
+                        </td>
+                      )}
                     </tr>
                   )) : paginatedLeads.length > 0 ? (
                     groupedLeads.map(group => (
                       <Fragment key={`group-${group.dateKey}`}>
                         <tr style={{ background: 'var(--color-bg-light)', borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)' }}>
-                          <td colSpan={7} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                          <td colSpan={isAdminOrSuperAdmin ? 9 : 7} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <Calendar size={13} />
                               <span>{formatDateHeader(group.dateKey, group.items.length)}</span>
@@ -3511,156 +3666,200 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             onClick={() => setSelectedLead(lead)}
                             style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
                           >
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar name={lead.name} size={32} />
-                            <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.name}</span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                            {canUserSeeFullPhone(user, undefined, lead.takers, lead.assigned_to) ? (lead.phone || '-') : maskPhone(lead.phone)}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{canUserSeeFullPhone(user, undefined, lead.takers, lead.assigned_to) ? (lead.email || '-') : maskEmail(lead.email)}</div>
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                            {getHighestStatusBadge(lead.highest_status, lead)}
-                            {lead.status !== 'assigned' && lead.status !== 'grabbed' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
-                          </div>
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          {lead.project_name ? (
-                            <span style={{ 
-                              display: 'inline-flex', 
-                              alignItems: 'center', 
-                              gap: '5px', 
-                              padding: '3px 8px', 
-                              borderRadius: '6px', 
-                              background: 'rgba(59, 130, 246, 0.08)', 
-                              color: '#2563eb', 
-                              fontWeight: 600, 
-                              fontSize: '0.78rem',
-                              border: '1px solid rgba(59, 130, 246, 0.2)',
-                              maxWidth: '180px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis'
-                            }} title={lead.project_name}>
-                              <Building2 size={12} style={{ flexShrink: 0 }} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.project_name}</span>
-                            </span>
-                          ) : (
-                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          {getPhanLoaiBadge(lead)}
-                        </td>
-                        <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
-                          {lead.status === 'pending_approval' ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/imgs/warn_icon.png" name="Rich Land AI - Screener" size={32} />
-                              <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI - Screener</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Chờ duyệt')}</div>
+                            {isAdminOrSuperAdmin && (
+                              <td style={{ width: '44px', padding: '1rem 0.5rem 1rem 1rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedLeadIds.has(lead.id)}
+                                  onChange={() => handleToggleSelectLead(lead.id)}
+                                  style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
+                                />
+                              </td>
+                            )}
+                            <td style={{ padding: '1rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <Avatar name={lead.name} size={32} />
+                                <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.name}</span>
                               </div>
-                            </div>
-                          ) : lead.status === 'fallback' ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/LOGO.jpg" name="Rich Land AI" size={32} />
-                              <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Fallback')}</div>
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                {canUserSeeFullPhone(user, undefined, lead.takers, lead.assigned_to) ? (lead.phone || '-') : maskPhone(lead.phone)}
                               </div>
-                            </div>
-                          ) : lead.status === 'rejected' ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/LOGO.jpg" name="Rich Land AI - Evaluator" size={32} />
-                              <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI - Evaluator</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Failed')}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{canUserSeeFullPhone(user, undefined, lead.takers, lead.assigned_to) ? (lead.email || '-') : maskEmail(lead.email)}</div>
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                                {getHighestStatusBadge(lead.highest_status, lead)}
+                                {lead.status !== 'assigned' && lead.status !== 'grabbed' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                               </div>
-                            </div>
-                          ) : lead.status === 'blacklisted' ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/imgs/angry_icon.jpg" name="Rich Land AI - Angry" size={32} />
-                              <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI - Angry</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Blacklist')}</div>
-                              </div>
-                            </div>
-                          ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim' || lead.status === 'databank') ? (
-                            (() => {
-                              const displayTakers = filterVisibleTakers(lead.takers);
-                              if (displayTakers.length > 0) {
-                                if (displayTakers.length === 1) {
-                                  return (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <Avatar name={displayTakers[0].name} src={displayTakers[0].avatar} size={28} title={`${displayTakers[0].name} (Nhận lúc: ${displayTakers[0].claimed_at})`} />
-                                      <span style={{ fontSize: '0.875rem', fontWeight: 550, color: 'var(--color-text)' }}>{displayTakers[0].name}</span>
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              {lead.project_name ? (
+                                <span style={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: '5px', 
+                                  padding: '3px 8px', 
+                                  borderRadius: '6px', 
+                                  background: 'rgba(59, 130, 246, 0.08)', 
+                                  color: '#2563eb', 
+                                  fontWeight: 600, 
+                                  fontSize: '0.78rem',
+                                  border: '1px solid rgba(59, 130, 246, 0.2)',
+                                  maxWidth: '180px',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }} title={lead.project_name}>
+                                  <Building2 size={12} style={{ flexShrink: 0 }} />
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.project_name}</span>
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>—</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              {getPhanLoaiBadge(lead)}
+                            </td>
+                            <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                              {lead.status === 'pending_approval' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <Avatar src="/imgs/warn_icon.png" name="Rich Land AI - Screener" size={32} />
+                                  <div>
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI - Screener</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Chờ duyệt')}</div>
+                                  </div>
+                                </div>
+                              ) : lead.status === 'fallback' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <Avatar src="/LOGO.jpg" name="Rich Land AI" size={32} />
+                                  <div>
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Fallback')}</div>
+                                  </div>
+                                </div>
+                              ) : lead.status === 'rejected' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <Avatar src="/LOGO.jpg" name="Rich Land AI - Evaluator" size={32} />
+                                  <div>
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI - Evaluator</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Failed')}</div>
+                                  </div>
+                                </div>
+                              ) : lead.status === 'blacklisted' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <Avatar src="/imgs/angry_icon.jpg" name="Rich Land AI - Angry" size={32} />
+                                  <div>
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI - Angry</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Blacklist')}</div>
+                                  </div>
+                                </div>
+                              ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim' || lead.status === 'databank') ? (
+                                (() => {
+                                  const displayTakers = filterVisibleTakers(lead.takers);
+                                  if (displayTakers.length > 0) {
+                                    if (displayTakers.length === 1) {
+                                      return (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          <Avatar name={displayTakers[0].name} src={displayTakers[0].avatar} size={28} title={`${displayTakers[0].name} (Nhận lúc: ${displayTakers[0].claimed_at})`} />
+                                          <span style={{ fontSize: '0.875rem', fontWeight: 550, color: 'var(--color-text)' }}>{displayTakers[0].name}</span>
+                                        </div>
+                                      );
+                                    } else {
+                                      return (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          {displayTakers.map((tk: any) => (
+                                            <Avatar 
+                                              key={tk.id} 
+                                              name={tk.name} 
+                                              src={tk.avatar} 
+                                              size={28} 
+                                              title={`${tk.name} (Nhận lúc: ${tk.claimed_at})`} 
+                                              style={{ border: '2px solid var(--color-surface)', cursor: 'help' }}
+                                            />
+                                          ))}
+                                        </div>
+                                      );
+                                    }
+                                  } else {
+                                    return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa ai nhận')}</span>;
+                                  }
+                                })()
+                              ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours' && lead.status !== 'pending_claim') ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
+                                  <div>
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                      {(lead.status === 'reminder' && (!lead.round_name || lead.round_name === '-')) ? 'Reminder' : lead.round_name}
                                     </div>
-                                  );
-                                } else {
-                                  return (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      {displayTakers.map((tk: any) => (
-                                        <Avatar 
-                                          key={tk.id} 
-                                          name={tk.name} 
-                                          src={tk.avatar} 
-                                          size={28} 
-                                          title={`${tk.name} (Nhận lúc: ${tk.claimed_at})`} 
-                                          style={{ border: '2px solid var(--color-surface)', cursor: 'help' }}
-                                        />
-                                      ))}
+                                  </div>
+                                </div>
+                              ) : lead.status === 'pending_claim' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={32} />
+                                  <div>
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land Bot</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                      {t('Đang chờ nhận')}
                                     </div>
-                                  );
-                                }
-                              } else {
-                                return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa ai nhận')}</span>;
-                              }
-                            })()
-                          ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours' && lead.status !== 'pending_claim') ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
-                              <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                  {(lead.status === 'reminder' && (!lead.round_name || lead.round_name === '-')) ? 'Reminder' : lead.round_name}
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          ) : lead.status === 'pending_claim' ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={32} />
-                              <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land Bot</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                  {t('Đang chờ nhận')}
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={32} />
+                                  <div>
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land Bot</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                      {getPendingUntilTime()}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={32} />
-                              <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land Bot</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                  {getPendingUntilTime()}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.created_at}</td>
-                      </tr>
-                    ))}
-                  </Fragment>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                              )}
+                            </td>
+                            <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.created_at}</td>
+                            {isAdminOrSuperAdmin && (
+                              <td style={{ padding: '1rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteLead(lead)}
+                                  title={t("Xóa lead")}
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 8,
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    background: 'rgba(239, 68, 68, 0.06)',
+                                    color: '#ef4444',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onMouseOver={e => {
+                                    e.currentTarget.style.background = '#ef4444';
+                                    e.currentTarget.style.color = '#ffffff';
+                                    e.currentTarget.style.transform = 'scale(1.08)';
+                                  }}
+                                  onMouseOut={e => {
+                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)';
+                                    e.currentTarget.style.color = '#ef4444';
+                                    e.currentTarget.style.transform = 'none';
+                                  }}
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </Fragment>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={isAdminOrSuperAdmin ? 9 : 7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
                         {t('Không tìm thấy dữ liệu phù hợp.')}
                       </td>
                     </tr>
@@ -3718,6 +3917,113 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: currentPage === totalPages || totalPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: currentPage === totalPages || totalPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer' }}
                 >
                   <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Floating Bulk Action Bar */}
+          {isAdminOrSuperAdmin && selectedLeadIds.size > 0 && (
+            <div
+              style={{
+                position: 'fixed',
+                bottom: '24px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 999,
+                background: 'var(--color-surface)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                boxShadow: '0 12px 30px -4px rgba(0, 0, 0, 0.25), 0 8px 12px -6px rgba(0, 0, 0, 0.15)',
+                borderRadius: '16px',
+                padding: '10px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                backdropFilter: 'blur(12px)',
+                animation: 'slideUp 0.25s ease-out'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '22px',
+                    height: '22px',
+                    padding: '0 6px',
+                    borderRadius: '11px',
+                    background: 'var(--color-primary)',
+                    color: '#fff',
+                    fontSize: '0.75rem',
+                    fontWeight: 700
+                  }}
+                >
+                  {selectedLeadIds.size}
+                </span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                  {t('lead đã chọn')}
+                </span>
+              </div>
+
+              <div style={{ height: '20px', width: '1px', background: 'var(--color-border)' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleBulkDeleteLeads}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={e => {
+                    e.currentTarget.style.background = '#dc2626';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseOut={e => {
+                    e.currentTarget.style.background = '#ef4444';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                >
+                  <Trash2 size={15} />
+                  <span>{t('Xóa {count} lead').replace('{count}', String(selectedLeadIds.size))}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedLeadIds(new Set())}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'transparent',
+                    color: 'var(--color-text-muted)',
+                    border: '1px solid var(--color-border)',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={e => {
+                    e.currentTarget.style.color = 'var(--color-text)';
+                    e.currentTarget.style.borderColor = 'var(--color-text-muted)';
+                  }}
+                  onMouseOut={e => {
+                    e.currentTarget.style.color = 'var(--color-text-muted)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                  }}
+                >
+                  {t('Hủy chọn')}
                 </button>
               </div>
             </div>
@@ -3958,6 +4264,35 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       >
                         <Ban size={14} />
                         {t('Chặn')}
+                      </button>
+                    )}
+
+                    {isAdminOrSuperAdmin && !isAdminEditingLead && (
+                      <button
+                        onClick={() => handleDeleteLead(selectedLead)}
+                        title={t("Xóa vĩnh viễn lead này khỏi hệ thống")}
+                        className="detail-action-btn"
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          color: '#ef4444',
+                          boxShadow: '0 2px 6px rgba(239, 68, 68, 0.05)'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.background = '#ef4444';
+                          e.currentTarget.style.color = '#ffffff';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 15px rgba(239, 68, 68, 0.25)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                          e.currentTarget.style.color = '#ef4444';
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(239, 68, 68, 0.05)';
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        {t('Xóa lead')}
                       </button>
                     )}
 

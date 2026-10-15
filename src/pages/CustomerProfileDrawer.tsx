@@ -4422,9 +4422,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const handleDeleteCustomer = () => {
+    const isSelf = isSelfCreated;
     showConfirm({
-      title: 'Xóa khách hàng cá nhân',
-      message: `Bạn có chắc chắn muốn xóa khách hàng "${fullName || 'này'}" không? Lead này do bạn tự tạo sẽ được đưa vào thùng rác.`,
+      title: isSelf ? 'Xóa khách hàng cá nhân' : 'Xóa khách hàng',
+      message: isSelf 
+        ? `Bạn có chắc chắn muốn xóa khách hàng "${fullName || 'này'}" không? Lead này do bạn tự tạo sẽ được đưa vào thùng rác.`
+        : `Bạn có chắc chắn muốn xóa khách hàng "${fullName || 'này'}" không? Thao tác này sẽ xóa khách hàng và đưa vào thùng rác.`,
       confirmText: 'Xác nhận Xóa',
       cancelText: 'Hủy',
       isDanger: true,
@@ -6513,7 +6516,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <RotateCcw size={15} />
                                 <span>{t('Trả về Databank')}</span>
                               </button>
-                            ) : isSelfCreated ? (
+                            ) : (isSelfCreated || ['admin', 'superadmin', 'super_admin'].includes(String(currentUser?.role || '').toLowerCase())) ? (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -7204,7 +7207,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     <RotateCcw size={15} />
                                     <span>{t('Trả về Databank')}</span>
                                   </button>
-                                ) : isSelfCreated ? (
+                                ) : (isSelfCreated || ['admin', 'superadmin', 'super_admin'].includes(String(currentUser?.role || '').toLowerCase())) ? (
                                   <button
                                     type="button"
                                     onClick={handleDeleteCustomer}
@@ -7586,7 +7589,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                      )}
 
                                     {group.title === 'Nghiệp vụ & Hỗ trợ' && isOwnerOrAdmin && (
-                                      isSelfCreated ? (
+                                      (isSelfCreated || ['admin', 'superadmin', 'super_admin'].includes(String(currentUser?.role || '').toLowerCase())) ? (
                                         <button
                                           className={styles.sidebarTabBtn}
                                           onClick={handleDeleteCustomer}

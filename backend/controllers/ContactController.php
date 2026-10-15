@@ -1520,7 +1520,7 @@ class ContactController {
         
         $this->restorePersonPublicStatus($id, $auth['tenant_id']);
 
-        if ($auth['role'] === 'admin' || $auth['role'] === 'superadmin') {
+        if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'])) {
             $this->cleanupLeadsForContactId((int)$id, $auth['tenant_id']);
         }
         

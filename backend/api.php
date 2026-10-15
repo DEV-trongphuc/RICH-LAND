@@ -98,6 +98,17 @@ header("Access-Control-Allow-Origin: " . $originToSet);
 
 $JWT_SECRET = $_ENV['JWT_SECRET'] ?? "RICH LAND_SECRET_KEY_2026";
 
+if (!function_exists('respond')) {
+    function respond(int $code, $data = null, string $message = '', bool $success = true): void {
+        if (!headers_sent()) {
+            http_response_code($code);
+            header('Content-Type: application/json; charset=UTF-8');
+        }
+        echo json_encode(['success' => $success, 'data' => $data, 'message' => $message], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+
 function getSafeErrorMsg($e)
 {
     if ($e instanceof mysqli_sql_exception) {
@@ -20997,7 +21008,8 @@ switch ($action) {
         break;
 
     case 'admin_delete_lead':
-        if (!$decodedUser || !in_array($decodedUser['role'], ['admin', 'superadmin', 'super_admin'])) {
+        $userRole = strtolower($decodedUser['role'] ?? '');
+        if (!$decodedUser || !in_array($userRole, ['admin', 'superadmin', 'super_admin', 'director'], true)) {
             respond(403, null, 'Forbidden: Chỉ Quản trị viên mới có quyền xóa lead.', false);
         }
 
@@ -21018,7 +21030,8 @@ switch ($action) {
         break;
 
     case 'admin_bulk_delete_leads':
-        if (!$decodedUser || !in_array($decodedUser['role'], ['admin', 'superadmin', 'super_admin'])) {
+        $userRole = strtolower($decodedUser['role'] ?? '');
+        if (!$decodedUser || !in_array($userRole, ['admin', 'superadmin', 'super_admin', 'director'], true)) {
             respond(403, null, 'Forbidden: Chỉ Quản trị viên mới có quyền xóa lead.', false);
         }
 
