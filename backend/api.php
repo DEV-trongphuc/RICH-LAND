@@ -20917,7 +20917,7 @@ switch ($action) {
         break;
 
     case 'delete_public_lead_claim':
-        if (!$decodedUser || !in_array($decodedUser['role'], ['admin', 'superadmin'])) {
+        if (!$decodedUser || !in_array($decodedUser['role'] ?? '', ['admin', 'superadmin', 'super_admin'], true)) {
             respond(403, null, 'Forbidden: Bạn không có quyền thực hiện hành động này.', false);
         }
 

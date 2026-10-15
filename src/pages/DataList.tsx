@@ -2310,66 +2310,72 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               />
             </div>
 
-            {/* Dự án */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Dự án')}</span>
-              <CustomSelect
-                options={[
-                  { value: 'all', label: t('Tất cả dự án'), icon: <Building2 size={14} /> },
-                  ...projectsList.map(p => ({
-                    value: String(p.id || p.name),
-                    label: p.name
-                  }))
-                ]}
-                value={projectFilter}
-                onChange={val => updateParams('project', val.toString())}
-                searchable={true}
-                width="100%"
-              />
-            </div>
+            {/* Dự án - Chỉ hiển thị trong Drawer (Mobile), tránh trùng lặp với thanh lọc trên cùng ở Desktop */}
+            {inDrawer && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Dự án')}</span>
+                <CustomSelect
+                  options={[
+                    { value: 'all', label: t('Tất cả dự án'), icon: <Building2 size={14} /> },
+                    ...projectsList.map(p => ({
+                      value: String(p.id || p.name),
+                      label: p.name
+                    }))
+                  ]}
+                  value={projectFilter}
+                  onChange={val => updateParams('project', val.toString())}
+                  searchable={true}
+                  width="100%"
+                />
+              </div>
+            )}
 
-            {/* Phân loại Lead */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Phân loại Lead')}</span>
-              <CustomSelect
-                options={[
-                  { value: 'all', label: t('Tất cả phân loại'), icon: <Tag size={14} /> },
-                  ...Array.from(new Set([
-                    ...availableLeadPhanLoai,
-                    ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
-                    'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
-                  ])).map(pl => ({
-                    value: pl,
-                    label: pl
-                  }))
-                ]}
-                value={leadPhanLoaiFilter}
-                onChange={val => updateParams('lead_phan_loai', val.toString())}
-                searchable={true}
-                width="100%"
-              />
-            </div>
+            {/* Phân loại Lead - Chỉ hiển thị trong Drawer (Mobile), tránh trùng lặp với thanh lọc trên cùng ở Desktop */}
+            {inDrawer && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Phân loại Lead')}</span>
+                <CustomSelect
+                  options={[
+                    { value: 'all', label: t('Tất cả phân loại'), icon: <Tag size={14} /> },
+                    ...Array.from(new Set([
+                      ...availableLeadPhanLoai,
+                      ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
+                      'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
+                    ])).map(pl => ({
+                      value: pl,
+                      label: pl
+                    }))
+                  ]}
+                  value={leadPhanLoaiFilter}
+                  onChange={val => updateParams('lead_phan_loai', val.toString())}
+                  searchable={true}
+                  width="100%"
+                />
+              </div>
+            )}
 
-            {/* Đơn vị chạy */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đơn vị chạy')}</span>
-              <CustomSelect
-                options={[
-                  { value: 'all', label: t('Tất cả đơn vị'), icon: <Layers size={14} /> },
-                  ...Array.from(new Set([
-                    ...availableDonviChay,
-                    ...leads.map(l => l.donvi_chay).filter(Boolean)
-                  ])).map(dv => ({
-                    value: dv,
-                    label: dv
-                  }))
-                ]}
-                value={donviChayFilter}
-                onChange={val => updateParams('donvi_chay', val.toString())}
-                searchable={true}
-                width="100%"
-              />
-            </div>
+            {/* Đơn vị chạy - Chỉ hiển thị trong Drawer (Mobile), tránh trùng lặp với thanh lọc trên cùng ở Desktop */}
+            {inDrawer && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đơn vị chạy')}</span>
+                <CustomSelect
+                  options={[
+                    { value: 'all', label: t('Tất cả đơn vị'), icon: <Layers size={14} /> },
+                    ...Array.from(new Set([
+                      ...availableDonviChay,
+                      ...leads.map(l => l.donvi_chay).filter(Boolean)
+                    ])).map(dv => ({
+                      value: dv,
+                      label: dv
+                    }))
+                  ]}
+                  value={donviChayFilter}
+                  onChange={val => updateParams('donvi_chay', val.toString())}
+                  searchable={true}
+                  width="100%"
+                />
+              </div>
+            )}
 
             {/* Nguồn / Kênh data */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -5486,7 +5492,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('Trạng thái')}</th>
                               <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('Phân loại')}</th>
                               <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('Ngày nhận')}</th>
-                              <th style={{ padding: '8px 10px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', textAlign: 'center', whiteSpace: 'nowrap' }}>{t('Hồ sơ')}</th>
+                              {(user?.role === 'admin' || user?.role === 'superadmin') && (selectedLead.is_public === 1 || selectedLead.status === 'databank' || selectedLead.status === 'databank_claim') && (
+                                <th style={{ width: '36px', padding: '8px 10px', textAlign: 'center' }}></th>
+                              )}
                             </tr>
                           </thead>
                           <tbody>
@@ -5512,8 +5520,38 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               const dPart = dtParts[0] || '—';
                               const tPart = dtParts[1] || '';
 
+                              const canDeleteClaim = (user?.role === 'admin' || user?.role === 'superadmin') && (selectedLead.is_public === 1 || selectedLead.status === 'databank' || selectedLead.status === 'databank_claim');
+                              const hasContact = Boolean(tk.contact_id || (selectedLead as any)?.contact_id || selectedLead?.person_id);
+
+                              const handleOpenContactDrawer = () => {
+                                const targetContactId = Number(tk.contact_id || (selectedLead as any)?.contact_id || selectedLead?.person_id);
+                                if (targetContactId > 0) {
+                                  const cData = { id: targetContactId, name: selectedLead?.name };
+                                  setSelectedLead(null);
+                                  setReassignConsId('');
+                                  setTimeout(() => {
+                                    setSelectedContactForDrawer(cData);
+                                  }, 50);
+                                }
+                              };
+
                               return (
-                                <tr key={tk.id || idx} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.15s' }}>
+                                <tr
+                                  key={tk.id || idx}
+                                  onClick={handleOpenContactDrawer}
+                                  style={{
+                                    borderBottom: '1px solid var(--color-border-light)',
+                                    transition: 'background 0.15s',
+                                    cursor: hasContact ? 'pointer' : 'default'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (hasContact) e.currentTarget.style.background = 'var(--color-bg-light)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (hasContact) e.currentTarget.style.background = 'transparent';
+                                  }}
+                                  title={hasContact ? t('Nhấp vào hàng để xem hồ sơ chi tiết') : undefined}
+                                >
                                   {/* 1. Team / Vòng */}
                                   <td style={{ padding: '8px 10px', fontSize: '0.78rem', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
                                     <div style={{ fontWeight: 600 }}>{tk.team_name || tk.round_name || (isTakerDb ? 'Kho Databank' : 'Kho chung')}</div>
@@ -5566,67 +5604,32 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                     {tPart && <div style={{ fontSize: '0.68rem', opacity: 0.75 }}>{tPart}</div>}
                                   </td>
 
-                                  {/* 6. Thao tác / Hồ sơ KH */}
-                                  <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                      {tk.contact_id ? (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            const cData = { id: Number(tk.contact_id), name: selectedLead?.name };
-                                            setSelectedLead(null);
-                                            setReassignConsId('');
-                                            setTimeout(() => {
-                                              setSelectedContactForDrawer(cData);
-                                            }, 50);
-                                          }}
-                                          className="btn sm"
-                                          style={{
-                                            background: 'var(--color-primary-light)',
-                                            border: '1px solid var(--color-border-light)',
-                                            color: 'var(--color-primary)',
-                                            borderRadius: '6px',
-                                            padding: '3px 8px',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '3px',
-                                            transition: 'all 0.15s'
-                                          }}
-                                          title={t('Xem nhật ký chăm sóc của Sale này')}
-                                        >
-                                          <FileText size={11} />
-                                          <span>{t('Xem CS')}</span>
-                                        </button>
-                                      ) : null}
-
-                                      {(user?.role === 'admin' || user?.role === 'superadmin') && (selectedLead.is_public === 1 || selectedLead.status === 'databank' || selectedLead.status === 'databank_claim') && (
-                                        <button
-                                          onClick={() => handleDeletePublicClaim(selectedLead.person_id || selectedLead.id, tk.id, tk.name)}
-                                          disabled={isDeletingClaim}
-                                          title={t('Xóa lượt nhận của Sale')}
-                                          style={{
-                                            background: 'rgba(239, 68, 68, 0.08)',
-                                            border: 'none',
-                                            borderRadius: '50%',
-                                            width: '24px',
-                                            height: '24px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: '#ef4444',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            flexShrink: 0
-                                          }}
-                                        >
-                                          <X size={12} />
-                                        </button>
-                                      )}
-                                    </div>
-                                  </td>
+                                  {/* 6. Nút xóa lượt nhận (chỉ admin) */}
+                                  {canDeleteClaim && (
+                                    <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        onClick={() => handleDeletePublicClaim(selectedLead.person_id || selectedLead.id, tk.id, tk.name)}
+                                        disabled={isDeletingClaim}
+                                        title={t('Xóa lượt nhận của Sale')}
+                                        style={{
+                                          background: 'rgba(239, 68, 68, 0.08)',
+                                          border: 'none',
+                                          borderRadius: '50%',
+                                          width: '24px',
+                                          height: '24px',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          color: '#ef4444',
+                                          cursor: 'pointer',
+                                          transition: 'all 0.2s',
+                                          flexShrink: 0
+                                        }}
+                                      >
+                                        <X size={12} />
+                                      </button>
+                                    </td>
+                                  )}
                                 </tr>
                               );
                             })}
