@@ -13370,16 +13370,47 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           )}
                         </div>
 
+                        {/* Saturday Administrative Workday Banner if Saturday is regular working day */}
+                        {(weekendShiftSat?.is_workday || editWorkSchedule?.['6']?.active) && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 14px',
+                            background: 'rgba(16, 185, 129, 0.08)',
+                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                            borderRadius: '10px',
+                            fontSize: '0.78rem',
+                            color: 'var(--color-success)',
+                            fontWeight: 600
+                          }}>
+                            <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+                            <span>
+                              {t('Thứ Bảy là ngày làm việc hành chính bình thường')}
+                              {weekendShiftSat?.work_hours ? ` (${weekendShiftSat.work_hours})` : (editWorkSchedule?.['6']?.start ? ` (${editWorkSchedule['6'].start} - ${editWorkSchedule['6'].end})` : '')}.
+                              {' '}{t('Nhân viên chấm công và nhận data theo lịch ngày thường, không áp dụng đăng ký trực cuối tuần.')}
+                            </span>
+                          </div>
+                        )}
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {(() => {
-                            const displayDays = (weekendShiftDaysList && weekendShiftDaysList.length > 0)
+                            const rawDays = (weekendShiftDaysList && weekendShiftDaysList.length > 0)
                               ? weekendShiftDaysList
                               : [weekendShiftSat, weekendShiftSun].filter(Boolean);
+
+                            // Only show actual weekend shifts (rest days) for duty registration
+                            const displayDays = rawDays.filter((dayItem: any) => {
+                              const dNumKey = String(dayItem.day_num || 6);
+                              const workConfig = editWorkSchedule?.[dNumKey];
+                              const isWorkday = dayItem.is_workday !== undefined ? dayItem.is_workday : workConfig?.active;
+                              return !isWorkday;
+                            });
 
                             if (displayDays.length === 0) {
                               return (
                                 <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                                  {t('Hiện chưa có ca trực cuối tuần nào được mở.')}
+                                  {t('Hiện không có ca trực cuối tuần nào cần đăng ký (các ngày đã được cấu hình đi làm hành chính hoặc không mở trực).')}
                                 </div>
                               );
                             }
@@ -13491,35 +13522,50 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   </div>
                                   {!isMobile && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                      {(!isMobile || dayItem.registered) && (
+                                      {isWorkday ? (
                                         <span style={{
                                           fontSize: '0.8rem',
                                           fontWeight: 700,
-                                          color: dayItem.registered ? (dayItem.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                          background: dayItem.registered ? (dayItem.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                          color: 'var(--color-success)',
+                                          background: 'rgba(16, 185, 129, 0.1)',
                                           padding: '3px 8px',
                                           borderRadius: '6px'
                                         }}>
-                                          {dayItem.registered ? (dayItem.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                          {t('Đi làm hành chính')}
                                         </span>
-                                      )}
-                                      {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
-                                        <div style={{ opacity: (dayItem.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
-                                          <ToggleSwitch
-                                            checked={dayItem.registered}
-                                            onChange={() => {
-                                              if (!isCheckinEligible && !isUserAdminRole && !isUserManagerRole && !dayItem.registered) {
-                                                toast.error(t('Bạn chưa đủ điều kiện đăng ký: Cần tối thiểu ') + weekendMinCheckinDays + t(' ngày chấm công hợp lệ trong tuần!'));
-                                                return;
-                                              }
-                                              if (!dayItem.can_toggle && !isUserAdminRole && !isUserManagerRole) {
-                                                toast.error(t('Đã quá hạn đăng ký trực cho ') + (dayItem.day_label || dayItem.date) + '!');
-                                                return;
-                                              }
-                                              handleToggleWeekendShift(dayItem.date, dayItem.registered);
-                                            }}
-                                          />
-                                        </div>
+                                      ) : (
+                                        <>
+                                          {(!isMobile || dayItem.registered) && (
+                                            <span style={{
+                                              fontSize: '0.8rem',
+                                              fontWeight: 700,
+                                              color: dayItem.registered ? (dayItem.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                              background: dayItem.registered ? (dayItem.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                              padding: '3px 8px',
+                                              borderRadius: '6px'
+                                            }}>
+                                              {dayItem.registered ? (dayItem.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                            </span>
+                                          )}
+                                          {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
+                                            <div style={{ opacity: (dayItem.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
+                                              <ToggleSwitch
+                                                checked={dayItem.registered}
+                                                onChange={() => {
+                                                  if (!isCheckinEligible && !isUserAdminRole && !isUserManagerRole && !dayItem.registered) {
+                                                    toast.error(t('Bạn chưa đủ điều kiện đăng ký: Cần tối thiểu ') + weekendMinCheckinDays + t(' ngày chấm công hợp lệ trong tuần!'));
+                                                    return;
+                                                  }
+                                                  if (!dayItem.can_toggle && !isUserAdminRole && !isUserManagerRole) {
+                                                    toast.error(t('Đã quá hạn đăng ký trực cho ') + (dayItem.day_label || dayItem.date) + '!');
+                                                    return;
+                                                  }
+                                                  handleToggleWeekendShift(dayItem.date, dayItem.registered);
+                                                }}
+                                              />
+                                            </div>
+                                          )}
+                                        </>
                                       )}
                                     </div>
                                   )}
@@ -13530,10 +13576,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
 
                         {(() => {
-                          const displayDays = (weekendShiftDaysList && weekendShiftDaysList.length > 0)
+                          const rawDays = (weekendShiftDaysList && weekendShiftDaysList.length > 0)
                             ? weekendShiftDaysList
                             : [weekendShiftSat, weekendShiftSun].filter(Boolean);
-                          const hasExpired = displayDays.some((d: any) => d && !d.can_toggle && !d.registered && !d.is_workday);
+                          const hasExpired = rawDays.some((d: any) => {
+                            if (!d) return false;
+                            const dNumKey = String(d.day_num || 6);
+                            const isWorkday = d.is_workday !== undefined ? d.is_workday : editWorkSchedule?.[dNumKey]?.active;
+                            return !d.can_toggle && !d.registered && !isWorkday;
+                          });
                           if (!hasExpired) return null;
 
                           return (
@@ -13740,8 +13791,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 (profile?.night_shifts && profile.night_shifts.some((ns: any) => ns.shift_date === day.date))
                               );
                               const isWeekendRegistered = Boolean(
-                                (day.date === weekendShiftSat?.date && weekendShiftSat?.registered) || 
-                                (day.date === weekendShiftSun?.date && weekendShiftSun?.registered)
+                                (day.date === weekendShiftSat?.date && weekendShiftSat?.registered && !weekendShiftSat?.is_workday) || 
+                                (day.date === weekendShiftSun?.date && weekendShiftSun?.registered && !weekendShiftSun?.is_workday)
                               );
                               const isSelected = weeklyShiftDates.includes(day.date) || isNightRegistered || isWeekendRegistered || Boolean(reg);
                               const isApproved = reg ? (reg.approved === 1 || reg.approved === true) : (isNightRegistered ? nightShiftApproved : isWeekendRegistered);

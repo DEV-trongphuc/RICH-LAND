@@ -3153,28 +3153,58 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [drawerTickets, setDrawerTickets] = useState<any[]>([]);
   const [drawerActivities, setDrawerActivities] = useState<any[]>([]);
 
-  // Auto-fetch comments for activities when quick summary modal is opened
+  // Auto-fetch comments and ensure notes/activities are loaded when quick summary modal is opened
   useEffect(() => {
-    if (!showSummaryModal || drawerActivities.length === 0) return;
+    if (!showSummaryModal) return;
     let isCancelled = false;
     const loadSummaryData = async () => {
       setIsLoadingSummary(true);
       try {
-        const targetActs = drawerActivities.filter((a: any) => Number(a.comment_count) > 0);
-        const map: Record<number, any[]> = { ...summaryCommentsMap };
-        await Promise.all(
-          targetActs.map(async (act: any) => {
-            if (map[act.id]) return;
-            try {
-              const res = await api.get(`/activities/${act.id}/comments`);
-              map[act.id] = res.data?.data || [];
-            } catch {
-              map[act.id] = [];
+        // Ensure notes are fetched if contact exists but notes is empty
+        if (contact?.id && (!notes || notes.length === 0)) {
+          try {
+            const notesRes = await api.get(`/notes?entity_type=contact&entity_id=${contact.id}`);
+            if (!isCancelled) {
+              setNotes((notesRes.data.data || []).map((n: any) => ({
+                id: n.id,
+                text: n.body,
+                time: n.created_at,
+                user: n.user_name || 'Hệ thống',
+                user_id: n.user_id,
+                user_avatar: n.author_avatar || n.user_avatar || null,
+                attachment_url: n.attachment_url,
+                edit_history: n.edit_history,
+                channel: n.channel,
+                note_type: n.note_type,
+                duration_minutes: n.duration_minutes,
+                stuck_tag: n.stuck_tag,
+                sale_temperature: n.sale_temperature,
+                suggested_temperature: n.suggested_temperature,
+                documents_sent: n.documents_sent
+              })));
             }
-          })
-        );
-        if (!isCancelled) {
-          setSummaryCommentsMap(map);
+          } catch (e) {
+            console.error('Error fetching notes for summary:', e);
+          }
+        }
+
+        const targetActs = (drawerActivities || []).filter((a: any) => Number(a.comment_count) > 0);
+        if (targetActs.length > 0) {
+          const map: Record<number, any[]> = { ...summaryCommentsMap };
+          await Promise.all(
+            targetActs.map(async (act: any) => {
+              if (map[act.id]) return;
+              try {
+                const res = await api.get(`/activities/${act.id}/comments`);
+                map[act.id] = res.data?.data || [];
+              } catch {
+                map[act.id] = [];
+              }
+            })
+          );
+          if (!isCancelled) {
+            setSummaryCommentsMap(map);
+          }
         }
       } catch (err) {
         console.error('Error fetching summary comments:', err);
@@ -3184,7 +3214,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     };
     loadSummaryData();
     return () => { isCancelled = true; };
-  }, [showSummaryModal, drawerActivities]);
+  }, [showSummaryModal, drawerActivities, contact?.id]);
   const [showQuoteEditor, setShowQuoteEditor] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [loadingRelated, setLoadingRelated] = useState(false);
@@ -4416,12 +4446,79 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   // Build summarized conversation threads grouped by date & stage session (as illustrated in Image 3)
   const summarizedSessions = useMemo(() => {
-    if (!drawerActivities || drawerActivities.length === 0) return [];
-    
-    // Sort chronological: oldest to newest for narrative dialogue progression
-    const chronologicalActs = [...drawerActivities].sort((a: any, b: any) => 
+    // 1. Gather all interactions from both drawerActivities and notes
+    const convertedNotes = (Array.isArray(notes) ? notes : []).map((n: any) => {
+      const isCall = n.channel === 'call';
+      const isZalo = n.channel === 'zalo' || n.channel === 'zalo_connect';
+      return {
+        id: `note_${n.id}`,
+        subject: isCall ? 'Cuộc gọi chăm sóc' : isZalo ? 'Tương tác Zalo' : (n.stuck_tag ? `Ghi chú: ${n.stuck_tag}` : (n.note_type && n.note_type !== 'normal' ? `Ghi chú (${n.note_type})` : 'Ghi chú chăm sóc')),
+        type: isCall ? 'call' : isZalo ? 'zalo_connect' : 'note',
+        status: 'done',
+        user_name: n.user || 'Nhân sự',
+        avatar_url: n.user_avatar,
+        created_at: n.time,
+        time: n.time,
+        body: n.text,
+        channel: n.channel,
+        note_type: n.note_type,
+        duration_minutes: n.duration_minutes,
+        stuck_tag: n.stuck_tag,
+        sale_temperature: n.sale_temperature,
+        suggested_temperature: n.suggested_temperature,
+        attachment_url: n.attachment_url,
+        is_note: true,
+        rawNote: n
+      };
+    });
+
+    const allInteractions = [...(drawerActivities || []), ...convertedNotes];
+    if (allInteractions.length === 0) return [];
+
+    // 2. Sort chronological: oldest to newest for narrative dialogue progression
+    const chronologicalActs = [...allInteractions].sort((a: any, b: any) => 
       new Date(a.created_at || a.time).getTime() - new Date(b.created_at || b.time).getTime()
     );
+
+    // Track chronological stage transitions across all interactions
+    const stageMilestones: { time: number; stageName: string }[] = [];
+    chronologicalActs.forEach((a: any) => {
+      const subj = a.subject || '';
+      const body = a.body || a.note || '';
+      const match = subj.match(/Chuyển trạng thái Pipeline →\s*(.+)/i) || body.match(/Chuyển trạng thái Pipeline →\s*(.+)/i);
+      if (match) {
+        const targetName = match[1].trim();
+        const found = pipelineStages.find(s => s.name?.toLowerCase() === targetName.toLowerCase() || s.id?.toLowerCase() === targetName.toLowerCase());
+        stageMilestones.push({
+          time: new Date(a.created_at || a.time).getTime(),
+          stageName: getPrettyStageName(found?.id, found?.name || targetName)
+        });
+      }
+    });
+
+    const resolveStageName = (actTime: number, actSubject: string, actId: any) => {
+      // 1. Try finding from timeline memo if available
+      const foundItem = timeline.find((t: any) => t.id === actId);
+      if (foundItem?.stageName) return foundItem.stageName;
+
+      // 2. Direct transition in subject
+      const match = (actSubject || '').match(/Chuyển trạng thái Pipeline →\s*(.+)/i);
+      if (match) {
+        const targetName = match[1].trim();
+        const found = pipelineStages.find(s => s.name?.toLowerCase() === targetName.toLowerCase() || s.id?.toLowerCase() === targetName.toLowerCase());
+        return getPrettyStageName(found?.id, found?.name || targetName);
+      }
+
+      // 3. Milestone at that time
+      const pastMilestones = stageMilestones.filter(m => m.time <= actTime);
+      if (pastMilestones.length > 0) {
+        return pastMilestones[pastMilestones.length - 1].stageName;
+      }
+
+      // 4. Current pipeline status of contact
+      const currStageObj = pipelineStages.find(s => String(s.id) === String(formData.pipeline_status || contact?.pipeline_status));
+      return getPrettyStageName(currStageObj?.id, currStageObj?.name || 'Quan tâm');
+    };
 
     const groups: {
       dateStr: string;
@@ -4433,13 +4530,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
     chronologicalActs.forEach((act: any) => {
       const actDate = new Date(act.created_at || act.time);
+      if (isNaN(actDate.getTime())) return;
       const dateStr = actDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
       
-      const foundItem = timeline.find((t: any) => t.id === act.id);
-      const stageName = foundItem?.stageName || 'Quan tâm';
+      const stageName = resolveStageName(actDate.getTime(), act.subject, act.id);
       const speakerName = act.user_name || act.user || formData.owner_name || 'Sale';
 
-      let grp = groups.find(g => g.dateStr === dateStr);
+      // Group by date and owner
+      let grp = groups.find(g => g.dateStr === dateStr && g.ownerName === speakerName);
       if (!grp) {
         grp = {
           dateStr,
@@ -4451,7 +4549,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         groups.push(grp);
       } else {
         grp.stageName = stageName;
-        grp.ownerName = speakerName;
         if (actDate > grp.latestTime) grp.latestTime = actDate;
       }
 
@@ -4470,17 +4567,37 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         if (act.subject?.includes('Chuyển trạng thái Pipeline') || noteText.startsWith('Chuyển trạng thái Pipeline')) {
           // Omit automated stage transitions per sales request
         } else {
-          const colonMatch = noteText.match(/^([^:\n]+):\s*([\s\S]+)$/);
-          if (colonMatch && colonMatch[1].length < 30) {
-            grp.lines.push({
-              speaker: colonMatch[1].trim(),
-              content: colonMatch[2].trim()
+          // Check if multi-line conversation with dialogue format (Speaker: text)
+          const rawLines = noteText.split('\n').map(l => l.trim()).filter(Boolean);
+          const hasDialogueFormat = rawLines.length > 1 && rawLines.some(l => /^[^:\n]{2,25}:\s*.+$/.test(l));
+          if (hasDialogueFormat) {
+            rawLines.forEach(l => {
+              const m = l.match(/^([^:\n]{2,25}):\s*([\s\S]+)$/);
+              if (m) {
+                grp!.lines.push({
+                  speaker: m[1].trim(),
+                  content: m[2].trim()
+                });
+              } else {
+                grp!.lines.push({
+                  speaker: speakerName,
+                  content: l
+                });
+              }
             });
           } else {
-            grp.lines.push({
-              speaker: speakerName,
-              content: noteText
-            });
+            const colonMatch = noteText.match(/^([^:\n]+):\s*([\s\S]+)$/);
+            if (colonMatch && colonMatch[1].length < 30) {
+              grp.lines.push({
+                speaker: colonMatch[1].trim(),
+                content: colonMatch[2].trim()
+              });
+            } else {
+              grp.lines.push({
+                speaker: speakerName,
+                content: noteText
+              });
+            }
           }
         }
       } else if (act.subject && !act.subject.includes('Chuyển trạng thái Pipeline')) {
@@ -4502,12 +4619,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       });
     });
 
-    return groups.map(g => ({
+    // Filter out empty sessions
+    const activeGroups = groups.filter(g => g.lines.length > 0);
+
+    return activeGroups.map(g => ({
       title: `${g.dateStr} - ${g.stageName} - ${g.ownerName}`,
       timeAgo: AGO(g.latestTime.toISOString()),
-      lines: g.lines.length > 0 ? g.lines : [{ content: 'Không có nội dung ghi chú chi tiết' }]
+      lines: g.lines
     }));
-  }, [drawerActivities, summaryCommentsMap, timeline, formData.owner_name]);
+  }, [drawerActivities, notes, summaryCommentsMap, timeline, formData.owner_name, formData.pipeline_status, contact?.pipeline_status, pipelineStages]);
 
   const quickSummaryContent = useMemo(() => {
     if (!contact) return '';

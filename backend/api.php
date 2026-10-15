@@ -678,6 +678,151 @@ function logAdminAction($conn, $accountId, $action, $details = [])
     }
 }
 
+function deleteLeadInternalSafe($conn, $leadId, $dlId, $decodedUser) {
+    if ($leadId <= 0 && $dlId > 0) {
+        $stmtFind = $conn->prepare("SELECT lead_id FROM distribution_logs WHERE id = ? LIMIT 1");
+        if ($stmtFind) {
+            $stmtFind->bind_param("i", $dlId);
+            $stmtFind->execute();
+            $leadId = (int)($stmtFind->get_result()->fetch_assoc()['lead_id'] ?? 0);
+            $stmtFind->close();
+        }
+    }
+
+    if ($leadId <= 0 && $dlId > 0) {
+        $conn->query("DELETE FROM distribution_logs WHERE id = $dlId");
+        return ['success' => true, 'message' => 'Đã xóa bản ghi phân bổ.'];
+    }
+
+    if ($leadId <= 0) {
+        return ['success' => false, 'message' => 'Không tìm thấy Lead ID.'];
+    }
+
+    // Fetch lead details
+    $stmtLead = $conn->prepare("SELECT id, person_id, phone, name FROM leads WHERE id = ? LIMIT 1");
+    if (!$stmtLead) {
+        return ['success' => false, 'message' => 'Lỗi chuẩn bị truy vấn: ' . $conn->error];
+    }
+    $stmtLead->bind_param("i", $leadId);
+    $stmtLead->execute();
+    $leadData = $stmtLead->get_result()->fetch_assoc();
+    $stmtLead->close();
+
+    $personId = $leadData ? (int)($leadData['person_id'] ?? 0) : 0;
+    $leadPhone = $leadData ? ($leadData['phone'] ?? '') : '';
+    $leadName = $leadData ? ($leadData['name'] ?? '') : '';
+
+    if ($personId <= 0 && !empty($leadPhone)) {
+        $cleanPhone = preg_replace('/[^\d]/', '', $leadPhone);
+        if (strlen($cleanPhone) >= 9) {
+            $stmtP = $conn->prepare("SELECT id FROM persons WHERE phone = ? OR phone LIKE ? LIMIT 1");
+            if ($stmtP) {
+                $likePhone = '%' . substr($cleanPhone, -9);
+                $stmtP->bind_param("ss", $cleanPhone, $likePhone);
+                $stmtP->execute();
+                $personId = (int)($stmtP->get_result()->fetch_assoc()['id'] ?? 0);
+                $stmtP->close();
+            }
+        }
+    }
+
+    // Find linked contacts
+    $contactIds = [];
+    if ($personId > 0) {
+        $stmtC = $conn->prepare("SELECT id FROM contacts WHERE person_id = ?");
+        if ($stmtC) {
+            $stmtC->bind_param("i", $personId);
+            $stmtC->execute();
+            $cRes = $stmtC->get_result();
+            while ($cRow = $cRes->fetch_assoc()) {
+                $contactIds[] = (int)$cRow['id'];
+            }
+            $stmtC->close();
+        }
+    } else if (!empty($leadPhone)) {
+        $stmtC = $conn->prepare("SELECT id FROM contacts WHERE phone = ? AND phone IS NOT NULL AND phone != ''");
+        if ($stmtC) {
+            $stmtC->bind_param("s", $leadPhone);
+            $stmtC->execute();
+            $cRes = $stmtC->get_result();
+            while ($cRow = $cRes->fetch_assoc()) {
+                $contactIds[] = (int)$cRow['id'];
+            }
+            $stmtC->close();
+        }
+    }
+
+    // Check financial safety: If contact has active deposits or paid invoices, block deletion
+    if (!empty($contactIds)) {
+        $cIdListStr = implode(',', $contactIds);
+        $depCheck = $conn->query("SELECT COUNT(*) as cnt FROM deposits WHERE contact_id IN ($cIdListStr) AND status NOT IN ('cancelled', 'rejected')");
+        if ($depCheck && ($depCheck->fetch_assoc()['cnt'] ?? 0) > 0) {
+            return ['success' => false, 'message' => "Không thể xóa lead \"$leadName\" (#$leadId) vì đã có Hợp đồng Đặt cọc liên quan."];
+        }
+        $invCheck = $conn->query("SELECT COUNT(*) as cnt FROM invoices WHERE contact_id IN ($cIdListStr) AND status = 'paid'");
+        if ($invCheck && ($invCheck->fetch_assoc()['cnt'] ?? 0) > 0) {
+            return ['success' => false, 'message' => "Không thể xóa lead \"$leadName\" (#$leadId) vì đã có Hóa đơn thanh toán liên quan."];
+        }
+    }
+
+    $conn->begin_transaction();
+    try {
+        if (!empty($contactIds)) {
+            $cIdListStr = implode(',', $contactIds);
+            $conn->query("DELETE FROM cooperation_slips WHERE contact_id IN ($cIdListStr)");
+            $conn->query("DELETE FROM deals WHERE contact_id IN ($cIdListStr)");
+            $conn->query("DELETE FROM quotes WHERE contact_id IN ($cIdListStr)");
+            $conn->query("DELETE FROM tickets WHERE contact_id IN ($cIdListStr)");
+            $conn->query("DELETE FROM contact_phones WHERE contact_id IN ($cIdListStr)");
+            $conn->query("DELETE FROM contact_emails WHERE contact_id IN ($cIdListStr)");
+            $conn->query("DELETE FROM notes WHERE entity_type = 'contact' AND entity_id IN ($cIdListStr)");
+            $conn->query("DELETE FROM activities WHERE related_type = 'contact' AND related_id IN ($cIdListStr)");
+            $conn->query("DELETE FROM contacts WHERE id IN ($cIdListStr)");
+        }
+
+        $conn->query("DELETE FROM telegram_queue WHERE lead_id = $leadId");
+        $conn->query("DELETE FROM zalo_queue WHERE lead_id = $leadId");
+        $conn->query("DELETE FROM mail_queue WHERE lead_id = $leadId");
+        $conn->query("DELETE FROM sync_queue WHERE lead_id = $leadId");
+        $conn->query("DELETE FROM lead_offers WHERE lead_id = $leadId");
+        $conn->query("DELETE FROM data_reports WHERE lead_id = $leadId");
+        $conn->query("DELETE FROM communication_logs WHERE lead_id = $leadId");
+        $conn->query("DELETE FROM distribution_logs WHERE lead_id = $leadId");
+        if ($dlId > 0) {
+            $conn->query("DELETE FROM distribution_logs WHERE id = $dlId");
+        }
+        $conn->query("DELETE FROM leads WHERE id = $leadId");
+
+        // Clean orphaned person if no other leads and no other contacts remain
+        if ($personId > 0) {
+            $checkOtherLeads = $conn->query("SELECT COUNT(*) as cnt FROM leads WHERE person_id = $personId");
+            $otherLeadsCount = (int)($checkOtherLeads ? ($checkOtherLeads->fetch_assoc()['cnt'] ?? 0) : 0);
+            $checkOtherContacts = $conn->query("SELECT COUNT(*) as cnt FROM contacts WHERE person_id = $personId");
+            $otherContactsCount = (int)($checkOtherContacts ? ($checkOtherContacts->fetch_assoc()['cnt'] ?? 0) : 0);
+
+            if ($otherLeadsCount === 0 && $otherContactsCount === 0) {
+                $conn->query("DELETE FROM returned_databank_leads WHERE person_id = $personId");
+                $conn->query("DELETE FROM persons WHERE id = $personId");
+            }
+        }
+
+        $conn->commit();
+
+        $adminId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+        logAdminAction($conn, $adminId, 'DELETE_LEAD', [
+            'lead_id' => $leadId,
+            'lead_name' => $leadName,
+            'phone' => $leadPhone,
+            'dl_id' => $dlId
+        ]);
+
+        return ['success' => true, 'message' => "Đã xóa lead #$leadId thành công."];
+    } catch (\Throwable $e) {
+        $conn->rollback();
+        return ['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()];
+    }
+}
+
 function isManagerOfConsultant($conn, $managerUserId, $consultantId) {
     if (!$consultantId) return false;
     $stmt = $conn->prepare("SELECT u.id FROM users u JOIN teams t ON u.team_id = t.id JOIN consultants c ON u.email = c.email WHERE t.leader_id = ? AND c.id = ?");
@@ -5214,6 +5359,11 @@ switch ($action) {
             $dWorkHours = $dIsWorkday ? (($dConf['start'] ?? '') . ' - ' . ($dConf['end'] ?? '')) : '';
             $dEnabledByRule = !$dIsWorkday;
 
+            // If day is configured as an active administrative workday, it is NOT a weekend shift
+            if ($dIsWorkday) {
+                continue;
+            }
+
             $regInfo = $userRegistrations[$dDate] ?? ['registered' => false, 'approved' => false];
             $dDeadline = strtotime($dDate . ' 00:00:00') - ($leadHours * 3600);
             $dCanToggle = $isAdminOrMgr ? true : ($dEnabledByRule && $isCheckinEligible && time() < $dDeadline);
@@ -5224,9 +5374,9 @@ switch ($action) {
                 'date' => $dDate,
                 'registered' => $regInfo['registered'],
                 'approved' => $regInfo['approved'],
-                'can_toggle' => $dIsWorkday ? false : $dCanToggle,
+                'can_toggle' => $dCanToggle,
                 'enabled_by_rule' => $dEnabledByRule,
-                'is_workday' => $dIsWorkday,
+                'is_workday' => false,
                 'work_hours' => $dWorkHours,
                 'deadline_time' => date('Y-m-d H:i', $dDeadline)
             ];
@@ -5240,18 +5390,22 @@ switch ($action) {
             if ($dItem['day_num'] === 7) $sunItem = $dItem;
         }
 
+        $satConf = $globalWorkSchedule['6'] ?? $globalWorkSchedule[6] ?? null;
+        $isSatWorkday = !empty($satConf['active']);
+        $satHours = $isSatWorkday ? (($satConf['start'] ?? '') . ' - ' . ($satConf['end'] ?? '')) : '';
+        if ($isSatWorkday) {
+            $conn->query("DELETE FROM weekend_shift_registrations WHERE shift_date = '$satDate'");
+        }
+
         if (!$satItem) {
-            $satConf = $globalWorkSchedule['6'] ?? $globalWorkSchedule[6] ?? null;
-            $isSatWorkday = !empty($satConf['active']);
-            $satHours = $isSatWorkday ? (($satConf['start'] ?? '') . ' - ' . ($satConf['end'] ?? '')) : '';
             $satReg = $userRegistrations[$satDate] ?? ['registered' => false, 'approved' => false];
             $satDeadline = strtotime($satDate . ' 00:00:00') - ($leadHours * 3600);
             $satItem = [
                 'day_num' => 6,
                 'day_label' => 'Thứ Bảy',
                 'date' => $satDate,
-                'registered' => $satReg['registered'],
-                'approved' => $satReg['approved'],
+                'registered' => $isSatWorkday ? false : $satReg['registered'],
+                'approved' => $isSatWorkday ? false : $satReg['approved'],
                 'can_toggle' => $isSatWorkday ? false : ($isAdminOrMgr ? true : (in_array('6', $activeWeekendDays) && $isCheckinEligible && time() < $satDeadline)),
                 'enabled_by_rule' => !$isSatWorkday && in_array('6', $activeWeekendDays),
                 'is_workday' => $isSatWorkday,
@@ -5260,18 +5414,22 @@ switch ($action) {
             ];
         }
 
+        $sunConf = $globalWorkSchedule['7'] ?? $globalWorkSchedule[7] ?? null;
+        $isSunWorkday = !empty($sunConf['active']);
+        $sunHours = $isSunWorkday ? (($sunConf['start'] ?? '') . ' - ' . ($sunConf['end'] ?? '')) : '';
+        if ($isSunWorkday) {
+            $conn->query("DELETE FROM weekend_shift_registrations WHERE shift_date = '$sunDate'");
+        }
+
         if (!$sunItem) {
-            $sunConf = $globalWorkSchedule['7'] ?? $globalWorkSchedule[7] ?? null;
-            $isSunWorkday = !empty($sunConf['active']);
-            $sunHours = $isSunWorkday ? (($sunConf['start'] ?? '') . ' - ' . ($sunConf['end'] ?? '')) : '';
             $sunReg = $userRegistrations[$sunDate] ?? ['registered' => false, 'approved' => false];
             $sunDeadline = strtotime($sunDate . ' 00:00:00') - ($leadHours * 3600);
             $sunItem = [
                 'day_num' => 7,
                 'day_label' => 'Chủ Nhật',
                 'date' => $sunDate,
-                'registered' => $sunReg['registered'],
-                'approved' => $sunReg['approved'],
+                'registered' => $isSunWorkday ? false : $sunReg['registered'],
+                'approved' => $isSunWorkday ? false : $sunReg['approved'],
                 'can_toggle' => $isSunWorkday ? false : ($isAdminOrMgr ? true : (in_array('7', $activeWeekendDays) && $isCheckinEligible && time() < $sunDeadline)),
                 'enabled_by_rule' => !$isSunWorkday && in_array('7', $activeWeekendDays),
                 'is_workday' => $isSunWorkday,
@@ -15547,6 +15705,33 @@ switch ($action) {
             }
             $consultantProfile['weekend_shifts'] = $weekendShifts;
 
+            // Global schedule and weekend shift configuration
+            $resSched = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('global_work_schedule', 'weekend_shift_days')");
+            $globalSched = [];
+            $weekendDaysStr = '7';
+            if ($resSched) {
+                while ($sRow = $resSched->fetch_assoc()) {
+                    if ($sRow['setting_key'] === 'global_work_schedule') {
+                        $globalSched = json_decode($sRow['setting_value'], true) ?: [];
+                    } else if ($sRow['setting_key'] === 'weekend_shift_days') {
+                        $weekendDaysStr = $sRow['setting_value'] ?: '7';
+                    }
+                }
+            }
+            $isSatWorkday = !empty($globalSched['6']['active']) || !empty($globalSched[6]['active']);
+            $isSunWorkday = !empty($globalSched['7']['active']) || !empty($globalSched[7]['active']);
+            $activeWeekendDays = array_map('trim', explode(',', $weekendDaysStr));
+            $isSatWeekendShift = !$isSatWorkday && in_array('6', $activeWeekendDays);
+            $isSunWeekendShift = !$isSunWorkday && in_array('7', $activeWeekendDays);
+
+            $consultantProfile['is_sat_workday'] = $isSatWorkday;
+            $consultantProfile['is_sun_workday'] = $isSunWorkday;
+            $consultantProfile['is_sat_weekend_shift'] = $isSatWeekendShift;
+            $consultantProfile['is_sun_weekend_shift'] = $isSunWeekendShift;
+            $consultantProfile['sat_work_hours'] = $isSatWorkday ? (($globalSched['6']['start'] ?? '') . ' - ' . ($globalSched['6']['end'] ?? '')) : '';
+            $consultantProfile['sun_work_hours'] = $isSunWorkday ? (($globalSched['7']['start'] ?? '') . ' - ' . ($globalSched['7']['end'] ?? '')) : '';
+            $consultantProfile['weekend_shift_days'] = $weekendDaysStr;
+
             // Fetch night shift registrations for this user
             $nightShifts = [];
             $stmtNS = $conn->prepare("SELECT id, shift_date, approved, created_at FROM night_shift_registrations WHERE user_id = ? ORDER BY shift_date DESC LIMIT 100");
@@ -15760,6 +15945,18 @@ switch ($action) {
                     $wsDate = isset($ws['date']) ? trim($ws['date']) : '';
                     $wsReg = !empty($ws['register']);
                     if (!empty($wsDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $wsDate)) {
+                        $isRestDay = isRestDayForUser($conn, $targetUserId, $wsDate);
+                        if (!$isRestDay) {
+                            // If date is a normal administrative workday, purge any weekend shift registrations
+                            $stmtDelWS = $conn->prepare("DELETE FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ?");
+                            if ($stmtDelWS) {
+                                $stmtDelWS->bind_param("is", $targetUserId, $wsDate);
+                                $stmtDelWS->execute();
+                                $stmtDelWS->close();
+                            }
+                            continue;
+                        }
+
                         if ($wsReg) {
                             $stmtWS = $conn->prepare("INSERT INTO weekend_shift_registrations (user_id, shift_date, approved) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE approved = 1");
                             if ($stmtWS) {
@@ -20768,6 +20965,67 @@ switch ($action) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $ex->getMessage()]);
         }
+        break;
+
+    case 'admin_delete_lead':
+        if (!$decodedUser || !in_array($decodedUser['role'], ['admin', 'superadmin', 'super_admin'])) {
+            respond(403, null, 'Forbidden: Chỉ Quản trị viên mới có quyền xóa lead.', false);
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $leadId = (int)($input['lead_id'] ?? 0);
+        $dlId = (int)($input['dl_id'] ?? 0);
+
+        if ($leadId <= 0 && $dlId <= 0) {
+            respond(400, null, 'Thiếu thông tin Lead cần xóa.', false);
+        }
+
+        $res = deleteLeadInternalSafe($conn, $leadId, $dlId, $decodedUser);
+        if ($res['success']) {
+            respond(200, ['deleted_lead_id' => $leadId, 'deleted_dl_id' => $dlId], $res['message']);
+        } else {
+            respond(400, null, $res['message'], false);
+        }
+        break;
+
+    case 'admin_bulk_delete_leads':
+        if (!$decodedUser || !in_array($decodedUser['role'], ['admin', 'superadmin', 'super_admin'])) {
+            respond(403, null, 'Forbidden: Chỉ Quản trị viên mới có quyền xóa lead.', false);
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $items = $input['items'] ?? [];
+        if (empty($items)) {
+            respond(400, null, 'Danh sách lead cần xóa trống.', false);
+        }
+
+        $deletedCount = 0;
+        $skippedCount = 0;
+        $errors = [];
+
+        foreach ($items as $item) {
+            $leadId = is_array($item) ? (int)($item['lead_id'] ?? 0) : (int)$item;
+            $dlId = is_array($item) ? (int)($item['dl_id'] ?? 0) : 0;
+
+            $res = deleteLeadInternalSafe($conn, $leadId, $dlId, $decodedUser);
+            if ($res['success']) {
+                $deletedCount++;
+            } else {
+                $skippedCount++;
+                $errors[] = $res['message'];
+            }
+        }
+
+        $msg = "Đã xóa thành công $deletedCount lead.";
+        if ($skippedCount > 0) {
+            $msg .= " (Bỏ qua $skippedCount lead do ràng buộc hợp đồng hoặc không tồn tại).";
+        }
+
+        respond(200, [
+            'deleted_count' => $deletedCount,
+            'skipped_count' => $skippedCount,
+            'errors' => array_slice($errors, 0, 5)
+        ], $msg);
         break;
 
     case 'claim_public_lead':

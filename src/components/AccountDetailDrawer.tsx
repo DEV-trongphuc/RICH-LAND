@@ -338,6 +338,12 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [nightShifts, setNightShifts] = useState<any[]>([]);
   const [satShiftRegistered, setSatShiftRegistered] = useState(false);
   const [sunShiftRegistered, setSunShiftRegistered] = useState(false);
+  const [isSatWorkday, setIsSatWorkday] = useState(false);
+  const [isSunWorkday, setIsSunWorkday] = useState(false);
+  const [satWorkHours, setSatWorkHours] = useState('');
+  const [sunWorkHours, setSunWorkHours] = useState('');
+  const [isSatWeekendShift, setIsSatWeekendShift] = useState(true);
+  const [isSunWeekendShift, setIsSunWeekendShift] = useState(true);
 
   // Compute upcoming Saturday and Sunday dates
   const getWeekendDates = () => {
@@ -442,8 +448,17 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
             setNightShifts(d.night_shifts || []);
 
             const curWeekend = getWeekendDates();
-            const hasSat = Boolean(d.weekend_shifts && d.weekend_shifts.some((ws: any) => ws.shift_date === curWeekend.satStr && Number(ws.approved) === 1));
-            const hasSun = Boolean(d.weekend_shifts && d.weekend_shifts.some((ws: any) => ws.shift_date === curWeekend.sunStr && Number(ws.approved) === 1));
+            const satWork = Boolean(d.is_sat_workday);
+            const sunWork = Boolean(d.is_sun_workday);
+            setIsSatWorkday(satWork);
+            setIsSunWorkday(sunWork);
+            if (d.sat_work_hours) setSatWorkHours(d.sat_work_hours);
+            if (d.sun_work_hours) setSunWorkHours(d.sun_work_hours);
+            if (d.is_sat_weekend_shift !== undefined) setIsSatWeekendShift(Boolean(d.is_sat_weekend_shift));
+            if (d.is_sun_weekend_shift !== undefined) setIsSunWeekendShift(Boolean(d.is_sun_weekend_shift));
+
+            const hasSat = !satWork && Boolean(d.weekend_shifts && d.weekend_shifts.some((ws: any) => ws.shift_date === curWeekend.satStr && Number(ws.approved) === 1));
+            const hasSun = !sunWork && Boolean(d.weekend_shifts && d.weekend_shifts.some((ws: any) => ws.shift_date === curWeekend.sunStr && Number(ws.approved) === 1));
             setSatShiftRegistered(hasSat);
             setSunShiftRegistered(hasSun);
             setWorkStartTime(d.work_start_time || '08:00');
@@ -1031,8 +1046,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           telegram_chat_id: telegramChatId,
           overtime_mode: overtimeMode ? 1 : 0,
           weekend_shifts: [
-            { date: currentSatDateStr, register: satShiftRegistered },
-            { date: currentSunDateStr, register: sunShiftRegistered }
+            ...(!isSatWorkday ? [{ date: currentSatDateStr, register: satShiftRegistered }] : [{ date: currentSatDateStr, register: false }]),
+            ...(!isSunWorkday ? [{ date: currentSunDateStr, register: sunShiftRegistered }] : [{ date: currentSunDateStr, register: false }])
           ],
           use_custom_work_hours: useCustomWorkHours ? 1 : 0,
           leave_start: leaveStart || null,
@@ -2784,60 +2799,116 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem', marginTop: '4px' }}>
                         {/* Saturday */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          background: 'var(--color-surface)',
-                          borderRadius: '10px',
-                          border: '1px solid var(--color-border)'
-                        }}>
-                          <div>
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: 'var(--color-text)', display: 'block' }}>
-                              {t('Thứ Bảy')} ({new Date(currentSatDateStr).toLocaleDateString('vi-VN')})
-                            </span>
-                            <span style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              color: satShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)'
-                            }}>
-                              {satShiftRegistered ? t('Đã duyệt trực Thứ 7') : t('Chưa đăng ký')}
+                        {isSatWorkday ? (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            background: 'rgba(16, 185, 129, 0.05)',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(16, 185, 129, 0.2)'
+                          }}>
+                            <div>
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: 'var(--color-text)', display: 'block' }}>
+                                {t('Thứ Bảy')} ({new Date(currentSatDateStr).toLocaleDateString('vi-VN')})
+                              </span>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                color: 'var(--color-success)'
+                              }}>
+                                {t('✓ Ngày làm việc hành chính')} {satWorkHours ? `(${satWorkHours})` : ''} — {t('Không áp dụng trực')}
+                              </span>
+                            </div>
+                            <span className="badge success" style={{ fontSize: '0.7rem' }}>
+                              {t('Đi làm hành chính')}
                             </span>
                           </div>
-                          <ToggleSwitch
-                            checked={satShiftRegistered}
-                            onChange={setSatShiftRegistered}
-                          />
-                        </div>
+                        ) : isSatWeekendShift ? (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            background: 'var(--color-surface)',
+                            borderRadius: '10px',
+                            border: '1px solid var(--color-border)'
+                          }}>
+                            <div>
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: 'var(--color-text)', display: 'block' }}>
+                                {t('Thứ Bảy')} ({new Date(currentSatDateStr).toLocaleDateString('vi-VN')})
+                              </span>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                color: satShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)'
+                              }}>
+                                {satShiftRegistered ? t('Đã duyệt trực Thứ 7') : t('Chưa đăng ký')}
+                              </span>
+                            </div>
+                            <ToggleSwitch
+                              checked={satShiftRegistered}
+                              onChange={setSatShiftRegistered}
+                            />
+                          </div>
+                        ) : null}
 
                         {/* Sunday */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          background: 'var(--color-surface)',
-                          borderRadius: '10px',
-                          border: '1px solid var(--color-border)'
-                        }}>
-                          <div>
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: 'var(--color-text)', display: 'block' }}>
-                              {t('Chủ Nhật')} ({new Date(currentSunDateStr).toLocaleDateString('vi-VN')})
-                            </span>
-                            <span style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              color: sunShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)'
-                            }}>
-                              {sunShiftRegistered ? t('Đã duyệt trực Chủ Nhật') : t('Chưa đăng ký')}
+                        {isSunWorkday ? (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            background: 'rgba(16, 185, 129, 0.05)',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(16, 185, 129, 0.2)'
+                          }}>
+                            <div>
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: 'var(--color-text)', display: 'block' }}>
+                                {t('Chủ Nhật')} ({new Date(currentSunDateStr).toLocaleDateString('vi-VN')})
+                              </span>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                color: 'var(--color-success)'
+                              }}>
+                                {t('✓ Ngày làm việc hành chính')} {sunWorkHours ? `(${sunWorkHours})` : ''} — {t('Không áp dụng trực')}
+                              </span>
+                            </div>
+                            <span className="badge success" style={{ fontSize: '0.7rem' }}>
+                              {t('Đi làm hành chính')}
                             </span>
                           </div>
-                          <ToggleSwitch
-                            checked={sunShiftRegistered}
-                            onChange={setSunShiftRegistered}
-                          />
-                        </div>
+                        ) : isSunWeekendShift ? (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            background: 'var(--color-surface)',
+                            borderRadius: '10px',
+                            border: '1px solid var(--color-border)'
+                          }}>
+                            <div>
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 650, color: 'var(--color-text)', display: 'block' }}>
+                                {t('Chủ Nhật')} ({new Date(currentSunDateStr).toLocaleDateString('vi-VN')})
+                              </span>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                color: sunShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)'
+                              }}>
+                                {sunShiftRegistered ? t('Đã duyệt trực Chủ Nhật') : t('Chưa đăng ký')}
+                              </span>
+                            </div>
+                            <ToggleSwitch
+                              checked={sunShiftRegistered}
+                              onChange={setSunShiftRegistered}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     </div>
 
