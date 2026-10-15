@@ -1,45 +1,30 @@
 const https = require('https');
 
-function execQuery(sql) {
-  return new Promise((resolve, reject) => {
-    const postData = 'key=richland2026&sql=' + encodeURIComponent(sql);
-    const req = https.request('https://crm.richland.city/backend/exec_db_query.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData)
-      },
-      rejectUnauthorized: false
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          resolve({ error: e.message, raw: data });
-        }
-      });
-    });
-    req.on('error', reject);
-    req.write(postData);
-    req.end();
+const querystring = require('querystring');
+const postData = querystring.stringify({
+  key: 'richland2026',
+  sql: "SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'security_timer_%' OR setting_key LIKE '%parallel%' OR setting_key LIKE '%databank%' OR setting_key = 'deal_won_status' ORDER BY setting_key ASC"
+});
+
+const req = https.request('https://crm.richland.city/backend/exec_db_query.php', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Content-Length': Buffer.byteLength(postData)
+  }
+}, res => {
+  let body = '';
+  res.on('data', d => body += d);
+  res.on('end', () => {
+    try {
+      const json = JSON.parse(body);
+      console.log(JSON.stringify(json, null, 2));
+    } catch (e) {
+      console.log('Raw body:', body);
+    }
   });
-}
+});
 
-async function run() {
-  const settings = await execQuery(`
-    SELECT \`key\`, \`value\` FROM system_settings 
-    WHERE \`key\` LIKE '%recall%' OR \`key\` LIKE '%attempt%' OR \`key\` LIKE '%response%' OR \`key\` LIKE '%cooldown%'
-  `);
-  console.log("Settings:", JSON.stringify(settings, null, 2));
-
-  const round2 = await execQuery(`
-    SELECT * FROM round_consultants rc
-    JOIN consultants c ON rc.consultant_id = c.id
-    WHERE rc.round_id = 2
-  `);
-  console.log("Round 2 Consultants:", JSON.stringify(round2, null, 2));
-}
-
-run();
+req.on('error', e => console.error(e));
+req.write(postData);
+req.end();

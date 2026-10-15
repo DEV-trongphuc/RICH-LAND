@@ -21440,6 +21440,12 @@ switch ($action) {
                   'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead'
               )
               AND NOT EXISTS (
+                  SELECT 1 FROM contacts c_active 
+                  WHERE c_active.person_id = p.id 
+                    AND c_active.deleted_at IS NULL 
+                    AND (c_active.security_expires_at > NOW() OR c_active.pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'))
+              )
+              AND NOT EXISTS (
                   SELECT 1 FROM data_reports dr 
                   WHERE dr.lead_id IN (SELECT id FROM leads WHERE person_id = p.id) 
                     AND dr.status IN ('approved', 'approved_no_comp')

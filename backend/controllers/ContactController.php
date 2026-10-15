@@ -1238,15 +1238,31 @@ class ContactController {
                 require_once __DIR__ . '/../config/TriggerHelper.php';
                 TriggerHelper::dispatch($this->db, 'pipeline_status', $currStatus, $newStatus, $id);
 
-                // Update security_expires_at
+                // Update security_expires_at for higher status
                 $securityExpires = $this->getSecurityExpiration($newStatus);
                 $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
                 $stmtTimer->execute([$securityExpires, $id]);
 
-                // Nếu chuyển sang "Quan tâm" hoặc các mốc tiến triển: Ẩn Person khỏi kho Databank (bảo mật thêm)
+                // Nếu đã đẩy ra kho mà sale chuyển lên trạng thái cao hơn:
+                // 1. Ẩn Person khỏi kho Databank ngay lập tức (is_public = 0)
+                // 2. Ghi nhận thời gian gia hạn của trạng thái cao hơn đó, đồng bộ cho Person
                 if ($newStatus !== 'chua_xac_dinh' && $newStatus !== 'not_lead') {
-                    $stmtHidePerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = (SELECT person_id FROM contacts WHERE id = ? LIMIT 1)");
-                    $stmtHidePerson->execute([$id]);
+                    $stmtGetPid = $this->db->prepare("SELECT person_id FROM contacts WHERE id = ? LIMIT 1");
+                    $stmtGetPid->execute([$id]);
+                    $targetPersonId = (int)$stmtGetPid->fetchColumn();
+                    if ($targetPersonId > 0) {
+                        // Ẩn Person hoàn toàn khỏi Kho Databank
+                        $stmtHidePerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
+                        $stmtHidePerson->execute([$targetPersonId]);
+
+                        // Ghi thời gian gia hạn của trạng thái cao hơn đó cho các contact active của Person
+                        $stmtSyncTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE person_id = ? AND deleted_at IS NULL AND (security_expires_at IS NULL OR security_expires_at < ?)");
+                        $stmtSyncTimer->execute([$securityExpires, $targetPersonId, $securityExpires]);
+
+                        // Cập nhật trạng thái bản ghi gốc MKT (leads)
+                        $stmtUpdLead = $this->db->prepare("UPDATE leads SET status = ?, last_interaction_date = NOW() WHERE person_id = ? AND status NOT IN ('dat_coc', 'dong_deal', 'not_lead')");
+                        $stmtUpdLead->execute([$newStatus, $targetPersonId]);
+                    }
                 }
 
                 // Auto spawn workflow tasks if stage changes
@@ -1450,15 +1466,31 @@ class ContactController {
             require_once __DIR__ . '/../config/TriggerHelper.php';
             TriggerHelper::dispatch($this->db, 'pipeline_status', $currStatus, $newStatus, $id);
 
-            // Update security timer
+            // Update security timer for higher status
             $securityExpires = $this->getSecurityExpiration($newStatus);
             $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
             $stmtTimer->execute([$securityExpires, $id]);
 
-            // Nếu chuyển sang "Quan tâm" hoặc các mốc tiến triển: Ẩn Person khỏi kho Databank (bảo mật thêm)
+            // Nếu đã đẩy ra kho mà sale chuyển lên trạng thái cao hơn:
+            // 1. Ẩn Person khỏi kho Databank ngay lập tức (is_public = 0)
+            // 2. Ghi nhận thời gian gia hạn của trạng thái cao hơn đó, đồng bộ cho Person
             if ($newStatus !== 'chua_xac_dinh' && $newStatus !== 'not_lead') {
-                $stmtHidePerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = (SELECT person_id FROM contacts WHERE id = ? LIMIT 1)");
-                $stmtHidePerson->execute([$id]);
+                $stmtGetPid = $this->db->prepare("SELECT person_id FROM contacts WHERE id = ? LIMIT 1");
+                $stmtGetPid->execute([$id]);
+                $targetPersonId = (int)$stmtGetPid->fetchColumn();
+                if ($targetPersonId > 0) {
+                    // Ẩn Person hoàn toàn khỏi Kho Databank
+                    $stmtHidePerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
+                    $stmtHidePerson->execute([$targetPersonId]);
+
+                    // Ghi thời gian gia hạn của trạng thái cao hơn đó cho các contact active của Person
+                    $stmtSyncTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE person_id = ? AND deleted_at IS NULL AND (security_expires_at IS NULL OR security_expires_at < ?)");
+                    $stmtSyncTimer->execute([$securityExpires, $targetPersonId, $securityExpires]);
+
+                    // Cập nhật trạng thái bản ghi gốc MKT (leads)
+                    $stmtUpdLead = $this->db->prepare("UPDATE leads SET status = ?, last_interaction_date = NOW() WHERE person_id = ? AND status NOT IN ('dat_coc', 'dong_deal', 'not_lead')");
+                    $stmtUpdLead->execute([$newStatus, $targetPersonId]);
+                }
             }
 
             // Auto spawn workflow tasks
