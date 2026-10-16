@@ -82,14 +82,17 @@ class CheckInController {
             }
         }
 
+        $fromDateParam = !empty($_GET['from']) ? $_GET['from'] : (!empty($_GET['start_date']) ? $_GET['start_date'] : '');
+        $toDateParam = !empty($_GET['to']) ? $_GET['to'] : (!empty($_GET['end_date']) ? $_GET['end_date'] : '');
+
         if (isset($_GET['month']) && !empty($_GET['month'])) {
             $sql .= " AND YEAR(c.check_in_date) = ? AND MONTH(c.check_in_date) = ?";
             $params[] = (int)($_GET['year'] ?? date('Y'));
             $params[] = (int)$_GET['month'];
-        } elseif (isset($_GET['from']) && !empty($_GET['from']) && isset($_GET['to']) && !empty($_GET['to'])) {
+        } elseif (!empty($fromDateParam) && !empty($toDateParam)) {
             $sql .= " AND c.check_in_date BETWEEN ? AND ?";
-            $params[] = $_GET['from'];
-            $params[] = $_GET['to'];
+            $params[] = $fromDateParam;
+            $params[] = $toDateParam;
         } elseif (isset($_GET['date']) && !empty($_GET['date']) && $_GET['date'] !== 'all') {
             $sql .= " AND c.check_in_date = ?";
             $params[] = $_GET['date'];
@@ -129,8 +132,16 @@ class CheckInController {
         if (isset($_GET['include_shifts']) && $_GET['include_shifts'] == '1') {
             $shifts = [];
             $userIdFilter = null;
-            if (isset($_GET['user_id']) && !empty($_GET['user_id']) && $_GET['user_id'] !== 'all') {
+            if (!$isManager) {
+                $userIdFilter = (int)$auth['user_id'];
+            } else if (isset($_GET['user_id']) && !empty($_GET['user_id']) && $_GET['user_id'] !== 'all') {
                 $userIdFilter = (int)$_GET['user_id'];
+            } else if (isset($_GET['consultant_id']) && !empty($_GET['consultant_id']) && $_GET['consultant_id'] !== 'all') {
+                $cIdVal = (int)$_GET['consultant_id'];
+                $stmtU = $this->db->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+                $stmtU->execute([$cIdVal]);
+                $uRow = $stmtU->fetch(PDO::FETCH_ASSOC);
+                $userIdFilter = $uRow ? (int)$uRow['id'] : $cIdVal;
             }
 
             if (isset($_GET['month']) && !empty($_GET['month'])) {
@@ -191,9 +202,9 @@ class CheckInController {
                 $stmtHoliday->execute($holidayParams);
                 $shifts = array_merge($shifts, $stmtHoliday->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
-            } else if (isset($_GET['from']) && !empty($_GET['from']) && isset($_GET['to']) && !empty($_GET['to'])) {
-                $from = $_GET['from'];
-                $to = $_GET['to'];
+            } else if (!empty($fromDateParam) && !empty($toDateParam)) {
+                $from = $fromDateParam;
+                $to = $toDateParam;
 
                 // 1. Night shifts
                 $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 

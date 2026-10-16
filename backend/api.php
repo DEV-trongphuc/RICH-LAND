@@ -5323,32 +5323,31 @@ switch ($action) {
 
         $weekendRoundName = '';
         if ($weekendRoundId > 0) {
-            $stmtR = $conn->prepare("SELECT round_name FROM lead_distribution_rounds WHERE id = ? LIMIT 1");
-            if ($stmtR) {
-                $stmtR->bind_param("i", $weekendRoundId);
-                $stmtR->execute();
-                $rRes = $stmtR->get_result()->fetch_assoc();
-                $stmtR->close();
-                if ($rRes) $weekendRoundName = $rRes['round_name'];
+            try {
+                $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ? LIMIT 1");
+                if ($stmtR) {
+                    $stmtR->bind_param("i", $weekendRoundId);
+                    $stmtR->execute();
+                    $rRes = $stmtR->get_result()->fetch_assoc();
+                    $stmtR->close();
+                    if ($rRes && !empty($rRes['round_name'])) {
+                        $weekendRoundName = $rRes['round_name'];
+                    }
+                }
+            } catch (Throwable $e) {
+                error_log("Error fetching weekend distribution round name: " . $e->getMessage());
             }
         }
 
-        // Determine Saturday and Sunday dates for backward compatibility
+        // Deterministic week calculation (Monday = 1 ... Sunday = 7)
         $dayOfWeek = (int)date('N');
-        if ($dayOfWeek == 6) { // today is Sat
-            $satDate = date('Y-m-d');
-            $sunDate = date('Y-m-d', strtotime('+1 day'));
-        } else if ($dayOfWeek == 7) { // today is Sun
-            $satDate = date('Y-m-d', strtotime('-1 day'));
-            $sunDate = date('Y-m-d');
-        } else {
-            $satDate = date('Y-m-d', strtotime('next Saturday'));
-            $sunDate = date('Y-m-d', strtotime('next Sunday'));
-        }
+        $mondayTimestamp = strtotime('-' . ($dayOfWeek - 1) . ' days');
+        $satDate = date('Y-m-d', strtotime('+5 days', $mondayTimestamp));
+        $sunDate = date('Y-m-d', strtotime('+6 days', $mondayTimestamp));
 
-        // Count approved/pending check-ins in the current week (Monday - Friday)
-        $startOfWeek = date('Y-m-d', strtotime('monday this week'));
-        $endOfWeek = date('Y-m-d', strtotime('friday this week'));
+        // Count approved/pending check-ins in the current workweek (Monday - Saturday)
+        $startOfWeek = date('Y-m-d', $mondayTimestamp);
+        $endOfWeek = date('Y-m-d', strtotime('+5 days', $mondayTimestamp));
         $userCheckinDays = 0;
         $stmtChk = $conn->prepare("SELECT COUNT(DISTINCT check_in_date) as cnt FROM check_ins WHERE user_id = ? AND check_in_date BETWEEN ? AND ? AND status IN ('approved', 'pending_approval')");
         if ($stmtChk) {
@@ -5359,17 +5358,33 @@ switch ($action) {
             $userCheckinDays = (int)($chkRow['cnt'] ?? 0);
         }
 
-        // Global work schedule inspection
-        $globalWorkSchedule = [];
+        // Global work schedule inspection + user custom work schedule check
+        $effectiveWorkSchedule = [];
         $globalSchedRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
         if ($globalSchedRes && $gRow = $globalSchedRes->fetch_assoc()) {
             $gSched = json_decode($gRow['setting_value'], true);
             if (is_array($gSched)) {
-                $globalWorkSchedule = $gSched;
+                $effectiveWorkSchedule = $gSched;
+            }
+        }
+        $stmtUserSched = $conn->prepare("SELECT use_custom_work_hours, work_schedule FROM users WHERE id = ? LIMIT 1");
+        if ($stmtUserSched) {
+            $stmtUserSched->bind_param("i", $dbUserId);
+            $stmtUserSched->execute();
+            $uSchedRow = $stmtUserSched->get_result()->fetch_assoc();
+            $stmtUserSched->close();
+            if ($uSchedRow && (int)($uSchedRow['use_custom_work_hours'] ?? 0) === 1 && !empty($uSchedRow['work_schedule'])) {
+                $uSched = json_decode($uSchedRow['work_schedule'], true);
+                if (is_array($uSched)) {
+                    $effectiveWorkSchedule = $uSched;
+                }
             }
         }
 
-        $activeWeekendDays = array_map('trim', explode(',', $weekendShiftDays));
+        $activeWeekendDays = array_values(array_filter(array_map('trim', explode(',', $weekendShiftDays))));
+        if (empty($activeWeekendDays)) {
+            $activeWeekendDays = ['6', '7'];
+        }
         $isCheckinEligible = $isAdminOrMgr || ($weekendMinCheckinDays <= 0) || ($userCheckinDays >= $weekendMinCheckinDays);
 
         $dayNameMap = [
@@ -5381,10 +5396,6 @@ switch ($action) {
             6 => 'Thứ Bảy',
             7 => 'Chủ Nhật'
         ];
-
-        // Build dynamic list of days configured as weekend shift days
-        $daysList = [];
-        $mondayTimestamp = strtotime('monday this week');
 
         // Pre-fetch all user registrations for this week
         $weekDates = [];
@@ -5411,12 +5422,14 @@ switch ($action) {
             }
         }
 
+        // Build dynamic list of days configured as weekend shift days
+        $daysList = [];
         foreach ($activeWeekendDays as $dayKey) {
             $dNum = (int)$dayKey;
             if ($dNum < 1 || $dNum > 7) continue;
 
             $dDate = date('Y-m-d', strtotime('+' . ($dNum - 1) . ' days', $mondayTimestamp));
-            $dConf = $globalWorkSchedule[(string)$dNum] ?? $globalWorkSchedule[$dNum] ?? null;
+            $dConf = $effectiveWorkSchedule[(string)$dNum] ?? $effectiveWorkSchedule[$dNum] ?? null;
             $dIsWorkday = !empty($dConf['active']);
             $dWorkHours = $dIsWorkday ? (($dConf['start'] ?? '') . ' - ' . ($dConf['end'] ?? '')) : '';
             $dEnabledByRule = !$dIsWorkday;
@@ -5452,11 +5465,11 @@ switch ($action) {
             if ($dItem['day_num'] === 7) $sunItem = $dItem;
         }
 
-        $satConf = $globalWorkSchedule['6'] ?? $globalWorkSchedule[6] ?? null;
+        $satConf = $effectiveWorkSchedule['6'] ?? $effectiveWorkSchedule[6] ?? null;
         $isSatWorkday = !empty($satConf['active']);
         $satHours = $isSatWorkday ? (($satConf['start'] ?? '') . ' - ' . ($satConf['end'] ?? '')) : '';
         if ($isSatWorkday) {
-            $conn->query("DELETE FROM weekend_shift_registrations WHERE shift_date = '$satDate'");
+            $conn->query("DELETE FROM weekend_shift_registrations WHERE user_id = $dbUserId AND shift_date = '$satDate'");
         }
 
         if (!$satItem) {
@@ -5476,11 +5489,11 @@ switch ($action) {
             ];
         }
 
-        $sunConf = $globalWorkSchedule['7'] ?? $globalWorkSchedule[7] ?? null;
+        $sunConf = $effectiveWorkSchedule['7'] ?? $effectiveWorkSchedule[7] ?? null;
         $isSunWorkday = !empty($sunConf['active']);
         $sunHours = $isSunWorkday ? (($sunConf['start'] ?? '') . ' - ' . ($sunConf['end'] ?? '')) : '';
         if ($isSunWorkday) {
-            $conn->query("DELETE FROM weekend_shift_registrations WHERE shift_date = '$sunDate'");
+            $conn->query("DELETE FROM weekend_shift_registrations WHERE user_id = $dbUserId AND shift_date = '$sunDate'");
         }
 
         if (!$sunItem) {
@@ -5500,6 +5513,24 @@ switch ($action) {
             ];
         }
 
+        // Fetch recent weekend shift history for this user (last 8 records)
+        $weekendHistory = [];
+        $stmtHist = $conn->prepare("SELECT id, shift_date, approved, created_at FROM weekend_shift_registrations WHERE user_id = ? ORDER BY shift_date DESC LIMIT 8");
+        if ($stmtHist) {
+            $stmtHist->bind_param("i", $dbUserId);
+            $stmtHist->execute();
+            $histRes = $stmtHist->get_result();
+            while ($hRow = $histRes->fetch_assoc()) {
+                $weekendHistory[] = [
+                    'id' => (int)$hRow['id'],
+                    'shift_date' => $hRow['shift_date'],
+                    'approved' => (bool)$hRow['approved'],
+                    'created_at' => $hRow['created_at']
+                ];
+            }
+            $stmtHist->close();
+        }
+
         echo json_encode([
             'success' => true,
             'allow_weekend_registration' => $isAdminOrMgr ? true : ($allowWeekend === 1),
@@ -5513,7 +5544,8 @@ switch ($action) {
             'is_sun_workday' => $sunItem['is_workday'],
             'days' => $daysList,
             'saturday' => $satItem,
-            'sunday' => $sunItem
+            'sunday' => $sunItem,
+            'history' => $weekendHistory
         ]);
         break;
 
@@ -5598,10 +5630,13 @@ switch ($action) {
                 break;
             }
 
-            // Check minimum checkin days in the week
+            // Check minimum checkin days in the week (Monday - Saturday)
             if ($register && $weekendMinCheckinDays > 0) {
-                $startOfWeek = date('Y-m-d', strtotime('monday this week', strtotime($targetDate)));
-                $endOfWeek = date('Y-m-d', strtotime('friday this week', strtotime($targetDate)));
+                $targetTs = strtotime($targetDate);
+                $targetDow = (int)date('N', $targetTs);
+                $mondayTs = strtotime('-' . ($targetDow - 1) . ' days', $targetTs);
+                $startOfWeek = date('Y-m-d', $mondayTs);
+                $endOfWeek = date('Y-m-d', strtotime('+5 days', $mondayTs));
                 $stmtChk = $conn->prepare("SELECT COUNT(DISTINCT check_in_date) as cnt FROM check_ins WHERE user_id = ? AND check_in_date BETWEEN ? AND ? AND status IN ('approved', 'pending_approval')");
                 $userCheckinDays = 0;
                 if ($stmtChk) {
@@ -5731,7 +5766,7 @@ switch ($action) {
         $todayStr = date('Y-m-d');
         $resultHolidays = [];
 
-        foreach ($holidays as $h) {
+        foreach ($holidays as $idx => $h) {
             $startDate = $h['start'] ?? '';
             $endDate = $h['end'] ?? '';
             $hName = $h['name'] ?? 'Ngày lễ';
@@ -5741,26 +5776,33 @@ switch ($action) {
             // Only consider holidays that have not ended or end in the future
             if ($endDate < $todayStr) continue;
 
-            // Iterate each day of this holiday period
+            $datesStatus = [];
             $curr = $startDate;
             while ($curr <= $endDate) {
-                if ($curr >= $todayStr) {
-                    // Check registration status for $curr
-                    $stmt = $conn->prepare("SELECT id, approved FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ?");
-                    $stmt->bind_param("is", $dbUserId, $curr);
-                    $stmt->execute();
-                    $hReg = $stmt->get_result()->fetch_assoc();
-                    $stmt->close();
+                $stmt = $conn->prepare("SELECT id, approved FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ?");
+                $stmt->bind_param("is", $dbUserId, $curr);
+                $stmt->execute();
+                $hReg = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
 
-                    $resultHolidays[] = [
-                        'date' => $curr,
-                        'name' => $hName,
-                        'registered' => ($hReg !== null),
-                        'approved' => ($hReg !== null ? (bool)$hReg['approved'] : false),
-                        'can_toggle' => true
-                    ];
-                }
+                $datesStatus[] = [
+                    'date' => $curr,
+                    'name' => $hName,
+                    'registered' => ($hReg !== null),
+                    'approved' => ($hReg !== null ? (bool)$hReg['approved'] : false),
+                    'can_toggle' => ($curr >= $todayStr || $isAdminOrMgr)
+                ];
                 $curr = date('Y-m-d', strtotime($curr . ' +1 day'));
+            }
+
+            if (!empty($datesStatus)) {
+                $resultHolidays[] = [
+                    'id' => $h['id'] ?? ($idx + 1),
+                    'name' => $hName,
+                    'start' => $startDate,
+                    'end' => $endDate,
+                    'dates_status' => $datesStatus
+                ];
             }
         }
 
@@ -5882,6 +5924,7 @@ switch ($action) {
         $isAdminOrMgr = in_array(strtolower($decodedUser['role'] ?? ''), ['admin', 'superadmin', 'super_admin', 'director', 'manager', 'assistant']);
         $dbUserId = (int)$decodedUser['id'];
         $b = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($b)) $b = [];
 
         if ($isAdminOrMgr && !empty($b['user_id'])) {
             $dbUserId = (int)$b['user_id'];
@@ -5898,13 +5941,46 @@ switch ($action) {
             }
         }
 
+        // Support direct holiday_shifts assignment (e.g. from AttendancePage admin modal)
+        if (!empty($b['holiday_shifts']) && is_array($b['holiday_shifts']) && !isset($b['dates'])) {
+            $autoApproveHol = $isAdminOrMgr ? 1 : 0;
+            if (!$isAdminOrMgr) {
+                $setHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'auto_approve_holiday_shift' LIMIT 1");
+                if ($setHol && $hRow = $setHol->fetch_assoc()) {
+                    $autoApproveHol = (int)$hRow['setting_value'];
+                }
+            }
+            $holInserted = 0;
+            foreach ($b['holiday_shifts'] as $hsItem) {
+                $hDate = trim($hsItem['date'] ?? '');
+                $hName = trim($hsItem['holiday_name'] ?? 'Trực lễ');
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $hDate)) continue;
+                $stmtH = $conn->prepare("INSERT INTO holiday_shift_registrations (user_id, shift_date, holiday_name, approved) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?, holiday_name = VALUES(holiday_name)");
+                if ($stmtH) {
+                    $stmtH->bind_param("issii", $dbUserId, $hDate, $hName, $autoApproveHol, $autoApproveHol);
+                    $stmtH->execute();
+                    $stmtH->close();
+                    $holInserted++;
+                }
+            }
+            logAdminAction($conn, $decodedUser['id'], 'REGISTER_HOLIDAY_SHIFTS_BATCH', json_encode([
+                'user_id' => $dbUserId,
+                'holiday_shifts' => $b['holiday_shifts'],
+                'by_admin' => $isAdminOrMgr
+            ]));
+            echo json_encode(['success' => true, 'message' => "Đã lưu đăng ký trực lễ ({$holInserted} ngày) thành công."]);
+            break;
+        }
+
         $dates = isset($b['dates']) && is_array($b['dates']) ? $b['dates'] : [];
 
         // Get timeframe constraints: Current week Monday to Sunday
         $todayStr = date('Y-m-d');
         $dayOfWeek = (int)date('N');
-        $mondayStr = date('Y-m-d', strtotime('-' . ($dayOfWeek - 1) . ' days'));
-        $sundayStr = date('Y-m-d', strtotime('+' . (7 - $dayOfWeek) . ' days'));
+        $mondayTimestamp = strtotime('-' . ($dayOfWeek - 1) . ' days');
+        $mondayStr = date('Y-m-d', $mondayTimestamp);
+        $sundayStr = date('Y-m-d', strtotime('+6 days', $mondayTimestamp));
+        $saturdayStr = date('Y-m-d', strtotime('+5 days', $mondayTimestamp));
 
         // Load holiday schedules
         $holidaySchedulesJson = '[]';
@@ -5917,42 +5993,91 @@ switch ($action) {
             $holidays = [];
         }
 
-        // Load weekend config (if Saturday is rest day)
-        $isSatOff = true;
-        $resSched = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
-        if ($resSched && $sRow = $resSched->fetch_assoc()) {
-            $schedule = json_decode($sRow['setting_value'], true);
-            if (isset($schedule["6"]) && isset($schedule["6"]["active"])) {
-                $isSatOff = !(bool)$schedule["6"]["active"];
-            }
-        }
-
-        // Load night shift start time & deadline settings
+        // Load system shift settings (night, weekend, holiday, auto-approve)
         $nightShiftStart = '18:00';
-        $setRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_start_time' LIMIT 1");
-        if ($setRes && $sRow = $setRes->fetch_assoc()) {
-            $nightShiftStart = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '18:00';
-        }
         $allowLate = 0;
         $lateMinutes = 0;
         $advanceMinutes = 0;
-        $resLate = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_late_night_shift_registration', 'late_night_shift_registration_minutes', 'advance_night_shift_registration_minutes')");
-        if ($resLate) {
-            while ($lateRow = $resLate->fetch_assoc()) {
-                if ($lateRow['setting_key'] === 'allow_late_night_shift_registration') {
-                    $allowLate = (int) $lateRow['setting_value'];
-                } else if ($lateRow['setting_key'] === 'late_night_shift_registration_minutes') {
-                    $lateMinutes = (int) $lateRow['setting_value'];
-                } else if ($lateRow['setting_key'] === 'advance_night_shift_registration_minutes') {
-                    $advanceMinutes = (int) $lateRow['setting_value'];
-                }
+        $allowWeekend = 1;
+        $weekendLeadHours = 0;
+        $weekendShiftDays = '6,7';
+        $weekendMinCheckinDays = 0;
+        $autoApproveNight = 1;
+        $autoApproveWeekend = 0;
+        $autoApproveHoliday = 0;
+
+        $resSys = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (
+            'night_shift_start_time',
+            'allow_late_night_shift_registration',
+            'late_night_shift_registration_minutes',
+            'advance_night_shift_registration_minutes',
+            'allow_weekend_shift_registration',
+            'weekend_shift_registration_lead_hours',
+            'weekend_shift_days',
+            'weekend_shift_min_checkin_days',
+            'auto_approve_night_shift',
+            'auto_approve_weekend_shift',
+            'auto_approve_holiday_shift'
+        )");
+        if ($resSys) {
+            while ($sRow = $resSys->fetch_assoc()) {
+                $k = $sRow['setting_key'];
+                $v = $sRow['setting_value'];
+                if ($k === 'night_shift_start_time' && !empty($v)) $nightShiftStart = $v;
+                else if ($k === 'allow_late_night_shift_registration') $allowLate = (int)$v;
+                else if ($k === 'late_night_shift_registration_minutes') $lateMinutes = (int)$v;
+                else if ($k === 'advance_night_shift_registration_minutes') $advanceMinutes = (int)$v;
+                else if ($k === 'allow_weekend_shift_registration') $allowWeekend = (int)$v;
+                else if ($k === 'weekend_shift_registration_lead_hours') $weekendLeadHours = (int)$v;
+                else if ($k === 'weekend_shift_days' && !empty($v)) $weekendShiftDays = $v;
+                else if ($k === 'weekend_shift_min_checkin_days') $weekendMinCheckinDays = (int)$v;
+                else if ($k === 'auto_approve_night_shift') $autoApproveNight = (int)$v;
+                else if ($k === 'auto_approve_weekend_shift') $autoApproveWeekend = (int)$v;
+                else if ($k === 'auto_approve_holiday_shift') $autoApproveHoliday = (int)$v;
             }
         }
+        $allowedWeekendDays = array_map('trim', explode(',', $weekendShiftDays));
+
+        // Pre-fetch existing registrations in this week for $dbUserId so already-registered dates (e.g. today past deadline) aren't rejected
+        $existingWeekRegs = [];
+        foreach (['night_shift_registrations', 'weekend_shift_registrations', 'holiday_shift_registrations'] as $tbl) {
+            $stmtEx = $conn->prepare("SELECT shift_date, approved FROM {$tbl} WHERE user_id = ? AND shift_date BETWEEN ? AND ?");
+            if ($stmtEx) {
+                $stmtEx->bind_param("iss", $dbUserId, $mondayStr, $sundayStr);
+                $stmtEx->execute();
+                $exRes = $stmtEx->get_result();
+                while ($exRow = $exRes->fetch_assoc()) {
+                    $existingWeekRegs[$exRow['shift_date']] = [
+                        'table' => $tbl,
+                        'approved' => (int)$exRow['approved']
+                    ];
+                }
+                $stmtEx->close();
+            }
+        }
+
+        // Count user's approved/pending check-ins in current week (Monday - Saturday) for weekend shift eligibility
+        $userCheckinDays = 0;
+        if ($weekendMinCheckinDays > 0) {
+            $stmtChk = $conn->prepare("SELECT COUNT(DISTINCT check_in_date) as cnt FROM check_ins WHERE user_id = ? AND check_in_date BETWEEN ? AND ? AND status IN ('approved', 'pending_approval')");
+            if ($stmtChk) {
+                $stmtChk->bind_param("iss", $dbUserId, $mondayStr, $saturdayStr);
+                $stmtChk->execute();
+                $chkRow = $stmtChk->get_result()->fetch_assoc();
+                $stmtChk->close();
+                $userCheckinDays = (int)($chkRow['cnt'] ?? 0);
+            }
+        }
+
+        $dayNameMap = [
+            1 => 'Thứ Hai', 2 => 'Thứ Ba', 3 => 'Thứ Tư', 4 => 'Thứ Năm',
+            5 => 'Thứ Sáu', 6 => 'Thứ Bảy', 7 => 'Chủ Nhật'
+        ];
 
         // Validate each date
         $validDates = [];
         foreach ($dates as $date) {
-            $date = trim($date);
+            $date = trim((string)$date);
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
                 echo json_encode(['success' => false, 'message' => "Định dạng ngày {$date} không hợp lệ."]);
                 break 2;
@@ -5964,44 +6089,80 @@ switch ($action) {
                 break 2;
             }
 
-            // Must be after yesterday (>= today) for regular sales
+            // Ignore past dates sent from client state so they are neither rejected nor deleted
             if (!$isAdminOrMgr && $date < $todayStr) {
-                echo json_encode(['success' => false, 'message' => "Không được phép đăng ký các ngày trong quá khứ ({$date})."]);
-                break 2;
+                continue;
             }
 
-            // If it is today, check night shift deadline constraint for regular sales
-            if (!$isAdminOrMgr && $date === $todayStr) {
-                $deadline = strtotime($todayStr . ' ' . $nightShiftStart);
-                if ($allowLate === 1) {
-                    if ($lateMinutes > 0) {
-                        $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " +{$lateMinutes} minutes");
+            $isAlreadyRegistered = isset($existingWeekRegs[$date]);
+
+            // Determine shift category for $date
+            $holidayNameForDate = '';
+            foreach ($holidays as $h) {
+                if (!empty($h['start']) && !empty($h['end']) && $date >= $h['start'] && $date <= $h['end']) {
+                    $holidayNameForDate = $h['name'] ?? 'Ngày lễ';
+                    break;
+                }
+            }
+            $isWeekendRestDay = empty($holidayNameForDate) && isRestDayForUser($conn, $dbUserId, $date);
+
+            // Validate constraints for regular sales on newly registered dates
+            if (!$isAdminOrMgr && !$isAlreadyRegistered) {
+                if ($isWeekendRestDay) {
+                    $dNum = (int)date('N', strtotime($date));
+                    $dLabel = $dayNameMap[$dNum] ?? "Thứ {$dNum}";
+                    if ($allowWeekend !== 1) {
+                        echo json_encode(['success' => false, 'message' => 'Hệ thống hiện không cho phép đăng ký trực cuối tuần.']);
+                        break 2;
                     }
-                } else if ($advanceMinutes > 0) {
-                    $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " -{$advanceMinutes} minutes");
+                    if (!in_array((string)$dNum, $allowedWeekendDays)) {
+                        echo json_encode(['success' => false, 'message' => "Quản lý hiện chưa thiết lập mở ca trực cuối tuần cho {$dLabel} ({$date})."]);
+                        break 2;
+                    }
+                    if ($weekendMinCheckinDays > 0 && $userCheckinDays < $weekendMinCheckinDays) {
+                        echo json_encode(['success' => false, 'message' => "Bạn chưa đủ điều kiện đăng ký trực cuối tuần ({$dLabel}): Cần tối thiểu {$weekendMinCheckinDays} ngày chấm công hợp lệ trong tuần (hiện tại bạn có {$userCheckinDays}/{$weekendMinCheckinDays} ngày)."]);
+                        break 2;
+                    }
+                    $wDeadline = strtotime($date . ' 00:00:00') - ($weekendLeadHours * 3600);
+                    if (time() >= $wDeadline) {
+                        $wDeadlineStr = date('Y-m-d H:i', $wDeadline);
+                        echo json_encode(['success' => false, 'message' => "Đã quá hạn đăng ký trực cuối tuần cho ngày {$date} (Hạn chót: {$wDeadlineStr})."]);
+                        break 2;
+                    }
+                } else if (empty($holidayNameForDate) && $date === $todayStr) {
+                    // Weekday night shift deadline constraint for today
+                    $deadline = strtotime($todayStr . ' ' . $nightShiftStart);
+                    if ($allowLate === 1) {
+                        if ($lateMinutes > 0) {
+                            $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " +{$lateMinutes} minutes");
+                        }
+                    } else if ($advanceMinutes > 0) {
+                        $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " -{$advanceMinutes} minutes");
+                    }
+                    if (time() >= $deadline) {
+                        $deadlineStr = date('H:i', $deadline);
+                        echo json_encode(['success' => false, 'message' => "Đã quá thời hạn đăng ký trực ca đêm cho ngày hôm nay ({$deadlineStr})."]);
+                        break 2;
+                    }
                 }
-                if (time() >= $deadline) {
-                    $deadlineStr = date('H:i', $deadline);
-                    echo json_encode(['success' => false, 'message' => "Đã quá thời hạn đăng ký cho ngày hôm nay ({$deadlineStr})."]);
-                    break 2;
-                }
-            }
 
-            // Check if date is a leave day (only for regular sales)
-            if (!$isAdminOrMgr) {
+                // Check if date is a leave day (only for regular sales)
                 $stmtCheckLeave = $conn->prepare("SELECT 1 FROM consultant_leaves WHERE consultant_id = ? AND ? BETWEEN start_date AND end_date LIMIT 1");
-                $stmtCheckLeave->bind_param("is", $dbUserId, $date);
-                $stmtCheckLeave->execute();
-                $hasLeave = $stmtCheckLeave->get_result()->fetch_assoc();
-                $stmtCheckLeave->close();
-                if ($hasLeave) {
-                    echo json_encode(['success' => false, 'message' => "Bạn không thể đăng ký trực ca cho ngày {$date} vì trùng lịch nghỉ phép."]);
-                    break 2;
+                if ($stmtCheckLeave) {
+                    $stmtCheckLeave->bind_param("is", $dbUserId, $date);
+                    $stmtCheckLeave->execute();
+                    $hasLeave = $stmtCheckLeave->get_result()->fetch_assoc();
+                    $stmtCheckLeave->close();
+                    if ($hasLeave) {
+                        echo json_encode(['success' => false, 'message' => "Bạn không thể đăng ký trực ca cho ngày {$date} vì trùng lịch nghỉ phép."]);
+                        break 2;
+                    }
                 }
             }
 
             $validDates[] = $date;
         }
+        $validDates = array_values(array_unique($validDates));
 
         // Find all dates in the current week that are >= today
         $allWeekDates = [];
@@ -6019,35 +6180,44 @@ switch ($action) {
         // Perform cancellations for omitted dates
         foreach ($omittedDates as $date) {
             if (!$isAdminOrMgr && $date === $todayStr) {
-                // If today is omitted, check night shift deadline constraint
-                $deadline = strtotime($todayStr . ' ' . $nightShiftStart);
-                if ($allowLate === 1) {
-                    if ($lateMinutes > 0) {
-                        $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " +{$lateMinutes} minutes");
+                $isWeekendRestToday = isRestDayForUser($conn, $dbUserId, $todayStr);
+                if ($isWeekendRestToday) {
+                    $wDeadline = strtotime($todayStr . ' 00:00:00') - ($weekendLeadHours * 3600);
+                    if (time() >= $wDeadline) continue;
+                } else {
+                    $deadline = strtotime($todayStr . ' ' . $nightShiftStart);
+                    if ($allowLate === 1) {
+                        if ($lateMinutes > 0) {
+                            $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " +{$lateMinutes} minutes");
+                        }
+                    } else if ($advanceMinutes > 0) {
+                        $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " -{$advanceMinutes} minutes");
                     }
-                } else if ($advanceMinutes > 0) {
-                    $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " -{$advanceMinutes} minutes");
-                }
-                if (time() >= $deadline) {
-                    // Past deadline - regular sales cannot cancel/delete today's registration
-                    continue;
+                    if (time() >= $deadline) {
+                        continue;
+                    }
                 }
             }
 
             // Safe to delete from all 3 tables
-            $conn->query("DELETE FROM night_shift_registrations WHERE user_id = $dbUserId AND shift_date = '$date'");
-            $conn->query("DELETE FROM weekend_shift_registrations WHERE user_id = $dbUserId AND shift_date = '$date'");
-            $conn->query("DELETE FROM holiday_shift_registrations WHERE user_id = $dbUserId AND shift_date = '$date'");
+            $stmtDelN = $conn->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
+            if ($stmtDelN) { $stmtDelN->bind_param("is", $dbUserId, $date); $stmtDelN->execute(); $stmtDelN->close(); }
+            $stmtDelW = $conn->prepare("DELETE FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ?");
+            if ($stmtDelW) { $stmtDelW->bind_param("is", $dbUserId, $date); $stmtDelW->execute(); $stmtDelW->close(); }
+            $stmtDelH = $conn->prepare("DELETE FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ?");
+            if ($stmtDelH) { $stmtDelH->bind_param("is", $dbUserId, $date); $stmtDelH->execute(); $stmtDelH->close(); }
         }
 
         // Perform batch registration
         $insertedCount = 0;
+        $pendingCount = 0;
+        $formattedDates = [];
         foreach ($validDates as $date) {
             // Determine shift category: holiday, weekend, night
             $holidayName = '';
             foreach ($holidays as $h) {
-                if ($date >= $h['start'] && $date <= $h['end']) {
-                    $holidayName = $h['name'];
+                if (!empty($h['start']) && !empty($h['end']) && $date >= $h['start'] && $date <= $h['end']) {
+                    $holidayName = $h['name'] ?? 'Ngày lễ';
                     break;
                 }
             }
@@ -6055,16 +6225,18 @@ switch ($action) {
             $isWeekend = isRestDayForUser($conn, $dbUserId, $date);
 
             $tableName = 'night_shift_registrations';
+            $defaultAutoApprove = $autoApproveNight;
             if (!empty($holidayName)) {
                 $tableName = 'holiday_shift_registrations';
+                $defaultAutoApprove = $autoApproveHoliday;
             } else if ($isWeekend) {
                 $tableName = 'weekend_shift_registrations';
+                $defaultAutoApprove = $autoApproveWeekend;
             }
 
-            // Admin registrations are immediately approved
-            $approvedValue = $isAdminOrMgr ? 1 : 0;
+            // Admin registrations are immediately approved; regular sales use system auto-approve or preserve existing approval
+            $approvedValue = $isAdminOrMgr ? 1 : $defaultAutoApprove;
             if (!$isAdminOrMgr) {
-                // Keep approved = 1 if it is already approved
                 $checkStmt = $conn->prepare("SELECT approved FROM {$tableName} WHERE user_id = ? AND shift_date = ? LIMIT 1");
                 if ($checkStmt) {
                     $checkStmt->bind_param("is", $dbUserId, $date);
@@ -6083,22 +6255,38 @@ switch ($action) {
                 $stmt->execute();
                 $stmt->close();
             } else {
-                $stmt = $conn->prepare("INSERT INTO {$tableName} (user_id, shift_date, approved) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?");
+                $stmt = $conn->prepare("INSERT INTO {$tableName} (user_id, shift_date, approved) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?");
                 $stmt->bind_param("isii", $dbUserId, $date, $approvedValue, $approvedValue);
                 $stmt->execute();
                 $stmt->close();
             }
+            if ($approvedValue === 0) {
+                $pendingCount++;
+            }
+            $formattedDates[] = date('d/m', strtotime($date));
             $insertedCount++;
         }
 
+        if (!$isAdminOrMgr && $insertedCount > 0) {
+            $saleName = !empty($decodedUser['name']) ? $decodedUser['name'] : 'Nhân viên';
+            $datesListStr = implode(', ', $formattedDates);
+            $title = $pendingCount > 0 ? "Đăng ký lịch trực tuần chờ duyệt" : "Đăng ký lịch trực tuần";
+            $body = $pendingCount > 0
+                ? "Sale {$saleName} đã đăng ký lịch trực tuần ({$datesListStr}). Vui lòng phê duyệt."
+                : "Sale {$saleName} đã cập nhật lịch trực tuần ({$datesListStr}).";
+            $link = "/attendance";
 
-        $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND is_active = 1")->fetch_all(MYSQLI_ASSOC);
-        foreach ($admins as $admin) {
-            $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
-            if ($stmtNotif) {
-                $stmtNotif->bind_param("isss", $admin['id'], $title, $body, $link);
-                $stmtNotif->execute();
-                $stmtNotif->close();
+            $adminsRes = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND is_active = 1");
+            if ($adminsRes) {
+                $admins = $adminsRes->fetch_all(MYSQLI_ASSOC);
+                foreach ($admins as $admin) {
+                    $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
+                    if ($stmtNotif) {
+                        $stmtNotif->bind_param("isss", $admin['id'], $title, $body, $link);
+                        $stmtNotif->execute();
+                        $stmtNotif->close();
+                    }
+                }
             }
         }
 
@@ -6107,7 +6295,13 @@ switch ($action) {
             'dates' => $validDates
         ]));
 
-        echo json_encode(['success' => true, 'message' => "Đã gửi đăng ký trực tuần cho {$insertedCount} ngày. Vui lòng chờ phê duyệt."]);
+        if ($insertedCount === 0) {
+            echo json_encode(['success' => true, 'message' => 'Đã cập nhật và hủy các lịch trực tuần thành công.']);
+        } else if ($pendingCount > 0) {
+            echo json_encode(['success' => true, 'message' => "Đã lưu đăng ký lịch trực tuần ({$insertedCount} ngày). Vui lòng chờ Quản lý/Admin phê duyệt.", 'pending' => true]);
+        } else {
+            echo json_encode(['success' => true, 'message' => "Đã lưu và kích hoạt lịch trực tuần cho {$insertedCount} ngày thành công."]);
+        }
         break;
 
     case 'get_shift_registrations_admin':

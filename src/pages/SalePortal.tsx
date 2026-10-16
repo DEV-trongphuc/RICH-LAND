@@ -2501,6 +2501,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [weekendShiftSat, setWeekendShiftSat] = useState<any>(null);
   const [weekendShiftSun, setWeekendShiftSun] = useState<any>(null);
   const [weekendShiftDaysList, setWeekendShiftDaysList] = useState<any[]>([]);
+  const [weekendShiftHistory, setWeekendShiftHistory] = useState<any[]>([]);
   const [weekendShiftRoundName, setWeekendShiftRoundName] = useState<string>('');
   const [weekendMinCheckinDays, setWeekendMinCheckinDays] = useState<number>(0);
   const [userCheckinDays, setUserCheckinDays] = useState<number>(0);
@@ -2520,33 +2521,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [loadingWeeklyRegs, setLoadingWeeklyRegs] = useState(false);
   const [showWeeklyShiftScheduler, setShowWeeklyShiftScheduler] = useState(false);
   const [showWeeklyConfirmModal, setShowWeeklyConfirmModal] = useState(false);
-
-  const executeSubmitWeeklyShifts = async () => {
-    if (weeklyShiftDates.length === 0) {
-      toast.error(t('Vui lòng chọn ít nhất 1 ngày để đăng ký lịch trực tuần!'));
-      return;
-    }
-    setWeeklySubmitting(true);
-    try {
-      const res = await fetchAPI('users/weekly-shifts', {
-        method: 'POST',
-        body: JSON.stringify({
-          dates: weeklyShiftDates
-        })
-      });
-      if (res && (res.success || res.status === 'success')) {
-        toast.success(t('Đã lưu và gửi đăng ký lịch trực tuần thành công!'));
-        setShowWeeklyConfirmModal(false);
-      } else {
-        toast.error(res?.message || t('Không thể lưu lịch trực tuần'));
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || t('Lỗi kết nối khi lưu lịch trực'));
-    } finally {
-      setWeeklySubmitting(false);
-    }
-  };
 
   // Leave scheduler state
   const [showLeaveScheduler, setShowLeaveScheduler] = useState(false);
@@ -4540,6 +4514,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
+  const formatLocalYMD = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   const loadNightShiftStatus = async () => {
     if (!token) return;
     setNightShiftLoading(true);
@@ -4547,13 +4524,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const targetParam = impersonatedSale?.id ? `?consultant_id=${impersonatedSale.id}` : (saleIdFilter ? `?consultant_id=${saleIdFilter}` : '');
       const res = await fetchAPI(`get_night_shift_status${targetParam}`);
       if (res.success) {
-        setNightShiftRegistered(res.registered);
+        setNightShiftRegistered(Boolean(res.registered));
         setNightShiftApproved(res.approved === 1 || res.approved === true);
         setNightShiftCanToggle(res.can_toggle || isUserAdminRole || isUserManagerRole);
         setNightShiftDate(res.shift_date);
         setNightShiftDeadline(res.deadline_time || '');
         if (res.start_time) setNightShiftStartTime(res.start_time);
         if (res.end_time) setNightShiftEndTime(res.end_time);
+        if (res.registered && res.shift_date) {
+          setWeeklyShiftDates(prev => Array.from(new Set([...prev, String(res.shift_date)])));
+        }
       }
     } catch (e) {
       console.error("Error loading night shift status:", e);
@@ -4567,21 +4547,31 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setTogglingNightShift(true);
     try {
       const targetConsultant = impersonatedSale?.id || saleIdFilter || null;
+      const nextReg = !nightShiftRegistered;
       const res = await fetchAPI('register_night_shift', {
         method: 'POST',
         body: JSON.stringify({ 
-          register: !nightShiftRegistered,
+          register: nextReg,
           consultant_id: targetConsultant || undefined
         })
       });
       if (res.success) {
         toast.success(res.message);
-        setNightShiftRegistered(!nightShiftRegistered);
+        setNightShiftRegistered(nextReg);
         if (res.pending) {
           setNightShiftApproved(false);
         } else {
-          setNightShiftApproved(!nightShiftRegistered);
+          setNightShiftApproved(nextReg);
         }
+        if (nightShiftDate) {
+          setWeeklyShiftDates(prev =>
+            nextReg
+              ? Array.from(new Set([...prev, nightShiftDate]))
+              : prev.filter(d => d !== nightShiftDate)
+          );
+        }
+        loadNightShiftStatus();
+        loadWeeklyRegistrations();
       } else {
         toast.error(res.message);
       }
@@ -4599,14 +4589,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const targetParam = impersonatedSale?.id ? `?consultant_id=${impersonatedSale.id}` : (saleIdFilter ? `?consultant_id=${saleIdFilter}` : '');
       const res = await fetchAPI(`get_weekend_shift_status${targetParam}`);
       if (res.success) {
-        setWeekendShiftAllow(res.allow_weekend_registration || isUserAdminRole || isUserManagerRole);
+        setWeekendShiftAllow(Boolean(res.allow_weekend_registration) || isUserAdminRole || isUserManagerRole);
         setWeekendShiftSat(res.saturday);
         setWeekendShiftSun(res.sunday);
         setWeekendShiftDaysList(res.days || []);
+        setWeekendShiftHistory(res.history || []);
         setWeekendShiftRoundName(res.weekend_shift_round_name || '');
         setWeekendMinCheckinDays(Number(res.weekend_shift_min_checkin_days) || 0);
         setUserCheckinDays(Number(res.user_checkin_days) || 0);
         setIsCheckinEligible(res.is_checkin_eligible !== false);
+        const regWeekendDates = (res.days || [])
+          .filter((d: any) => d && d.registered && !d.is_workday)
+          .map((d: any) => String(d.date));
+        if (regWeekendDates.length > 0) {
+          setWeeklyShiftDates(prev => Array.from(new Set([...prev, ...regWeekendDates])));
+        }
       }
     } catch (e) {
       console.error("Error loading weekend shift status:", e);
@@ -4620,17 +4617,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setTogglingWeekendShift(prev => ({ ...prev, [dateStr]: true }));
     try {
       const targetConsultant = impersonatedSale?.id || saleIdFilter || null;
+      const nextReg = !currentRegistered;
       const res = await fetchAPI('register_weekend_shift', {
         method: 'POST',
         body: JSON.stringify({ 
           date: dateStr, 
-          register: !currentRegistered,
+          register: nextReg,
           consultant_id: targetConsultant || undefined
         })
       });
       if (res.success) {
         toast.success(res.message);
+        setWeeklyShiftDates(prev =>
+          nextReg
+            ? Array.from(new Set([...prev, dateStr]))
+            : prev.filter(d => d !== dateStr)
+        );
         loadWeekendShiftStatus();
+        loadWeeklyRegistrations();
       } else {
         toast.error(res.message);
       }
@@ -4645,7 +4649,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token) return;
     setHolidayShiftLoading(true);
     try {
-      const res = await fetchAPI('get_holiday_shift_status');
+      const targetParam = impersonatedSale?.id ? `?consultant_id=${impersonatedSale.id}` : (saleIdFilter ? `?consultant_id=${saleIdFilter}` : '');
+      const res = await fetchAPI(`get_holiday_shift_status${targetParam}`);
       if (res.success) {
         setHolidayShifts(res.holidays || []);
       }
@@ -4660,13 +4665,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (togglingHolidayShift[dateStr]) return;
     setTogglingHolidayShift(prev => ({ ...prev, [dateStr]: true }));
     try {
+      const targetConsultant = impersonatedSale?.id || saleIdFilter || null;
+      const nextReg = !currentRegistered;
       const res = await fetchAPI('register_holiday_shift', {
         method: 'POST',
-        body: JSON.stringify({ holiday_name: holidayName, date: dateStr, register: !currentRegistered })
+        body: JSON.stringify({
+          holiday_name: holidayName,
+          date: dateStr,
+          register: nextReg,
+          consultant_id: targetConsultant || undefined
+        })
       });
       if (res.success) {
         toast.success(res.message);
+        setWeeklyShiftDates(prev =>
+          nextReg
+            ? Array.from(new Set([...prev, dateStr]))
+            : prev.filter(d => d !== dateStr)
+        );
         loadHolidayShiftStatus();
+        loadWeeklyRegistrations();
       } else {
         toast.error(res.message);
       }
@@ -4698,7 +4716,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     return weekdays.map((name, i) => {
       const date = new Date(monday);
       date.setDate(monday.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = formatLocalYMD(date);
       return {
         name,
         date: dateStr,
@@ -4716,17 +4734,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const mondayDiff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
       const monday = new Date(today);
       monday.setDate(today.getDate() + mondayDiff);
-      const startStr = monday.toISOString().split('T')[0];
+      const startStr = formatLocalYMD(monday);
 
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
-      const endStr = sunday.toISOString().split('T')[0];
+      const endStr = formatLocalYMD(sunday);
 
-      const res = await fetchAPI(`check-ins&start_date=${startStr}&end_date=${endStr}&include_shifts=1`);
-      if (res.success && res.data && res.data.shifts) {
-        const myShifts = res.data.shifts.filter((s: any) => String(s.user_id) === String(user?.id));
+      const targetUserId = displayUser?.id || user?.id;
+      const targetConsultant = impersonatedSale?.id || saleIdFilter || null;
+      const filterParam = targetConsultant
+        ? `&consultant_id=${targetConsultant}`
+        : (targetUserId ? `&user_id=${targetUserId}` : '');
+
+      const res = await fetchAPI(`check-ins&from=${startStr}&to=${endStr}&start_date=${startStr}&end_date=${endStr}&include_shifts=1${filterParam}`);
+      if (res.success && res.data && Array.isArray(res.data.shifts)) {
+        const myShifts = res.data.shifts.filter((s: any) => !targetUserId || String(s.user_id) === String(targetUserId));
         setWeeklyRegistrations(myShifts);
-        const registeredDates = myShifts.map((s: any) => s.shift_date);
+        const registeredDates = Array.from(new Set(myShifts.map((s: any) => String(s.shift_date)))) as string[];
         setWeeklyShiftDates(registeredDates);
       }
     } catch (e) {
@@ -4736,22 +4760,45 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
-  const handleSubmitWeeklyShifts = async () => {
+  useEffect(() => {
+    if (activeTab === 'schedule' && token) {
+      loadNightShiftStatus();
+      loadWeekendShiftStatus();
+      loadHolidayShiftStatus();
+      loadWeeklyRegistrations();
+    }
+  }, [activeTab, token, saleIdFilter, impersonatedSale?.id]);
+
+  const executeSubmitWeeklyShifts = async () => {
     if (weeklySubmitting) return;
+    if (weeklyShiftDates.length === 0 && weeklyRegistrations.length === 0) {
+      toast.error(t('Vui lòng chọn ít nhất 1 ngày để đăng ký lịch trực tuần!'));
+      return;
+    }
     setWeeklySubmitting(true);
     try {
+      const targetConsultant = impersonatedSale?.id || saleIdFilter || null;
       const res = await fetchAPI('register_weekly_shifts', {
         method: 'POST',
-        body: JSON.stringify({ dates: weeklyShiftDates })
+        body: JSON.stringify({
+          dates: weeklyShiftDates,
+          consultant_id: targetConsultant || undefined
+        })
       });
-      if (res.success) {
-        toast.success(t('Đăng ký lịch tuần thành công và đang chờ Admin duyệt!'));
+      if (res && (res.success || res.status === 'success')) {
+        toast.success(res.message || t('Đã lưu và gửi đăng ký lịch trực tuần thành công!'));
+        setShowWeeklyConfirmModal(false);
         loadWeeklyRegistrations();
+        loadNightShiftStatus();
+        loadWeekendShiftStatus();
+        loadHolidayShiftStatus();
+        loadPortalData(true);
       } else {
-        toast.error(res.message);
+        toast.error(res?.message || t('Không thể lưu lịch trực tuần'));
       }
-    } catch (e: any) {
-      toast.error(t('Lỗi gửi đăng ký: ') + e.message);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || t('Lỗi kết nối khi lưu lịch trực'));
     } finally {
       setWeeklySubmitting(false);
     }
@@ -13291,7 +13338,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </div>
 
                     {/* Weekend Shift Registration Card */}
-                    {weekendShiftAllow && (
+                    {(weekendShiftAllow || String(sysSettings?.allow_weekend_shift_registration) === '1' || isUserAdminRole || isUserManagerRole) && (
                       <div className="card" style={{
                         padding: isMobile ? '1.25rem 1rem' : '1.5rem',
                         background: 'var(--color-surface)',
@@ -13361,7 +13408,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <CheckCircle2 size={14} />
-                                <span>{t('Tiêu chuẩn chấm công tuần (T2 - T6):')} <strong>{userCheckinDays}/{weekendMinCheckinDays} {t('ngày')}</strong></span>
+                                <span>
+                                  {(weekendShiftSat?.is_workday || editWorkSchedule?.['6']?.active)
+                                    ? t('Tiêu chuẩn chấm công tuần (T2 - T7):')
+                                    : t('Tiêu chuẩn chấm công tuần (T2 - T6):')}{' '}
+                                  <strong>{userCheckinDays}/{weekendMinCheckinDays} {t('ngày')}</strong>
+                                </span>
                               </div>
                               <span style={{ fontWeight: 700 }}>
                                 {isCheckinEligible ? t('✓ Đủ điều kiện đăng ký') : t('⚠️ Chưa đủ điều kiện đăng ký')}
@@ -13395,6 +13447,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {(() => {
+                            if (weekendShiftLoading && weekendShiftDaysList.length === 0 && !weekendShiftSat && !weekendShiftSun) {
+                              return (
+                                <div style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                                  {t('Đang tải thông tin ca trực cuối tuần...')}
+                                </div>
+                              );
+                            }
+
                             const rawDays = (weekendShiftDaysList && weekendShiftDaysList.length > 0)
                               ? weekendShiftDaysList
                               : [weekendShiftSat, weekendShiftSun].filter(Boolean);
@@ -13420,6 +13480,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               const workConfig = editWorkSchedule?.[dNumKey];
                               const isWorkday = dayItem.is_workday !== undefined ? dayItem.is_workday : workConfig?.active;
                               const workHours = dayItem.work_hours || (isWorkday ? `${workConfig?.start} - ${workConfig?.end}` : '');
+                              const isTogglingThis = Boolean(togglingWeekendShift[dayItem.date]);
+                              const formattedItemDate = dayItem.date
+                                ? new Date(String(dayItem.date).slice(0, 10) + 'T00:00:00').toLocaleDateString('vi-VN')
+                                : '';
+                              const formattedDeadline = dayItem.deadline_time
+                                ? new Date(String(dayItem.deadline_time).replace(' ', 'T')).toLocaleString('vi-VN', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric'
+                                  })
+                                : '';
 
                               return (
                                 <div
@@ -13440,7 +13513,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     {isMobile ? (
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '4px' }}>
                                         <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                          {dayItem.day_label || t('Ca trực')} ({new Date(dayItem.date).toLocaleDateString('vi-VN')})
+                                          {dayItem.day_label || t('Ca trực')} ({formattedItemDate})
                                         </span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                           {isWorkday ? (
@@ -13467,10 +13540,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                                 {dayItem.registered ? (dayItem.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
                                               </span>
                                               {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
-                                                <div style={{ opacity: (dayItem.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
+                                                <div style={{ opacity: ((dayItem.can_toggle || isUserAdminRole || isUserManagerRole) && !isTogglingThis) ? 1 : 0.6, pointerEvents: isTogglingThis ? 'none' : 'auto' }}>
                                                   <ToggleSwitch
                                                     checked={dayItem.registered}
+                                                    disabled={isTogglingThis}
                                                     onChange={() => {
+                                                      if (isTogglingThis) return;
                                                       if (!isCheckinEligible && !isUserAdminRole && !isUserManagerRole && !dayItem.registered) {
                                                         toast.error(t(`Bạn chưa đủ điều kiện đăng ký: Cần tối thiểu ${weekendMinCheckinDays} ngày chấm công hợp lệ trong tuần!`));
                                                         return;
@@ -13490,7 +13565,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                       </div>
                                     ) : (
                                       <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                        {dayItem.day_label || t('Ca trực')} ({new Date(dayItem.date).toLocaleDateString('vi-VN')})
+                                        {dayItem.day_label || t('Ca trực')} ({formattedItemDate})
                                       </span>
                                     )}
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
@@ -13506,7 +13581,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                           {t('Lịch hành chính:')} {workHours}
                                         </span>
                                       )}
-                                      {dayItem.deadline_time && (
+                                      {formattedDeadline && (
                                         <span style={{
                                           fontSize: '0.7rem',
                                           color: 'var(--color-text-muted)',
@@ -13515,7 +13590,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                           borderRadius: '4px',
                                           border: '1px solid var(--color-border-light)'
                                         }}>
-                                          {t('Hạn đăng ký:')} {new Date(dayItem.deadline_time).toLocaleString('vi-VN')}
+                                          {t('Hạn đăng ký:')} {formattedDeadline}
                                         </span>
                                       )}
                                     </div>
@@ -13548,10 +13623,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                             </span>
                                           )}
                                           {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
-                                            <div style={{ opacity: (dayItem.can_toggle || isUserAdminRole || isUserManagerRole) ? 1 : 0.6 }}>
+                                            <div style={{ opacity: ((dayItem.can_toggle || isUserAdminRole || isUserManagerRole) && !isTogglingThis) ? 1 : 0.6, pointerEvents: isTogglingThis ? 'none' : 'auto' }}>
                                               <ToggleSwitch
                                                 checked={dayItem.registered}
+                                                disabled={isTogglingThis}
                                                 onChange={() => {
+                                                  if (isTogglingThis) return;
                                                   if (!isCheckinEligible && !isUserAdminRole && !isUserManagerRole && !dayItem.registered) {
                                                     toast.error(t('Bạn chưa đủ điều kiện đăng ký: Cần tối thiểu ') + weekendMinCheckinDays + t(' ngày chấm công hợp lệ trong tuần!'));
                                                     return;
@@ -13574,6 +13651,59 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             });
                           })()}
                         </div>
+
+                        {(() => {
+                          const rawHistory = (weekendShiftHistory && weekendShiftHistory.length > 0)
+                            ? weekendShiftHistory
+                            : (profile?.weekend_shifts || []);
+                          if (!Array.isArray(rawHistory) || rawHistory.length === 0) return null;
+
+                          return (
+                            <div style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                              background: 'var(--color-bg-alt)',
+                              padding: '10px 14px',
+                              borderRadius: '12px',
+                              border: '1px solid var(--color-border-light)'
+                            }}>
+                              <span style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                                {t('Lịch sử đăng ký trực cuối tuần gần đây:')}
+                              </span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {rawHistory.slice(0, 6).map((wItem: any) => {
+                                  const wApproved = wItem.approved === 1 || wItem.approved === true;
+                                  const wDateStr = String(wItem.shift_date || '').slice(0, 10);
+                                  const wDateFormatted = wDateStr
+                                    ? new Date(wDateStr + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                    : '';
+                                  return (
+                                    <div
+                                      key={wItem.id || wDateStr}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '4px 10px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.73rem',
+                                        fontWeight: 600,
+                                        background: wApproved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                                        border: `1px solid ${wApproved ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+                                        color: wApproved ? 'var(--color-success)' : 'var(--color-warning)'
+                                      }}
+                                    >
+                                      <span>{wDateFormatted}</span>
+                                      <span>•</span>
+                                      <span>{wApproved ? t('Đã duyệt') : t('Chờ duyệt')}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {(() => {
                           const rawDays = (weekendShiftDaysList && weekendShiftDaysList.length > 0)
@@ -13645,15 +13775,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {holidayShifts.map((h) => (
-                            <div key={h.id || h.name} style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '12px', marginBottom: '4px' }}>
-                              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 4px 0' }}>
-                                {h.name}
-                              </h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {(h.dates_status || []).map((ds) => {
-                                    const today = new Date();
-                                    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                          {holidayShifts.map((h) => {
+                            const itemsList = Array.isArray(h.dates_status) ? h.dates_status : (h.date ? [h] : []);
+                            return (
+                              <div key={h.id || h.name || h.date} style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '12px', marginBottom: '4px' }}>
+                                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 4px 0' }}>
+                                  {h.name}
+                                </h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  {itemsList.map((ds: any) => {
+                                    const todayStr = formatLocalYMD(new Date());
                                     const isHolidayPast = ds.date < todayStr;
 
                                     return (
@@ -13668,7 +13799,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         opacity: isHolidayPast ? 0.6 : 1
                                       }}>
                                         <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                          {new Date(ds.date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                          {new Date(String(ds.date).slice(0, 10) + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
                                         </span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                           <span style={{
@@ -13687,16 +13818,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                               ? (ds.approved ? t('Đã duyệt') : t('Chờ duyệt')) 
                                               : (isHolidayPast ? t('Đã qua') : t('Chưa đăng ký'))}
                                           </span>
-                                          {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                          {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
                                             <div style={{ opacity: isHolidayPast ? 0.6 : 1 }}>
                                               <ToggleSwitch
                                                 checked={ds.registered}
+                                                disabled={Boolean(togglingHolidayShift[ds.date])}
                                                 onChange={() => {
-                                                  if (isHolidayPast) {
+                                                  if (isHolidayPast && !isUserAdminRole && !isUserManagerRole) {
                                                     toast.error(t('Đã qua ngày nghỉ lễ này, không thể thay đổi đăng ký!'));
                                                     return;
                                                   }
-                                                  handleToggleHolidayShift(h.name, ds.date, ds.registered);
+                                                  handleToggleHolidayShift(h.name || ds.name, ds.date, ds.registered);
                                                 }}
                                               />
                                             </div>
@@ -13705,9 +13837,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                       </div>
                                     );
                                   })}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -13784,22 +13917,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             boxSizing: 'border-box'
                           }}>
                             {getWeekDates().map((day) => {
+                              const todayStr = formatLocalYMD(new Date());
+                              const isPastDay = day.date < todayStr;
                               const reg = weeklyRegistrations.find(r => r.shift_date === day.date);
-                              const isNightRegistered = Boolean(
-                                (reg && (reg.shift_type === 'night' || reg.is_night === 1 || reg.is_night === true || String(reg.note || '').toLowerCase().includes('đêm'))) ||
-                                (nightShiftRegistered && nightShiftDate === day.date) ||
+                              const isNightOnPast = isPastDay && Boolean(
+                                (reg && reg.shift_type === 'night') ||
                                 (profile?.night_shifts && profile.night_shifts.some((ns: any) => ns.shift_date === day.date))
                               );
-                              const isWeekendRegistered = Boolean(
-                                (day.date === weekendShiftSat?.date && weekendShiftSat?.registered && !weekendShiftSat?.is_workday) || 
-                                (day.date === weekendShiftSun?.date && weekendShiftSun?.registered && !weekendShiftSun?.is_workday)
-                              );
-                              const isSelected = weeklyShiftDates.includes(day.date) || isNightRegistered || isWeekendRegistered || Boolean(reg);
-                              const isApproved = reg ? (reg.approved === 1 || reg.approved === true) : (isNightRegistered ? nightShiftApproved : isWeekendRegistered);
+                              const isSelected = isPastDay
+                                ? Boolean(reg || isNightOnPast || weeklyShiftDates.includes(day.date))
+                                : weeklyShiftDates.includes(day.date);
 
-                              const today = new Date();
-                              const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-                              const isPastDay = day.date < todayStr;
+                              const isApproved = reg
+                                ? (reg.approved === 1 || reg.approved === true)
+                                : (day.date === nightShiftDate && nightShiftRegistered
+                                  ? nightShiftApproved
+                                  : (day.date === weekendShiftSat?.date && weekendShiftSat?.registered
+                                    ? Boolean(weekendShiftSat.approved)
+                                    : (day.date === weekendShiftSun?.date && weekendShiftSun?.registered
+                                      ? Boolean(weekendShiftSun.approved)
+                                      : false)));
 
                               const getShortDayLabel = (name: string) => {
                                 if (!name) return '';
@@ -13823,6 +13960,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                               const isWorkday = daySchedule ? Boolean(daySchedule.active) : (day.dayIndex !== 6);
                               const isRestDay = !isWorkday;
+                              const canInteract = !isPastDay && (['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole);
 
                               // Determine background, border and text colors based on state
                               let borderStyle = '1px solid var(--color-border-light)';
@@ -13831,33 +13969,25 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               let statusColor = isWorkday ? 'var(--color-primary)' : 'var(--color-text-muted)';
                               let statusBg = isWorkday ? 'rgba(189, 29, 45, 0.08)' : 'rgba(100, 116, 139, 0.08)';
 
-                              if (isNightRegistered) {
-                                backgroundStyle = 'rgba(139, 92, 246, 0.06)';
-                                borderStyle = '2px solid #8b5cf6';
-                                statusText = isPastDay ? t('Đã trực đêm') : t('Trực đêm');
-                                statusColor = '#8b5cf6';
-                                statusBg = 'rgba(139, 92, 246, 0.12)';
-                              } else if (isSelected || reg) {
-                                if (isApproved) {
+                              if (isSelected) {
+                                if (isWorkday) {
+                                  backgroundStyle = 'rgba(139, 92, 246, 0.06)';
+                                  borderStyle = '2px solid #8b5cf6';
+                                  statusText = isPastDay ? t('Đã trực đêm') : (isApproved ? t('Trực đêm') : t('Đăng ký đêm'));
+                                  statusColor = '#8b5cf6';
+                                  statusBg = 'rgba(139, 92, 246, 0.12)';
+                                } else if (isApproved) {
                                   backgroundStyle = 'rgba(16, 185, 129, 0.06)';
                                   borderStyle = '2px solid var(--color-success)';
-                                  statusText = isPastDay ? t('Đã làm') : t('Đã duyệt');
+                                  statusText = isPastDay ? t('Đã trực') : t('Đã duyệt');
                                   statusColor = 'var(--color-success)';
                                   statusBg = 'rgba(16, 185, 129, 0.12)';
-                                } else if (isRestDay) {
-                                  // Cuối tuần / Ngày nghỉ -> Màu Đỏ
+                                } else {
                                   backgroundStyle = 'rgba(239, 68, 68, 0.06)';
                                   borderStyle = '2px solid #dc2626';
-                                  statusText = isPastDay ? t('Đã làm') : t('Đăng ký');
+                                  statusText = isPastDay ? t('Đã làm') : (reg ? t('Chờ duyệt') : t('Đăng ký'));
                                   statusColor = '#dc2626';
                                   statusBg = 'rgba(239, 68, 68, 0.12)';
-                                } else {
-                                  // Ngày thường -> Màu Vàng & ghi Đăng ký
-                                  backgroundStyle = 'rgba(245, 158, 11, 0.06)';
-                                  borderStyle = '2px solid #f59e0b';
-                                  statusText = isPastDay ? t('Đã làm') : t('Đăng ký');
-                                  statusColor = '#d97706';
-                                  statusBg = 'rgba(245, 158, 11, 0.15)';
                                 }
                               }
 
@@ -13865,14 +13995,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 <div
                                   key={day.date}
                                   onClick={() => {
-                                    if (isPastDay) return;
-                                    if (['sale', 'manager'].includes(String(effectiveRole).toLowerCase())) {
-                                      setWeeklyShiftDates(prev => 
-                                        prev.includes(day.date) 
-                                          ? prev.filter(d => d !== day.date) 
-                                          : [...prev, day.date]
-                                      );
+                                    if (!canInteract) return;
+                                    const currentlySelected = weeklyShiftDates.includes(day.date);
+                                    if (!currentlySelected && isRestDay && !isUserAdminRole && !isUserManagerRole) {
+                                      if (!weekendShiftAllow && String(sysSettings?.allow_weekend_shift_registration) !== '1') {
+                                        toast.error(t('Hệ thống hiện không cho phép đăng ký trực cuối tuần!'));
+                                        return;
+                                      }
+                                      if (weekendMinCheckinDays > 0 && !isCheckinEligible) {
+                                        toast.error(t(`Bạn chưa đủ điều kiện đăng ký trực cuối tuần: Cần tối thiểu ${weekendMinCheckinDays} ngày chấm công hợp lệ trong tuần (hiện tại: ${userCheckinDays}/${weekendMinCheckinDays} ngày)!`));
+                                        return;
+                                      }
                                     }
+                                    setWeeklyShiftDates(prev => 
+                                      prev.includes(day.date) 
+                                        ? prev.filter(d => d !== day.date) 
+                                        : [...prev, day.date]
+                                    );
                                   }}
                                   style={{
                                     flex: '1 1 0px',
@@ -13881,9 +14020,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     borderRadius: isMobile ? '8px' : '10px',
                                     border: borderStyle,
                                     background: backgroundStyle,
-                                    cursor: isPastDay 
-                                      ? 'not-allowed' 
-                                      : (['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) ? 'pointer' : 'default'),
+                                    cursor: canInteract ? 'pointer' : 'not-allowed',
                                     opacity: isPastDay ? 0.75 : 1,
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -13902,7 +14039,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     {isMobile ? getShortDayLabel(day.name) : day.name}
                                   </span>
                                   <span style={{ fontSize: isMobile ? '0.5rem' : '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1, marginTop: '1px' }}>
-                                    {new Date(day.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                    {new Date(day.date + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
                                   </span>
                                   
                                   {/* Status badge */}
@@ -13927,7 +14064,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             })}
                           </div>
 
-                          {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                          {Boolean(['sale', 'manager', 'admin', 'superadmin', 'director', 'assistant', 'super_admin'].includes(String(effectiveRole).toLowerCase()) || isUserAdminRole || isUserManagerRole) && (
                             <button
                               type="button"
                               className="btn primary"
@@ -13944,7 +14081,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 gap: '6px'
                               }}
                               onClick={() => {
-                                if (weeklyShiftDates.length === 0) {
+                                if (weeklyShiftDates.length === 0 && weeklyRegistrations.length === 0) {
                                   toast.error(t('Vui lòng chọn ít nhất 1 ngày để đăng ký lịch trực tuần!'));
                                   return;
                                 }
@@ -19169,6 +19306,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* List of 7 days */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {getWeekDates().map((day) => {
+                const todayStr = formatLocalYMD(new Date());
+                const isPast = day.date < todayStr;
                 const reg = weeklyRegistrations.find(r => r.shift_date === day.date);
                 const isNightRegistered = Boolean(
                   (reg && (reg.shift_type === 'night' || reg.is_night === 1 || reg.is_night === true || String(reg.note || '').toLowerCase().includes('đêm'))) ||
@@ -19185,26 +19324,30 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                 const isWorkday = daySchedule ? Boolean(daySchedule.active) : (day.dayIndex !== 6);
                 const isRestDay = !isWorkday;
-                const isSelected = weeklyShiftDates.includes(day.date) || isNightRegistered || Boolean(reg);
+                const isSelected = isPast ? (weeklyShiftDates.includes(day.date) || isNightRegistered || Boolean(reg)) : weeklyShiftDates.includes(day.date);
 
                 let statusLabel = isWorkday ? t('Lịch đi làm') : t('Nghỉ');
                 let statusBadgeColor = isWorkday ? 'var(--color-primary)' : 'var(--color-text-muted)';
                 let statusBadgeBg = isWorkday ? 'rgba(189, 29, 45, 0.08)' : 'rgba(100, 116, 139, 0.08)';
 
-                if (isNightRegistered) {
-                  statusLabel = t('Trực đêm');
-                  statusBadgeColor = '#8b5cf6';
-                  statusBadgeBg = 'rgba(139, 92, 246, 0.12)';
-                } else if (isSelected || reg) {
+                if (isSelected) {
                   if (isRestDay) {
-                    statusLabel = t('Đăng ký (Cuối tuần)');
+                    statusLabel = t('Đăng ký trực cuối tuần');
                     statusBadgeColor = '#dc2626';
                     statusBadgeBg = 'rgba(239, 68, 68, 0.12)';
+                  } else if (isNightRegistered) {
+                    statusLabel = t('Đăng ký trực đêm');
+                    statusBadgeColor = '#8b5cf6';
+                    statusBadgeBg = 'rgba(139, 92, 246, 0.12)';
                   } else {
-                    statusLabel = t('Đăng ký (Ngày thường)');
+                    statusLabel = t('Đăng ký trực đêm (Ngày thường)');
                     statusBadgeColor = '#d97706';
                     statusBadgeBg = 'rgba(245, 158, 11, 0.15)';
                   }
+                } else if (!isPast && (reg || isNightRegistered)) {
+                  statusLabel = isWorkday ? t('Hủy trực thêm (Về lịch thường)') : t('Hủy đăng ký trực cuối tuần');
+                  statusBadgeColor = '#64748b';
+                  statusBadgeBg = 'rgba(100, 116, 139, 0.12)';
                 }
 
                 return (
@@ -19225,7 +19368,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         {day.name}
                       </span>
                       <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                        ({new Date(day.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })})
+                        ({new Date(day.date + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })})
                       </span>
                     </div>
                     <span style={{
