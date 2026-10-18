@@ -171,17 +171,27 @@ export default function DepositsPage() {
     setTempSharesData(updated);
   };
 
-  const handleOpenContactDrawer = async (contactId: number, tab = 'deals') => {
+  const handleOpenContactDrawer = async (contactId: number, tab = 'deals', depFallback?: any) => {
+    if (!contactId && depFallback) {
+      handleOpenManageMilestones(depFallback);
+      return;
+    }
     try {
       const res = await fetchAPI(`contacts/${contactId}`);
-      const c = res.data || res;
-      if (c) {
+      const c = res?.data || res;
+      if (c && c.id) {
         setSelectedContact(c);
         setContactDrawerInitialTab(tab);
         setShowContactDrawer(true);
+      } else if (depFallback) {
+        handleOpenManageMilestones(depFallback);
       }
     } catch (err) {
-      addToast('Không thể tải thông tin khách hàng', 'error');
+      if (depFallback) {
+        handleOpenManageMilestones(depFallback);
+      } else {
+        addToast('Không thể tải thông tin khách hàng', 'error');
+      }
     }
   };
 
@@ -883,7 +893,7 @@ export default function DepositsPage() {
                         style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleOpenContactDrawer(dep.contact_id, 'deals');
+                          handleOpenContactDrawer(dep.contact_id, 'deals', dep);
                         }}
                       >
                         <Avatar src={dep.avatar_url} name={`${dep.last_name || ''} ${dep.first_name || ''}`} size="sm" style={{ width: 22, height: 22, fontSize: 10 }} />
@@ -913,7 +923,7 @@ export default function DepositsPage() {
 
                     <div style={{ display: 'flex', gap: '6px', paddingTop: '4px' }} onClick={e => e.stopPropagation()}>
                       <button
-                        onClick={() => handleOpenContactDrawer(dep.contact_id, 'deals')}
+                        onClick={() => handleOpenContactDrawer(dep.contact_id, 'deals', dep)}
                         style={{ flex: 1, minHeight: '36px', background: 'rgba(189, 29, 45, 0.08)', border: '1px solid rgba(189, 29, 45, 0.2)', color: 'var(--color-primary, #BD1D2D)', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
                       >
                         <Eye size={13} />
@@ -1000,7 +1010,7 @@ export default function DepositsPage() {
                           style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', cursor: 'pointer' }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleOpenContactDrawer(dep.contact_id, 'deals');
+                            handleOpenContactDrawer(dep.contact_id, 'deals', dep);
                           }}
                           className="hover:underline"
                           title="Click để mở Drawer hồ sơ khách hàng & chi tiết cọc"
@@ -1091,7 +1101,7 @@ export default function DepositsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenContactDrawer(dep.contact_id, 'deals');
+                              handleOpenContactDrawer(dep.contact_id, 'deals', dep);
                             }}
                             style={{
                               padding: '6px 12px',

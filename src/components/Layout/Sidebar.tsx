@@ -28,7 +28,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' },
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { name: 'Báo cáo', href: '/reports-crm', icon: BarChart2, hideForRoles: ['sale', 'sales', 'viewer'] },
+      // Tạm ẩn tab Báo cáo (/reports-crm) theo yêu cầu
+      // { name: 'Báo cáo', href: '/reports-crm', icon: BarChart2, hideForRoles: ['sale', 'sales', 'viewer'] },
       { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] }
     ]
   },

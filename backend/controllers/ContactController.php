@@ -860,7 +860,7 @@ class ContactController {
                 SELECT MAX(id) FROM data_reports
                 WHERE lead_id = l.id AND consultant_id = c.owner_id
             )
-            WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
+            WHERE c.id=? AND c.tenant_id=?";
         
         $p = [$id, $auth['tenant_id']];
         $scope = $this->getScope($auth, 'leads', 'read');

@@ -23,22 +23,42 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { useAuthStore } from '../store/authStore';
 
 const OP_LABELS: Record<string, string> = {
-  contains: 'Có chứa từ khóa',
-  not_contains: 'Không chứa từ khóa',
-  equals: 'Trùng khớp chính xác với',
-  not_equals: 'Không trùng khớp chính xác',
+  contains: 'Chứa',
+  not_contains: 'Không chứa',
+  equals: 'Là',
+  not_equals: 'Khác',
   starts_with: 'Bắt đầu bằng',
   ends_with: 'Kết thúc bằng',
-  is_empty: 'Trống (Không có dữ liệu)',
-  is_not_empty: 'Không trống (Có dữ liệu)',
-  date_before: 'Ngày trước (Nhỏ hơn ngày) (YYYY-MM-DD)',
-  date_after: 'Ngày sau (Lớn hơn ngày) (YYYY-MM-DD)',
-  date_equals: 'Chính xác ngày (YYYY-MM-DD)'
+  is_empty: 'Trống',
+  is_not_empty: 'Có dữ liệu',
+  date_before: 'Trước ngày',
+  date_after: 'Sau ngày',
+  date_equals: 'Đúng ngày'
+};
+
+const FIELD_SHORT_LABELS: Record<string, string> = {
+  source: 'Nguồn Data',
+  project_id: 'Dự án',
+  preferred_location: 'Khu vực',
+  type: 'Loại Data',
+  platform: 'Nền tảng Ads',
+  utm_campaign: 'UTM Campaign',
+  utm_medium: 'UTM Medium',
+  utm_content: 'UTM Content',
+  utm_term: 'UTM Term',
+  form_name: 'Lead Form',
+  budget: 'Ngân sách',
+  note: 'Ghi chú',
+  name: 'Họ tên',
+  phone: 'Số điện thoại',
+  email: 'Email',
+  connection_id: 'Nguồn kết nối'
 };
 
 // Sortable Item Component
 const SortableRuleItem = ({ rule, idx, connections, projects = [], onEdit, onDelete, isDragDisabled, isReadOnly }: { rule: any, idx: number, connections: any[], projects?: any[], onEdit: (r: any) => void, onDelete: (id: number) => void, isDragDisabled?: boolean, isReadOnly?: boolean }) => {
   const { t } = useLanguage();
+  const [showAllBranches, setShowAllBranches] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
 
   const style = {
@@ -48,46 +68,111 @@ const SortableRuleItem = ({ rule, idx, connections, projects = [], onEdit, onDel
     opacity: isDragging ? 0.8 : 1,
   };
 
+  // Parse & smart-consolidate branches whose non-project conditions are identical
+  const consolidatedBranches = useMemo(() => {
+    const parsed = (() => {
+      if (rule.conditions_json) {
+        try {
+          return typeof rule.conditions_json === 'string' ? JSON.parse(rule.conditions_json) : rule.conditions_json;
+        } catch (e) {
+          return [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
+        }
+      }
+      return [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
+    })();
+
+    const rawBranches: any[] = (() => {
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (parsed[0].col) return [{ conditions: parsed }];
+        if (Array.isArray(parsed[0])) return parsed.map(b => ({ conditions: b }));
+        if (parsed[0].conditions) return parsed;
+      }
+      return [{ conditions: [] }];
+    })();
+
+    // Group branches that share identical non-project conditions and only vary by project_id (equals/contains)
+    const grouped: any[] = [];
+    const signatureMap = new Map<string, number>();
+
+    rawBranches.forEach((branch) => {
+      const conds = Array.isArray(branch.conditions) ? branch.conditions : [];
+      const projConds = conds.filter((c: any) => c.col === 'project_id' && (c.op === 'equals' || c.op === 'contains'));
+      const otherConds = conds.filter((c: any) => !(c.col === 'project_id' && (c.op === 'equals' || c.op === 'contains')));
+      const injectSig = branch.inject?.enabled ? JSON.stringify(branch.inject.fields || []) : '';
+
+      if (projConds.length === 1) {
+        const sig = JSON.stringify(otherConds.map((c: any) => ({ col: c.col, op: c.op, val: c.val }))) + '||' + injectSig;
+        if (signatureMap.has(sig)) {
+          const targetIdx = signatureMap.get(sig)!;
+          const existingProjCond = grouped[targetIdx].conditions.find((c: any) => c.col === 'project_id' && (c.op === 'equals' || c.op === 'contains'));
+          if (existingProjCond) {
+            const existingVals = String(existingProjCond.val || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+            const newVals = String(projConds[0].val || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+            newVals.forEach((v: string) => {
+              if (!existingVals.includes(v)) existingVals.push(v);
+            });
+            existingProjCond.val = existingVals.join(',');
+          }
+          grouped[targetIdx].mergedCount = (grouped[targetIdx].mergedCount || 1) + 1;
+          return;
+        }
+        signatureMap.set(sig, grouped.length);
+      }
+
+      grouped.push({
+        ...branch,
+        mergedCount: 1,
+        conditions: conds.map((c: any) => ({ ...c }))
+      });
+    });
+
+    return { grouped, rawCount: rawBranches.length };
+  }, [rule.conditions_json, rule.condition_column, rule.condition_operator, rule.condition_value]);
+
+  const visibleBranches = showAllBranches ? consolidatedBranches.grouped : consolidatedBranches.grouped.slice(0, 2);
+  const hiddenBranchCount = Math.max(0, consolidatedBranches.grouped.length - 2);
+
   return (
     <div ref={setNodeRef} style={style} className={`group hover-lift ${isDragging ? 'is-dragging' : ''}`}>
       <div className="sortable-rule-card" style={{
-        display: 'flex', alignItems: 'stretch', margin: '0.5rem', border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-lg)', background: 'var(--color-surface)', boxShadow: isDragging ? 'var(--shadow-lg)' : 'var(--shadow-xs)',
+        display: 'flex', alignItems: 'stretch', margin: '0.4rem 0.5rem', border: '1px solid var(--color-border)',
+        borderRadius: '12px', background: 'var(--color-surface)', boxShadow: isDragging ? 'var(--shadow-lg)' : '0 1px 3px rgba(0,0,0,0.02)',
         transition: 'box-shadow 0.2s', overflow: 'hidden'
       }}>
         {/* Drag Handle & Priority */}
         <div className="sortable-rule-drag-handle" style={{
           background: 'var(--color-bg)', borderRight: '1px solid var(--color-border-light)',
-          padding: '1rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          minWidth: '60px'
+          padding: '0.75rem 0.4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          minWidth: '52px'
         }}>
           {!isDragDisabled ? (
-            <button {...attributes} {...listeners} style={{ cursor: 'grab', padding: '4px', color: 'var(--color-text-muted)' }}>
-              <GripVertical size={20} />
+            <button {...attributes} {...listeners} style={{ cursor: 'grab', padding: '2px', color: 'var(--color-text-muted)' }}>
+              <GripVertical size={18} />
             </button>
           ) : (
-            <div style={{ padding: '4px', color: 'var(--color-border-light)' }}>
-              <GripVertical size={20} />
+            <div style={{ padding: '2px', color: 'var(--color-border-light)' }}>
+              <GripVertical size={18} />
             </div>
           )}
           <div style={{
-            width: 30, height: 30, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-primary)',
-            marginTop: 8, boxShadow: 'var(--shadow-sm)'
+            width: 26, height: 26, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary)',
+            marginTop: 4, boxShadow: 'var(--shadow-xs)'
           }}>
             {idx + 1}
           </div>
         </div>
 
         {/* Content */}
-        <div className="mobile-flex-wrap" style={{ flex: 1, minWidth: 0, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+        <div className="mobile-flex-wrap" style={{ flex: 1, minWidth: 0, padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+            {/* Source Header Row */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
               {(() => {
                 if (rule.connection_id === null || rule.connection_id === 'all' || rule.connection_id === '') {
                   return (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                      <Globe size={14} color="#BD1D2D" /> {t("Tất cả mọi kết nối (Sheet & API & Nhập tay)")}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', background: 'rgba(189, 29, 45, 0.06)', border: '1px solid rgba(189, 29, 45, 0.15)', borderRadius: 6, color: '#BD1D2D' }}>
+                      <Globe size={12} color="#BD1D2D" /> {t("Tất cả nguồn kết nối")}
                     </span>
                   );
                 }
@@ -96,161 +181,184 @@ const SortableRuleItem = ({ rule, idx, connections, projects = [], onEdit, onDel
                 return cIds.map((cId: number) => {
                   if (cId === -1) {
                     return (
-                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <FileSpreadsheet size={14} color="#10b981" /> {t("Tất cả các Google Sheets")}
+                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, color: '#059669' }}>
+                        <FileSpreadsheet size={12} color="#10b981" /> {t("Tất cả Google Sheets")}
                       </span>
                     );
                   }
                   if (cId === -2) {
                     return (
-                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <Zap size={14} color="#f59e0b" /> {t("Tất cả các API / Landing Pages")}
+                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, color: '#d97706' }}>
+                        <Zap size={12} color="#f59e0b" /> {t("Tất cả API / Landing Pages")}
                       </span>
                     );
                   }
                   if (cId === -3) {
                     return (
-                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <Keyboard size={14} color="#ec4899" /> {t("Chỉ Data Nhập tay (Thêm Data Nhanh)")}
+                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', background: 'rgba(236, 72, 153, 0.08)', borderRadius: 6, color: '#db2777' }}>
+                        <Keyboard size={12} color="#ec4899" /> {t("Data Nhập tay")}
                       </span>
                     );
                   }
                   const conn = connections.find(c => Number(c.id) === cId);
                   if (conn) {
                     return (
-                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                        <FileSpreadsheet size={14} color="#10b981" /> {conn.sheet_name}
+                      <span key={cId} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: 6, color: 'var(--color-text)' }}>
+                        <FileSpreadsheet size={12} color="#10b981" /> {conn.sheet_name}
                       </span>
                     );
                   }
                   return null;
                 });
               })()}
+              {consolidatedBranches.rawCount > 1 && (
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', padding: '2px 7px', borderRadius: 6 }}>
+                  {consolidatedBranches.rawCount} nhánh điều kiện
+                </span>
+              )}
             </div>
 
-            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>{t("Điều kiện kích hoạt")}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {(() => {
-                const parsed = (() => {
-                  if (rule.conditions_json) {
-                    try {
-                      return typeof rule.conditions_json === 'string' ? JSON.parse(rule.conditions_json) : rule.conditions_json;
-                    } catch (e) {
-                      return [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
-                    }
-                  }
-                  return [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
-                })();
+            {/* Compact Conditions List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {visibleBranches.map((branch: any, bIndex: number) => (
+                <div
+                  key={bIndex}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '6px',
+                    background: 'var(--color-bg)',
+                    border: '1px solid var(--color-border-light)',
+                    padding: '6px 10px',
+                    borderRadius: 8
+                  }}
+                >
+                  {bIndex > 0 && (
+                    <span style={{ fontSize: '0.625rem', fontWeight: 800, background: '#f59e0b', color: '#fff', padding: '1px 6px', borderRadius: 4, letterSpacing: '0.3px' }}>
+                      HOẶC
+                    </span>
+                  )}
+                  {(branch.conditions || []).map((c: any, i: number) => {
+                    const fieldLabel = FIELD_SHORT_LABELS[c.col] || c.col;
+                    const isNoVal = c.op === 'is_empty' || c.op === 'is_not_empty';
 
-                // Normalize to new structure: { conditions: [...] }
-                const normalizedBranches = (() => {
-                  if (Array.isArray(parsed) && parsed.length > 0) {
-                    if (parsed[0].col) {
-                      return [{ conditions: parsed }];
-                    } else if (Array.isArray(parsed[0])) {
-                      return parsed.map(b => ({ conditions: b }));
-                    } else if (parsed[0].conditions) {
-                      return parsed;
-                    }
-                    return [{ conditions: [] }];
-                  }
-                  return [{ conditions: [] }];
-                })();
-
-                return normalizedBranches.map((branch: any, bIndex: number) => (
-                  <div key={bIndex} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {bIndex > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ flex: 1, height: 1, background: 'var(--color-border-light)' }} />
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'var(--color-warning)', color: 'white', padding: '2px 8px', borderRadius: 10 }}>OR</span>
-                        <div style={{ flex: 1, height: 1, background: 'var(--color-border-light)' }} />
-                      </div>
-                    )}
-                    <div style={{ background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 8 }}>
-                      {(branch.conditions || []).map((c: any, i: number) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: i > 0 ? '0.5rem' : 0 }}>
+                    // Render project chips cleanly without long DA codes
+                    if (c.col === 'project_id' && !isNoVal) {
+                      const rawIds = String(c.val || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+                      return (
+                        <div key={i} style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
                           {i > 0 && (
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'var(--color-text-muted)', color: 'white', padding: '2px 6px', borderRadius: 4 }}>
-                              AND
-                            </span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', padding: '0 2px' }}>+</span>
                           )}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{
-                              background: 'rgba(37, 99, 235, 0.08)',
-                              border: '1px solid rgba(37, 99, 235, 0.25)',
-                              padding: '4px 10px',
-                              borderRadius: 8,
-                              fontWeight: 600,
-                              color: '#2563eb',
-                              fontSize: '0.8125rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6
-                            }}>
-                              <SlidersHorizontal size={13} style={{ color: '#2563eb' }} /> {c.col}
-                            </span>
-                            <span style={{ color: 'var(--color-text-light)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
-                              {c.col === 'project_id' && (c.op === 'equals' || c.op === 'contains') ? t('Thuộc dự án') : (t(OP_LABELS[c.op]) || c.op)}
-                            </span>
-                            {c.op !== 'is_empty' && c.op !== 'is_not_empty' && (
-                              <span style={{
-                                background: 'var(--color-warning-light)', border: '1px dashed #f59e0b', padding: '4px 10px', borderRadius: 8, fontWeight: 700, color: '#b45309', fontSize: '0.8125rem',
-                                display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap'
-                              }}>
-                                {(() => {
-                                  if (c.col === 'connection_id') {
-                                    return `"${connections.find((conn: any) => String(conn.id) === String(c.val))?.sheet_name || c.val}"`;
-                                  }
-                                  if (c.col === 'project_id') {
-                                    const foundProj = projects.find((p: any) => String(p.id) === String(c.val));
-                                    if (foundProj) {
-                                      return (
-                                        <>
-                                          <span>"{foundProj.name}{foundProj.code ? ` (${foundProj.code})` : ''}"</span>
-                                          <span style={{ fontSize: '0.6875rem', fontWeight: 600, background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: 4, border: '1px solid #fde68a' }}>
-                                            {t('Khớp Tên, Mã & ID')}
-                                          </span>
-                                        </>
-                                      );
-                                    }
-                                    return `"${c.val}"`;
-                                  }
-                                  return `"${c.val}"`;
-                                })()}
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#92400e', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            {t('Dự án')}{rawIds.length > 1 ? ` (${rawIds.length})` : ''}:
+                          </span>
+                          {rawIds.map((pid: string, pIdx: number) => {
+                            const foundProj = projects.find((p: any) => String(p.id) === String(pid));
+                            const projName = foundProj ? foundProj.name : pid;
+                            const projTooltip = foundProj
+                              ? `${foundProj.name}${foundProj.code ? ` (${foundProj.code})` : ''} — Tự động khớp Tên, Mã & ID`
+                              : pid;
+                            return (
+                              <span
+                                key={pIdx}
+                                title={projTooltip}
+                                style={{
+                                  background: '#fffbeb',
+                                  border: '1px solid #fcd34d',
+                                  color: '#92400e',
+                                  padding: '2px 8px',
+                                  borderRadius: 6,
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}
+                              >
+                                {projName}
                               </span>
-                            )}
-                          </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                ));
-              })()}
+                      );
+                    }
+
+                    return (
+                      <div key={i} style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
+                        {i > 0 && (
+                          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', padding: '0 2px' }}>+</span>
+                        )}
+                        <span style={{
+                          background: 'rgba(37, 99, 235, 0.07)',
+                          border: '1px solid rgba(37, 99, 235, 0.2)',
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          fontWeight: 600,
+                          color: '#1d4ed8',
+                          fontSize: '0.75rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}>
+                          <span>{fieldLabel}:</span>
+                          <strong style={{ fontWeight: 700 }}>
+                            {isNoVal
+                              ? (t(OP_LABELS[c.op]) || c.op)
+                              : `${t(OP_LABELS[c.op]) || c.op} "${c.col === 'connection_id' ? (connections.find((conn: any) => String(conn.id) === String(c.val))?.sheet_name || c.val) : c.val}"`}
+                          </strong>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+
+              {hiddenBranchCount > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAllBranches(!showAllBranches);
+                  }}
+                  style={{
+                    alignSelf: 'flex-start',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--color-primary)',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: '2px 4px'
+                  }}
+                >
+                  {showAllBranches ? '▲ Thu gọn nhánh điều kiện' : `▼ Xem thêm ${hiddenBranchCount} nhánh điều kiện khác...`}
+                </button>
+              )}
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--color-border)' }}>
-            <ArrowRight className="mobile-rotate-90" size={24} strokeWidth={1.5} style={{ transition: 'transform 0.2s' }} />
+            <ArrowRight className="mobile-rotate-90" size={20} strokeWidth={1.75} style={{ transition: 'transform 0.2s' }} />
           </div>
 
-          <div style={{ flex: '0 1 250px', minWidth: '220px' }}>
-            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>{t("Hành động xử lý")}</p>
+          <div style={{ flex: '0 1 230px', minWidth: '200px' }}>
             <div style={{
-              background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.05), rgba(163, 20, 34, 0.15))',
-              border: '1px solid var(--color-primary)',
+              background: 'rgba(189, 29, 45, 0.05)',
+              border: '1px solid rgba(189, 29, 45, 0.25)',
               color: 'var(--color-primary)',
-              padding: '6px 14px',
-              borderRadius: 16,
+              padding: '6px 12px',
+              borderRadius: 12,
               fontWeight: 600,
-              fontSize: '0.85rem',
-              display: 'flex', alignItems: 'center', gap: 10,
-              boxShadow: '0 2px 8px rgba(163, 20, 34, 0.1)'
+              fontSize: '0.825rem',
+              display: 'flex', alignItems: 'center', gap: 10
             }}>
-              <div style={{ background: 'var(--color-primary)', padding: 6, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <MapPin size={15} />
+              <div style={{ background: 'var(--color-primary)', width: 26, height: 26, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <MapPin size={13} />
               </div>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700 }}>
                   {rule.round_name || t("Vòng ID: {id}").replace('{id}', String(rule.target_round_id))}
                 </span>
                 {rule.is_schedule_active ? (
@@ -276,23 +384,23 @@ const SortableRuleItem = ({ rule, idx, connections, projects = [], onEdit, onDel
         </div>
 
         {/* Actions */}
-        <div className="sortable-rule-actions" style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', borderLeft: '1px dashed var(--color-border-light)' }}>
+        <div className="sortable-rule-actions" style={{ padding: '0 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', borderLeft: '1px dashed var(--color-border-light)' }}>
           <button
             onClick={() => onEdit(rule)}
             className="btn ghost"
-            style={{ width: 40, height: 40, padding: 0, borderRadius: 10, color: 'var(--color-primary)' }}
+            style={{ width: 36, height: 36, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }}
             title={isReadOnly ? t("Xem chi tiết") : t("Sửa quy tắc")}
           >
-            {isReadOnly ? <Filter size={16} /> : <Edit2 size={16} />}
+            {isReadOnly ? <Filter size={15} /> : <Edit2 size={15} />}
           </button>
           {!isReadOnly && (
             <button
               onClick={() => onDelete(rule.id)}
               className="btn ghost"
-              style={{ width: 40, height: 40, padding: 0, borderRadius: 10, color: 'var(--color-danger)' }}
+              style={{ width: 36, height: 36, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }}
               title={t("Xóa quy tắc này")}
             >
-              <Trash2 size={16} />
+              <Trash2 size={15} />
             </button>
           )}
         </div>
@@ -562,6 +670,8 @@ const RuleSettingsInner = () => {
     }
   };
 
+  const [activeBranchTab, setActiveBranchTab] = useState<number | 'all'>(0);
+
   const openAddModal = () => {
     if (connections.length === 0) {
       setIsNoSheetModalOpen(true);
@@ -579,6 +689,7 @@ const RuleSettingsInner = () => {
     }
 
     setBranches([{ conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }]);
+    setActiveBranchTab(0);
     setTargetRound(rounds[0]?.id || '');
     setIsModalOpen(true);
   };
@@ -618,9 +729,50 @@ const RuleSettingsInner = () => {
     } else {
       setBranches([{ conditions: [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }], inject: { enabled: false, fields: [] } }]);
     }
+    setActiveBranchTab(0);
     setTargetRound(rule.target_round_id);
     setIsModalOpen(true);
   };
+
+  // Smart helper to merge multiple branches that share identical non-project conditions into multi-project branches
+  const mergedBranchesPreview = useMemo(() => {
+    if (branches.length <= 1) return null;
+    const grouped: any[] = [];
+    const sigMap = new Map<string, number>();
+
+    branches.forEach((branch) => {
+      const conds = Array.isArray(branch.conditions) ? branch.conditions : [];
+      const projConds = conds.filter((c: any) => c.col === 'project_id' && (c.op === 'equals' || c.op === 'contains'));
+      const otherConds = conds.filter((c: any) => !(c.col === 'project_id' && (c.op === 'equals' || c.op === 'contains')));
+      const injectSig = branch.inject?.enabled ? JSON.stringify(branch.inject.fields || []) : '';
+
+      if (projConds.length === 1) {
+        const sig = JSON.stringify(otherConds.map((c: any) => ({ col: c.col, op: c.op, val: c.val }))) + '||' + injectSig;
+        if (sigMap.has(sig)) {
+          const targetIdx = sigMap.get(sig)!;
+          const existingProjCond = grouped[targetIdx].conditions.find((c: any) => c.col === 'project_id' && (c.op === 'equals' || c.op === 'contains'));
+          if (existingProjCond) {
+            const existingVals = String(existingProjCond.val || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+            const newVals = String(projConds[0].val || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+            newVals.forEach((v: string) => {
+              if (!existingVals.includes(v)) existingVals.push(v);
+            });
+            existingProjCond.val = existingVals.join(',');
+          }
+          return;
+        }
+        sigMap.set(sig, grouped.length);
+      }
+
+      grouped.push({
+        ...branch,
+        conditions: conds.map((c: any) => ({ ...c })),
+        inject: branch.inject ? { ...branch.inject, fields: [...(branch.inject.fields || [])] } : { enabled: false, fields: [] }
+      });
+    });
+
+    return grouped.length < branches.length ? grouped : null;
+  }, [branches]);
 
   const handleSaveRule = async () => {
     if (isReadOnly) return;
@@ -964,20 +1116,183 @@ const RuleSettingsInner = () => {
           </div>
 
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {branches.map((branch, bIndex) => (
-              <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '1.25rem', position: 'relative' }}>
-                <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: 'var(--color-primary)', borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', margin: 0 }}>{t("Nhánh {num}").replace('{num}', String(bIndex + 1))}</h4>
+          {/* Smart 1-Click Merge Banner when multiple branches only differ by Project */}
+          {!isReadOnly && mergedBranchesPreview && (
+            <div style={{
+              background: '#fffbeb',
+              border: '1px solid #fcd34d',
+              borderRadius: '10px',
+              padding: '0.625rem 0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.75rem',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: '#92400e', fontWeight: 600 }}>
+                <Zap size={16} color="#d97706" style={{ flexShrink: 0 }} />
+                <span>
+                  Phát hiện <strong>{branches.length} nhánh</strong> có cùng điều kiện chỉ khác Dự án. Bạn có thể gộp gọn thành <strong>{mergedBranchesPreview.length} nhánh chọn nhiều Dự án</strong>!
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setBranches(mergedBranchesPreview);
+                  setActiveBranchTab(0);
+                  toast.success('Đã gộp các nhánh cùng điều kiện thành chọn nhiều Dự án!');
+                }}
+                style={{
+                  background: '#d97706',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '5px 12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                ⚡ Gộp gọn ngay
+              </button>
+            </div>
+          )}
+
+          {/* Branch Switcher Tabs + Add Branch Button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.625rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              {branches.map((b, bIdx) => {
+                const isActive = activeBranchTab === bIdx;
+                const projCond = (b.conditions || []).find((c: any) => c.col === 'project_id' && c.val);
+                const projIds = projCond ? String(projCond.val).split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+                const firstProj = projIds.length === 1 ? projects.find((p: any) => String(p.id) === projIds[0]) : null;
+                const tabSubtitle = projIds.length > 1
+                  ? `${projIds.length} dự án`
+                  : (firstProj ? firstProj.name : `${(b.conditions || []).length} ĐK`);
+
+                return (
+                  <button
+                    key={bIdx}
+                    type="button"
+                    onClick={() => setActiveBranchTab(bIdx)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: isActive ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: isActive ? 'var(--color-primary)' : 'var(--color-bg)',
+                      color: isActive ? '#ffffff' : 'var(--color-text)',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <span>{t("Nhánh {num}").replace('{num}', String(bIdx + 1))}</span>
+                    <span style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 600,
+                      padding: '1px 6px',
+                      borderRadius: '6px',
+                      maxWidth: '140px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      background: isActive ? 'rgba(255,255,255,0.2)' : 'var(--color-surface)',
+                      color: isActive ? '#ffffff' : 'var(--color-text-muted)'
+                    }}>
+                      {tabSubtitle}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {branches.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveBranchTab(activeBranchTab === 'all' ? 0 : 'all')}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    border: activeBranchTab === 'all' ? '1px solid #2563eb' : '1px dashed var(--color-border)',
+                    background: activeBranchTab === 'all' ? 'rgba(37, 99, 235, 0.1)' : 'transparent',
+                    color: activeBranchTab === 'all' ? '#2563eb' : 'var(--color-text-muted)'
+                  }}
+                >
+                  {activeBranchTab === 'all' ? 'Đang xem tất cả' : `Xem tất cả (${branches.length})`}
+                </button>
+              )}
+            </div>
+
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={() => {
+                  const nextIdx = branches.length;
+                  setBranches([...branches, { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }]);
+                  setActiveBranchTab(nextIdx);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  background: 'var(--color-surface)',
+                  border: '1px dashed var(--color-primary)',
+                  borderRadius: '8px',
+                  color: 'var(--color-primary)',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={14} /> {t("Thêm Nhánh (OR)")}
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+            {branches.map((branch, bIndex) => {
+              if (activeBranchTab !== 'all' && activeBranchTab !== bIndex && branches.length > 1) {
+                return null;
+              }
+              return (
+              <div key={bIndex} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1rem 1.125rem', position: 'relative', background: 'var(--color-surface)' }}>
+                <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: 'var(--color-primary)', borderRadius: '12px 0 0 12px' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <h4 style={{ fontSize: '0.825rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', margin: 0 }}>
+                      {t("Nhánh {num}").replace('{num}', String(bIndex + 1))}
+                    </h4>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                      (Tất cả điều kiện trong nhánh đều phải thỏa mãn — AND)
+                    </span>
+                  </div>
                   {branches.length > 1 && (
-                    <button type="button" className="btn ghost" style={{ color: 'var(--color-danger)', padding: 4 }} onClick={() => setBranches(branches.filter((_, idx) => idx !== bIndex))}>
-                      <Trash2 size={16} />
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      style={{ color: 'var(--color-danger)', padding: '4px 8px', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      onClick={() => {
+                        const updated = branches.filter((_, idx) => idx !== bIndex);
+                        setBranches(updated);
+                        if (typeof activeBranchTab === 'number' && activeBranchTab >= updated.length) {
+                          setActiveBranchTab(Math.max(0, updated.length - 1));
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} /> Xóa nhánh
                     </button>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                   {branch.conditions.map((c: any, i: number) => {
                     const isNoValueOp = c.op === 'is_empty' || c.op === 'is_not_empty';
                     const isLast = i === branch.conditions.length - 1;
@@ -985,17 +1300,17 @@ const RuleSettingsInner = () => {
                       <div key={i} className="condition-row-responsive" style={{ background: 'transparent', padding: '0', position: 'relative' }}>
                         <div style={{ position: 'relative', width: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                           {i === 0 ? (
-                            <div style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>IF</div>
+                            <div style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', width: 28, height: 28, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>IF</div>
                           ) : (
-                            <div style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>AND</div>
+                            <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', width: 28, height: 28, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 800, flexShrink: 0, position: 'relative', zIndex: 2 }}>AND</div>
                           )}
                           {!isLast && (
-                            <div style={{ position: 'absolute', top: 32, bottom: -20, left: 15, width: 2, background: 'var(--color-border)', zIndex: 1 }} />
+                            <div style={{ position: 'absolute', top: 28, bottom: -14, left: 15, width: 2, background: 'var(--color-border-light)', zIndex: 1 }} />
                           )}
                         </div>
 
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
+                          <div style={{ background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
                             <CustomSelect
                               options={getFieldOptions()}
                               value={c.col}
@@ -1009,8 +1324,8 @@ const RuleSettingsInner = () => {
                             />
                           </div>
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ background: 'var(--color-bg)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
+                        <div style={{ flex: 0.85, minWidth: 0 }}>
+                          <div style={{ background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
                             <CustomSelect
                               options={opOptions}
                               value={c.op}
@@ -1024,11 +1339,11 @@ const RuleSettingsInner = () => {
                           </div>
                         </div>
                         {!isNoValueOp && (
-                          <div style={{ flex: 1.2, minWidth: 0 }}>
+                          <div style={{ flex: 1.35, minWidth: 0 }}>
                             {c.op.startsWith('date_') ? (
                               <input
                                 type="date"
-                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
+                                style={{ width: '100%', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.85rem', outline: 'none' }}
                                 value={c.val}
                                 onChange={e => {
                                   const newB = [...branches];
@@ -1051,31 +1366,25 @@ const RuleSettingsInner = () => {
                                 disabled={isReadOnly}
                               />
                             ) : c.col === 'project_id' ? (
-                              <div>
-                                <CustomSelect
-                                  options={[
-                                    { value: '', label: t('Chọn Dự án...') },
-                                    ...projects.map(proj => ({
-                                      value: String(proj.id),
-                                      label: proj.code ? `${proj.name} (${proj.code})` : proj.name
-                                    }))
-                                  ]}
-                                  value={c.val}
-                                  onChange={v => {
-                                    const newB = [...branches];
-                                    newB[bIndex].conditions[i].val = String(v);
-                                    setBranches(newB);
-                                  }}
-                                  disabled={isReadOnly}
-                                  placeholder={t("Chọn Dự án...")}
-                                />
-                                <div style={{ fontSize: '0.72rem', color: '#059669', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-                                  <span>✓ Tự động khớp cả <strong>Tên dự án</strong>, <strong>Mã dự án (Code)</strong> và <strong>ID</strong> từ Sheet/Webhook</span>
-                                </div>
-                              </div>
+                              <CustomSelect
+                                multiple
+                                options={projects.map(proj => ({
+                                  value: String(proj.id),
+                                  label: proj.code ? `${proj.name} (${proj.code})` : proj.name
+                                }))}
+                                value={String(c.val || '').split(',').map((s: string) => s.trim()).filter(Boolean)}
+                                onChange={v => {
+                                  const newB = [...branches];
+                                  const arr = Array.isArray(v) ? v.map(String).filter(Boolean) : [String(v)].filter(Boolean);
+                                  newB[bIndex].conditions[i].val = arr.join(',');
+                                  setBranches(newB);
+                                }}
+                                disabled={isReadOnly}
+                                placeholder={t("Chọn 1 hoặc nhiều Dự án (tự khớp Tên, Mã & ID)...")}
+                              />
                             ) : (
                               <input
-                                style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
+                                style={{ width: '100%', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.85rem', outline: 'none' }}
                                 placeholder={t("Nhập giá trị...")}
                                 value={c.val}
                                 onChange={e => {
@@ -1091,7 +1400,7 @@ const RuleSettingsInner = () => {
                           <button
                             type="button"
                             className="btn ghost"
-                            style={{ color: 'var(--color-danger)', padding: '8px', flexShrink: 0 }}
+                            style={{ color: 'var(--color-danger)', padding: '6px', flexShrink: 0 }}
                             onClick={() => {
                               const newB = [...branches];
                               newB[bIndex].conditions = branch.conditions.filter((_: any, idx: number) => idx !== i);
@@ -1099,14 +1408,25 @@ const RuleSettingsInner = () => {
                             }}
                             title={t("Xóa điều kiện này")}
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         )}
                       </div>
                     );
                   })}
-                  <div style={{ paddingLeft: 44, marginTop: '0.75rem', position: 'relative' }}>
-                    <div style={{ position: 'absolute', top: -12, left: 15, width: 2, height: 24, background: 'var(--color-border)', zIndex: 1 }} />
+
+                  {/* Combined Footer Row: Add Condition + Inject Data Toggle */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '0.75rem',
+                    paddingLeft: 36,
+                    marginTop: '0.35rem',
+                    paddingTop: '0.625rem',
+                    borderTop: '1px dashed var(--color-border-light)'
+                  }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -1114,15 +1434,12 @@ const RuleSettingsInner = () => {
                         newB[bIndex].conditions.push({ col: 'source', op: 'contains', val: '' });
                         setBranches(newB);
                       }}
-                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: 'none', borderRadius: 20, padding: '6px 16px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}
                     >
-                      <Plus size={14} /> {t("Thêm điều kiện")}
+                      <Plus size={13} /> {t("Thêm điều kiện (AND)")}
                     </button>
-                  </div>
 
-                  {/* INJECT DATA FIELDS TOGGLE */}
-                  <div style={{ paddingLeft: 44, marginTop: '1rem', borderTop: '1px dashed var(--color-border)', paddingTop: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: branch.inject?.enabled ? '1rem' : 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <div
                         onClick={() => {
                           const newB = [...branches];
@@ -1135,9 +1452,9 @@ const RuleSettingsInner = () => {
                           setBranches(newB);
                         }}
                         style={{
-                          width: 44,
-                          height: 24,
-                          borderRadius: 24,
+                          width: 38,
+                          height: 20,
+                          borderRadius: 20,
                           background: branch.inject?.enabled ? '#10b981' : '#cbd5e1',
                           position: 'relative',
                           cursor: 'pointer',
@@ -1146,28 +1463,33 @@ const RuleSettingsInner = () => {
                         }}
                       >
                         <div style={{
-                          width: 20,
-                          height: 20,
+                          width: 16,
+                          height: 16,
                           borderRadius: '50%',
                           background: 'var(--color-surface)',
                           position: 'absolute',
                           top: 2,
-                          left: branch.inject?.enabled ? 22 : 2,
+                          left: branch.inject?.enabled ? 20 : 2,
                           transition: 'left 0.2s',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
                         }} />
                       </div>
-                      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{t("Tự động gán trường dữ liệu (Inject Data)")}</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                        {t("Tự động gán trường dữ liệu (Inject Data)")}
+                      </span>
                     </div>
+                  </div>
 
-                    {branch.inject?.enabled && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+                  {/* INJECT DATA FIELDS PANEL */}
+                  {branch.inject?.enabled && (
+                    <div style={{ paddingLeft: 36, marginTop: '0.25rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg)', padding: '0.75rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
                         {branch.inject.fields.map((f: any, fi: number) => {
                           const isCustomMode = f.isCustom || !['source', 'project_id', 'preferred_location', 'platform', 'type', 'note', 'name', ''].includes(f.col);
                           const rankOptions = ['R3_Fb', 'R3', 'R2', 'R3_Zalo', 'broadcast', 'ca_nhan', 'gioi_thieu', 'databank'];
                           return (
                             <div key={fi} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.5rem', alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', borderBottom: isMobile ? '1px dashed var(--color-border)' : 'none', paddingBottom: isMobile ? '10px' : '0', marginBottom: isMobile ? '10px' : '0' }}>
-                              <div style={{ flex: isMobile ? 'none' : (isCustomMode ? '0 0 200px' : 1), width: isMobile ? '100%' : 'auto', background: 'var(--color-surface)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
+                              <div style={{ flex: isMobile ? 'none' : (isCustomMode ? '0 0 200px' : 1), width: isMobile ? '100%' : 'auto', background: 'var(--color-surface)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
                                 <CustomSelect
                                   options={[
                                     { value: 'source', label: t('Phân loại Lead / Rank (Source)') },
@@ -1200,7 +1522,7 @@ const RuleSettingsInner = () => {
                               {isCustomMode && (
                                 <div style={{ flex: isMobile ? 'none' : 1, width: isMobile ? '100%' : 'auto', minWidth: 120 }}>
                                   <input
-                                    style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
+                                    style={{ width: '100%', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.85rem', outline: 'none' }}
                                     placeholder={t("Tên trường custom (vd: utm_source)...")}
                                     value={f.col}
                                     onChange={e => {
@@ -1233,7 +1555,7 @@ const RuleSettingsInner = () => {
                                   />
                                 ) : (
                                   <input
-                                    style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
+                                    style={{ width: '100%', padding: '8px 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.85rem', outline: 'none' }}
                                     placeholder={f.col === 'source' ? t("VD: R3_Fb, R2, R3...") : t("Giá trị muốn gán tự động...")}
                                     value={f.val}
                                     onChange={e => {
@@ -1291,24 +1613,13 @@ const RuleSettingsInner = () => {
                           <Plus size={14} /> {t("Thêm trường")}
                         </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
-
-          {!isReadOnly && (
-            <div style={{ padding: '0', marginTop: '0', marginBottom: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => setBranches([...branches, { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }])}
-                style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
-              >
-                <Plus size={18} /> {t("Thêm Nhánh Mới")}
-              </button>
-            </div>
-          )}
           <div>
             <label className="form-label">{t("Hành động: Phân bổ vào")}</label>
             <CustomSelect

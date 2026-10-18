@@ -123,13 +123,15 @@ export const initToastEnhancer = () => {
   toast.success = ((message, opts) => {
     throttlePlay(playSuccessSound);
     const safeMsg = typeof message === 'string' ? enhanceToastMessage(message) : message;
-    return originalSuccess(safeMsg as any, opts);
+    const dedupId = opts?.id || (typeof safeMsg === 'string' ? `success:${safeMsg.trim()}` : undefined);
+    return originalSuccess(safeMsg as any, dedupId ? { ...opts, id: dedupId } : opts);
   }) as typeof toast.success;
 
   toast.error = ((message, opts) => {
     throttlePlay(playErrorSound);
     const safeMsg = typeof message === 'string' ? enhanceToastMessage(message) : message;
-    return originalError(safeMsg as any, opts);
+    const dedupId = opts?.id || (typeof safeMsg === 'string' ? `error:${safeMsg.trim()}` : undefined);
+    return originalError(safeMsg as any, dedupId ? { ...opts, id: dedupId } : opts);
   }) as typeof toast.error;
 };
 

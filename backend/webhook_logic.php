@@ -724,47 +724,58 @@ function evaluateSingleCondition($data, $source, $type, $col, $op, $val, $connId
             }
         }
 
-        $valTrim = trim((string)$val);
+        $valTrim = is_array($val) ? implode(',', array_map('trim', $val)) : trim((string)$val);
         $normVal = normalizeTextForComparison($valTrim);
 
-        // 3. TRƯỜNG HỢP A: Giá trị so sánh ($val) là ID của một Dự án trong danh mục (khi cấu hình từ dropdown UI)
-        if (is_numeric($valTrim) && !empty($projectsCache[(int)$valTrim])) {
-            $targetProj = $projectsCache[(int)$valTrim];
-            $targetProjId = (int)$targetProj['id'];
+        // 3. TRƯỜNG HỢP A: Giá trị so sánh ($val) là 1 hoặc nhiều ID Dự án trong danh mục (phân tách bằng dấu phẩy khi chọn nhiều dự án từ UI)
+        $candidateIds = array_values(array_filter(array_map('trim', explode(',', $valTrim)), function ($item) use ($projectsCache) {
+            return is_numeric($item) && !empty($projectsCache[(int)$item]);
+        }));
+        if (!empty($candidateIds)) {
             $isMatched = false;
+            foreach ($candidateIds as $candIdStr) {
+                $targetProj = $projectsCache[(int)$candIdStr];
+                $targetProjId = (int)$targetProj['id'];
+                $singleMatch = false;
 
-            if (!empty($leadProjId) && is_numeric($leadProjId)) {
-                // Khi Lead đã có Project ID cụ thể: Bắt buộc phải trùng đúng ID dự án
-                $isMatched = ((int)$leadProjId === $targetProjId);
-            } elseif (!empty($leadProjText)) {
-                // Khi Lead chưa resolve được ID nhưng có text: So khớp với thông tin Target Project
-                $normLeadText = normalizeTextForComparison($leadProjText);
-                $normTargetName = normalizeTextForComparison($targetProj['name'] ?? '');
-                $normTargetCode = normalizeTextForComparison($targetProj['code'] ?? '');
+                if (!empty($leadProjId) && is_numeric($leadProjId)) {
+                    // Khi Lead đã có Project ID cụ thể: Bắt buộc phải trùng đúng ID dự án
+                    $singleMatch = ((int)$leadProjId === $targetProjId);
+                } elseif (!empty($leadProjText)) {
+                    // Khi Lead chưa resolve được ID nhưng có text: So khớp với thông tin Target Project
+                    $normLeadText = normalizeTextForComparison($leadProjText);
+                    $normTargetName = normalizeTextForComparison($targetProj['name'] ?? '');
+                    $normTargetCode = normalizeTextForComparison($targetProj['code'] ?? '');
 
-                $isMatched = (
-                    $normLeadText === (string)$targetProjId ||
-                    ($normTargetCode !== '' && $normLeadText === $normTargetCode) ||
-                    ($normTargetName !== '' && $normLeadText === $normTargetName) ||
-                    ($normTargetCode !== '' && mb_strpos($normLeadText, $normTargetCode) !== false) ||
-                    ($normTargetName !== '' && mb_strpos($normLeadText, $normTargetName) !== false) ||
-                    ($normTargetName !== '' && mb_strlen($normLeadText) >= 4 && mb_strpos($normTargetName, $normLeadText) !== false)
-                );
+                    $singleMatch = (
+                        $normLeadText === (string)$targetProjId ||
+                        ($normTargetCode !== '' && $normLeadText === $normTargetCode) ||
+                        ($normTargetName !== '' && $normLeadText === $normTargetName) ||
+                        ($normTargetCode !== '' && mb_strpos($normLeadText, $normTargetCode) !== false) ||
+                        ($normTargetName !== '' && mb_strpos($normLeadText, $normTargetName) !== false) ||
+                        ($normTargetName !== '' && mb_strlen($normLeadText) >= 4 && mb_strpos($normTargetName, $normLeadText) !== false)
+                    );
 
-                if (!$isMatched && !empty($normLeadText)) {
-                    $tokens = array_filter(explode(' ', $normLeadText));
-                    if (count($tokens) >= 2) {
-                        $allTokensFound = true;
-                        foreach ($tokens as $tok) {
-                            if (mb_strlen($tok) >= 2 && mb_strpos($normTargetName, $tok) === false && ($normTargetCode === '' || mb_strpos($normTargetCode, $tok) === false)) {
-                                $allTokensFound = false;
-                                break;
+                    if (!$singleMatch && !empty($normLeadText)) {
+                        $tokens = array_filter(explode(' ', $normLeadText));
+                        if (count($tokens) >= 2) {
+                            $allTokensFound = true;
+                            foreach ($tokens as $tok) {
+                                if (mb_strlen($tok) >= 2 && mb_strpos($normTargetName, $tok) === false && ($normTargetCode === '' || mb_strpos($normTargetCode, $tok) === false)) {
+                                    $allTokensFound = false;
+                                    break;
+                                }
+                            }
+                            if ($allTokensFound) {
+                                $singleMatch = true;
                             }
                         }
-                        if ($allTokensFound) {
-                            $isMatched = true;
-                        }
                     }
+                }
+
+                if ($singleMatch) {
+                    $isMatched = true;
+                    break;
                 }
             }
 

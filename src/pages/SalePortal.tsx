@@ -9050,7 +9050,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Liên hệ')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Trạng thái')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Thời gian ra kho')}</th>
-                    <th style={{ padding: '1rem', width: isAdmin ? 230 : 140 }}></th>
+                    <th style={{ padding: '1rem', width: isAdmin ? 310 : 140, whiteSpace: 'nowrap' }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -9214,8 +9214,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
                           {lead.released_to_kho_at ? parseServerDate(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
                         </td>
-                        <td style={{ padding: '1rem', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                        <td style={{ padding: '1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'nowrap' }}>
                             {Number(lead.is_won) === 1 ? (
                               <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', paddingRight: '8px' }}>-</span>
                             ) : (
@@ -9241,12 +9241,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         color: '#d97706',
                                         fontSize: '0.72rem',
                                         fontWeight: 700,
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0,
                                         cursor: 'pointer'
                                       }}
                                       title={lead.reclaimed_from?.name ? `${t('Back lại cho')} ${lead.reclaimed_from.name}` : t('Back lại thu hồi cho Sale')}
                                     >
-                                      <RotateCcw size={12} />
-                                      {t('Back lại')}
+                                      <RotateCcw size={12} style={{ flexShrink: 0 }} />
+                                      <span>{t('Back lại')}</span>
                                     </button>
                                     {Number(lead.deleted_from_databank) === 1 ? (
                                       <button
@@ -9258,6 +9260,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         style={{
                                           height: 32,
                                           width: 32,
+                                          minWidth: 32,
+                                          flexShrink: 0,
                                           padding: 0,
                                           borderRadius: '50%',
                                           display: 'inline-flex',
@@ -9282,6 +9286,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         style={{
                                           height: 32,
                                           width: 32,
+                                          minWidth: 32,
+                                          flexShrink: 0,
                                           padding: 0,
                                           borderRadius: '50%',
                                           display: 'inline-flex',
@@ -9308,6 +9314,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         style={{
                                           height: 32,
                                           width: 32,
+                                          minWidth: 32,
+                                          flexShrink: 0,
                                           padding: 0,
                                           borderRadius: '50%',
                                           display: 'inline-flex',
@@ -9332,6 +9340,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         style={{
                                           height: 32,
                                           width: 32,
+                                          minWidth: 32,
+                                          flexShrink: 0,
                                           padding: 0,
                                           borderRadius: '50%',
                                           display: 'inline-flex',
@@ -9361,6 +9371,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     fontSize: '0.72rem',
                                     fontWeight: 700,
                                     padding: '0 10px',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
                                     background: isAdmin ? 'rgba(0,0,0,0.04)' : (hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : (isQuotaExceeded ? 'rgba(0,0,0,0.04)' : '#BD1D2D'))),
                                     color: isAdmin ? 'var(--color-text-muted)' : (hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : (isQuotaExceeded ? 'var(--color-text-muted)' : '#ffffff'))),
                                     border: isAdmin ? '1px solid var(--color-border-light)' : (hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : (isQuotaExceeded ? '1px solid var(--color-border-light)' : 'none'))),
