@@ -14,6 +14,7 @@ import { AddressSelect } from '../components/ui/AddressSelect';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { Avatar } from '../components/ui/Avatar';
+import { useDebounce } from '../hooks/useDebounce';
 import styles from './EntityDrawer.module.css';
 
 const PRESTIGE_OPTIONS = [
@@ -48,6 +49,7 @@ export const SuppliersPage: React.FC = () => {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm.trim(), 300);
   const [showModal, setShowModal] = useState(false);
   const [filters, setFilters] = useState({ prestige_tier: '', cooperation_status: '' });
   const [projectsList, setProjectsList] = useState<any[]>([]);
@@ -57,7 +59,7 @@ export const SuppliersPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('info');
   const [isVisible, setIsVisible] = useState(showModal);
   const [animateIn, setAnimateIn] = useState(showModal);
-  const isFirstRender = useRef(true);
+  const supplierReqIdRef = useRef(0);
 
   useEffect(() => {
     if (showModal) {
@@ -83,13 +85,14 @@ export const SuppliersPage: React.FC = () => {
   }, [isVisible]);
 
   useEffect(() => {
+    if (!showModal || projectsList.length > 0) return;
     api.get('/projects?all=1')
       .then(res => {
         const list = res.data.data || res.data || [];
         setProjectsList(Array.isArray(list) ? list : (list.items || []));
       })
       .catch(() => {});
-  }, []);
+  }, [showModal, projectsList.length]);
 
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -101,36 +104,28 @@ export const SuppliersPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchSuppliers = async () => {
+    const reqId = ++supplierReqIdRef.current;
     setLoading(true);
     try {
-      const params: any = { page, limit: 12, search: searchTerm };
+      const params: any = { page, limit: 12, search: debouncedSearch };
       if (filters.prestige_tier) params.prestige_tier = filters.prestige_tier;
       if (filters.cooperation_status) params.cooperation_status = filters.cooperation_status;
       const res = await api.get('/suppliers', { params });
+      if (reqId !== supplierReqIdRef.current) return;
       const data = res.data.data;
       setSuppliers(data.items || []);
       setTotal(data.total || 0);
     } catch (err: any) {
+      if (reqId !== supplierReqIdRef.current) return;
       addToast('Lỗi khi tải danh sách chủ đầu tư', 'error');
     } finally {
-      setLoading(false);
+      if (reqId === supplierReqIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
-  useEffect(() => { fetchSuppliers(); }, [page, filters]);
-
-  // Handle search with debounce effect if needed, but for now simple trigger
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      if (page === 1) fetchSuppliers();
-      else setPage(1);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  useEffect(() => { fetchSuppliers(); }, [page, filters, debouncedSearch]);
 
   const [isReadOnly, setIsReadOnly] = useState(false);
 
@@ -192,8 +187,8 @@ export const SuppliersPage: React.FC = () => {
       onConfirm: async () => {
         try {
           await api.delete(`/suppliers/${id}`);
-          setSuppliers(prev => prev.filter(s => s.id !== id));
           addToast('Đã xóa chủ đầu tư', 'success');
+          fetchSuppliers();
         } catch (e: any) {
           addToast('Lỗi khi xóa chủ đầu tư', 'error');
         } finally {
@@ -260,7 +255,7 @@ export const SuppliersPage: React.FC = () => {
             type="text"
             placeholder="Tìm kiếm theo tên chủ đầu tư hoặc người liên hệ..." 
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
             style={{
               background: 'transparent',
               border: 'none',
@@ -280,7 +275,7 @@ export const SuppliersPage: React.FC = () => {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Phân hạng:</span>
             <select
               value={filters.prestige_tier}
-              onChange={e => setFilters({ ...filters, prestige_tier: e.target.value })}
+              onChange={e => { setFilters({ ...filters, prestige_tier: e.target.value }); setPage(1); }}
               style={{
                 padding: '0 8px',
                 height: '30px',
@@ -306,7 +301,7 @@ export const SuppliersPage: React.FC = () => {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Hợp tác:</span>
             <select
               value={filters.cooperation_status}
-              onChange={e => setFilters({ ...filters, cooperation_status: e.target.value })}
+              onChange={e => { setFilters({ ...filters, cooperation_status: e.target.value }); setPage(1); }}
               style={{
                 padding: '0 8px',
                 height: '30px',

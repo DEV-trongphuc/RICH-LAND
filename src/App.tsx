@@ -80,6 +80,69 @@ const AppTabs = () => {
   const { user } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
+  const isSaleRole = ['sale', 'sales'].includes(String(user?.role || '').toLowerCase());
+
+  // Map SalePortal routes to a single persistent tab key so switching between Workspace / Databank / Calendar / Schedule / FairShare takes 0ms without remounting
+  const getSalePortalTabProp = (path: string): 'workspace' | 'schedule' | 'calendar' | 'databank' | 'tickets' | 'fair-share' | null => {
+    if (path === '/workspace') return 'workspace';
+    if (path === '/account') return 'schedule';
+    if (path === '/databank') return 'databank';
+    if (isSaleRole) {
+      if (path === '/calendar') return 'calendar';
+      if (path === '/tickets') return 'tickets';
+      if (path === '/fair-share') return 'fair-share';
+    }
+    return null;
+  };
+
+  const currentSalePortalProp = getSalePortalTabProp(currentPath);
+  const activeTabKey = currentSalePortalProp
+    ? '/__sale_portal__'
+    : (currentPath === '/' ? '/dashboard' : currentPath);
+
+  const [visitedTabKeys, setVisitedTabKeys] = useState<string[]>(() => [activeTabKey]);
+  const [lastSalePortalTab, setLastSalePortalTab] = useState<'workspace' | 'schedule' | 'calendar' | 'databank' | 'tickets' | 'fair-share'>(
+    currentSalePortalProp || 'workspace'
+  );
+  const [tabRefreshKeys, setTabRefreshKeys] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (currentSalePortalProp && currentSalePortalProp !== lastSalePortalTab) {
+      setLastSalePortalTab(currentSalePortalProp);
+    }
+  }, [currentSalePortalProp, lastSalePortalTab]);
+
+  useEffect(() => {
+    const isRedirectOnly =
+      (currentPath === '/' && isSaleRole) ||
+      (currentPath === '/data' && isSaleRole) ||
+      currentPath === '/activities';
+    if (isRedirectOnly) return;
+
+    setVisitedTabKeys((prev) => {
+      if (prev[prev.length - 1] === activeTabKey) return prev;
+      const filtered = prev.filter((k) => k !== activeTabKey);
+      const next = [...filtered, activeTabKey];
+      // Cap Keep-Alive DOM cache at 6 most recently visited tabs to balance 0ms instant switching and low RAM footprint
+      return next.length > 6 ? next.slice(next.length - 6) : next;
+    });
+  }, [activeTabKey, currentPath, isSaleRole]);
+
+  useEffect(() => {
+    const handleRefresh = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (!customEvent.detail || !customEvent.detail.path || customEvent.detail.path === location.pathname) {
+        setTabRefreshKeys((prev) => ({
+          ...prev,
+          [activeTabKey]: (prev[activeTabKey] || 0) + 1,
+        }));
+      }
+    };
+    window.addEventListener('refresh-page', handleRefresh);
+    return () => {
+      window.removeEventListener('refresh-page', handleRefresh);
+    };
+  }, [location.pathname, activeTabKey]);
 
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi', '/ai-training'];
@@ -156,26 +219,33 @@ const AppTabs = () => {
     }
   }
 
-  const renderPageComponent = () => {
-    switch (currentPath) {
-      case '/':
-        return ((user?.role as any) === 'sale' || (user?.role as any) === 'sales') 
-          ? <Navigate to="/workspace" replace /> 
-          : <Dashboard key="dashboard" />;
+  // Handle pure redirect routes before Keep-Alive tab resolution
+  if (currentPath === '/' && isSaleRole) {
+    return <Navigate to="/workspace" replace />;
+  }
+  if (currentPath === '/data' && isSaleRole) {
+    return <Navigate to={`/contacts${location.search}`} replace />;
+  }
+  if (currentPath === '/activities') {
+    return <Navigate to="/" replace />;
+  }
+
+  const effectiveVisitedTabs = visitedTabKeys.includes(activeTabKey)
+    ? visitedTabKeys
+    : [...visitedTabKeys.slice(-5), activeTabKey];
+
+  const effectiveSalePortalProp = currentSalePortalProp || lastSalePortalTab;
+
+  const renderTabComponent = (tabKey: string) => {
+    switch (tabKey) {
       case '/dashboard':
         return <Dashboard key="dashboard" />;
-      case '/workspace':
-        return <SalePortal embedMode={true} activeTabProp="workspace" key="workspace" />;
-      case '/account':
-        return <SalePortal embedMode={true} activeTabProp="schedule" key="schedule" />;
+      case '/__sale_portal__':
+        return <SalePortal embedMode={true} activeTabProp={effectiveSalePortalProp} key="sale-portal-shared" />;
       case '/data':
-        return user?.role === 'sale' 
-          ? <Navigate to={`/contacts${location.search}`} replace /> 
-          : <DataList key="data" />;
+        return <DataList key="data" />;
       case '/calendar':
-        return user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="calendar" key="calendar" /> : <DataList key="calendar" />;
-      case '/databank':
-        return <SalePortal embedMode={true} activeTabProp="databank" key="databank" />;
+        return <DataList key="calendar" />;
       case '/contacts':
         return <ContactsPage key="contacts" />;
       case '/companies':
@@ -184,8 +254,6 @@ const AppTabs = () => {
         return <DealsPage key="deals" />;
       case '/quotes':
         return <QuotesPage key="quotes" />;
-      case '/activities':
-        return <Navigate to="/" replace />;
       case '/products':
         return <ProductsPage key="products" />;
       case '/invoices':
@@ -201,7 +269,7 @@ const AppTabs = () => {
       case '/inventory':
         return <InventoryPage key="inventory" />;
       case '/tickets':
-        return user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="tickets" key="tickets" /> : <Tickets key="tickets" />;
+        return <Tickets key="tickets" />;
       case '/support-tickets':
         return <TicketsPage key="support-tickets" />;
       case '/consultants':
@@ -219,7 +287,7 @@ const AppTabs = () => {
       case '/gatekeeper':
         return <Gatekeeper key="gatekeeper" />;
       case '/fair-share':
-        return user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="fair-share" key="fair-share" /> : <FairShareAudit key="fair-share" />;
+        return <FairShareAudit key="fair-share" />;
       case '/capi':
         return <CapiPage key="capi" />;
       case '/ai-training':
@@ -237,26 +305,29 @@ const AppTabs = () => {
     }
   };
 
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    const handleRefresh = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail && customEvent.detail.path === location.pathname) {
-        setRefreshKey(prev => prev + 1);
-      }
-    };
-    window.addEventListener('refresh-page', handleRefresh);
-    return () => {
-      window.removeEventListener('refresh-page', handleRefresh);
-    };
-  }, [location.pathname]);
-
   return (
-    <div key={location.pathname + '_' + refreshKey} style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <Suspense fallback={<PageLoader />}>
-        {renderPageComponent()}
-      </Suspense>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {effectiveVisitedTabs.map((tabKey) => {
+        const isActive = tabKey === activeTabKey;
+        const rKey = tabRefreshKeys[tabKey] || 0;
+        return (
+          <div
+            key={`${tabKey}_${rKey}`}
+            style={{
+              display: isActive ? 'block' : 'none',
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+            }}
+          >
+            <ErrorBoundary>
+              <Suspense fallback={<PageLoader />}>
+                {renderTabComponent(tabKey)}
+              </Suspense>
+            </ErrorBoundary>
+          </div>
+        );
+      })}
     </div>
   );
 };

@@ -230,15 +230,6 @@ export default function ProjectsPage() {
   const [campaignFolderLinkType, setCampaignFolderLinkType] = useState<'link' | 'select'>('link');
   const isLegacyLayoutEnabled = false;
 
-  useEffect(() => {
-    api.get('/file-categories')
-      .then(res => {
-        if (res.data && Array.isArray(res.data.data)) {
-          setFileCategories(res.data.data);
-        }
-      })
-      .catch(err => console.error('Failed to fetch file categories', err));
-  }, []);
   const [developers, setDevelopers] = useState<any[]>([]);
   const [allFiles, setAllFiles] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -1177,6 +1168,18 @@ export default function ProjectsPage() {
   const [campaignRosters, setCampaignRosters] = useState<Record<number, any[]>>({});
   const [campaignRostersLoading, setCampaignRostersLoading] = useState(false);
 
+  useEffect(() => {
+    if ((isDocsModalOpen || isEditModalOpen || isCampaignModalOpen || showFolderModal) && fileCategories.length === 0) {
+      api.get('/file-categories')
+        .then(res => {
+          if (res.data && Array.isArray(res.data.data)) {
+            setFileCategories(res.data.data);
+          }
+        })
+        .catch(err => console.error('Failed to fetch file categories', err));
+    }
+  }, [isDocsModalOpen, isEditModalOpen, isCampaignModalOpen, showFolderModal, fileCategories.length]);
+
   const fetchCampaignRosters = async (camp: any) => {
     setCampaignRostersLoading(true);
     const pObjs = projects.filter(p => {
@@ -1187,16 +1190,18 @@ export default function ProjectsPage() {
       return campIds.includes(camp?.name);
     });
     const rosters: Record<number, any[]> = {};
-    for (const p of pObjs) {
-      try {
-        const res = await fetchAPI(`projects/${p.id}/roster`);
-        if (res && Array.isArray(res)) {
-          rosters[p.id] = res.filter((m: any) => m.is_assigned === 1);
+    await Promise.all(
+      pObjs.map(async (p) => {
+        try {
+          const res = await fetchAPI(`projects/${p.id}/roster`);
+          if (res && Array.isArray(res)) {
+            rosters[p.id] = res.filter((m: any) => m.is_assigned === 1);
+          }
+        } catch (e) {
+          console.error(e);
         }
-      } catch (e) {
-        console.error(e);
-      }
-    }
+      })
+    );
     setCampaignRosters(rosters);
     setCampaignRostersLoading(false);
   };
@@ -3559,7 +3564,7 @@ export default function ProjectsPage() {
   const loadCampaigns = async () => {
     setCampaignsLoading(true);
     try {
-      const url = 'campaigns?limit=1000';
+      const url = 'campaigns?limit=500';
       const res = await fetchAPI(url);
       if (res.success) {
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {

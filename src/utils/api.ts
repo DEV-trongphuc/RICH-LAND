@@ -43,14 +43,12 @@ export async function fetchAPI(action: string, options: RequestInit = {}) {
   if (action === 'get_settings' && originalMethod === 'GET') {
     const token = localStorage.getItem('richland_token');
     const fetchFresh = async () => {
-      let url = `api.php?action=get_settings&_t=${Date.now()}`;
-      if (token) {
-        url += `&token=${token}`;
-      }
+      const url = `api.php?action=get_settings&_t=${Date.now()}`;
       try {
         const response = await api({
           method: 'GET',
           url,
+          signal: options.signal as any,
           headers: {
             ...(options.headers as Record<string, string>),
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -87,15 +85,11 @@ export async function fetchAPI(action: string, options: RequestInit = {}) {
     ...(options.headers as Record<string, string>),
   };
 
-  const token = localStorage.getItem('richland_token');
   const parts = action.split('?');
   const baseAction = parts[0];
   let url = `api.php?action=${baseAction}`;
   if (parts[1]) {
     url += `&${parts[1]}`;
-  }
-  if (token) {
-    url += `&token=${token}`;
   }
 
   try {
@@ -104,6 +98,7 @@ export async function fetchAPI(action: string, options: RequestInit = {}) {
       url,
       data: options.body,
       headers,
+      signal: options.signal as any,
     });
     return response.data;
   } catch (err: any) {

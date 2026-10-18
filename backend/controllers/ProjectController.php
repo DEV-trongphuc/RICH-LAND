@@ -122,9 +122,11 @@ class ProjectController {
             $offset = ($page - 1) * $limit;
             $stmt = $this->db->prepare("
                 SELECT p.*,
-                       (SELECT COUNT(*) FROM project_roster WHERE project_id = p.id) as roster_count,
-                       (SELECT COUNT(*) FROM project_documents WHERE project_id = p.id) as doc_count
+                       COALESCE(pr_cnt.cnt, 0) as roster_count,
+                       COALESCE(pd_cnt.cnt, 0) as doc_count
                 FROM projects p
+                LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM project_roster GROUP BY project_id) pr_cnt ON pr_cnt.project_id = p.id
+                LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM project_documents GROUP BY project_id) pd_cnt ON pd_cnt.project_id = p.id
                 $where
                 ORDER BY p.created_at DESC
                 LIMIT $offset, $limit
@@ -141,11 +143,14 @@ class ProjectController {
         } else {
             $stmt = $this->db->prepare("
                 SELECT p.*,
-                       (SELECT COUNT(*) FROM project_roster WHERE project_id = p.id) as roster_count,
-                       (SELECT COUNT(*) FROM project_documents WHERE project_id = p.id) as doc_count
+                       COALESCE(pr_cnt.cnt, 0) as roster_count,
+                       COALESCE(pd_cnt.cnt, 0) as doc_count
                 FROM projects p
+                LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM project_roster GROUP BY project_id) pr_cnt ON pr_cnt.project_id = p.id
+                LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM project_documents GROUP BY project_id) pd_cnt ON pd_cnt.project_id = p.id
                 $where
                 ORDER BY p.created_at DESC
+                LIMIT 500
             ");
             $stmt->execute($params);
             $projects = $stmt->fetchAll();
@@ -154,10 +159,11 @@ class ProjectController {
     }
 
     public function show(array $auth, int $id): void {
+        $this->requireProjectAccess($auth, $id);
         $tenantId = $auth['tenant_id'] ?? 1;
 
-        $stmt = $this->db->prepare("SELECT p.* FROM projects p WHERE p.id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->db->prepare("SELECT p.* FROM projects p WHERE p.id = ? AND p.tenant_id = ?");
+        $stmt->execute([$id, $tenantId]);
         $project = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$project) {
@@ -487,13 +493,17 @@ class ProjectController {
 
             // Find newly added users
             $addedUserIds = array_diff($userIds, $oldUserIds);
-
+            $projectName = "Dự án mới";
             if (!empty($addedUserIds)) {
-                // Get project name
                 $stmtName = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
                 $stmtName->execute([$projectId]);
                 $projectName = $stmtName->fetchColumn() ?: "Dự án mới";
+            }
 
+            $this->db->commit();
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_PROJECT_ROSTER', 'project', $projectId, "Cập nhật roster dự án ID: $projectId, số lượng: " . count($userIds));
+
+            if (!empty($addedUserIds)) {
                 require_once __DIR__ . '/../NotificationService.php';
                 foreach ($addedUserIds as $newUid) {
                     NotificationService::send($this->db, $auth['tenant_id'], 'PROJECT_ROSTER_UPDATE', [
@@ -503,11 +513,11 @@ class ProjectController {
                 }
             }
 
-            $this->db->commit();
-            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_PROJECT_ROSTER', 'project', $projectId, "Cập nhật roster dự án ID: $projectId, số lượng: " . count($userIds));
             respond(200, null, 'Cập nhật roster thành công');
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             respond(500, null, 'Lỗi cập nhật roster: ' . $e->getMessage(), false);
         }
     }
@@ -759,15 +769,13 @@ class ProjectController {
         $mentions = [];
         // 1. Parse by data-user-id
         if (preg_match_all('/data-user-id="(\d+)"/i', (string)$body, $idMatches)) {
-            $uids = array_filter(array_map('intval', $idMatches[1]));
-            foreach ($uids as $uid) {
-                if ($uid !== (int)$auth['user_id']) {
-                    $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND id=?");
-                    $stmtUser->execute([$auth['tenant_id'], $uid]);
-                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
-                    if ($userRow) {
-                        $mentions[$uid] = $userRow;
-                    }
+            $uids = array_values(array_unique(array_filter(array_map('intval', $idMatches[1]), fn($u) => $u > 0 && $u !== (int)$auth['user_id'])));
+            if (!empty($uids)) {
+                $inUids = implode(',', array_fill(0, count($uids), '?'));
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND id IN ($inUids)");
+                $stmtUser->execute(array_merge([$auth['tenant_id']], $uids));
+                while ($userRow = $stmtUser->fetch(PDO::FETCH_ASSOC)) {
+                    $mentions[(int)$userRow['id']] = $userRow;
                 }
             }
         }
@@ -775,18 +783,17 @@ class ProjectController {
         // 2. Parse by @Name
         $matches = [];
         preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)$body, $matches);
-        $names = is_array($matches[1] ?? null) ? $matches[1] : [];
+        $names = is_array($matches[1] ?? null) ? array_values(array_unique(array_filter($matches[1]))) : [];
         if (!empty($names)) {
-            foreach ($names as $nameWithUnderscores) {
-                $fullName = str_replace('_', ' ', $nameWithUnderscores);
-                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND (full_name=? OR REPLACE(full_name, ' ', '_')=?)");
-                $stmtUser->execute([$auth['tenant_id'], $fullName, $nameWithUnderscores]);
-                $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
-                if ($userRow) {
-                    $uid = (int)$userRow['id'];
-                    if ($uid !== (int)$auth['user_id']) {
-                        $mentions[$uid] = $userRow;
-                    }
+            $fullNames = array_map(fn($n) => str_replace('_', ' ', $n), $names);
+            $inFull = implode(',', array_fill(0, count($fullNames), '?'));
+            $inUnder = implode(',', array_fill(0, count($names), '?'));
+            $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND (full_name IN ($inFull) OR REPLACE(full_name, ' ', '_') IN ($inUnder))");
+            $stmtUser->execute(array_merge([$auth['tenant_id']], $fullNames, $names));
+            while ($userRow = $stmtUser->fetch(PDO::FETCH_ASSOC)) {
+                $uid = (int)$userRow['id'];
+                if ($uid !== (int)$auth['user_id']) {
+                    $mentions[$uid] = $userRow;
                 }
             }
         }

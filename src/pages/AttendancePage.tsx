@@ -220,29 +220,39 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
     }
   };
 
+  const checkInReqIdRef = React.useRef(0);
+  const calReqIdRef = React.useRef(0);
+
   const fetchCheckInsList = async () => {
+    const reqId = ++checkInReqIdRef.current;
     setLoading(true);
     try {
       const range = period === 'custom' ? customRange : getDateRange(period);
       const query = `check-ins&from=${range.from}&to=${range.to}&status=${filterStatus}&user_id=${filterUser}`;
       const res = await fetchAPI(query);
+      if (reqId !== checkInReqIdRef.current) return;
       if (res.success) {
         setCheckIns(res.data || []);
       } else {
         toast.error(res.message || t('Lỗi khi tải danh sách chấm công'));
       }
     } catch (err: any) {
+      if (reqId !== checkInReqIdRef.current) return;
       toast.error(t('Lỗi kết nối: ') + err.message);
     } finally {
-      setLoading(false);
+      if (reqId === checkInReqIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   const fetchCalendarCheckIns = async () => {
+    const reqId = ++calReqIdRef.current;
     setCalendarLoading(true);
     try {
       const query = `check-ins&year=${currentYear}&month=${currentMonth}&status=${filterStatus}&user_id=${filterUser}&include_shifts=1`;
       const res = await fetchAPI(query);
+      if (reqId !== calReqIdRef.current) return;
       if (res.success) {
         if (res.data && res.data.check_ins) {
           setCalendarCheckIns(res.data.check_ins || []);
@@ -252,18 +262,19 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           setCalendarShifts([]);
         }
       }
-
-
     } catch (err: any) {
+      if (reqId !== calReqIdRef.current) return;
       console.error('Error fetching calendar check-ins:', err);
     } finally {
-      setCalendarLoading(false);
+      if (reqId === calReqIdRef.current) {
+        setCalendarLoading(false);
+      }
     }
   };
 
   const fetchContactsList = async () => {
     try {
-      const res = await api.get('/contacts?limit=1000');
+      const res = await api.get('/contacts?limit=500&minimal=1');
       const conData = res.data?.data;
       const list = Array.isArray(conData?.items) ? conData.items : (Array.isArray(conData) ? conData : (Array.isArray(res.data) ? res.data : []));
       setContactsList(list);
@@ -274,8 +285,13 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
   useEffect(() => {
     fetchConsultantsList();
-    fetchContactsList();
   }, []);
+
+  useEffect(() => {
+    if (selectedDateForDetail && modalTab === 'activities' && contactsList.length === 0) {
+      fetchContactsList();
+    }
+  }, [selectedDateForDetail, modalTab, contactsList.length]);
 
   useEffect(() => {
     fetchCheckInsList();
@@ -505,10 +521,22 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   };
 
   // Stats calculation
-  const totalCount = checkIns.length;
-  const approvedCount = checkIns.filter(c => c.status === 'approved').length;
-  const pendingCount = checkIns.filter(c => c.status === 'pending_approval').length;
-  const rejectedCount = checkIns.filter(c => c.status === 'rejected').length;
+  const { totalCount, approvedCount, pendingCount, rejectedCount } = useMemo(() => {
+    let approved = 0;
+    let pending = 0;
+    let rejected = 0;
+    for (const c of checkIns) {
+      if (c.status === 'approved') approved++;
+      else if (c.status === 'pending_approval') pending++;
+      else if (c.status === 'rejected') rejected++;
+    }
+    return {
+      totalCount: checkIns.length,
+      approvedCount: approved,
+      pendingCount: pending,
+      rejectedCount: rejected
+    };
+  }, [checkIns]);
 
   const getLateMinutes = (checkInTimeStr: string, workStartTimeStr: string = '08:00') => {
     if (!checkInTimeStr) return 0;

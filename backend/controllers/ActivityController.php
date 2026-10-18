@@ -5,7 +5,7 @@ class ActivityController {
         $this->db = $db; 
     }
 
-    private function getFirstImageUrl(array $activity): ?string {
+    private function getFirstImageUrl(array $activity, ?array $preloadedComments = null): ?string {
         // 1. Check description/body HTML for <img> tag or markdown image
         $body = $activity['body'] ?? '';
         if ($body) {
@@ -46,17 +46,21 @@ class ActivityController {
             }
         }
 
-        // 2. Check comments
+        // 2. Check comments (use preloaded batch if available to prevent N+1 queries)
         $actId = (int)($activity['id'] ?? 0);
         if ($actId > 0) {
-            $cStmt = $this->db->prepare("
-                SELECT content, attachments 
-                FROM activity_comments 
-                WHERE activity_id = ? 
-                ORDER BY id ASC
-            ");
-            $cStmt->execute([$actId]);
-            $comments = $cStmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($preloadedComments !== null) {
+                $comments = $preloadedComments;
+            } else {
+                $cStmt = $this->db->prepare("
+                    SELECT content, attachments 
+                    FROM activity_comments 
+                    WHERE activity_id = ? 
+                    ORDER BY id ASC
+                ");
+                $cStmt->execute([$actId]);
+                $comments = $cStmt->fetchAll(PDO::FETCH_ASSOC);
+            }
             foreach ($comments as $comment) {
                 // Check attachments column (JSON array of URLs)
                 $atts = $comment['attachments'] ?? '';
@@ -450,56 +454,40 @@ class ActivityController {
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
-            $where[] = '(
-                a.user_id = ? 
+            $mgrUid = (int)$auth['user_id'];
+            $tStmt = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id))))");
+            $tStmt->execute([$mgrUid]);
+            $mgrTeamIds = array_unique(array_merge([$mgrUid], array_map('intval', $tStmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+            $inMgrIds = implode(',', $mgrTeamIds);
+
+            $where[] = "(
+                a.user_id IN ($inMgrIds)
                 OR a.created_by = ?
                 OR a.approver_id = ?
                 OR FIND_IN_SET(?, a.participant_ids)
-                OR a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))))
-                OR (a.related_type = \'contact\' AND EXISTS (
-                    SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR ct.owner_id IN (
-                        SELECT id FROM users WHERE team_id IN (
-                            SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
-                        )
-                    ))
+                OR (a.related_type = 'contact' AND EXISTS (
+                    SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND ct.owner_id IN ($inMgrIds)
                 )) 
-                OR (a.related_type = \'deal\' AND EXISTS (
+                OR (a.related_type = 'deal' AND EXISTS (
                     SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (
-                        d.owner_id = ? OR ct.owner_id = ? OR d.owner_id IN (
-                            SELECT id FROM users WHERE team_id IN (
-                                SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
-                            )
-                        ) OR ct.owner_id IN (
-                            SELECT id FROM users WHERE team_id IN (
-                                SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
-                            )
-                        )
+                        d.owner_id IN ($inMgrIds) OR ct.owner_id IN ($inMgrIds)
                     )
                 ))
-                OR (a.related_type = \'project\' AND EXISTS (
+                OR (a.related_type = 'project' AND EXISTS (
                     SELECT 1 FROM project_roster pr WHERE pr.project_id = a.related_id AND pr.user_id = ?
                 ))
-                OR (a.related_type = \'campaign\' AND EXISTS (
+                OR (a.related_type = 'campaign' AND EXISTS (
                     SELECT 1 FROM marketing_campaigns mc WHERE mc.id = a.related_id AND (FIND_IN_SET(?, mc.user_ids) OR FIND_IN_SET(?, mc.manager_ids) OR mc.created_by = ?)
                 ))
-                OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id))))) OR a.body LIKE \'%"scope":"global"%\'))
-            )';
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
+                OR (a.tags LIKE 'internal_%' AND (a.user_id IN ($inMgrIds) OR a.body LIKE '%\"scope\":\"global\"%'))
+            )";
+            $params[] = $mgrUid;
+            $params[] = $mgrUid;
+            $params[] = $mgrUid;
+            $params[] = $mgrUid;
+            $params[] = $mgrUid;
+            $params[] = $mgrUid;
+            $params[] = $mgrUid;
         }
         if ($type)     { $where[]='a.type=?';    $params[]=$type; }
         if ($status)   { $where[]='a.status=?';  $params[]=$status; }
@@ -553,9 +541,9 @@ class ActivityController {
                    camp.name as campaign_name,
                    t.name as team_name,
                    tg.name as task_group_name, tg.color as task_group_color, tg.icon as task_group_icon,
-                   (SELECT COUNT(*) FROM activity_comments ac WHERE ac.activity_id = a.id) as comment_count,
+                   0 as comment_count,
                    EXISTS(SELECT 1 FROM task_hidden_users thu WHERE thu.task_id = a.id AND thu.user_id = " . (int)$auth['user_id'] . ") as is_hidden,
-                   (SELECT e.image_url FROM expenses e WHERE e.tenant_id = a.tenant_id AND e.title = REPLACE(a.subject, 'Ghi nhận Chi phí: ', '') AND e.image_url IS NOT NULL AND e.image_url != '' ORDER BY e.id DESC LIMIT 1) as expense_image_url
+                   CASE WHEN a.subject LIKE 'Ghi nhận Chi phí: %' THEN (SELECT e.image_url FROM expenses e WHERE e.tenant_id = a.tenant_id AND e.title = REPLACE(a.subject, 'Ghi nhận Chi phí: ', '') AND e.image_url IS NOT NULL AND e.image_url != '' ORDER BY e.id DESC LIMIT 1) ELSE NULL END as expense_image_url
             FROM activities a 
             LEFT JOIN users u ON a.user_id=u.id
             LEFT JOIN users creator ON a.created_by=creator.id
@@ -572,8 +560,30 @@ class ActivityController {
         ");
         $stmt->execute($params);
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Batch-load activity_comments for all page items to eliminate N+1 query inside foreach
+        $commentsByActivityId = [];
+        $actIds = array_values(array_filter(array_map(fn($it) => (int)($it['id'] ?? 0), $items)));
+        if (!empty($actIds)) {
+            $inAct = implode(',', array_fill(0, count($actIds), '?'));
+            $cBatchStmt = $this->db->prepare("
+                SELECT activity_id, content, attachments
+                FROM activity_comments
+                WHERE activity_id IN ($inAct)
+                ORDER BY id ASC
+            ");
+            $cBatchStmt->execute($actIds);
+            while ($cRow = $cBatchStmt->fetch(PDO::FETCH_ASSOC)) {
+                $aid = (int)$cRow['activity_id'];
+                $commentsByActivityId[$aid][] = $cRow;
+            }
+        }
+
         foreach ($items as &$item) {
-            $item['first_image_url'] = $this->getFirstImageUrl($item);
+            $aid = (int)($item['id'] ?? 0);
+            $actComments = $commentsByActivityId[$aid] ?? [];
+            $item['comment_count'] = count($actComments);
+            $item['first_image_url'] = $this->getFirstImageUrl($item, $actComments);
         }
         respond(200,['items'=>$items,'total'=>$total,'page'=>$page,'limit'=>$limit]);
     }
@@ -1353,12 +1363,11 @@ class ActivityController {
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
-        // Fetch activity proof photo & description files (Skipping legacy proof/attachments)
-        $stmtFullAct = $this->db->prepare("SELECT id FROM activities WHERE id = ? AND tenant_id = ?");
-        $stmtFullAct->execute([$id, $auth['tenant_id']]);
-        $fullAct = $stmtFullAct->fetch(PDO::FETCH_ASSOC);
+        $stmt=$this->db->prepare($sql);
+        $stmt->execute($p);
+        if(!$stmt->rowCount()) respond(404,null,'Không tìm thấy hoặc không có quyền',false);
 
-        // Fetch activity comments attachments & content
+        // Fetch activity comments attachments & content only AFTER permission is verified
         $actCommentsStmt = $this->db->prepare("SELECT attachments, content FROM activity_comments WHERE activity_id = ? AND tenant_id = ?");
         $actCommentsStmt->execute([$id, $auth['tenant_id']]);
         $actComments = $actCommentsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -1367,10 +1376,6 @@ class ActivityController {
             if (!empty($ac['content'])) deleteAttachmentFiles($ac['content']);
         }
         $this->db->prepare("DELETE FROM activity_comments WHERE activity_id = ? AND tenant_id = ?")->execute([$id, $auth['tenant_id']]);
-
-        $stmt=$this->db->prepare($sql);
-        $stmt->execute($p);
-        if(!$stmt->rowCount()) respond(404,null,'Không tìm thấy hoặc không có quyền',false);
 
         // Recalculate contact's last_contact
         if ($actRow) {

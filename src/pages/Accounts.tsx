@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
+import React, { useEffect, useState, useRef, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera, RotateCcw, Loader2, AlertTriangle } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -450,16 +450,24 @@ const AccountsInner = () => {
     }
   };
 
+  const latestLogsReqRef = useRef(0);
+
   const fetchLogs = async () => {
+    const reqId = ++latestLogsReqRef.current;
     setLoadingLogs(true);
     setLogsPage(1);
     try {
       const json = await fetchAPI('get_admin_logs');
+      if (reqId !== latestLogsReqRef.current) return;
       if (json.success) setLogs(json.data);
     } catch (e: any) {
-      toast.error(`${t('Không thể tải nhật ký hoạt động')}: ` + e.message);
+      if (reqId === latestLogsReqRef.current) {
+        toast.error(`${t('Không thể tải nhật ký hoạt động')}: ` + e.message);
+      }
     }
-    setLoadingLogs(false);
+    if (reqId === latestLogsReqRef.current) {
+      setLoadingLogs(false);
+    }
   };
 
   useEffect(() => {
@@ -468,14 +476,22 @@ const AccountsInner = () => {
     }
   }, [activeTab]);
 
+  const latestAccountsReqRef = useRef(0);
+
   const fetchAccounts = async () => {
+    const reqId = ++latestAccountsReqRef.current;
     try {
       const json = await fetchAPI('get_accounts');
+      if (reqId !== latestAccountsReqRef.current) return;
       if (json.success) setAccounts(json.data);
     } catch (e: any) {
-      toast.error(`${t('Không thể tải dữ liệu')}: ` + e.message);
+      if (reqId === latestAccountsReqRef.current) {
+        toast.error(`${t('Không thể tải dữ liệu')}: ` + e.message);
+      }
     }
-    setLoading(false);
+    if (reqId === latestAccountsReqRef.current) {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -751,21 +767,21 @@ const AccountsInner = () => {
 
   const LOGS_PER_PAGE = 50;
   const totalLogPages = Math.ceil(logs.length / LOGS_PER_PAGE);
-  const paginatedLogs = logs.slice((logsPage - 1) * LOGS_PER_PAGE, logsPage * LOGS_PER_PAGE);
+  const paginatedLogs = useMemo(() => logs.slice((logsPage - 1) * LOGS_PER_PAGE, logsPage * LOGS_PER_PAGE), [logs, logsPage]);
 
-  const filteredAccounts = accounts.filter(acc => {
+  const filteredAccounts = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return true;
-    return (
+    if (!query) return accounts;
+    return accounts.filter(acc => (
       (acc.name && acc.name.toLowerCase().includes(query)) ||
       (acc.email && acc.email.toLowerCase().includes(query)) ||
       (acc.username && acc.username.toLowerCase().includes(query)) ||
       (acc.role && acc.role.toLowerCase().includes(query))
-    );
-  });
+    ));
+  }, [accounts, searchQuery]);
 
   const totalAccountsPages = Math.ceil(filteredAccounts.length / ACCOUNTS_PER_PAGE);
-  const paginatedAccounts = filteredAccounts.slice((accountsPage - 1) * ACCOUNTS_PER_PAGE, accountsPage * ACCOUNTS_PER_PAGE);
+  const paginatedAccounts = useMemo(() => filteredAccounts.slice((accountsPage - 1) * ACCOUNTS_PER_PAGE, accountsPage * ACCOUNTS_PER_PAGE), [filteredAccounts, accountsPage]);
 
   if (isSale) {
     return (

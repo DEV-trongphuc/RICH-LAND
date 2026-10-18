@@ -82,6 +82,8 @@ class ContactController {
             $coopClause = implode(' OR ', $coopChecks);
 
             $where[] = "(c.owner_id IN ($idsClause) OR c.created_by IN ($idsClause) OR ($collabClause) OR c.id IN (
+                SELECT contact_id FROM quyen_truy_cap WHERE user_id IN ($idsClause)
+            ) OR c.id IN (
                 SELECT contact_id FROM cooperation_slips WHERE $coopClause
             ))";
         } else {
@@ -113,6 +115,8 @@ class ContactController {
             $params[] = '%' . $tag . '%';
         }
         
+        $isMinimal = isset($_GET['minimal']) && (string)$_GET['minimal'] === '1';
+
         if ($dataType !== '') {
             $errorCond = "(
                 EXISTS (
@@ -157,19 +161,21 @@ class ContactController {
                 }
             }
         } else if (($auth['role'] ?? '') === 'sale') {
-            $errorCond = "(
-                EXISTS (
-                    SELECT 1 FROM leads l2 
-                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                    WHERE l2.person_id = c.person_id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
-                )
-                OR EXISTS (
-                    SELECT 1 FROM data_reports dr
-                    JOIN leads l3 ON dr.lead_id = l3.id
-                    WHERE l3.person_id = c.person_id AND dr.status IN ('pending', 'approved')
-                )
-            )";
-            $where[] = "NOT $errorCond";
+            if (!$isMinimal) {
+                $errorCond = "(
+                    EXISTS (
+                        SELECT 1 FROM leads l2 
+                        JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM data_reports dr
+                        JOIN leads l3 ON dr.lead_id = l3.id
+                        WHERE l3.person_id = c.person_id AND dr.status IN ('pending', 'approved')
+                    )
+                )";
+                $where[] = "NOT $errorCond";
+            }
             // Rule: Not Lead is completely hidden from Sales (only visible to Managers/Admins for review)
             $where[] = "(c.pipeline_status != 'not_lead' AND COALESCE(c.not_lead_proposed, 0) = 0)";
         }
@@ -246,21 +252,6 @@ class ContactController {
 
         $whereStr = implode(' AND ', $where);
 
-        $count = $this->db->prepare("SELECT COUNT(*) FROM contacts c WHERE $whereStr");
-        $count->execute($params);
-        $total = (int)$count->fetchColumn();
-
-        // Calculate counts per pipeline stage for quick status tabs
-        $stageCounts = [];
-        try {
-            $scWhereStr = implode(' AND ', $stageCountWhere);
-            $scStmt = $this->db->prepare("SELECT c.pipeline_status, COUNT(*) as cnt FROM contacts c WHERE $scWhereStr GROUP BY c.pipeline_status");
-            $scStmt->execute($stageCountParams);
-            $stageCounts = $scStmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
-        } catch (\Exception $e) {
-            $stageCounts = [];
-        }
-
         $orderSql = "c.$sortBy $order";
         if (!empty($search)) {
             $cleanSearch = trim($search);
@@ -275,6 +266,53 @@ class ContactController {
                     WHEN CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')) LIKE $cleanSearchPrefix THEN 5
                     ELSE 6
                 END ASC, c.$sortBy $order";
+        }
+
+        // Fast-path lightweight mode (minimal=1) for modal/selector dropdowns (CheckIn, Cooperation, Deposit, Ticket, Finance)
+        if ($isMinimal) {
+            $stmtMin = $this->db->prepare("
+                SELECT c.id, c.first_name, c.last_name, c.phone, c.email, c.avatar_url,
+                       c.expected_revenue, c.project_id, c.owner_id, c.status,
+                       c.pipeline_status, c.collaborator_ids
+                FROM contacts c
+                WHERE $whereStr
+                ORDER BY $orderSql
+                LIMIT $limit OFFSET $offset
+            ");
+            $stmtMin->execute($params);
+            $minData = $stmtMin->fetchAll(PDO::FETCH_ASSOC);
+            $minCount = count($minData);
+            if ($page === 1 && $minCount < $limit) {
+                $totalMin = $minCount;
+            } else {
+                $countMin = $this->db->prepare("SELECT COUNT(*) FROM contacts c WHERE $whereStr");
+                $countMin->execute($params);
+                $totalMin = (int)$countMin->fetchColumn();
+            }
+            respond(200, [
+                'items' => $minData,
+                'total' => $totalMin,
+                'page' => $page,
+                'limit' => $limit,
+                'total_pages' => ceil($totalMin / $limit),
+                'stage_counts' => []
+            ]);
+            return;
+        }
+
+        $count = $this->db->prepare("SELECT COUNT(*) FROM contacts c WHERE $whereStr");
+        $count->execute($params);
+        $total = (int)$count->fetchColumn();
+
+        // Calculate counts per pipeline stage for quick status tabs
+        $stageCounts = [];
+        try {
+            $scWhereStr = implode(' AND ', $stageCountWhere);
+            $scStmt = $this->db->prepare("SELECT c.pipeline_status, COUNT(*) as cnt FROM contacts c WHERE $scWhereStr GROUP BY c.pipeline_status");
+            $scStmt->execute($stageCountParams);
+            $stageCounts = $scStmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+        } catch (\Exception $e) {
+            $stageCounts = [];
         }
 
         $stmt = $this->db->prepare("
@@ -829,7 +867,7 @@ class ContactController {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật', false);
         $b = getBody();
         // 1. Pre-fetch current contact state for lifecycle validation
-        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name, person_id, email, phone, mobile, collaborator_ids FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name, person_id, email, phone, mobile, collaborator_ids, source, ttl1_data, address, job_title, notes, budget, budget_range FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtCurr->execute([$id, $auth['tenant_id']]);
         $currentContact = $stmtCurr->fetch();
         if (!$currentContact) respond(404, null, 'Không tìm thấy liên hệ', false);
@@ -997,7 +1035,7 @@ class ContactController {
         $fields = [
             'company_id','project_id','owner_id','first_name','last_name','email','phone',
             'mobile','job_title','department','source','status','notes',
-            'birthday','address','city','ward',
+            'birthday','address','city','ward','avatar_url','created_at',
             'expected_revenue','win_probability','last_contact','stage_id',
             'pipeline_status', 'ttl1_completed', 'ttl1_data',
             'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
@@ -1037,6 +1075,7 @@ class ContactController {
         $isSaleRole = in_array($auth['role'] ?? '', ['sale', 'sales', 'consultant'], true);
         if ($isSaleRole) {
             unset($b['owner_id']); // Sales cannot arbitrarily reassign ownership, but can set project_id and campaign_id
+            unset($b['created_at']); // Only Admin/Manager/Director can modify created_at
         }
 
         foreach ($fields as $f) {
@@ -1701,6 +1740,10 @@ class ContactController {
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$contact) respond(404, null, 'Không tìm thấy liên hệ', false);
 
+        if (in_array($auth['role'], ['sale', 'sales', 'consultant'], true) && (int)$contact['owner_id'] !== (int)$auth['user_id']) {
+            respond(403, null, 'Bạn chỉ có quyền trả về Databank đối với khách hàng do chính bạn phụ trách!', false);
+        }
+
         if (($contact['source'] ?? '') === 'manual' || ($contact['source'] ?? '') === 'self') {
             respond(400, null, 'Lead do Sale tự tạo không liên kết với kho Databank và không được phép trả vào Databank!', false);
         }
@@ -1845,6 +1888,10 @@ class ContactController {
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$contact) respond(404, null, 'Không tìm thấy liên hệ', false);
 
+        if (in_array($auth['role'], ['sale', 'sales', 'consultant'], true) && (int)$contact['owner_id'] !== (int)$auth['user_id']) {
+            respond(403, null, 'Bạn chỉ có quyền báo Not Lead đối với khách hàng do chính bạn phụ trách!', false);
+        }
+
         // Check if contact is from databank
         $isFromDatabank = false;
         $srcLower = strtolower($contact['source'] ?? '');
@@ -1932,20 +1979,24 @@ class ContactController {
     }
 
     private function getScope(array $auth, string $module, string $action): string {
-        $permissionsJson = null;
-        $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
-        $stmtQ->execute([$auth['user_id']]);
-        $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
-        if ($resQ && !empty($resQ['permissions_json'])) {
-            $permissionsJson = json_decode($resQ['permissions_json'], true);
-        }
-
         if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
             return 'all';
         }
 
         if (in_array($auth['role'], ['sale', 'sales'], true) && ($module === 'deals' || $module === 'leads' || $module === 'contacts' || $module === 'customers')) {
             return $action === 'delete' ? 'none' : 'own';
+        }
+
+        $permissionsJson = null;
+        if (isset($auth['permissions']) && is_array($auth['permissions'])) {
+            $permissionsJson = $auth['permissions'];
+        } else {
+            $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+            $stmtQ->execute([$auth['user_id']]);
+            $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
+            if ($resQ && !empty($resQ['permissions_json'])) {
+                $permissionsJson = json_decode($resQ['permissions_json'], true);
+            }
         }
 
         if ($permissionsJson && isset($permissionsJson[$module][$action])) {
@@ -2021,7 +2072,7 @@ class ContactController {
         $stmtCheck = $this->db->prepare("SELECT owner_id, tenant_id FROM contacts WHERE id = ? AND deleted_at IS NULL");
         $stmtCheck->execute([$contactId]);
         $contact = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-        if (!$contact || $contact['tenant_id'] !== $auth['tenant_id']) {
+        if (!$contact || (int)$contact['tenant_id'] !== (int)$auth['tenant_id']) {
             respond(404, null, 'Không tìm thấy khách hàng', false);
         }
 
@@ -2069,15 +2120,23 @@ class ContactController {
             }
         }
 
+        // Enforce Role Matrix access check for Sales
+        if (in_array($auth['role'], ['sale', 'sales', 'consultant'], true)) {
+            $curUid = (int)$auth['user_id'];
+            if ($curUid !== $ownerId && !isset($helperUserIds[$curUid])) {
+                respond(403, null, 'Bạn không có quyền truy cập danh sách người hỗ trợ của khách hàng này', false);
+            }
+        }
+
         $helpers = [];
         if (!empty($helperUserIds)) {
-            $inClause = implode(',', array_keys($helperUserIds));
-            $stmtUsers = $this->db->query("SELECT id as user_id, full_name, username, role, avatar FROM users WHERE id IN ($inClause)");
+            $inClause = implode(',', array_map('intval', array_keys($helperUserIds)));
+            $stmtUsers = $this->db->query("SELECT id as user_id, full_name, username, role, avatar_url as avatar FROM users WHERE id IN ($inClause)");
             $helpers = $stmtUsers->fetchAll(PDO::FETCH_ASSOC) ?: [];
         }
 
         // Always include the owner at the top of the collaborators list
-        $stmtOwner = $this->db->prepare("SELECT id, full_name, username, role, avatar FROM users WHERE id = ?");
+        $stmtOwner = $this->db->prepare("SELECT id, full_name, username, role, avatar_url as avatar FROM users WHERE id = ?");
         $stmtOwner->execute([$ownerId]);
         $owner = $stmtOwner->fetch(PDO::FETCH_ASSOC);
 

@@ -211,11 +211,13 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     }
   };
 
+  const hasCooldowns = Object.values(roundCooldowns).some((cool: any) => cool && cool.on_cooldown && cool.remaining_seconds > 0);
+
   useEffect(() => {
-    const hasCooldowns = Object.values(roundCooldowns).some((cool: any) => cool && cool.on_cooldown && cool.remaining_seconds > 0);
-    if (!hasCooldowns) return;
+    if (!isActive || !hasCooldowns) return;
 
     const interval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
       setRoundCooldowns((prev: any) => {
         const next = { ...prev };
         let changed = false;
@@ -236,7 +238,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [roundCooldowns]);
+  }, [isActive, hasCooldowns]);
 
   const [searchUser, setSearchUser] = useState('');
   const [selectedUserFilter, setSelectedUserFilter] = useState<'all' | 'ready' | 'not_ready'>('all');
@@ -410,14 +412,22 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     }
   };
 
+  const latestRoundsReqRef = useRef(0);
+
   const fetchRounds = async () => {
+    const reqId = ++latestRoundsReqRef.current;
     try {
       const json = await fetchAPI(`get_rounds&date=${encodeURIComponent(dateFilter)}`);
+      if (reqId !== latestRoundsReqRef.current) return;
       if (json.success) setRounds(json.data);
     } catch (e: any) {
-      toast.error(t('Không thể tải dữ liệu: ') + e.message);
+      if (reqId === latestRoundsReqRef.current) {
+        toast.error(t('Không thể tải dữ liệu: ') + e.message);
+      }
     }
-    setLoading(false);
+    if (reqId === latestRoundsReqRef.current) {
+      setLoading(false);
+    }
   };
 
   const fetchAccounts = async () => {
@@ -448,26 +458,31 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   };
 
   useEffect(() => {
-    if (isActive) {
-      setRoundsPage(1);
-      fetchRounds();
+    if (!isActive) return;
+    const saved = localStorage.getItem('richland_global_date');
+    if (saved && saved !== dateFilter) {
+      setDateFilter(saved);
+      return;
     }
+    setRoundsPage(1);
+    fetchRounds();
   }, [dateFilter, isActive]);
 
+  const hasLoadedLookupsRef = useRef(false);
   useEffect(() => {
-    fetchConsultants();
-    fetchAccounts();
-    fetchProjects();
-    fetchCampaigns();
-  }, []);
-
-  useEffect(() => {
-    if (isActive) {
-      const saved = localStorage.getItem('richland_global_date');
-      if (saved && saved !== dateFilter) {
-        setDateFilter(saved);
-      }
-    }
+    if (!isActive || hasLoadedLookupsRef.current) return;
+    hasLoadedLookupsRef.current = true;
+    Promise.all([
+      fetchConsultants(),
+      fetchAccounts(),
+      fetchProjects(),
+      fetchCampaigns(),
+      fetchAPI('get_system_settings').then(res => {
+        if (res && res.success && res.data && res.data.lead_max_recall_attempts !== undefined) {
+          setSystemMaxAttempts(Number(res.data.lead_max_recall_attempts) || 2);
+        }
+      }).catch(() => {})
+    ]);
   }, [isActive]);
 
   useEffect(() => {
@@ -489,15 +504,6 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     window.addEventListener('lead-added', handleLeadAdded);
     return () => window.removeEventListener('lead-added', handleLeadAdded);
   }, [dateFilter, isActive]);
-
-  useEffect(() => {
-    if (!isActive) return;
-    fetchAPI('get_system_settings').then(res => {
-      if (res && res.success && res.data && res.data.lead_max_recall_attempts !== undefined) {
-        setSystemMaxAttempts(Number(res.data.lead_max_recall_attempts) || 2);
-      }
-    }).catch(() => {});
-  }, [isActive]);
 
   const openAddModal = () => {
     setEditingRound(null);

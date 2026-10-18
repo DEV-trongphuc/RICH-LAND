@@ -606,6 +606,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
   const [dupCheckLoading, setDupCheckLoading] = useState(false);
   const [dupCheckResult, setDupCheckResult] = useState<any>(null);
   const [heldLeadsSearch, setHeldLeadsSearch] = useState<string>('');
+  const [debouncedHeldSearch, setDebouncedHeldSearch] = useState<string>('');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedHeldSearch(heldLeadsSearch.trim());
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [heldLeadsSearch]);
   const [rounds, setRounds] = useState<any[]>([]);
 
   // Settings states
@@ -969,13 +976,17 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
     }
   };
 
+  const latestHeldReqRef = useRef(0);
+  const latestStatsReqRef = useRef(0);
+
   const fetchHeldLeads = async () => {
+    const reqId = ++latestHeldReqRef.current;
     setHeldLeadsLoading(true);
     try {
       const queryParams = new URLSearchParams();
       queryParams.set('page', String(currentPage));
       queryParams.set('pageSize', String(ITEMS_PER_PAGE));
-      if (heldLeadsSearch) queryParams.set('search', heldLeadsSearch);
+      if (debouncedHeldSearch) queryParams.set('search', debouncedHeldSearch);
       if (dateFilter) queryParams.set('date', dateFilter);
 
       let apiStatus = 'pending_approval';
@@ -985,6 +996,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       queryParams.set('status', apiStatus);
 
       const res = await fetchAPI(`get_held_leads&${queryParams.toString()}`);
+      if (reqId !== latestHeldReqRef.current) return;
       if (res.success) {
         const data = res.data || [];
         setHeldLeads(data);
@@ -997,22 +1009,30 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         }
       }
     } catch (e: any) {
-      toast.error(t('Lỗi tải dữ liệu AI Pre-screener: ') + e.message);
+      if (reqId === latestHeldReqRef.current) {
+        toast.error(t('Lỗi tải dữ liệu AI Pre-screener: ') + e.message);
+      }
     }
-    setHeldLeadsLoading(false);
+    if (reqId === latestHeldReqRef.current) {
+      setHeldLeadsLoading(false);
+    }
   };
 
   const fetchDashboardStats = async () => {
+    const reqId = ++latestStatsReqRef.current;
     setDashboardStatsLoading(true);
     try {
       const res = await fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}`);
+      if (reqId !== latestStatsReqRef.current) return;
       if (res.success) {
         setDashboardStats(res.data);
       }
     } catch (e: any) {
       console.error('Error fetching dashboard stats for AI pre-screener rate:', e);
     }
-    setDashboardStatsLoading(false);
+    if (reqId === latestStatsReqRef.current) {
+      setDashboardStatsLoading(false);
+    }
   };
 
   const refreshHeldLeadsAndStats = () => {
@@ -1221,13 +1241,19 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
     }
   }, [statsModalOpen, statsConsultant, statsDateMode, statsStartDate, statsEndDate]);
 
+  const hasLoadedLookupsRef = useRef(false);
   useEffect(() => {
-    fetchRounds();
-    fetchSettings();
-    fetchConsultants();
-  }, []);
+    if (!isActive || hasLoadedLookupsRef.current) return;
+    hasLoadedLookupsRef.current = true;
+    Promise.all([
+      fetchRounds(),
+      fetchSettings(),
+      fetchConsultants()
+    ]);
+  }, [isActive]);
 
   const prevTabRef = useRef(activeTab);
+  const prevSearchRef = useRef(debouncedHeldSearch);
 
   useEffect(() => {
     if (isActive && activeTab !== 'queue') {
@@ -1236,19 +1262,38 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
   }, [activeTab, isActive]);
 
   useEffect(() => {
-    if (isActive) {
-      if (prevTabRef.current !== activeTab) {
-        prevTabRef.current = activeTab;
-        const pageInParams = Number(searchParams.get('page') || '1');
-        if (pageInParams !== 1) {
-          updateParams('page', '1');
-          return;
-        }
-      }
-      fetchHeldLeads();
-      fetchDashboardStats();
+    if (!isActive) return;
+    const saved = localStorage.getItem('richland_global_date');
+    if (saved && searchParams.get('date') !== saved) {
+      return;
     }
-  }, [searchParams, heldLeadsSearch, isActive, activeTab]);
+    if (prevTabRef.current !== activeTab) {
+      prevTabRef.current = activeTab;
+      const pageInParams = Number(searchParams.get('page') || '1');
+      if (pageInParams !== 1) {
+        updateParams('page', '1');
+        return;
+      }
+    }
+    if (prevSearchRef.current !== debouncedHeldSearch) {
+      prevSearchRef.current = debouncedHeldSearch;
+      const pageInParams = Number(searchParams.get('page') || '1');
+      if (pageInParams !== 1) {
+        updateParams('page', '1');
+        return;
+      }
+    }
+    fetchHeldLeads();
+  }, [searchParams, debouncedHeldSearch, isActive, activeTab]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const saved = localStorage.getItem('richland_global_date');
+    if (saved && searchParams.get('date') !== saved) {
+      return;
+    }
+    fetchDashboardStats();
+  }, [dateFilter, isActive]);
 
   useEffect(() => {
     if (isActive && searchParams.get('open_tokens') === 'true') {
@@ -1256,12 +1301,6 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       updateParams('open_tokens', '');
     }
   }, [isActive, searchParams]);
-
-  useEffect(() => {
-    if (searchParams.get('page') && searchParams.get('page') !== '1') {
-      updateParams('page', '1');
-    }
-  }, [heldLeadsSearch]);
 
   // ── Lead Action Handlers ──
   const handleOpenApproveHeldLead = async (lead: any) => {

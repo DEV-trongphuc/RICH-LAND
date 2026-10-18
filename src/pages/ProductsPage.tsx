@@ -39,8 +39,10 @@ export const ProductsPage: React.FC = () => {
 
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const prodReqIdRef = React.useRef(0);
 
   const fetchProducts = () => {
+    const reqId = ++prodReqIdRef.current;
     setLoading(true);
     const params = {
       page,
@@ -50,6 +52,7 @@ export const ProductsPage: React.FC = () => {
     };
     api.get('/products', { params })
       .then(r => { 
+        if (reqId !== prodReqIdRef.current) return;
         const data = r.data.data;
         if (Array.isArray(data)) {
           setProducts(data);
@@ -60,11 +63,16 @@ export const ProductsPage: React.FC = () => {
         }
       })
       .catch(() => {
+        if (reqId !== prodReqIdRef.current) return;
         setProducts([]);
         setTotal(0);
         addToast('Không thể tải danh sách sản phẩm', 'error');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (reqId === prodReqIdRef.current) {
+          setLoading(false);
+        }
+      });
   };
 
   React.useEffect(() => {
@@ -115,7 +123,8 @@ export const ProductsPage: React.FC = () => {
     const params = new URLSearchParams();
     params.set('type', 'product');
     params.set('token', localStorage.getItem('token') || '');
-    if (search) params.set('search', search);
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (categoryFilter) params.set('category_id', String(categoryFilter));
     window.open(`${api.defaults.baseURL}/export?${params.toString()}`, '_blank');
     addToast('Đang xuất danh sách sản phẩm theo bộ lọc hiện tại...', 'info');
   };
@@ -157,7 +166,7 @@ export const ProductsPage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.8 }} 
                 animate={{ opacity: 1, scale: 1 }} 
                 exit={{ opacity: 0, scale: 0.8 }}
-                onClick={() => setSearch('')} 
+                onClick={() => { setSearch(''); setPage(1); }} 
                 className="text-muted hover:text-danger p-1"
                 title="Xóa tìm kiếm"
               >
@@ -186,8 +195,6 @@ export const ProductsPage: React.FC = () => {
                   fetchProducts();
                 } catch (err: any) { 
                   addToast(err.response?.data?.message || 'Lỗi khi xóa hàng loạt', 'error'); 
-                  setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
-                  setSelectedIds([]);
                 }
               }
             );
@@ -265,8 +272,7 @@ export const ProductsPage: React.FC = () => {
                               addToast('Đã xóa sản phẩm thành công', 'success');
                               fetchProducts();
                             } catch (e: any) { 
-                              addToast('Lỗi khi xóa (Demo Mode)', 'error'); 
-                              setProducts(prev => prev.filter(x => x.id !== p.id));
+                              addToast(e.response?.data?.message || 'Lỗi khi xóa sản phẩm', 'error'); 
                             }
                           }
                         );

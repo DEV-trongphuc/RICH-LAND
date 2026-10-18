@@ -20,6 +20,7 @@ import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import api from '../api/axios';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useAuth } from '../contexts/AuthContext';
+import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 10;
 
@@ -66,6 +67,7 @@ export const ExpensesPage: React.FC = () => {
   const [period, setPeriod] = useState<Period>(location.state?.period || 'this_month');
   const [dateRange, setDateRange] = useState<DateRange>(location.state?.dateRange || getDateRange('this_month'));
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search.trim(), 300);
   const [catFilter, setCatFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -104,7 +106,10 @@ export const ExpensesPage: React.FC = () => {
 
   const [summary, setSummary] = useState<any>({ total: 0, approved: 0 });
 
+  const expReqIdRef = React.useRef(0);
+
   const fetchExpenses = useCallback(async () => {
+    const reqId = ++expReqIdRef.current;
     setLoading(true);
     try {
       const params: any = { 
@@ -114,21 +119,25 @@ export const ExpensesPage: React.FC = () => {
         to: dateRange.to, 
         status: statusFilter,
         category: catFilter,
-        search: search
+        search: debouncedSearch
       };
       const r = await api.get('/expenses', { params });
+      if (reqId !== expReqIdRef.current) return;
       const data = r.data.data;
       setItems(data.items || []);
       setTotal(data.total || 0);
       setSummary(data.summary || { total: 0, approved: 0 });
     } catch (e: any) {
+      if (reqId !== expReqIdRef.current) return;
       setItems([]);
       setTotal(0);
       addToast('Không thể tải danh sách chi phí', 'error');
     } finally {
-      setLoading(false);
+      if (reqId === expReqIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [page, dateRange, statusFilter, catFilter, search]);
+  }, [page, dateRange, statusFilter, catFilter, debouncedSearch]);
 
   // Fetch users & contacts for dropdowns
   useEffect(() => {
@@ -142,10 +151,17 @@ export const ExpensesPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
-    api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => {});
-    api.get('/suppliers').then(r => { const d = r.data.data; setSuppliers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
-  }, []);
+    if (!showModal) return;
+    if (users.length === 0) {
+      api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
+    }
+    if (contacts.length === 0) {
+      api.get('/contacts?limit=500&minimal=1').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => {});
+    }
+    if (suppliers.length === 0) {
+      api.get('/suppliers').then(r => { const d = r.data.data; setSuppliers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
+    }
+  }, [showModal, users.length, contacts.length, suppliers.length]);
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 

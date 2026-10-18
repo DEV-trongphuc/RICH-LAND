@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -16,6 +16,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { useAuthStore } from '../store/authStore';
+import { useDebounce } from '../hooks/useDebounce';
 
 import { useUploadProgress } from '../contexts/UploadProgressContext';
 
@@ -35,10 +36,12 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm.trim(), 300);
   const [activeTab, setActiveTab] = useState<'shared' | 'personal'>('shared');
   const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [category, setCategory] = useState('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileReqIdRef = useRef(0);
 
   // New States for Category Management
   const [categories, setCategories] = useState<any[]>([
@@ -116,7 +119,6 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
 
   useEffect(() => {
     fetchProjects();
-    fetchCampaigns();
     if (embedProjectId) {
       setSelectedProjectId(embedProjectId);
       setUploadFormData(prev => ({ ...prev, project_id: embedProjectId }));
@@ -129,7 +131,14 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
     }
   }, [embedProjectId]);
 
+  useEffect(() => {
+    if ((showUploadModal || showEditModal) && campaigns.length === 0) {
+      fetchCampaigns();
+    }
+  }, [showUploadModal, showEditModal, campaigns.length]);
+
   const fetchFiles = async () => {
+    const reqId = ++fileReqIdRef.current;
     setLoading(true);
     try {
       const res = await api.get('/cloud-files', { 
@@ -137,11 +146,12 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
           page, 
           limit: 15, 
           category: category === 'all' ? '' : category,
-          search: searchTerm,
+          search: debouncedSearch,
           project_id: selectedProjectId === 'all' ? '' : selectedProjectId,
           visibility: activeTab
         } 
       });
+      if (reqId !== fileReqIdRef.current) return;
       const data = res.data.data;
       const allFiles = data.items || [];
       const generalFiles = allFiles.filter((f: any) => {
@@ -153,17 +163,18 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
       setTotal(data.total || 0);
       setTotalSizeBytes(data.total_size_bytes || 0);
     } catch (err: any) {
+      if (reqId !== fileReqIdRef.current) return;
       addToast('Lỗi khi tải danh sách tệp tin', 'error');
     } finally {
-      setLoading(false);
+      if (reqId === fileReqIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
-  // fetchFiles with auto-reset page on filter change
   useEffect(() => {
-    setPage(1);
     fetchFiles();
-  }, [category, activeTab, selectedProjectId, searchTerm]);
+  }, [page, category, activeTab, selectedProjectId, debouncedSearch]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -344,25 +355,29 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
   const currentCategoryObj = categories.find(c => c.label === currentPathStr);
   const currentCategoryId = currentCategoryObj ? currentCategoryObj.id : 'all';
 
-  const displayFolders = searchTerm ? [] : categories.filter(c => {
-    if (c.id === 'all') return false;
-    const label = c.label;
-    if (currentPath.length === 0) {
-      return !label.includes('/');
-    } else {
-      return label.startsWith(currentPathStr + '/') && label.slice(currentPathStr.length + 1).split('/').length === 1;
-    }
-  });
+  const displayFolders = useMemo(() => {
+    if (searchTerm) return [];
+    return categories.filter(c => {
+      if (c.id === 'all') return false;
+      const label = c.label;
+      if (currentPath.length === 0) {
+        return !label.includes('/');
+      } else {
+        return label.startsWith(currentPathStr + '/') && label.slice(currentPathStr.length + 1).split('/').length === 1;
+      }
+    });
+  }, [searchTerm, categories, currentPath.length, currentPathStr]);
 
-  const displayFiles = searchTerm 
-    ? files 
-    : files.filter(f => {
-        if (currentPath.length === 0) {
-          return !f.category || f.category === 'general' || f.category === 'all' || !categories.some(c => c.id === f.category);
-        } else {
-          return f.category === currentCategoryId;
-        }
-      });
+  const displayFiles = useMemo(() => {
+    if (searchTerm) return files;
+    return files.filter(f => {
+      if (currentPath.length === 0) {
+        return !f.category || f.category === 'general' || f.category === 'all' || !categories.some(c => c.id === f.category);
+      } else {
+        return f.category === currentCategoryId;
+      }
+    });
+  }, [searchTerm, files, currentPath.length, categories, currentCategoryId]);
 
   const getMimeIcon = (mime: string) => {
     if (!mime) return <File size={24} />;
@@ -431,7 +446,7 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
                    alignItems: 'center',
                    gap: '6px'
                  }}
-                 onClick={() => { setActiveTab('shared'); setCurrentPath([]); setCategory('all'); }}
+                 onClick={() => { setActiveTab('shared'); setCurrentPath([]); setCategory('all'); setPage(1); }}
               >
                 {activeTab === 'shared' && (
                   <motion.div 
@@ -473,7 +488,7 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
                    alignItems: 'center',
                    gap: '6px'
                  }}
-                 onClick={() => { setActiveTab('personal'); setCurrentPath([]); setCategory('all'); }}
+                 onClick={() => { setActiveTab('personal'); setCurrentPath([]); setCategory('all'); setPage(1); }}
               >
                 {activeTab === 'personal' && (
                   <motion.div 
@@ -586,7 +601,7 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', flex: 1, paddingBottom: '2px' }}>
                 <button 
-                  onClick={() => { setCurrentPath([]); setCategory('all'); }}
+                  onClick={() => { setCurrentPath([]); setCategory('all'); setPage(1); }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 800, color: currentPath.length === 0 ? 'var(--color-primary)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
                 >
                   <HardDrive size={16} /> Gốc
@@ -601,6 +616,7 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
                         const partialLabel = newPath.join('/');
                         const catObj = categories.find(c => c.label === partialLabel);
                         setCategory(catObj ? catObj.id : 'all');
+                        setPage(1);
                       }}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 800, color: idx === currentPath.length - 1 ? 'var(--color-primary)' : 'var(--color-text-muted)', padding: 0 }}
                     >
@@ -751,6 +767,7 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
                                   const nextPath = [...currentPath, displayLabel];
                                   setCurrentPath(nextPath);
                                   setCategory(sub.id);
+                                  setPage(1);
                                 }}
                               >
                                 <div style={{ color: '#f59e0b', flexShrink: 0 }}>
@@ -1097,6 +1114,7 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
                                   const nextPath = [...currentPath, displayLabel];
                                   setCurrentPath(nextPath);
                                   setCategory(sub.id);
+                                  setPage(1);
                                 }}
                               >
                                 <td data-label="Tên tài liệu" style={{ padding: '1.25rem 2rem' }}>

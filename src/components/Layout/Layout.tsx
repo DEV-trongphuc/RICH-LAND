@@ -118,13 +118,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   // Global Check-In State
   const [todayCheckIn, setTodayCheckIn] = useState<any>(null);
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [checkInReason, setCheckInReason] = useState('');
-  const [checkInSubmitting, setCheckInSubmitting] = useState(false);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState('');
-  const videoRef = React.useRef<HTMLVideoElement>(null);
   const [consultantProfile, setConsultantProfile] = useState<any>(null);
   const [dismissTelegramReminder, setDismissTelegramReminder] = useState(false);
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
@@ -139,6 +132,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       const res = await fetchAPI('check-ins?today_only=1');
       if (res.success) {
         setTodayCheckIn(res.data);
+        window.dispatchEvent(new CustomEvent('today-checkin-synced', { detail: res.data }));
       }
     } catch (err) {
       console.error("Error loading check-in status:", err);
@@ -157,171 +151,30 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const startCamera = async () => {
-    setCapturedImage(null);
-    setCameraError('');
-    setIsCameraActive(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 480, height: 480 }
-      });
-      setCameraStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().catch(() => {});
-      }
-    } catch (err: any) {
-      console.error(err);
-      setCameraError(t('Không thể truy cập camera. Vui lòng cấp quyền.'));
-      setIsCameraActive(false);
-    }
-  };
-
-  const stopCamera = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-      setCameraStream(null);
-    }
-    setIsCameraActive(false);
-  };
-
-  const capturePhoto = () => {
-    if (videoRef.current) {
-      const video = videoRef.current;
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg');
-        setCapturedImage(dataUrl);
-        stopCamera();
-      }
-    }
-  };
-
-  const checkIsLate = () => {
-    const today = new Date();
-    const dayKey = today.getDay() === 0 ? '7' : String(today.getDay());
-    let workStart = consultantProfile?.work_start_time || '08:00';
-    if (consultantProfile?.work_schedule && consultantProfile.work_schedule[dayKey]?.start) {
-      workStart = consultantProfile.work_schedule[dayKey].start;
-    } else if (consultantProfile?.today_work_start_time) {
-      workStart = consultantProfile.today_work_start_time;
-    }
-    const curHM = today.toTimeString().substring(0, 5); 
-    return curHM > workStart;
-  };
-
-  const isLate = checkIsLate();
-
-  const handleGlobalCheckIn = async () => {
-    if (checkInSubmitting) return;
-    setCheckInSubmitting(true);
-    let selfieUrl = '';
-    try {
-      if (capturedImage) {
-        const compressToWebP = (dataUrl: string): Promise<Blob> => {
-          return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.src = dataUrl;
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              canvas.width = img.width;
-              canvas.height = img.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.drawImage(img, 0, 0);
-                canvas.toBlob((b) => {
-                  if (b) resolve(b);
-                  else reject(new Error('WebP conversion failed'));
-                }, 'image/webp', 0.8);
-              } else {
-                reject(new Error('Canvas context error'));
-              }
-            };
-            img.onerror = () => reject(new Error('Image loading error'));
-          });
-        };
-
-        const webpBlob = await compressToWebP(capturedImage);
-        const file = new File([webpBlob], 'selfie.webp', { type: 'image/webp' });
-        const formData = new FormData();
-        formData.append('file', file);
-        const uploadRes = await fetchAPI('upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (uploadRes.success && uploadRes.data?.url) {
-          selfieUrl = uploadRes.data.url;
-        } else {
-          toast.error(uploadRes.message || t('Lỗi tải ảnh lên'));
-          setCheckInSubmitting(false);
-          return;
-        }
-      } else {
-        toast.error(t('Vui lòng chụp hình selfie.'));
-        setCheckInSubmitting(false);
-        return;
-      }
-
-      if (isLate && !checkInReason.trim()) {
-        toast.error(t('Bạn đi trễ. Vui lòng điền lý do để quản lý duyệt.'));
-        setCheckInSubmitting(false);
-        return;
-      }
-
-      const res = await fetchAPI('check-ins', {
-        method: 'POST',
-        body: JSON.stringify({
-          selfie_url: selfieUrl,
-          reason: isLate ? checkInReason : null
-        })
-      });
-
-      if (res.success) {
-        toast.success(res.message || t('Check-in thành công!'));
-        stopCamera();
-        setCheckInModalOpen(false);
-        setCapturedImage(null);
-        setCheckInReason('');
-        loadCheckInStatus();
-        window.dispatchEvent(new CustomEvent('checkin-status-changed'));
-      } else {
-        toast.error(res.message || t('Check-in thất bại'));
-      }
-    } catch (err: any) {
-      toast.error(t('Lỗi check-in: ') + err.message);
-    }
-    setCheckInSubmitting(false);
-  };
-
   useEffect(() => {
-    loadCheckInStatus();
     loadConsultantProfile();
     const handleSync = () => loadCheckInStatus();
-    const handleTrigger = () => setCheckInModalOpen(true);
+    const handleSyncedData = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setTodayCheckIn(customEvent.detail);
+    };
+    const handleTrigger = () => {
+      if (!todayCheckIn) {
+        loadCheckInStatus();
+      }
+      setCheckInModalOpen(true);
+    };
     window.addEventListener('checkin-status-changed', handleSync);
+    window.addEventListener('today-checkin-synced', handleSyncedData);
     window.addEventListener('trigger-checkin-modal', handleTrigger);
     return () => {
       window.removeEventListener('checkin-status-changed', handleSync);
+      window.removeEventListener('today-checkin-synced', handleSyncedData);
       window.removeEventListener('trigger-checkin-modal', handleTrigger);
     };
   }, [user, isSales]);
 
   // Real-time updates handled cleanly by standard polling and event listeners without persistent SSE sockets
-
-  useEffect(() => {
-    if (checkInModalOpen) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-    return () => {
-      stopCamera();
-    };
-  }, [checkInModalOpen]);
 
   // Hover states for notification buttons
   const [isTicketViewHovered, setIsTicketViewHovered] = useState(false);
@@ -2236,8 +2089,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <div className="mobile-bottom-nav">
         {/* 1. Dashboard */}
         <button 
-          className={`mobile-bottom-nav-item ${(location.pathname === '/' || location.pathname === '/sale-portal') ? 'active' : ''}`}
-          onClick={() => navigate(isSales ? '/sale-portal' : '/')}
+          className={`mobile-bottom-nav-item ${(location.pathname === '/' || location.pathname === '/dashboard') ? 'active' : ''}`}
+          onClick={() => navigate('/dashboard')}
         >
           <Home size={20} />
           <span className="mobile-bottom-nav-item-label">{t('Dashboard')}</span>

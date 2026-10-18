@@ -86,9 +86,13 @@ class CheckInController {
         $toDateParam = !empty($_GET['to']) ? $_GET['to'] : (!empty($_GET['end_date']) ? $_GET['end_date'] : '');
 
         if (isset($_GET['month']) && !empty($_GET['month'])) {
-            $sql .= " AND YEAR(c.check_in_date) = ? AND MONTH(c.check_in_date) = ?";
-            $params[] = (int)($_GET['year'] ?? date('Y'));
-            $params[] = (int)$_GET['month'];
+            $yearInt = (int)($_GET['year'] ?? date('Y'));
+            $monthInt = max(1, min(12, (int)$_GET['month']));
+            $monthStart = sprintf('%04d-%02d-01', $yearInt, $monthInt);
+            $monthEnd = date('Y-m-t', strtotime($monthStart));
+            $sql .= " AND c.check_in_date BETWEEN ? AND ?";
+            $params[] = $monthStart;
+            $params[] = $monthEnd;
         } elseif (!empty($fromDateParam) && !empty($toDateParam)) {
             $sql .= " AND c.check_in_date BETWEEN ? AND ?";
             $params[] = $fromDateParam;
@@ -103,7 +107,8 @@ class CheckInController {
             $params[] = $_GET['status'];
         }
 
-        $sql .= " ORDER BY c.check_in_date DESC, c.check_in_time DESC";
+        $limit = isset($_GET['limit']) ? min(5000, max(10, (int)$_GET['limit'])) : 2000;
+        $sql .= " ORDER BY c.check_in_date DESC, c.check_in_time DESC LIMIT $limit";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -146,18 +151,19 @@ class CheckInController {
 
             if (isset($_GET['month']) && !empty($_GET['month'])) {
                 $year = (int)($_GET['year'] ?? date('Y'));
-                $month = (int)$_GET['month'];
+                $month = max(1, min(12, (int)$_GET['month']));
+                $startDate = sprintf('%04d-%02d-01', $year, $month);
+                $endDate = date('Y-m-t', strtotime($startDate));
 
                 // 1. Night shifts
                 $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                    COALESCE(a.name, u.full_name) as user_name, '' as holiday_name, 
-                                    COALESCE(a.avatar, u.avatar_url) as user_avatar, 
-                                    COALESCE(a.email, u.email) as user_email 
+                                    u.full_name as user_name, '' as holiday_name, 
+                                    u.avatar_url as user_avatar, 
+                                    u.email as user_email 
                              FROM night_shift_registrations r 
-                             LEFT JOIN accounts a ON r.user_id = a.id
                              LEFT JOIN users u ON r.user_id = u.id 
-                             WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
-                $nightParams = [$year, $month];
+                             WHERE r.shift_date BETWEEN ? AND ?";
+                $nightParams = [$startDate, $endDate];
                 if ($userIdFilter !== null) {
                     $nightSql .= " AND r.user_id = ?";
                     $nightParams[] = $userIdFilter;
@@ -168,14 +174,13 @@ class CheckInController {
 
                 // 2. Weekend shifts
                 $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                      COALESCE(a.name, u.full_name) as user_name, '' as holiday_name, 
-                                      COALESCE(a.avatar, u.avatar_url) as user_avatar, 
-                                      COALESCE(a.email, u.email) as user_email 
+                                      u.full_name as user_name, '' as holiday_name, 
+                                      u.avatar_url as user_avatar, 
+                                      u.email as user_email 
                                FROM weekend_shift_registrations r 
-                               LEFT JOIN accounts a ON r.user_id = a.id
                                LEFT JOIN users u ON r.user_id = u.id 
-                               WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
-                $weekendParams = [$year, $month];
+                               WHERE r.shift_date BETWEEN ? AND ?";
+                $weekendParams = [$startDate, $endDate];
                 if ($userIdFilter !== null) {
                     $weekendSql .= " AND r.user_id = ?";
                     $weekendParams[] = $userIdFilter;
@@ -186,14 +191,13 @@ class CheckInController {
 
                 // 3. Holiday shifts
                 $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                      COALESCE(a.name, u.full_name) as user_name, r.holiday_name, 
-                                      COALESCE(a.avatar, u.avatar_url) as user_avatar, 
-                                      COALESCE(a.email, u.email) as user_email 
+                                      u.full_name as user_name, r.holiday_name, 
+                                      u.avatar_url as user_avatar, 
+                                      u.email as user_email 
                                FROM holiday_shift_registrations r 
-                               LEFT JOIN accounts a ON r.user_id = a.id
                                LEFT JOIN users u ON r.user_id = u.id 
-                               WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
-                $holidayParams = [$year, $month];
+                               WHERE r.shift_date BETWEEN ? AND ?";
+                $holidayParams = [$startDate, $endDate];
                 if ($userIdFilter !== null) {
                     $holidaySql .= " AND r.user_id = ?";
                     $holidayParams[] = $userIdFilter;
@@ -208,11 +212,10 @@ class CheckInController {
 
                 // 1. Night shifts
                 $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                    COALESCE(a.name, u.full_name) as user_name, '' as holiday_name, 
-                                    COALESCE(a.avatar, u.avatar_url) as user_avatar, 
-                                    COALESCE(a.email, u.email) as user_email 
+                                    u.full_name as user_name, '' as holiday_name, 
+                                    u.avatar_url as user_avatar, 
+                                    u.email as user_email 
                              FROM night_shift_registrations r 
-                             LEFT JOIN accounts a ON r.user_id = a.id
                              LEFT JOIN users u ON r.user_id = u.id 
                              WHERE r.shift_date BETWEEN ? AND ?";
                 $nightParams = [$from, $to];
@@ -226,11 +229,10 @@ class CheckInController {
 
                 // 2. Weekend shifts
                 $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                      COALESCE(a.name, u.full_name) as user_name, '' as holiday_name, 
-                                      COALESCE(a.avatar, u.avatar_url) as user_avatar, 
-                                      COALESCE(a.email, u.email) as user_email 
+                                      u.full_name as user_name, '' as holiday_name, 
+                                      u.avatar_url as user_avatar, 
+                                      u.email as user_email 
                                FROM weekend_shift_registrations r 
-                               LEFT JOIN accounts a ON r.user_id = a.id
                                LEFT JOIN users u ON r.user_id = u.id 
                                WHERE r.shift_date BETWEEN ? AND ?";
                 $weekendParams = [$from, $to];
@@ -244,11 +246,10 @@ class CheckInController {
 
                 // 3. Holiday shifts
                 $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                      COALESCE(a.name, u.full_name) as user_name, r.holiday_name, 
-                                      COALESCE(a.avatar, u.avatar_url) as user_avatar, 
-                                      COALESCE(a.email, u.email) as user_email 
+                                      u.full_name as user_name, r.holiday_name, 
+                                      u.avatar_url as user_avatar, 
+                                      u.email as user_email 
                                FROM holiday_shift_registrations r 
-                               LEFT JOIN accounts a ON r.user_id = a.id
                                LEFT JOIN users u ON r.user_id = u.id 
                                WHERE r.shift_date BETWEEN ? AND ?";
                 $holidayParams = [$from, $to];
@@ -396,11 +397,29 @@ class CheckInController {
         }
 
         if (!$isSupplementary) {
-            $isValidSelfie = !empty($selfieUrl) && (
+            if (strpos($selfieUrl, 'data:image/') === 0) {
+                if (preg_match('/^data:image\/(\w+);base64,(.+)$/s', $selfieUrl, $matches)) {
+                    $imgExt = strtolower($matches[1]);
+                    if ($imgExt === 'jpeg') $imgExt = 'jpg';
+                    if (!in_array($imgExt, ['jpg', 'png', 'webp', 'gif'], true)) $imgExt = 'jpg';
+                    $decoded = base64_decode($matches[2], true);
+                    if ($decoded !== false && strlen($decoded) <= 10 * 1024 * 1024) {
+                        $checkInDir = UPLOAD_DIR . '/checkins';
+                        if (!is_dir($checkInDir)) {
+                            mkdir($checkInDir, 0755, true);
+                        }
+                        $fileName = 'checkin_' . $uid . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $imgExt;
+                        $fullPath = $checkInDir . '/' . $fileName;
+                        if (file_put_contents($fullPath, $decoded) !== false) {
+                            $selfieUrl = 'uploads/checkins/' . $fileName;
+                        }
+                    }
+                }
+            }
+            $isValidSelfie = !empty($selfieUrl) && strpos($selfieUrl, 'data:image/') !== 0 && (
                 filter_var($selfieUrl, FILTER_VALIDATE_URL) !== false ||
                 strpos($selfieUrl, 'uploads/') === 0 ||
                 strpos($selfieUrl, '/uploads/') === 0 ||
-                strpos($selfieUrl, 'data:image/') === 0 ||
                 preg_match('#^[a-zA-Z0-9_\-/\.]+\.(jpg|jpeg|png|webp|gif|svg)$#i', $selfieUrl)
             );
             if (!$isValidSelfie) {

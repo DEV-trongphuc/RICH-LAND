@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { X } from 'lucide-react';
 import styles from './CustomModal.module.css';
 
@@ -37,6 +37,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   centeredOnMobile = false
 }) => {
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+  const dragControls = useDragControls();
 
   // Prevent body scroll and handle mobile resize only when modal is active
   useEffect(() => {
@@ -94,6 +95,8 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
   const dragProps = isBottomSheet ? {
     drag: 'y' as const,
+    dragControls,
+    dragListener: false,
     dragDirectionLock: true,
     dragConstraints: { top: 0 },
     dragElastic: { top: 0.05, bottom: 0.65 },
@@ -103,6 +106,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
       }
     }
   } : {};
+
+  const handleDragStart = (e: React.PointerEvent) => {
+    if (isBottomSheet) {
+      dragControls.start(e);
+    }
+  };
 
   const overlayClass = `${styles.overlay} ${fullScreenOnMobile ? styles.fullscreenOverlay : ''} ${centeredOnMobile ? styles.centeredMobileOverlay : ''}`;
   const modalClass = `${styles.modal} ${fullScreenOnMobile ? styles.fullScreenMobile : ''} ${centeredOnMobile ? styles.centeredMobileModal : ''} ${modalClassName || ''}`;
@@ -163,11 +172,19 @@ export const CustomModal: React.FC<CustomModalProps> = ({
               {...motionProps}
               {...dragProps}
             >
-              <div className={styles.dragHandle} />
+              <div
+                className={styles.dragHandle}
+                onPointerDown={handleDragStart}
+                style={{ touchAction: 'none', cursor: isBottomSheet ? 'grab' : undefined }}
+              />
               {title && (
-                <div className={styles.header}>
+                <div
+                  className={styles.header}
+                  onPointerDown={handleDragStart}
+                  style={{ touchAction: isBottomSheet ? 'none' : undefined }}
+                >
                   <h3 className={styles.title}>{title}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onPointerDown={(e) => e.stopPropagation()}>
                     {headerAction}
                     {showCloseIcon && (
                       <button className={styles.closeBtn} onClick={onClose} aria-label="Close">

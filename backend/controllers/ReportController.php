@@ -189,15 +189,8 @@ class ReportController
         $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? $dealFilterSimple");
         $sContacts->execute(array_merge([$tid, $fromTs, $toTs], $dealParams));
 
-        // 1. Calculate Inventory Loss Value (EXPORT_INTERNAL)
-        $stmtLoss = $this->db->prepare("
-            SELECT SUM(ABS(l.qty_change) * b.import_price) as loss_value
-            FROM inventory_logs l
-            JOIN batches b ON l.batch_id = b.id
-            WHERE l.tenant_id = ? AND l.action_type = 'EXPORT_INTERNAL' AND l.created_at BETWEEN ? AND ?
-        ");
-        $stmtLoss->execute([$tid, $from . ' 00:00:00', $to . ' 23:59:59']);
-        $lossValue = (float)$stmtLoss->fetchColumn();
+        // 1. Inventory Loss Value (Real Estate CRM does not use physical batches/inventory_logs)
+        $lossValue = 0.0;
         
         // Let's refine the summary
         $totalRev = array_reduce($byMonth, fn($acc, $m) => $acc + $m['revenue'], 0);
@@ -266,25 +259,38 @@ class ReportController
 
         $stmt = $this->db->prepare("
             SELECT ps.name as stage, ps.color, 
-                   (
-                      (SELECT COUNT(*) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = ?) AND d.deleted_at IS NULL AND d.tenant_id = ? AND d.created_at BETWEEN ? AND ? $dealFilter) +
-                      (SELECT COUNT(*) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = ?) AND c.deleted_at IS NULL AND c.tenant_id = ? AND c.created_at BETWEEN ? AND ? $contactFilter) +
-                      (SELECT COUNT(*) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = ?) AND cp.deleted_at IS NULL AND cp.tenant_id = ? AND cp.created_at BETWEEN ? AND ? $companyFilter)
-                   ) as count,
-                   (
-                      (SELECT COALESCE(SUM(value),0) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = ?) AND d.deleted_at IS NULL AND d.tenant_id = ? AND d.created_at BETWEEN ? AND ? $dealFilter) +
-                      (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = ?) AND c.deleted_at IS NULL AND c.tenant_id = ? AND c.created_at BETWEEN ? AND ? $contactFilter) +
-                      (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = ?) AND cp.deleted_at IS NULL AND cp.tenant_id = ? AND cp.created_at BETWEEN ? AND ? $companyFilter)
-                   ) as total_value
+                   (COALESCE(d_agg.cnt, 0) + COALESCE(c_agg.cnt, 0) + COALESCE(cp_agg.cnt, 0)) as count,
+                   (COALESCE(d_agg.val, 0) + COALESCE(c_agg.val, 0) + COALESCE(cp_agg.val, 0)) as total_value
             FROM pipeline_stages ps 
+            LEFT JOIN (
+                SELECT CASE WHEN d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0' THEN ? ELSE d.stage_id END as eff_stage_id,
+                       COUNT(*) as cnt,
+                       COALESCE(SUM(d.value), 0) as val
+                FROM deals d
+                WHERE d.deleted_at IS NULL AND d.tenant_id = ? AND d.created_at BETWEEN ? AND ? $dealFilter
+                GROUP BY eff_stage_id
+            ) d_agg ON d_agg.eff_stage_id = ps.id
+            LEFT JOIN (
+                SELECT CASE WHEN c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0' THEN ? ELSE c.stage_id END as eff_stage_id,
+                       COUNT(*) as cnt,
+                       COALESCE(SUM(c.expected_revenue), 0) as val
+                FROM contacts c
+                WHERE c.deleted_at IS NULL AND c.tenant_id = ? AND c.created_at BETWEEN ? AND ? $contactFilter
+                GROUP BY eff_stage_id
+            ) c_agg ON c_agg.eff_stage_id = ps.id
+            LEFT JOIN (
+                SELECT CASE WHEN cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0' THEN ? ELSE cp.stage_id END as eff_stage_id,
+                       COUNT(*) as cnt,
+                       COALESCE(SUM(cp.expected_revenue), 0) as val
+                FROM companies cp
+                WHERE cp.deleted_at IS NULL AND cp.tenant_id = ? AND cp.created_at BETWEEN ? AND ? $companyFilter
+                GROUP BY eff_stage_id
+            ) cp_agg ON cp_agg.eff_stage_id = ps.id
             WHERE ps.tenant_id = ?
-            GROUP BY ps.id ORDER BY ps.order_index
+            ORDER BY ps.order_index
         ");
 
         $p = array_merge(
-            [$firstStageId, $tid, $from, $to], $dealParams,
-            [$firstStageId, $tid, $from, $to], $contactParams,
-            [$firstStageId, $tid, $from, $to], $companyParams,
             [$firstStageId, $tid, $from, $to], $dealParams,
             [$firstStageId, $tid, $from, $to], $contactParams,
             [$firstStageId, $tid, $from, $to], $companyParams,
@@ -504,41 +510,28 @@ class ReportController
     {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem báo cáo', false);
         $tid = $auth['tenant_id'];
-        
-        // 1. Total Inventory Value
-        $stmtVal = $this->db->prepare("SELECT SUM(current_qty * import_price) FROM batches WHERE tenant_id = ? AND status = 'active'");
-        $stmtVal->execute([$tid]);
-        $totalValue = (float)$stmtVal->fetchColumn();
 
-        // 2. Batch Status Counts (Using product-specific min_stock_level)
-        $stmtStats = $this->db->prepare("
+        $stmtProjects = $this->db->prepare("
             SELECT 
                 COUNT(*) as total_batches,
-                SUM(CASE WHEN b.current_qty <= 0 THEN 1 ELSE 0 END) as out_of_stock,
-                SUM(CASE WHEN b.current_qty > 0 AND b.current_qty <= p.min_stock_level THEN 1 ELSE 0 END) as low_stock,
-                SUM(CASE WHEN b.expiry_date IS NOT NULL AND b.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as expiring_soon
-            FROM batches b
-            JOIN products p ON b.product_id = p.id
-            WHERE b.tenant_id = ? AND b.status = 'active'
+                COALESCE(SUM(CASE WHEN status != 'active' THEN 1 ELSE 0 END), 0) as out_of_stock,
+                0 as low_stock,
+                0 as expiring_soon
+            FROM projects
+            WHERE tenant_id = ?
         ");
-        $stmtStats->execute([$tid]);
-        $batchStats = $stmtStats->fetch();
-
-        // 3. Loss by Reason
-        $stmtLoss = $this->db->prepare("
-            SELECT reason, SUM(ABS(l.qty_change) * b.import_price) as value
-            FROM inventory_logs l
-            JOIN batches b ON l.batch_id = b.id
-            WHERE l.tenant_id = ? AND l.action_type = 'EXPORT_INTERNAL'
-            GROUP BY reason
-        ");
-        $stmtLoss->execute([$tid]);
-        $lossByReason = $stmtLoss->fetchAll();
+        $stmtProjects->execute([$tid]);
+        $batchStats = $stmtProjects->fetch(PDO::FETCH_ASSOC) ?: [
+            'total_batches' => 0,
+            'out_of_stock' => 0,
+            'low_stock' => 0,
+            'expiring_soon' => 0
+        ];
 
         respond(200, [
-            'total_value' => $totalValue,
+            'total_value' => 0.0,
             'stats' => $batchStats,
-            'loss_by_reason' => $lossByReason
+            'loss_by_reason' => []
         ]);
     }
 
@@ -635,10 +628,10 @@ class ReportController
         
         $userIds = [$uid];
         if ($isManager) {
-            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id))))");
             $stmtTeam->execute([$uid]);
             $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
-            $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
+            $userIds = array_values(array_unique(array_merge($userIds, array_map('intval', $teamMemberIds))));
         }
         
         return [

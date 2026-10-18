@@ -163,14 +163,14 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
       const isRosterRestricted = ['sale', 'sales', 'manager', 'director'].includes(currentUser?.role || '');
       const bypassProj = isRosterRestricted ? '' : '?bypass_roster=1';
       const [rC, rCo, rT, rU, rP] = await Promise.all([
-        api.get('/contacts?limit=1000'),
+        api.get('/contacts?limit=500&minimal=1'),
         api.get('/companies'),
         api.get('/tags'),
         api.get(usersEndpoint).catch(() => ({ data: { data: [] } })),
         api.get(`/projects${bypassProj}`).catch(() => ({ data: { data: [] } }))
       ]);
-      setContacts(rC.data.data?.items || []);
-      setCompanies(rCo.data.data?.items || []);
+      setContacts(rC.data.data?.items || rC.data.data || []);
+      setCompanies(rCo.data.data?.items || rCo.data.data || []);
       setAllTags(rT.data.data || []);
       const ud = rU.data.data;
       const list = Array.isArray(ud) ? ud : (ud?.items || []);
@@ -184,7 +184,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
       setUsers(mapped);
       setProjects(rP.data.data || []);
     } catch (e: any) {
-      // Keep empty or mock
+      console.error('Error fetching deal drawer lists:', e);
     } finally {
       setLoadingLists(false);
     }
@@ -197,10 +197,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
       const r = await api.get(`/notes?entity_type=deal&entity_id=${deal.id}`);
       setNotes(r.data.data || []);
     } catch (e: any) {
-      setNotes([
-        { id: 1, author_name: 'Admin', body: 'Đã liên hệ khách hàng lần đầu, khách phản hồi tốt.', created_at: new Date().toISOString() },
-        { id: 2, author_name: 'Sales', body: 'Khách yêu cầu gửi thêm báo giá chi tiết module ERP.', created_at: new Date(Date.now() - 86400000).toISOString() }
-      ]);
+      setNotes([]);
     } finally {
       setLoadingNotes(false);
     }
@@ -243,6 +240,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   }
 
   useEffect(() => {
+    if (!isOpen) return;
     if (deal) {
       setFormData({
         ...deal,
@@ -252,8 +250,10 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
       fetchDealDetails(deal.id);
       fetchNotes();
     }
-    fetchLists();
-  }, [deal]);
+    if (contacts.length === 0 && users.length === 0) {
+      fetchLists();
+    }
+  }, [isOpen, deal]);
 
   useEffect(() => {
     if (isOpen && formData?.project_id && projects.length > 0) {
@@ -322,11 +322,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
       addToast('Đã lưu ghi chú mới', 'success');
       fetchNotes();
     } catch (e: any) {
-      const mockNote = { id: Date.now(), author_name: 'Bạn', body: finalBody, created_at: new Date().toISOString() };
-      setNotes(prev => [mockNote, ...prev]);
-      setNewNote('');
-      removeNoteAttachment();
-      addToast('Đã lưu ghi chú (Local)', 'success');
+      addToast(e.response?.data?.message || 'Không thể lưu ghi chú', 'error');
     } finally {
       setIsSavingNote(false);
     }

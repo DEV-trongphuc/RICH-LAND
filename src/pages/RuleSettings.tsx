@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail, Info, Layers, Cpu, SlidersHorizontal, Loader2, Clock } from 'lucide-react';
@@ -337,13 +337,6 @@ const RuleSettingsInner = () => {
   const [loading, setLoading] = useState(true);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [sysSettings, setSysSettings] = useState<any>(null);
-  useEffect(() => {
-    fetchAPI('get_settings').then(res => {
-      if (res && res.success) {
-        setSysSettings(res.data);
-      }
-    });
-  }, []);
 
   const navigate = useNavigate();
   // Modal states
@@ -493,14 +486,20 @@ const RuleSettingsInner = () => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const latestRulesReqRef = useRef(0);
+
   const fetchRules = async () => {
+    const reqId = ++latestRulesReqRef.current;
     try {
       const json = await fetchAPI('get_rules');
+      if (reqId !== latestRulesReqRef.current) return;
       if (json.success) setRules(json.data);
     } catch (e: any) {
       console.error("Failed to fetch rules", e);
     }
-    setLoading(false);
+    if (reqId === latestRulesReqRef.current) {
+      setLoading(false);
+    }
   };
 
   const fetchRounds = async () => {
@@ -522,10 +521,17 @@ const RuleSettingsInner = () => {
   };
 
   useEffect(() => {
-    fetchRules();
-    fetchRounds();
-    fetchConnections();
-    fetchProjects();
+    Promise.all([
+      fetchRules(),
+      fetchRounds(),
+      fetchConnections(),
+      fetchProjects(),
+      fetchAPI('get_settings').then(res => {
+        if (res && res.success) {
+          setSysSettings(res.data);
+        }
+      }).catch(() => {})
+    ]);
   }, []);
 
   useEffect(() => {
@@ -742,7 +748,7 @@ const RuleSettingsInner = () => {
     { value: 'date_equals', label: t('Chính xác ngày (YYYY-MM-DD)') }
   ];
 
-  const filteredRules = rules.filter(r => {
+  const filteredRules = useMemo(() => rules.filter(r => {
     const matchConnection = (() => {
       if (activeFilter === 'all') {
         return true;
@@ -764,7 +770,7 @@ const RuleSettingsInner = () => {
     }
 
     return matchConnection && matchRound;
-  });
+  }), [rules, activeFilter, activeRoundFilter]);
 
   return (
     <div style={{ animation: 'fadeIn 0.3s', maxWidth: '100%', overflowX: 'hidden' }}>

@@ -820,13 +820,13 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             top: 0 !important;
             bottom: 0 !important;
             width: 100vw !important;
-            height: 100vh !important;
+            height: 100dvh !important;
             transform: none !important;
           }
           .chatbot-parent.is-closed {
             left: auto !important;
             right: 12px !important;
-            bottom: 74px !important;
+            bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
             width: 38px !important;
             height: 38px !important;
           }
@@ -841,7 +841,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           .chatbot-window {
             width: 100% !important;
             height: 100% !important;
-            max-height: 100vh !important;
+            max-height: 100dvh !important;
             border-radius: 0 !important;
             left: 0 !important;
             right: 0 !important;
@@ -853,7 +853,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             display: none !important;
           }
           .chatbot-input-bar {
-            padding: 10px 10px 30px 10px !important;
+            padding: 10px 10px calc(20px + env(safe-area-inset-bottom, 0px)) 10px !important;
             gap: 8px !important;
           }
         }

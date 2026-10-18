@@ -765,16 +765,6 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             // Clean old pending offers for this lead
                             $conn->query("UPDATE lead_offers SET status = 'expired' WHERE lead_id = " . (int)$row['lead_id'] . " AND status = 'pending'");
 
-                            $offerStmt = $conn->prepare("
-                                INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
-                                VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
-                            ");
-                            foreach ($eligibleGrabConsultants as $ec) {
-                                $offerStmt->bind_param("iiii", $row['lead_id'], $ec['id'], $row['round_id'], $grabCountdownSeconds);
-                                $offerStmt->execute();
-                            }
-                            $offerStmt->close();
-
                             $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'reallocated', message = CONCAT(message, '\n[Phát tín hiệu tranh nhận lúc ', NOW(), ']') WHERE id = ?");
                             $upLog->bind_param("i", $row['log_id']);
                             $upLog->execute();
@@ -783,6 +773,22 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             logDistribution($conn, $row['lead_id'], null, $row['round_id'], 'pending_claim', "Tái phát tín hiệu tranh nhận cho " . count($eligibleGrabConsultants) . " Sale.", false);
 
                             $conn->commit();
+
+                            $competingNames = [];
+                            foreach ($eligibleGrabConsultants as $ec) {
+                                $competingNames[] = $ec['name'] ?? 'TVV';
+                            }
+                            require_once __DIR__ . '/telegram_bot.php';
+                            if (function_exists('sendBatchGrabTelegramSync')) {
+                                sendBatchGrabTelegramSync($conn, $row['lead_id'], $eligibleGrabConsultants, $row['round_id'], $grabCountdownSeconds, $competingNames);
+                            }
+                            if (function_exists('insertBatchGrabLeadOffers')) {
+                                insertBatchGrabLeadOffers($conn, $row['lead_id'], $eligibleGrabConsultants, $row['round_id'], $grabCountdownSeconds);
+                            }
+                            foreach ($eligibleGrabConsultants as $ec) {
+                                sendGrabOfferNotification($conn, $row['lead_id'], $ec['id'], $row['round_id'], $grabCountdownSeconds, $competingNames);
+                            }
+
                             triggerTwoWaySync($conn, $row['lead_id']);
                             $releasedCount++;
                         } catch (Exception $e) {
@@ -1554,16 +1560,6 @@ if (!function_exists('recallInactiveLeads')) {
                         $upLead->execute();
                         $upLead->close();
 
-                        $offerStmt = $conn->prepare("
-                            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
-                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
-                        ");
-                        foreach ($eligibleGrabConsultants as $ec) {
-                            $offerStmt->bind_param("iiii", $leadId, $ec['id'], $roundId, $grabCountdownSeconds);
-                            $offerStmt->execute();
-                        }
-                        $offerStmt->close();
-
                         $newStatus = 'pending_claim';
                         $logMsg = "Thu hồi từ Sale {$oldConsultantName} và tái phát tín hiệu tranh nhận cho " . count($eligibleGrabConsultants) . " Sale.";
                     } else {
@@ -1608,6 +1604,23 @@ if (!function_exists('recallInactiveLeads')) {
                 logDistribution($conn, $leadId, $newConsultantId, $roundId, $newStatus, $logMsg, false);
 
                 $conn->commit();
+
+                if ($isGrabRound && !empty($eligibleGrabConsultants)) {
+                    $competingNames = [];
+                    foreach ($eligibleGrabConsultants as $ec) {
+                        $competingNames[] = $ec['name'] ?? 'TVV';
+                    }
+                    require_once __DIR__ . '/telegram_bot.php';
+                    if (function_exists('sendBatchGrabTelegramSync')) {
+                        sendBatchGrabTelegramSync($conn, $leadId, $eligibleGrabConsultants, $roundId, $grabCountdownSeconds, $competingNames);
+                    }
+                    if (function_exists('insertBatchGrabLeadOffers')) {
+                        insertBatchGrabLeadOffers($conn, $leadId, $eligibleGrabConsultants, $roundId, $grabCountdownSeconds);
+                    }
+                    foreach ($eligibleGrabConsultants as $ec) {
+                        sendGrabOfferNotification($conn, $leadId, $ec['id'], $roundId, $grabCountdownSeconds, $competingNames);
+                    }
+                }
 
                 // Post-commit: trigger live write-back
                 triggerTwoWaySync($conn, $leadId);
@@ -1774,28 +1787,6 @@ if (!function_exists('recallExpiredGrabLeads')) {
                     }
                     
                     if (!empty($eligible)) {
-                        $offerTime = date('Y-m-d H:i:s');
-                        $expiresTime = date('Y-m-d H:i:s', time() + $countdownSec);
-                        
-                        $competingNames = [];
-                        foreach ($eligible as $c) {
-                            $competingNames[] = $c['name'] ?? 'TVV';
-                        }
-                        
-                        // Item 18: Gửi tin Telegram trước cho Sale (chờ tối đa 3s phản hồi), sau đó mới tạo lead_offers để mở popup Web
-                        require_once __DIR__ . '/telegram_bot.php';
-                        if (function_exists('sendBatchGrabTelegramSync')) {
-                            sendBatchGrabTelegramSync($conn, $leadId, $eligible, $roundId, $countdownSec, $competingNames);
-                        }
-                        
-                        foreach ($eligible as $c) {
-                            $conn->query("
-                                INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
-                                VALUES ($leadId, " . (int)$c['id'] . ", $roundId, '$offerTime', '$expiresTime', 'pending')
-                            ");
-                            sendGrabOfferNotification($conn, $leadId, $c['id'], $roundId, $countdownSec, $competingNames);
-                        }
-                        
                         // Update lead's last interaction date
                         $conn->query("UPDATE leads SET last_interaction_date = NOW() WHERE id = $leadId");
                         
@@ -1808,6 +1799,24 @@ if (!function_exists('recallExpiredGrabLeads')) {
                 }
                 
                 $conn->commit();
+
+                if (!empty($eligible)) {
+                    $competingNames = [];
+                    foreach ($eligible as $c) {
+                        $competingNames[] = $c['name'] ?? 'TVV';
+                    }
+                    require_once __DIR__ . '/telegram_bot.php';
+                    if (function_exists('sendBatchGrabTelegramSync')) {
+                        sendBatchGrabTelegramSync($conn, $leadId, $eligible, $roundId, $countdownSec, $competingNames);
+                    }
+                    if (function_exists('insertBatchGrabLeadOffers')) {
+                        insertBatchGrabLeadOffers($conn, $leadId, $eligible, $roundId, $countdownSec);
+                    }
+                    foreach ($eligible as $c) {
+                        sendGrabOfferNotification($conn, $leadId, $c['id'], $roundId, $countdownSec, $competingNames);
+                    }
+                }
+
                 triggerTwoWaySync($conn, $leadId);
                 logSync("Recalled expired grab lead ID $leadId successfully.");
                 
@@ -2495,7 +2504,7 @@ foreach ($connections as $connItem) {
                         continue;
                     }
                     
-                    static $consultantCache = [];
+                    if (!isset($consultantCache)) $consultantCache = [];
                     if (!isset($consultantCache[$assignedTo])) {
                         $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
                         $stmtC->bind_param("i", $assignedTo);
@@ -2789,16 +2798,6 @@ foreach ($connections as $connItem) {
                         $updL->bind_param("ii", $targetRoundId, $leadId);
                         $updL->execute();
                         $updL->close();
-
-                        $offerStmt = $conn->prepare("
-                            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
-                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
-                        ");
-                        foreach ($eligibleGrabConsultants as $ec) {
-                            $offerStmt->bind_param("iiii", $leadId, $ec['id'], $targetRoundId, $grabCountdownSeconds);
-                            $offerStmt->execute();
-                        }
-                        $offerStmt->close();
                     }
 
                     logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $cronStatus, $cronMessage, false);
@@ -2818,8 +2817,15 @@ foreach ($connections as $connItem) {
                     continue;
                 }
 
-                // Send Grab Lead notifications outside transaction
+                // Send Grab Lead notifications and create offers simultaneously outside transaction
                 if ($isGrabRound && $cronStatus === 'pending_claim' && $leadId && !empty($eligibleGrabConsultants)) {
+                    require_once __DIR__ . '/telegram_bot.php';
+                    if (function_exists('sendBatchGrabTelegramSync')) {
+                        sendBatchGrabTelegramSync($conn, $leadId, $eligibleGrabConsultants, $targetRoundId, $grabCountdownSeconds, $competingNames);
+                    }
+                    if (function_exists('insertBatchGrabLeadOffers')) {
+                        insertBatchGrabLeadOffers($conn, $leadId, $eligibleGrabConsultants, $targetRoundId, $grabCountdownSeconds);
+                    }
                     foreach ($eligibleGrabConsultants as $ec) {
                         try {
                             sendGrabOfferNotification($conn, $leadId, $ec['id'], $targetRoundId, $grabCountdownSeconds, $competingNames);

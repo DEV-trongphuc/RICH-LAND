@@ -45,13 +45,16 @@ class CooperationController {
 
         require_once __DIR__ . '/../NotificationService.php';
 
+        $inUids = implode(',', array_fill(0, count($uids), '?'));
+        $stmtUsers = $this->db->prepare("SELECT id, email FROM users WHERE id IN ($inUids)");
+        $stmtUsers->execute(array_values($uids));
+        $userEmailsMap = $stmtUsers->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+
         foreach ($uids as $uid) {
             // Notify individual shareholder via targeted email & in-app event
-            $stmtUser = $this->db->prepare("SELECT email FROM users WHERE id = ?");
-            $stmtUser->execute([$uid]);
-            $uRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
-            if ($uRow && !empty($uRow['email']) && function_exists('sendEmailNotification')) {
-                sendEmailNotification($uRow['email'], $enrichedSubject, $title, $enrichedContent);
+            $uEmail = $userEmailsMap[(int)$uid] ?? '';
+            if (!empty($uEmail) && function_exists('sendEmailNotification')) {
+                sendEmailNotification($uEmail, $enrichedSubject, $title, $enrichedContent);
             }
 
             NotificationService::send($this->db, $tenantId, 'COOP_INVITATION', [
@@ -118,6 +121,7 @@ class CooperationController {
 
     public function index(array $auth): void {
         $tid = $auth['tenant_id'];
+        $limit = isset($_GET['limit']) ? min(2000, max(10, (int)$_GET['limit'])) : 1000;
 
         $sql = "
             SELECT cs.*, c.owner_id, c.first_name, c.last_name, c.phone, c.expected_revenue, 
@@ -127,7 +131,7 @@ class CooperationController {
             JOIN contacts c ON cs.contact_id = c.id
             LEFT JOIN deposits dep ON (
                 cs.deposit_slip_id = dep.id 
-                OR (cs.deposit_slip_id IS NULL AND dep.id = (SELECT id FROM deposits WHERE contact_id = cs.contact_id ORDER BY id DESC LIMIT 1))
+                OR (cs.deposit_slip_id IS NULL AND dep.id = (SELECT MAX(id) FROM deposits WHERE contact_id = cs.contact_id))
             )
             LEFT JOIN projects proj ON dep.project_id = proj.id
             WHERE c.tenant_id = ?
@@ -177,7 +181,7 @@ class CooperationController {
             $params[] = (int)$_GET['contact_id'];
         }
 
-        $sql .= " ORDER BY cs.created_at DESC";
+        $sql .= " ORDER BY cs.created_at DESC LIMIT $limit";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -339,12 +343,12 @@ class CooperationController {
         respond(200, $slips, 'Lấy danh sách phiếu hợp tác thành công');
     }
 
-    public function autoGenerateSlip(int $contactId, int $depositId, int $creatorId, ?array $customShares = null): void {
+    public function autoGenerateSlip(int $contactId, int $depositId, int $creatorId, ?array $customShares = null, bool $sendNotifications = true): ?array {
         // Find owner of contact with safety check
-        $stmtC = $this->db->prepare("SELECT owner_id, tenant_id FROM contacts WHERE id = ?");
+        $stmtC = $this->db->prepare("SELECT owner_id, tenant_id, collaborator_ids FROM contacts WHERE id = ?");
         $stmtC->execute([$contactId]);
         $contact = $stmtC->fetch();
-        if (!$contact) return;
+        if (!$contact) return null;
         $ownerId = (int)$contact['owner_id'];
 
         $shares = [];
@@ -403,14 +407,24 @@ class CooperationController {
         $this->syncCollaboratorsToContact((int)$contactId, $sharesJson);
 
         // Email all shareholders that a slip requires their signature (only if not auto-approved)
-        if (!$isSingleShareholder) {
-            $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận Phiếu hợp tác #" . $slipId;
-            $emailTitle = "KÝ XÁC NHẬN PHIẾU HỢP TÁC";
-            $emailContent = "Chào các thành viên,<br/><br/>" .
-                            "Một phiếu hợp tác chia sẻ hoa hồng mới (#" . $slipId . ") đã được tự động khởi tạo trên hệ thống.<br/>" .
-                            "Vui lòng đăng nhập hệ thống RICH LAND CRM và truy cập mục <strong>Phiếu hợp tác</strong> để xem chi tiết và ký xác nhận.";
-            $this->notifyShareholders($slipId, $shares, $emailSubject, $emailTitle, $emailContent);
+        if (!$isSingleShareholder && $sendNotifications) {
+            $this->dispatchAutoSlipNotifications($slipId, $shares);
         }
+
+        return [
+            'slip_id' => $slipId,
+            'shares' => $shares,
+            'is_single' => $isSingleShareholder
+        ];
+    }
+
+    public function dispatchAutoSlipNotifications(int $slipId, array $shares): void {
+        $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận Phiếu hợp tác #" . $slipId;
+        $emailTitle = "KÝ XÁC NHẬN PHIẾU HỢP TÁC";
+        $emailContent = "Chào các thành viên,<br/><br/>" .
+                        "Một phiếu hợp tác chia sẻ hoa hồng mới (#" . $slipId . ") đã được tự động khởi tạo trên hệ thống.<br/>" .
+                        "Vui lòng đăng nhập hệ thống RICH LAND CRM và truy cập mục <strong>Phiếu hợp tác</strong> để xem chi tiết và ký xác nhận.";
+        $this->notifyShareholders($slipId, $shares, $emailSubject, $emailTitle, $emailContent);
     }
 
     public function updateShares(array $auth, int $id): void {
@@ -1220,9 +1234,15 @@ class CooperationController {
         if (!$row) {
             respond(404, null, 'Không tìm thấy phiếu hợp tác', false);
         }
-        
-        if (!$this->checkSlipAccess($auth, $id)) {
-            respond(403, null, 'Bạn không có quyền xóa phiếu hợp tác này', false);
+
+        $isAdmin = in_array($auth['role'] ?? '', ['admin', 'superadmin', 'super_admin', 'director'], true);
+        if (($row['status'] ?? '') === 'approved' && !$isAdmin) {
+            respond(400, null, 'Không thể xóa phiếu hợp tác đã được phê duyệt chính thức', false);
+        }
+
+        $isOwnerOrCreator = ((int)($row['owner_id'] ?? 0) === (int)$auth['user_id']) || ((int)($row['created_by'] ?? 0) === (int)$auth['user_id']);
+        if (!$isAdmin && !$isOwnerOrCreator) {
+            respond(403, null, 'Chỉ Quản trị viên hoặc Sale chính tạo phiếu mới có quyền xóa phiếu hợp tác chưa duyệt', false);
         }
         
         $stmtDel = $this->db->prepare("DELETE FROM cooperation_slips WHERE id = ?");
@@ -1232,20 +1252,24 @@ class CooperationController {
     }
 
     private function getScope(array $auth, string $module, string $action): string {
-        $permissionsJson = null;
-        $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
-        $stmtQ->execute([$auth['user_id']]);
-        $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
-        if ($resQ && !empty($resQ['permissions_json'])) {
-            $permissionsJson = json_decode($resQ['permissions_json'], true);
-        }
-
         if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
             return 'all';
         }
 
         if (in_array($auth['role'], ['sale', 'sales'], true) && $module === 'deals') {
             return $action === 'delete' ? 'none' : 'own';
+        }
+
+        $permissionsJson = null;
+        if (isset($auth['permissions']) && is_array($auth['permissions'])) {
+            $permissionsJson = $auth['permissions'];
+        } else {
+            $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+            $stmtQ->execute([$auth['user_id']]);
+            $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
+            if ($resQ && !empty($resQ['permissions_json'])) {
+                $permissionsJson = json_decode($resQ['permissions_json'], true);
+            }
         }
 
         if ($permissionsJson && isset($permissionsJson[$module][$action])) {
@@ -1642,10 +1666,12 @@ class CooperationController {
             $slip = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$slip) {
+                $this->db->rollBack();
                 respond(404, null, 'Không tìm thấy phiếu hợp tác', false);
             }
 
             if (empty($slip['adjustment_request_user_id'])) {
+                $this->db->rollBack();
                 respond(400, null, 'Không có yêu cầu chỉnh sửa nào cần xử lý cho phiếu này', false);
             }
 
@@ -1656,6 +1682,7 @@ class CooperationController {
                 $stmtPending = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND status IN ('pending_signatures', 'pending_manager_approval', 'approved_pending_signatures') LIMIT 1");
                 $stmtPending->execute([$slip['contact_id']]);
                 if ($stmtPending->fetchColumn()) {
+                    $this->db->rollBack();
                     respond(400, null, 'Đang có một phiếu hợp tác hoặc phiếu điều chỉnh khác chờ ký duyệt cho khách hàng này', false);
                 }
 
@@ -1789,15 +1816,13 @@ class CooperationController {
         // Parse mentions in comment body
         $mentions = [];
         if (preg_match_all('/data-user-id=(?:&quot;|["\']|\\\\+["\'])?(\d+)/i', (string)$body, $matches)) {
-            $uids = array_filter(array_map('intval', $matches[1]));
-            foreach ($uids as $uid) {
-                if ($uid !== (int)$auth['user_id']) {
-                    $stmtUser = $this->db->prepare("SELECT id, email, full_name, role FROM users WHERE id=?");
-                    $stmtUser->execute([$uid]);
-                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
-                    if ($userRow) {
-                        $mentions[$uid] = $userRow;
-                    }
+            $uids = array_values(array_unique(array_filter(array_map('intval', $matches[1]), fn($u) => $u > 0 && $u !== (int)$auth['user_id'])));
+            if (!empty($uids)) {
+                $inUids = implode(',', array_fill(0, count($uids), '?'));
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name, role FROM users WHERE id IN ($inUids)");
+                $stmtUser->execute($uids);
+                while ($userRow = $stmtUser->fetch(PDO::FETCH_ASSOC)) {
+                    $mentions[(int)$userRow['id']] = $userRow;
                 }
             }
         }

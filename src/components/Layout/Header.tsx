@@ -407,24 +407,37 @@ export const Header = ({
 
   useEffect(() => {
     fetchNotifications();
-    fetchNotifPrefs();
-    const interval = setInterval(fetchNotifications, 30000); // Polling fallback every 30s
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications();
+      }
+    }, 30000); // Polling fallback every 30s when tab is visible
     
     const handleRealtimeUpdate = () => {
-      fetchNotifications();
+      if (document.visibilityState === 'visible') {
+        fetchNotifications();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications();
+      }
     };
 
     window.addEventListener('notification-trigger', fetchNotifications);
     window.addEventListener('realtime-update-received', handleRealtimeUpdate);
     window.addEventListener('new-notification-received', handleRealtimeUpdate);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
       clearInterval(interval);
       window.removeEventListener('notification-trigger', fetchNotifications);
       window.removeEventListener('realtime-update-received', handleRealtimeUpdate);
       window.removeEventListener('new-notification-received', handleRealtimeUpdate);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [showNotifSettings]);
+  }, []);
 
   const handleMarkRead = async (id: number, isReadVal: number = 1) => {
     try {
@@ -611,37 +624,45 @@ export const Header = ({
     navigate('/login');
   };
 
-  const fetchHeaderPortalData = async () => {
+  const fetchHeaderPortalData = async (forceFull = false) => {
     if (!isSales) return;
+    const portalPaths = ['/', '/workspace', '/portal', '/account', '/calendar', '/databank', '/fair-share'];
+    const isPortalRoute = !forceFull && portalPaths.includes(window.location.pathname);
+
     try {
-      const nightRes = await fetchAPI('get_night_shift_status');
+      const [nightRes, checkInRes, portalJson] = await Promise.all([
+        fetchAPI('get_night_shift_status').catch(err => {
+          console.error("Error fetching night shift status in Header:", err);
+          return null;
+        }),
+        isPortalRoute ? Promise.resolve(null) : fetchAPI('check-ins?today_only=1').catch(err => {
+          console.error("Error fetching check-in in Header:", err);
+          return null;
+        }),
+        isPortalRoute ? Promise.resolve(null) : fetchAPI('get_sale_portal_data').catch(err => {
+          console.error("Error fetching vacation mode in Header:", err);
+          return null;
+        })
+      ]);
+
       if (nightRes && nightRes.success) {
         setHeaderNightShiftRegistered(nightRes.registered);
       }
-    } catch (err) {
-      console.error("Error fetching night shift status in Header:", err);
-    }
-    try {
-      const res = await fetchAPI('check-ins?today_only=1');
-      if (res.success) {
-        setHeaderCheckIn(res.data);
+      if (checkInRes && checkInRes.success) {
+        setHeaderCheckIn(checkInRes.data);
+        window.dispatchEvent(new CustomEvent('today-checkin-synced', { detail: checkInRes.data }));
       }
-    } catch (err) {
-      console.error("Error fetching check-in in Header:", err);
-    }
-    try {
-      const json = await fetchAPI('get_sale_portal_data');
-      if (json.success) {
-        if (json.vacation_mode !== undefined) {
-          setHeaderVacationMode(Boolean(Number(json.vacation_mode)));
+      if (portalJson && portalJson.success) {
+        if (portalJson.vacation_mode !== undefined) {
+          setHeaderVacationMode(Boolean(Number(portalJson.vacation_mode)));
         }
-        if (json.uncontacted_count !== undefined) {
-          const count = Number(json.uncontacted_count) || 0;
+        if (portalJson.uncontacted_count !== undefined) {
+          const count = Number(portalJson.uncontacted_count) || 0;
           setUncontactedCount(count);
           sessionStorage.setItem('sale-uncontacted-count', String(count));
           window.dispatchEvent(new CustomEvent('uncontacted-count-changed', { detail: count }));
-        } else if (json.leads) {
-          const count = json.leads.filter((l: any) => 
+        } else if (portalJson.leads) {
+          const count = portalJson.leads.filter((l: any) => 
             Number(l.is_accepted) === 1 && 
             l.contact_id && 
             !l.contact_last_contact && 
@@ -653,7 +674,7 @@ export const Header = ({
         }
       }
     } catch (err) {
-      console.error("Error fetching vacation mode in Header:", err);
+      console.error("Error in fetchHeaderPortalData:", err);
     }
   };
 
@@ -664,7 +685,19 @@ export const Header = ({
   useEffect(() => {
     const handleVacationChange = (e: Event) => {
       const customEvent = e as CustomEvent;
-      setHeaderVacationMode(customEvent.detail);
+      setHeaderVacationMode(Boolean(customEvent.detail));
+    };
+    const handleUncontactedChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setUncontactedCount(Number(customEvent.detail) || 0);
+    };
+    const handleTodayCheckInSynced = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setHeaderCheckIn(customEvent.detail);
+    };
+    const handleNightShiftSynced = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setHeaderNightShiftRegistered(Boolean(customEvent.detail));
     };
     const handleCheckInChange = () => {
       fetchHeaderPortalData();
@@ -673,12 +706,18 @@ export const Header = ({
       fetchHeaderPortalData();
     };
     window.addEventListener('vacation-status-changed', handleVacationChange);
+    window.addEventListener('uncontacted-count-changed', handleUncontactedChange);
+    window.addEventListener('today-checkin-synced', handleTodayCheckInSynced);
+    window.addEventListener('night-shift-synced', handleNightShiftSynced);
     window.addEventListener('checkin-status-changed', handleCheckInChange);
     window.addEventListener('contact-updated', handleContactUpdate);
     window.addEventListener('lead-claimed', handleContactUpdate);
     window.addEventListener('lead-added', handleContactUpdate);
     return () => {
       window.removeEventListener('vacation-status-changed', handleVacationChange);
+      window.removeEventListener('uncontacted-count-changed', handleUncontactedChange);
+      window.removeEventListener('today-checkin-synced', handleTodayCheckInSynced);
+      window.removeEventListener('night-shift-synced', handleNightShiftSynced);
       window.removeEventListener('checkin-status-changed', handleCheckInChange);
       window.removeEventListener('contact-updated', handleContactUpdate);
       window.removeEventListener('lead-claimed', handleContactUpdate);
@@ -943,7 +982,32 @@ export const Header = ({
       zIndex: 40
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-        {/* Mobile menu trigger */}
+        {/* Mobile & Tablet Sidebar Drawer Trigger */}
+        {onMenuClick && (
+          <button 
+            onClick={onMenuClick}
+            style={{
+              width: 36,
+              height: 36,
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: isWs ? '#ffffff' : 'var(--color-text)',
+              borderRadius: 8,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              transition: 'color 0.2s',
+              outline: 'none',
+              display: 'none'
+            }}
+            className="mobile-menu-btn"
+            title={t("Thanh điều hướng")}
+          >
+            <Menu size={22} />
+          </button>
+        )}
+
+        {/* Mobile App Launcher trigger */}
         <button 
           onClick={() => setIsAppLauncherOpen(true)}
           style={{
@@ -963,7 +1027,7 @@ export const Header = ({
           className="mobile-menu-btn"
           title={t("Menu")}
         >
-          <LayoutGrid size={24} />
+          <LayoutGrid size={22} />
         </button>
 
         {/* App Launcher Button (4-frame icon) */}

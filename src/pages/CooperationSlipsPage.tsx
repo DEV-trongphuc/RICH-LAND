@@ -21,6 +21,7 @@ import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { MentionInput } from '../components/ui/MentionInput';
 import { formatCommentBody } from '../utils/commentFormatter';
 import { MessageSquare, Send } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 
 const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 
@@ -354,6 +355,7 @@ export default function CooperationSlipsPage() {
   const [period, setPeriod] = useState<Period>('30d');
   const [dateRange, setDateRange] = useState<DateRange>(() => getDateRange('30d'));
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery.trim(), 250);
   const [filterSale, setFilterSale] = useState('all');
   const location = useLocation();
   const navigate = useNavigate();
@@ -364,7 +366,7 @@ export default function CooperationSlipsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterSale, dateRange, statusFilter]);
+  }, [debouncedSearch, filterSale, dateRange, statusFilter]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -575,7 +577,7 @@ export default function CooperationSlipsPage() {
     if (slip.contact_id) {
       try {
         const [resDocs, resDeposits] = await Promise.all([
-          api.get(`/cloud-files?contact_id=${slip.contact_id}&limit=1000`).catch(() => ({ data: { data: { items: [] } } })),
+          api.get(`/cloud-files?contact_id=${slip.contact_id}&limit=200`).catch(() => ({ data: { data: { items: [] } } })),
           api.get(`/deposits?contact_id=${slip.contact_id}`).catch(() => ({ data: { data: [] } }))
         ]);
         
@@ -643,8 +645,8 @@ export default function CooperationSlipsPage() {
         if (!isShareholder && !isSameTeam) return false;
       }
       // 1. Search Query (Customer name, phone, project, unit code)
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
+      if (debouncedSearch) {
+        const query = debouncedSearch.toLowerCase();
         const fullName = `${slip.last_name} ${slip.first_name}`.toLowerCase();
         const matchCust = fullName.includes(query) || (slip.phone && slip.phone.includes(query));
         const matchUnit = slip.unit_code && slip.unit_code.toLowerCase().includes(query);
@@ -691,7 +693,7 @@ export default function CooperationSlipsPage() {
 
       return true;
     });
-  }, [slips, searchQuery, filterSale, dateRange, statusFilter, user?.id, isManager, isApprover, readScope]);
+  }, [slips, debouncedSearch, filterSale, dateRange, statusFilter, user?.id, isManager, isApprover, readScope]);
 
   const paginatedSlips = React.useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -710,8 +712,8 @@ export default function CooperationSlipsPage() {
 
     slips.forEach(slip => {
       // 1. Search Query
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
+      if (debouncedSearch) {
+        const query = debouncedSearch.toLowerCase();
         const fullName = `${slip.last_name} ${slip.first_name}`.toLowerCase();
         const matchCust = fullName.includes(query) || (slip.phone && slip.phone.includes(query));
         const matchUnit = slip.unit_code && slip.unit_code.toLowerCase().includes(query);
@@ -767,7 +769,7 @@ export default function CooperationSlipsPage() {
       rejected,
       disputed
     };
-  }, [slips, searchQuery, filterSale, dateRange, user?.id, isManager, isApprover]);
+  }, [slips, debouncedSearch, filterSale, dateRange, user?.id, isManager, isApprover]);
 
   const handleDeleteSlip = async (slipId: number) => {
     setCustomConfirm({
@@ -794,21 +796,22 @@ export default function CooperationSlipsPage() {
     setLoading(true);
     setError('');
     try {
-      const resSlips = await fetchAPI('cooperation-slips');
+      const [resSlips, resUsers] = await Promise.all([
+        fetchAPI('cooperation-slips'),
+        fetchAPI('users?all=1').catch((err) => {
+          console.warn('Failed to load users for configurations:', err);
+          return null;
+        })
+      ]);
       if (resSlips.success) {
         setSlips(resSlips.data || []);
       } else {
         setError(resSlips.message || 'Lỗi tải danh sách phiếu hợp tác');
       }
 
-      try {
-        const resUsers = await fetchAPI('users?all=1');
-        if (resUsers.success) {
-          const staff = (resUsers.data || []).filter((u: any) => u.is_active !== 0 && u.is_active !== '0' && u.is_active !== false);
-          setSalesAccounts(staff.length > 0 ? staff : (resUsers.data || []));
-        }
-      } catch (err) {
-        console.warn('Failed to load users for configurations:', err);
+      if (resUsers && resUsers.success) {
+        const staff = (resUsers.data || []).filter((u: any) => u.is_active !== 0 && u.is_active !== '0' && u.is_active !== false);
+        setSalesAccounts(staff.length > 0 ? staff : (resUsers.data || []));
       }
     } catch (e: any) {
       setError(e.message || 'Lỗi kết nối');
@@ -1050,7 +1053,7 @@ export default function CooperationSlipsPage() {
     if (slip.contact_id) {
       try {
         const [resDocs, resDeposits] = await Promise.all([
-          api.get(`/cloud-files?contact_id=${slip.contact_id}&limit=1000`).catch(() => ({ data: { data: { items: [] } } })),
+          api.get(`/cloud-files?contact_id=${slip.contact_id}&limit=200`).catch(() => ({ data: { data: { items: [] } } })),
           api.get(`/deposits?contact_id=${slip.contact_id}`).catch(() => ({ data: { data: [] } }))
         ]);
         

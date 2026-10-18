@@ -29,8 +29,25 @@ class CloudFileController {
         }
 
         if ($contactId !== '') {
+            $cidInt = (int)$contactId;
+            if ($isSale) {
+                $stmtChkC = $this->db->prepare("
+                    SELECT 1 FROM contacts c
+                    WHERE c.id = ? AND c.tenant_id = ? AND c.deleted_at IS NULL
+                      AND (
+                        c.owner_id = ?
+                        OR FIND_IN_SET(?, c.collaborator_ids)
+                        OR c.id IN (SELECT contact_id FROM quyen_truy_cap WHERE user_id = ?)
+                      )
+                    LIMIT 1
+                ");
+                $stmtChkC->execute([$cidInt, $tid, $uid, $uid, $uid]);
+                if (!$stmtChkC->fetchColumn()) {
+                    respond(403, null, 'Bạn không có quyền truy cập tài liệu của khách hàng này', false);
+                }
+            }
             $where[] = "cf.contact_id = ?";
-            $params[] = (int)$contactId;
+            $params[] = $cidInt;
         } else {
             $where[] = "cf.contact_id IS NULL AND cf.category != 'Đặt cọc' AND cf.category != 'coop_proof'";
             if ($visibility === 'personal') {
@@ -100,10 +117,8 @@ class CloudFileController {
         
         $b = getBody();
         $category = $_POST['category'] ?? $b['category'] ?? 'general';
-        if (in_array($auth['role'], ['sales', 'sale'], true) && strpos($category, 'consultant_') === 0) {
-            if ($category !== 'consultant_' . $auth['user_id']) {
-                respond(403, null, 'Bạn không có quyền tải lên tài liệu nhân sự của người khác (consultant_*)', false);
-            }
+        if (in_array($auth['role'], ['sales', 'sale', 'consultant'], true) && strpos($category, 'consultant_') === 0) {
+            respond(403, null, 'Chỉ Quản trị viên / Quản lý / Trợ lý mới có quyền tải lên tài liệu nhân sự (HR Documents)', false);
         }
 
         if (empty($_FILES['file'])) respond(422, null, 'Vui lòng chọn tệp tin để tải lên', false);
@@ -275,15 +290,15 @@ class CloudFileController {
             }
         }
 
-        if (in_array($auth['role'], ['sales', 'sale'], true)) {
+        if (in_array($auth['role'], ['sales', 'sale', 'consultant'], true)) {
+            if (
+                strpos($category, 'consultant_') === 0 || 
+                ($file['category'] && strpos($file['category'], 'consultant_') === 0)
+            ) {
+                respond(403, null, 'Chỉ Quản trị viên / Quản lý / Trợ lý mới có quyền sửa đổi tài liệu nhân sự (HR Documents)', false);
+            }
             if ((int)$file['uploaded_by'] !== (int)$auth['user_id']) {
                 respond(403, null, 'Bạn không có quyền sửa thông tin tệp tin của người khác', false);
-            }
-            if (
-                (strpos($category, 'consultant_') === 0 && $category !== 'consultant_' . $auth['user_id']) || 
-                ($file['category'] && strpos($file['category'], 'consultant_') === 0 && $file['category'] !== 'consultant_' . $auth['user_id'])
-            ) {
-                respond(403, null, 'Bạn không có quyền cập nhật tài liệu nhân sự (consultant_*)', false);
             }
         }
 
@@ -309,12 +324,12 @@ class CloudFileController {
         if (!$file) respond(404, null, 'Không tìm thấy tệp tin', false);
 
         // Permission check: Only uploader or admin/manager
-        if (in_array($auth['role'], ['sales', 'sale'], true)) {
+        if (in_array($auth['role'], ['sales', 'sale', 'consultant'], true)) {
+            if ($file['category'] && strpos($file['category'], 'consultant_') === 0) {
+                respond(403, null, 'Chỉ Quản trị viên / Quản lý / Trợ lý mới có quyền xóa tài liệu nhân sự (HR Documents)', false);
+            }
             if ((int)$file['uploaded_by'] !== (int)$auth['user_id']) {
                 respond(403, null, 'Bạn không có quyền xóa tệp tin của người khác', false);
-            }
-            if (strpos($file['category'], 'consultant_') === 0 && $file['category'] !== 'consultant_' . $auth['user_id']) {
-                respond(403, null, 'Bạn không có quyền xóa tài liệu nhân sự (consultant_*)', false);
             }
         }
         $path = $file['file_path'];

@@ -128,10 +128,13 @@ class FinanceController
             $params[] = "%$search%";
         }
         $w = implode(' AND ', $where);
+        $summaryJoin = ($search !== '') ? "LEFT JOIN contacts ct ON i.contact_id = ct.id" : "";
 
-        $cnt = $this->db->prepare("SELECT COUNT(*) FROM invoices i LEFT JOIN contacts ct ON i.contact_id = ct.id WHERE $w");
-        $cnt->execute($params);
-        $total = (int) $cnt->fetchColumn();
+        // Combined count + summary totals respecting filters in a single query
+        $sSummary = $this->db->prepare("SELECT COUNT(*) as total_cnt, COALESCE(SUM(i.total),0) as total_rev, COALESCE(SUM(CASE WHEN i.status='paid' THEN i.total END),0) as paid_amt, COALESCE(SUM(CASE WHEN i.status='pending' THEN i.total END),0) as pending_amt, COALESCE(SUM(CASE WHEN i.status='overdue' THEN i.total END),0) as overdue_amt FROM invoices i $summaryJoin WHERE $w");
+        $sSummary->execute($params);
+        $currentSummary = $sSummary->fetch();
+        $total = (int) ($currentSummary['total_cnt'] ?? 0);
 
         $stmt = $this->db->prepare("
             SELECT i.*, c.name as company_name,
@@ -146,10 +149,6 @@ class FinanceController
             WHERE $w ORDER BY i.issue_date DESC LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
-        // Summary totals respecting filters
-        $sSummary = $this->db->prepare("SELECT COALESCE(SUM(i.total),0) as total_rev, COALESCE(SUM(CASE WHEN i.status='paid' THEN i.total END),0) as paid_amt, COALESCE(SUM(CASE WHEN i.status='pending' THEN i.total END),0) as pending_amt, COALESCE(SUM(CASE WHEN i.status='overdue' THEN i.total END),0) as overdue_amt FROM invoices i LEFT JOIN contacts ct ON i.contact_id = ct.id WHERE $w");
-        $sSummary->execute($params);
-        $currentSummary = $sSummary->fetch();
 
         $prevTotalRev = 0.0;
         $prevPaidAmt = 0.0;
@@ -706,9 +705,11 @@ class FinanceController
         }
         $w = implode(' AND ', $where);
 
-        $cnt = $this->db->prepare("SELECT COUNT(*) FROM expenses e WHERE $w");
-        $cnt->execute($params);
-        $total = (int) $cnt->fetchColumn();
+        // Summary totals respecting filters (also provides total_count for pagination)
+        $sTotal = $this->db->prepare("SELECT COALESCE(SUM(e.amount),0) as total, COALESCE(SUM(CASE WHEN e.status='approved' THEN e.amount END),0) as approved, COALESCE(SUM(CASE WHEN e.status='pending' THEN e.amount END),0) as pending, COUNT(*) as total_count, COALESCE(SUM(CASE WHEN e.status='approved' THEN 1 ELSE 0 END),0) as approved_count, COALESCE(SUM(CASE WHEN e.status='pending' THEN 1 ELSE 0 END),0) as pending_count FROM expenses e WHERE $w");
+        $sTotal->execute($params);
+        $currentSummary = $sTotal->fetch();
+        $total = (int) ($currentSummary['total_count'] ?? 0);
 
         $stmt = $this->db->prepare("
             SELECT e.*, u.full_name as creator_name, u.avatar_url as creator_avatar, 
@@ -741,11 +742,6 @@ class FinanceController
                 $r['entities'] = $entitiesByExp[$r['id']] ?? [];
             }
         }
-
-        // Summary totals respecting filters
-        $sTotal = $this->db->prepare("SELECT COALESCE(SUM(e.amount),0) as total, COALESCE(SUM(CASE WHEN e.status='approved' THEN e.amount END),0) as approved, COALESCE(SUM(CASE WHEN e.status='pending' THEN e.amount END),0) as pending, COUNT(*) as total_count, COALESCE(SUM(CASE WHEN e.status='approved' THEN 1 ELSE 0 END),0) as approved_count, COALESCE(SUM(CASE WHEN e.status='pending' THEN 1 ELSE 0 END),0) as pending_count FROM expenses e WHERE $w");
-        $sTotal->execute($params);
-        $currentSummary = $sTotal->fetch();
 
         $sMax = $this->db->prepare("SELECT amount, title FROM expenses e WHERE $w ORDER BY e.amount DESC LIMIT 1");
         $sMax->execute($params);
@@ -1018,11 +1014,16 @@ class FinanceController
             $check = $this->db->prepare($sqlCheck);
             $check->execute($cp);
             $row = $check->fetch();
-            if (!$row)
+            if (!$row) {
+                $this->db->rollBack();
                 respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+            }
 
             $currentTotal = (float) ($data['amount'] ?? $row['amount']);
-            if ($currentTotal < 0) respond(422, null, 'Số tiền chi phí không được âm', false);
+            if ($currentTotal < 0) {
+                $this->db->rollBack();
+                respond(422, null, 'Số tiền chi phí không được âm', false);
+            }
 
             if ($sets) {
                 $params[] = $id;
@@ -1071,7 +1072,7 @@ class FinanceController
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'expense', $id, json_encode($data));
             
-            // If modified by someone other than the creator, insert a system notification and send email
+            $creatorRow = null;
             if (isset($row['created_by']) && (int)$row['created_by'] !== (int)$auth['user_id']) {
                 $creatorId = (int)$row['created_by'];
                 $notifTitle = "Yêu cầu chi phí đã chỉnh sửa";
@@ -1085,19 +1086,22 @@ class FinanceController
                 $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id=?");
                 $stmtUser->execute([$creatorId]);
                 $creatorRow = $stmtUser->fetch();
-                if ($creatorRow && !empty($creatorRow['email'])) {
-                    require_once __DIR__ . '/../mailer.php';
-                    $emailSubject = "[RICH LAND] Yêu cầu chi phí của bạn đã được cập nhật";
-                    $emailTitle = "CẬP NHẬT YÊU CẦU CHI PHÍ";
-                    $emailContent = "Chào <strong>" . htmlspecialchars($creatorRow['full_name']) . "</strong>,<br/><br/>" .
-                                    "Yêu cầu thanh toán chi phí của bạn cho mục <strong>" . htmlspecialchars($row['title']) . "</strong> đã được quản trị viên chỉnh sửa.<br/>" .
-                                    "Số tiền hiện tại: <strong>" . number_format($currentTotal, 0, ',', '.') . "đ</strong>.<br/>" .
-                                    "Vui lòng đăng nhập hệ thống RICH LAND CRM để xem chi tiết.";
-                    sendEmailNotification($creatorRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                }
             }
 
             $this->db->commit();
+
+            // Send SMTP email notification AFTER commit
+            if ($creatorRow && !empty($creatorRow['email'])) {
+                require_once __DIR__ . '/../mailer.php';
+                $emailSubject = "[RICH LAND] Yêu cầu chi phí của bạn đã được cập nhật";
+                $emailTitle = "CẬP NHẬT YÊU CẦU CHI PHÍ";
+                $emailContent = "Chào <strong>" . htmlspecialchars($creatorRow['full_name']) . "</strong>,<br/><br/>" .
+                                "Yêu cầu thanh toán chi phí của bạn cho mục <strong>" . htmlspecialchars($row['title']) . "</strong> đã được quản trị viên chỉnh sửa.<br/>" .
+                                "Số tiền hiện tại: <strong>" . number_format($currentTotal, 0, ',', '.') . "đ</strong>.<br/>" .
+                                "Vui lòng đăng nhập hệ thống RICH LAND CRM để xem chi tiết.";
+                sendEmailNotification($creatorRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+            }
+
             $this->showExpense($auth, $id);
         } catch (Exception $e) {
             if ($this->db->inTransaction())
@@ -1248,7 +1252,7 @@ class FinanceController
 
     public function summary(array $auth): void
     {
-        requireRole($auth, ['admin', 'manager', 'super_admin']);
+        requireRole($auth, ['admin', 'manager', 'super_admin', 'superadmin', 'director', 'assistant']);
         $role = $auth['role'] ?? '';
         $uid = (int)($auth['user_id'] ?? 0);
         $tid = (int)($auth['tenant_id'] ?? 0);

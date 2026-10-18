@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -724,7 +724,7 @@ export default function CapiPage() {
   };
 
   // Convert customEvents into dropdown options
-  const capiEventOptions = customEvents.map(evt => {
+  const capiEventOptions = useMemo(() => customEvents.map(evt => {
     let icon = <Code size={14} style={{ color: 'var(--color-primary)' }} />;
     if (evt.name === 'Skip') icon = <X size={14} style={{ color: 'var(--color-text-muted)' }} />;
     else if (evt.name === 'Purchase') icon = <Zap size={14} style={{ color: 'var(--color-primary)' }} />;
@@ -740,7 +740,32 @@ export default function CapiPage() {
       label: evt.label || evt.name,
       icon
     };
-  });
+  }), [customEvents]);
+
+  const filteredLogs = useMemo(() => {
+    const q = logSearch.toLowerCase().trim();
+    return logs.filter(l => {
+      const matchesSearch = !q ||
+        (l.event_name && l.event_name.toLowerCase().includes(q)) ||
+        (l.display_name && l.display_name.toLowerCase().includes(q)) ||
+        (l.first_name && l.first_name.toLowerCase().includes(q)) ||
+        (l.last_name && l.last_name.toLowerCase().includes(q)) ||
+        (l.phone && l.phone.includes(q)) ||
+        (l.owner_name && l.owner_name.toLowerCase().includes(q)) ||
+        (String(l.response_status).includes(q));
+
+      const matchesStatus = logFilterStatus === 'all' ||
+        (logFilterStatus === '200' && Number(l.response_status) === 200) ||
+        (logFilterStatus === 'error' && Number(l.response_status) !== 200);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [logs, logSearch, logFilterStatus]);
+
+  const paginatedLogs = useMemo(
+    () => filteredLogs.slice((logPage - 1) * logPageSize, logPage * logPageSize),
+    [filteredLogs, logPage, logPageSize]
+  );
 
   const appendVariableToPayload = (varName: string) => {
     setTriggerForm(prev => ({
@@ -880,26 +905,6 @@ export default function CapiPage() {
 
       {/* TAB 1: META CAPI & ÁNH XẠ PHỄU (FULL WIDTH DETAILED LOGS) */}
       {activeTab === 'capi' && (() => {
-        const filteredLogs = logs.filter(l => {
-          const q = logSearch.toLowerCase().trim();
-          const matchesSearch = !q ||
-            (l.event_name && l.event_name.toLowerCase().includes(q)) ||
-            (l.display_name && l.display_name.toLowerCase().includes(q)) ||
-            (l.first_name && l.first_name.toLowerCase().includes(q)) ||
-            (l.last_name && l.last_name.toLowerCase().includes(q)) ||
-            (l.phone && l.phone.includes(q)) ||
-            (l.owner_name && l.owner_name.toLowerCase().includes(q)) ||
-            (String(l.response_status).includes(q));
-
-          const matchesStatus = logFilterStatus === 'all' ||
-            (logFilterStatus === '200' && Number(l.response_status) === 200) ||
-            (logFilterStatus === 'error' && Number(l.response_status) !== 200);
-
-          return matchesSearch && matchesStatus;
-        });
-
-        const paginatedLogs = filteredLogs.slice((logPage - 1) * logPageSize, logPage * logPageSize);
-
         return (
         <div className="card" style={{ padding: '1.25rem', width: '100%', display: 'flex', flexDirection: 'column' }}>
           {/* Top toolbar inside Log card */}

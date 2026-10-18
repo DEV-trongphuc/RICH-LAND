@@ -14,11 +14,11 @@ class DealController {
             $roleFilter = "";
         } else if ($scope === 'team') {
             $uid = (int)$auth['user_id'];
-            $roleFilter = " AND (owner_id = $uid OR owner_id IN (
-                SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = $uid
-                ) OR team_id = (SELECT team_id FROM users WHERE id = $uid)
-            ))";
+            $tStmt = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)");
+            $tStmt->execute([$uid, $uid]);
+            $teamIds = array_unique(array_merge([$uid], array_map('intval', $tStmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+            $inIds = implode(',', $teamIds);
+            $roleFilter = " AND owner_id IN ($inIds)";
         } else if ($scope === 'own') {
             $uid = (int)$auth['user_id'];
             $roleFilter = " AND owner_id = $uid";
@@ -29,11 +29,20 @@ class DealController {
 
         $sql = "
             SELECT ps.*, 
-                   (
-                     (SELECT COUNT(*) FROM contacts WHERE stage_id = ps.id AND deleted_at IS NULL AND tenant_id = :tid1 $roleFilter) +
-                     (SELECT COUNT(*) FROM companies WHERE stage_id = ps.id AND deleted_at IS NULL AND tenant_id = :tid2 $roleFilter)
-                   ) as deals
+                   (COALESCE(c_cnt.cnt, 0) + COALESCE(cp_cnt.cnt, 0)) as deals
             FROM pipeline_stages ps
+            LEFT JOIN (
+                SELECT stage_id, COUNT(*) as cnt 
+                FROM contacts 
+                WHERE deleted_at IS NULL AND tenant_id = :tid1 $roleFilter
+                GROUP BY stage_id
+            ) c_cnt ON c_cnt.stage_id = ps.id
+            LEFT JOIN (
+                SELECT stage_id, COUNT(*) as cnt 
+                FROM companies 
+                WHERE deleted_at IS NULL AND tenant_id = :tid2 $roleFilter
+                GROUP BY stage_id
+            ) cp_cnt ON cp_cnt.stage_id = ps.id
             WHERE ps.tenant_id = :tid3
             ORDER BY ps.order_index
         ";
@@ -68,7 +77,7 @@ class DealController {
     }
 
     public function destroyStage(array $auth, int $id): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý pipeline', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý pipeline', false);
         // Prevent deleting stages that have deals
         $cnt = $this->db->prepare("SELECT COUNT(*) FROM deals WHERE stage_id=? AND tenant_id=?");
         $cnt->execute([$id, $auth['tenant_id']]);
@@ -91,17 +100,18 @@ class DealController {
         $owner  = $_GET['owner_id'] ?? '';
         $contactId = $_GET['contact_id'] ?? '';
         $companyId = $_GET['company_id'] ?? '';
+        $search = trim($_GET['search'] ?? '');
+        $from   = trim($_GET['from'] ?? '');
+        $to     = trim($_GET['to'] ?? '');
 
         $where=['d.tenant_id=?', 'd.deleted_at IS NULL']; $params=[$tid];
         if ($scope === 'team') {
-            $where[] = '(d.owner_id = ? OR d.owner_id IN (
-                SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = ?
-                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
-            ))';
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
+            $uid = (int)$auth['user_id'];
+            $tStmt = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)");
+            $tStmt->execute([$uid, $uid]);
+            $teamIds = array_unique(array_merge([$uid], array_map('intval', $tStmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+            $inIds = implode(',', $teamIds);
+            $where[] = "d.owner_id IN ($inIds)";
         } else if ($scope === 'own') {
             $where[] = "(d.owner_id = ? OR d.contact_id IN (
                 SELECT contact_id FROM cooperation_slips 
@@ -114,6 +124,18 @@ class DealController {
         if ($owner) { $where[]='d.owner_id=?'; $params[]=(int)$owner; }
         if ($contactId) { $where[]='d.contact_id=?'; $params[]=(int)$contactId; }
         if ($companyId) { $where[]='d.company_id=?'; $params[]=(int)$companyId; }
+        if ($search !== '') {
+            $where[] = 'd.title LIKE ?';
+            $params[] = "%$search%";
+        }
+        if ($from !== '') {
+            $where[] = 'd.created_at >= ?';
+            $params[] = strlen($from) === 10 ? ($from . ' 00:00:00') : $from;
+        }
+        if ($to !== '') {
+            $where[] = 'd.created_at <= ?';
+            $params[] = strlen($to) === 10 ? ($to . ' 23:59:59') : $to;
+        }
         $w = implode(' AND ',$where);
 
         $cnt = $this->db->prepare("SELECT COUNT(*) FROM deals d WHERE $w");
@@ -382,7 +404,7 @@ class DealController {
         }
 
         // Check permission first and get old stage
-        $permissionSql = "SELECT id, stage_id FROM deals WHERE id=? AND tenant_id=?";
+        $permissionSql = "SELECT id, stage_id, title FROM deals WHERE id=? AND tenant_id=?";
         $cp = [$id, $auth['tenant_id']];
         if ($scope === 'all') {
             // No extra filters
@@ -503,10 +525,30 @@ class DealController {
             $params = [$id, $auth['tenant_id']];
             $stmt->execute($params);
             $oldDeal = $stmt->fetch();
-            if (!$oldDeal) respond(404, null, 'Không tìm thấy deal cũ', false);
+            if (!$oldDeal) {
+                $this->db->rollBack();
+                respond(404, null, 'Không tìm thấy deal cũ', false);
+            }
 
-            if ($auth['role'] === 'sales' && $oldDeal['owner_id'] != $auth['user_id']) {
+            if (in_array($auth['role'], ['sales', 'sale'], true) && $oldDeal['owner_id'] != $auth['user_id']) {
+                $this->db->rollBack();
                 respond(403, null, 'Bạn không có quyền đổi căn cho deal của người khác', false);
+            }
+
+            // 1b. If an active deposit exists, ensure no milestone has already been approved/collected
+            $oldDep = null;
+            if ($oldDeal['contact_id']) {
+                $stmtDep = $this->db->prepare("SELECT id, project_id FROM deposits WHERE contact_id = ? AND status != 'cancelled' ORDER BY id DESC LIMIT 1 FOR UPDATE");
+                $stmtDep->execute([$oldDeal['contact_id']]);
+                $oldDep = $stmtDep->fetch();
+                if ($oldDep) {
+                    $stmtApprovedM = $this->db->prepare("SELECT COUNT(*) FROM deposit_milestones WHERE deposit_id = ? AND status = 'approved'");
+                    $stmtApprovedM->execute([$oldDep['id']]);
+                    if ((int)$stmtApprovedM->fetchColumn() > 0) {
+                        $this->db->rollBack();
+                        respond(400, null, 'Không thể tự động đổi căn cho phiếu cọc đã có đợt thanh toán được duyệt doanh thu. Vui lòng xử lý điều chỉnh tài chính trước.', false);
+                    }
+                }
             }
 
             // 2. Resolve lost stage for the old deal
@@ -583,38 +625,37 @@ class DealController {
             $stmtNote->execute([$auth['tenant_id'], $auth['user_id'], $newDealId, $auditNoteNew]);
 
             // 6. Handle deposits change if exists
-            if ($oldDeal['contact_id']) {
-                $stmtDep = $this->db->prepare("SELECT id, project_id FROM deposits WHERE contact_id = ? AND status != 'cancelled' ORDER BY id DESC LIMIT 1");
-                $stmtDep->execute([$oldDeal['contact_id']]);
-                $oldDep = $stmtDep->fetch();
-                if ($oldDep) {
-                    // Mark old deposit as cancelled/switched
-                    $stmtCancelDep = $this->db->prepare("UPDATE deposits SET status = 'cancelled', cancelled_reason = ? WHERE id = ?");
-                    $stmtCancelDep->execute(["Đổi sang căn mới $newUnitCode (Deal ID: $newDealId)", $oldDep['id']]);
+            if ($oldDeal['contact_id'] && $oldDep) {
+                // Mark old deposit as cancelled/switched
+                $stmtCancelDep = $this->db->prepare("UPDATE deposits SET status = 'cancelled', cancelled_reason = ? WHERE id = ?");
+                $stmtCancelDep->execute(["Đổi sang căn mới $newUnitCode (Deal ID: $newDealId)", $oldDep['id']]);
 
-                    // Insert new deposit
-                    $targetProjId = $newProjectId ?: $oldDep['project_id'];
-                    $stmtNewDep = $this->db->prepare("
-                        INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by)
-                        VALUES (?, ?, ?, ?, ?, 'pending_admin', ?)
-                    ");
-                    // standard commission is loaded dynamically from settings (default: 3%)
-                    $commRate = (float)$this->getSetting('standard_commission_rate', '0.03');
-                    $comm = $newPrice * $commRate;
-                    $stmtNewDep->execute([
-                        $oldDeal['contact_id'],
-                        $targetProjId,
-                        $newUnitCode,
-                        $newPrice,
-                        $comm,
-                        $auth['user_id']
-                    ]);
-                    $newDepId = (int)$this->db->lastInsertId();
+                // Insert new deposit
+                $targetProjId = $newProjectId ?: $oldDep['project_id'];
+                $stmtNewDep = $this->db->prepare("
+                    INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by)
+                    VALUES (?, ?, ?, ?, ?, 'pending_admin', ?)
+                ");
+                // standard commission is loaded dynamically from settings (default: 3%)
+                $commRate = (float)$this->getSetting('standard_commission_rate', '0.03');
+                $comm = $newPrice * $commRate;
+                $stmtNewDep->execute([
+                    $oldDeal['contact_id'],
+                    $targetProjId,
+                    $newUnitCode,
+                    $newPrice,
+                    $comm,
+                    $auth['user_id']
+                ]);
+                $newDepId = (int)$this->db->lastInsertId();
 
-                    // Create first milestone for the new deposit
-                    $this->db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1 - Cọc giữ chỗ (Đổi căn)', ?, 'pending')")
-                             ->execute([$newDepId, $newPrice]);
-                }
+                // Re-link any existing cooperation slips from the old deposit to the new deposit
+                $stmtRelinkCoop = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ?, apartment_code = ? WHERE deposit_slip_id = ?");
+                $stmtRelinkCoop->execute([$newDepId, $newUnitCode, $oldDep['id']]);
+
+                // Create first milestone for the new deposit
+                $this->db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1 - Cọc giữ chỗ (Đổi căn)', ?, 'pending')")
+                         ->execute([$newDepId, $newPrice]);
             }
 
             $this->db->commit();
@@ -628,20 +669,24 @@ class DealController {
     }
 
     private function getScope(array $auth, string $module, string $action): string {
-        $permissionsJson = null;
-        $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
-        $stmtQ->execute([$auth['user_id']]);
-        $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
-        if ($resQ && !empty($resQ['permissions_json'])) {
-            $permissionsJson = json_decode($resQ['permissions_json'], true);
-        }
-
         if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
             return 'all';
         }
 
         if (in_array($auth['role'], ['sale', 'sales'], true) && $module === 'deals') {
             return $action === 'delete' ? 'none' : 'own';
+        }
+
+        $permissionsJson = null;
+        if (isset($auth['permissions']) && is_array($auth['permissions'])) {
+            $permissionsJson = $auth['permissions'];
+        } else {
+            $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+            $stmtQ->execute([$auth['user_id']]);
+            $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
+            if ($resQ && !empty($resQ['permissions_json'])) {
+                $permissionsJson = json_decode($resQ['permissions_json'], true);
+            }
         }
 
         if ($permissionsJson && isset($permissionsJson[$module][$action])) {

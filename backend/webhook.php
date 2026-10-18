@@ -1599,8 +1599,13 @@ try {
         $updL->bind_param("i", $leadId);
         $updL->execute();
         $updL->close();
+    }
 
-        // Item 18: Gửi tin Telegram trước cho Sale (chờ tối đa 3s phản hồi), sau đó mới tạo lead_offers để mở popup Web
+    logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message, false);
+    $conn->commit();
+
+    if ($status === 'pending_claim' && $leadId && !empty($eligibleConsultants)) {
+        // Phát đồng thời Telegram + Zalo song song (curl_multi <= 3s) ngoài transaction, sau đó insert 1 lệnh batch atomic vào lead_offers để 100% Sale hiển thị popup cùng 1 micro-giây
         $competingNames = [];
         foreach ($eligibleConsultants as $c) {
             $competingNames[] = $c['name'] ?? 'TVV';
@@ -1609,22 +1614,24 @@ try {
         if (function_exists('sendBatchGrabTelegramSync')) {
             sendBatchGrabTelegramSync($conn, $leadId, $eligibleConsultants, $targetRoundId, $grabCountdownSeconds, $competingNames);
         }
-
-        // Create offers (Popup Web hiển thị sau khi Telegram đã phát xong)
-        $offerStmt = $conn->prepare("
-            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
-            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
-        ");
+        if (function_exists('insertBatchGrabLeadOffers')) {
+            insertBatchGrabLeadOffers($conn, $leadId, $eligibleConsultants, $targetRoundId, $grabCountdownSeconds);
+        } else {
+            $offerStmt = $conn->prepare("
+                INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
+                VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+            ");
+            foreach ($eligibleConsultants as $c) {
+                $offerStmt->bind_param("iiii", $leadId, $c['id'], $targetRoundId, $grabCountdownSeconds);
+                $offerStmt->execute();
+            }
+            $offerStmt->close();
+        }
         foreach ($eligibleConsultants as $c) {
-            $offerStmt->bind_param("iiii", $leadId, $c['id'], $targetRoundId, $grabCountdownSeconds);
-            $offerStmt->execute();
             sendGrabOfferNotification($conn, $leadId, $c['id'], $targetRoundId, $grabCountdownSeconds, $competingNames);
         }
-        $offerStmt->close();
     }
 
-    logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message, false);
-    $conn->commit();
     if (!empty($leadId)) {
         triggerTwoWaySync($conn, $leadId);
     }

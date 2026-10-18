@@ -637,6 +637,8 @@ CREATE TABLE IF NOT EXISTS `zalo_queue` (
   `last_error` text DEFAULT NULL,
   `lead_id` int(11) DEFAULT NULL,
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 28. Table: telegram_queue (DATA App)
@@ -1742,27 +1744,42 @@ ALTER TABLE `contacts`
   ADD KEY `idx_contacts_pipeline_status` (`pipeline_status`),
   ADD KEY `idx_contacts_created_at` (`created_at`),
   ADD KEY `idx_contacts_deleted_at` (`deleted_at`),
-  ADD KEY `idx_contacts_security_expires` (`security_expires_at`);
+  ADD KEY `idx_contacts_security_expires` (`security_expires_at`),
+  ADD KEY `idx_contacts_owner_del_created` (`owner_id`, `deleted_at`, `created_at`),
+  ADD KEY `idx_contacts_tenant_owner_pipe_del` (`tenant_id`, `owner_id`, `pipeline_status`, `deleted_at`),
+  ADD KEY `idx_contacts_person_del_pipe` (`person_id`, `deleted_at`, `pipeline_status`),
+  ADD KEY `idx_contacts_phone_del` (`phone`, `deleted_at`);
 
 ALTER TABLE `activities`
   ADD KEY `idx_activities_tenant_user` (`tenant_id`, `user_id`),
   ADD KEY `idx_activities_related` (`related_type`, `related_id`),
-  ADD KEY `idx_activities_due_date` (`due_date`);
+  ADD KEY `idx_activities_due_date` (`due_date`),
+  ADD KEY `idx_activities_tenant_type_status` (`tenant_id`, `type`, `status`, `deleted_at`),
+  ADD KEY `idx_activities_related_lookup` (`related_type`, `related_id`, `deleted_at`);
 
 ALTER TABLE `activity_comments`
   ADD KEY `idx_comments_activity_id` (`activity_id`);
 
+ALTER TABLE `check_ins`
+  ADD KEY `idx_check_ins_user_date_status` (`user_id`, `check_in_date`, `status`);
+
 ALTER TABLE `deposits`
   ADD KEY `idx_deposits_contact_id` (`contact_id`),
-  ADD KEY `idx_deposits_project_id` (`project_id`);
+  ADD KEY `idx_deposits_project_id` (`project_id`),
+  ADD KEY `idx_deposits_status_contact` (`status`, `contact_id`);
+
+ALTER TABLE `deposit_milestones`
+  ADD KEY `idx_dep_milestones_dep_status` (`deposit_id`, `status`);
 
 ALTER TABLE `notifications`
   ADD KEY `idx_notifications_user_unread` (`user_id`, `is_read`);
 
 ALTER TABLE `leads`
   ADD KEY `idx_leads_status_created_at` (`status`, `created_at`),
+  ADD KEY `idx_leads_created_status` (`created_at`, `status`),
   ADD KEY `idx_leads_assigned_status` (`assigned_to`, `status`),
-  ADD KEY `idx_leads_assigned_accepted` (`assigned_to`, `is_accepted`);
+  ADD KEY `idx_leads_assigned_accepted` (`assigned_to`, `is_accepted`),
+  ADD KEY `idx_leads_person_id` (`person_id`);
 
 ALTER TABLE `lead_offers`
   ADD KEY `idx_lead_offers_status_expires` (`status`, `expires_at`),
@@ -1770,7 +1787,33 @@ ALTER TABLE `lead_offers`
 
 ALTER TABLE `cooperation_slips`
   ADD KEY `idx_coop_slips_status_created` (`status`, `created_at`),
-  ADD KEY `idx_coop_deposit_slip` (`deposit_slip_id`);
+  ADD KEY `idx_coop_deposit_slip` (`deposit_slip_id`),
+  ADD KEY `idx_coop_slips_contact_status` (`contact_id`, `status`);
+
+ALTER TABLE `distribution_logs`
+  ADD KEY `idx_dist_logs_assigned_received` (`assigned_to`, `received_at`),
+  ADD KEY `idx_dist_logs_assigned_status_rec` (`assigned_to`, `status`, `received_at`),
+  ADD KEY `idx_dist_logs_rec_lead_id` (`received_at`, `lead_id`, `id`),
+  ADD KEY `idx_dist_logs_lead_assigned_id` (`lead_id`, `assigned_to`, `id`);
+
+ALTER TABLE `data_reports`
+  ADD KEY `idx_data_reports_status_created` (`status`, `created_at`),
+  ADD KEY `idx_data_reports_lead_cons_id` (`lead_id`, `consultant_id`, `id`);
+
+ALTER TABLE `night_shift_registrations`
+  ADD KEY `idx_night_shift_date_user` (`shift_date`, `user_id`, `approved`);
+
+ALTER TABLE `weekend_shift_registrations`
+  ADD KEY `idx_weekend_shift_date_user` (`shift_date`, `user_id`, `approved`);
+
+ALTER TABLE `holiday_shift_registrations`
+  ADD KEY `idx_holiday_shift_date_user` (`shift_date`, `user_id`, `approved`);
+
+ALTER TABLE `ticket_comments`
+  ADD KEY `idx_ticket_comments_ticket_created` (`ticket_id`, `created_at`);
+
+ALTER TABLE `quyen_truy_cap`
+  ADD KEY `idx_qtc_user_contact` (`user_id`, `contact_id`);
 
 ALTER TABLE `deposits`
   ADD KEY `idx_deposits_status_created` (`status`, `created_at`);

@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 198;
+$targetVersion = 201;
 $currentVersion = 186;
 
 // Query current DB version
@@ -138,7 +138,8 @@ try {
           `use_custom_work_hours`,
           `created_at`,
           `phone`,
-          `is_active`
+          `is_active`,
+          `bio`
         FROM `users`
     ");
 } catch (\Throwable $e) {
@@ -509,8 +510,77 @@ try {
         $logMsg("Đã bổ sung cấu hình khung giờ hoạt động vào distribution_rounds.", "success");
     }
 
-    // 11. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '198') ON DUPLICATE KEY UPDATE setting_value = '198'");
+    // 11. Ensure performance indexes on leads, users, projects, capi_logs, and high-concurrency CRM tables
+    $indexesToEnsure = [
+        ['table' => 'leads',              'name' => 'idx_leads_project',                  'cols' => '`project_id`'],
+        ['table' => 'users',              'name' => 'idx_users_status_role_vacation',     'cols' => '`status`, `role`, `vacation_mode`'],
+        ['table' => 'projects',           'name' => 'idx_projects_status',                'cols' => '`status`, `tenant_id`'],
+        ['table' => 'capi_logs',          'name' => 'idx_capi_contact_event',             'cols' => '`contact_id`, `event_name`, `status`'],
+        ['table' => 'contacts',           'name' => 'idx_contacts_owner_del_created',     'cols' => '`owner_id`, `deleted_at`, `created_at`'],
+        ['table' => 'contacts',           'name' => 'idx_contacts_tenant_owner_pipe_del', 'cols' => '`tenant_id`, `owner_id`, `pipeline_status`, `deleted_at`'],
+        ['table' => 'contacts',           'name' => 'idx_contacts_tenant_owner_pipe_dbk', 'cols' => '`tenant_id`, `owner_id`, `pipeline_status`, `is_databank`'],
+        ['table' => 'activities',         'name' => 'idx_activities_tenant_type_status',  'cols' => '`tenant_id`, `type`, `status`, `deleted_at`'],
+        ['table' => 'activities',         'name' => 'idx_activities_related_lookup',      'cols' => '`related_type`, `related_id`, `deleted_at`'],
+        ['table' => 'check_ins',          'name' => 'idx_check_ins_user_date_status',     'cols' => '`user_id`, `check_in_date`, `status`'],
+        ['table' => 'deposits',           'name' => 'idx_deposits_status_contact',        'cols' => '`status`, `contact_id`'],
+        ['table' => 'deposits',           'name' => 'idx_deposits_tenant_status_contact', 'cols' => '`tenant_id`, `status`, `contact_id`'],
+        ['table' => 'deposit_milestones', 'name' => 'idx_dep_milestones_dep_status',      'cols' => '`deposit_id`, `status`'],
+        ['table' => 'cooperation_slips',  'name' => 'idx_coop_slips_contact_status',      'cols' => '`contact_id`, `status`'],
+        ['table' => 'distribution_logs',  'name' => 'idx_dist_logs_assigned_received',    'cols' => '`assigned_to`, `received_at`'],
+        ['table' => 'distribution_logs',  'name' => 'idx_dist_logs_assigned_status_rec',  'cols' => '`assigned_to`, `status`, `received_at`'],
+        ['table' => 'distribution_logs',  'name' => 'idx_dist_logs_cons_dist_at',         'cols' => '`consultant_id`, `distributed_at`'],
+        ['table' => 'quyen_truy_cap',              'name' => 'idx_qtc_user_contact',               'cols' => '`user_id`, `contact_id`'],
+        ['table' => 'quyen_truy_cap',              'name' => 'idx_qtc_legacy_user_status_contact', 'cols' => '`id_nguoi_dung`, `trang_thai`, `id_khach_hang`'],
+        ['table' => 'contacts',                    'name' => 'idx_contacts_person_del_pipe',       'cols' => '`person_id`, `deleted_at`, `pipeline_status`'],
+        ['table' => 'contacts',                    'name' => 'idx_contacts_phone_del',             'cols' => '`phone`, `deleted_at`'],
+        ['table' => 'leads',                       'name' => 'idx_leads_person_id',                'cols' => '`person_id`'],
+        ['table' => 'leads',                       'name' => 'idx_leads_created_status',           'cols' => '`created_at`, `status`'],
+        ['table' => 'distribution_logs',           'name' => 'idx_dist_logs_rec_lead_id',          'cols' => '`received_at`, `lead_id`, `id`'],
+        ['table' => 'distribution_logs',           'name' => 'idx_dist_logs_lead_assigned_id',     'cols' => '`lead_id`, `assigned_to`, `id`'],
+        ['table' => 'data_reports',                'name' => 'idx_data_reports_status_created',    'cols' => '`status`, `created_at`'],
+        ['table' => 'data_reports',                'name' => 'idx_data_reports_lead_cons_id',      'cols' => '`lead_id`, `consultant_id`, `id`'],
+        ['table' => 'night_shift_registrations',   'name' => 'idx_night_shift_date_user',          'cols' => '`shift_date`, `user_id`, `approved`'],
+        ['table' => 'weekend_shift_registrations', 'name' => 'idx_weekend_shift_date_user',        'cols' => '`shift_date`, `user_id`, `approved`'],
+        ['table' => 'holiday_shift_registrations', 'name' => 'idx_holiday_shift_date_user',        'cols' => '`shift_date`, `user_id`, `approved`'],
+        ['table' => 'ticket_comments',             'name' => 'idx_ticket_comments_ticket_created', 'cols' => '`ticket_id`, `created_at`'],
+    ];
+    $tableColumnsCache = [];
+    foreach ($indexesToEnsure as $idx) {
+        $tbl = $idx['table'];
+        if (!isset($tableColumnsCache[$tbl])) {
+            $tableColumnsCache[$tbl] = [];
+            $colRes = $conn->query("SHOW COLUMNS FROM `$tbl`");
+            if ($colRes) {
+                while ($cRow = $colRes->fetch_assoc()) {
+                    $tableColumnsCache[$tbl][$cRow['Field']] = true;
+                }
+            }
+        }
+        if (empty($tableColumnsCache[$tbl])) {
+            continue;
+        }
+        $colNames = array_map(function ($c) {
+            return trim($c, " `\t\n\r\0\x0B");
+        }, explode(',', $idx['cols']));
+        $allColsExist = true;
+        foreach ($colNames as $cn) {
+            if (empty($tableColumnsCache[$tbl][$cn])) {
+                $allColsExist = false;
+                break;
+            }
+        }
+        if (!$allColsExist) {
+            continue;
+        }
+        $chkIdx = $conn->query("SHOW INDEX FROM `$tbl` WHERE Key_name = '{$idx['name']}'");
+        if ($chkIdx && $chkIdx->num_rows == 0) {
+            $conn->query("ALTER TABLE `$tbl` ADD INDEX `{$idx['name']}` ({$idx['cols']})");
+            $logMsg("Đã tạo index {$idx['name']} trên bảng {$tbl}.", "success");
+        }
+    }
+
+    // 12. Update DB version in system_settings
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '201') ON DUPLICATE KEY UPDATE setting_value = '201'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

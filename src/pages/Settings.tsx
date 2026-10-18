@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import dbSchemaJson from '../assets/db_schema.json';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -298,24 +298,25 @@ const SettingsInner = () => {
   ];
 
   // Filtered search items
-  const filteredSearchItems = settingsSearchQuery.trim() === ''
-    ? []
-    : searchableSettingsItems.filter(item => {
-        const query = settingsSearchQuery.toLowerCase().trim();
-        const title = (item.title || '').toLowerCase();
-        const desc = (item.desc || '').toLowerCase();
-        const subtab = (item.subtab || '').toLowerCase();
-        const category = (item.category || '').toLowerCase();
-        const hasKeyword = Array.isArray(item.keywords) && item.keywords.some(kw => (kw ? String(kw).toLowerCase().includes(query) : false));
+  const filteredSearchItems = useMemo(() => {
+    if (settingsSearchQuery.trim() === '') return [];
+    const query = settingsSearchQuery.toLowerCase().trim();
+    return searchableSettingsItems.filter(item => {
+      const title = (item.title || '').toLowerCase();
+      const desc = (item.desc || '').toLowerCase();
+      const subtab = (item.subtab || '').toLowerCase();
+      const category = (item.category || '').toLowerCase();
+      const hasKeyword = Array.isArray(item.keywords) && item.keywords.some(kw => (kw ? String(kw).toLowerCase().includes(query) : false));
 
-        return (
-          title.includes(query) ||
-          desc.includes(query) ||
-          subtab.includes(query) ||
-          category.includes(query) ||
-          hasKeyword
-        );
-      });
+      return (
+        title.includes(query) ||
+        desc.includes(query) ||
+        subtab.includes(query) ||
+        category.includes(query) ||
+        hasKeyword
+      );
+    });
+  }, [settingsSearchQuery, t]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -754,39 +755,49 @@ const SettingsInner = () => {
   const [importSubTab, setImportSubTab] = useState<'list' | 'upload'>('list');
   const [historyPage, setHistoryPage] = useState(1);
 
+  const latestSettingsReqRef = useRef(0);
+
   const fetchSettings = async () => {
+    const reqId = ++latestSettingsReqRef.current;
     try {
-      const roundsJson = await fetchAPI('get_rounds');
+      clearSettingsCache();
+      const [
+        roundsJson,
+        accountsJson,
+        consultantsJson,
+        connectionsJson,
+        sourcesJson,
+        json
+      ] = await Promise.all([
+        fetchAPI('get_rounds').catch(() => ({ success: false })),
+        fetchAPI('get_accounts').catch(() => ({ success: false })),
+        fetchAPI('get_consultants').catch(() => ({ success: false })),
+        fetchAPI('get_connections').catch(() => ({ success: false })),
+        fetchAPI('get_unique_sources').catch((err) => {
+          console.error("Error fetching unique sources:", err);
+          return { success: false };
+        }),
+        fetchAPI('get_settings', { cache: 'no-store' }).catch(() => ({ success: false }))
+      ]);
+
+      if (reqId !== latestSettingsReqRef.current) return;
+
       if (roundsJson.success) {
         setRounds(roundsJson.data || []);
       }
-
-      const accountsJson = await fetchAPI('get_accounts');
       if (accountsJson.success) {
         setAccounts(accountsJson.data || []);
       }
-
-      const consultantsJson = await fetchAPI('get_consultants');
       if (consultantsJson.success) {
         setConsultants(consultantsJson.data || []);
       }
-
-      const connectionsJson = await fetchAPI('get_connections');
       if (connectionsJson.success) {
         setConnections(connectionsJson.data || []);
       }
-
-      try {
-        const sourcesJson = await fetchAPI('get_unique_sources');
-        if (sourcesJson.success) {
-          setAvailableSources(sourcesJson.data || []);
-        }
-      } catch (err) {
-        console.error("Error fetching unique sources:", err);
+      if (sourcesJson.success) {
+        setAvailableSources(sourcesJson.data || []);
       }
 
-      clearSettingsCache();
-      const json = await fetchAPI('get_settings', { cache: 'no-store' });
       if (json.success && json.data) {
         if (json.data.pipeline_status_hierarchy) {
           try {
@@ -1154,7 +1165,9 @@ const SettingsInner = () => {
     } catch (e) {
       console.error(e);
     }
-    setLoading(false);
+    if (reqId === latestSettingsReqRef.current) {
+      setLoading(false);
+    }
   };
 
   const location = useLocation();
@@ -1180,7 +1193,6 @@ const SettingsInner = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-    fetchSettings();
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
     if (tabParam) {
@@ -1215,10 +1227,10 @@ const SettingsInner = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'legacy_mapping') {
+    if (location.pathname === '/settings' && activeTab === 'legacy_mapping') {
       fetchImportHistory(historyPage, historySearch);
     }
-  }, [activeTab, historyPage, historySearch]);
+  }, [activeTab, historyPage, historySearch, location.pathname]);
 
   // Workflow Templates States
   const [workflowTemplates, setWorkflowTemplates] = useState<any[]>([]);

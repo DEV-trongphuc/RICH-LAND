@@ -55,6 +55,7 @@ export const QuotesPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({ total_val: 0, accepted_val: 0, sent_count: 0, accepted_count: 0, total_count: 0 });
   const [previewItem, setPreviewItem] = useState<any>(null);
+  const quoteReqIdRef = useRef(0);
 
   useEffect(() => {
     const handleClose = (e: MouseEvent) => {
@@ -67,6 +68,7 @@ export const QuotesPage: React.FC = () => {
   }, []);
 
   const fetchQuotes = useCallback(async () => {
+    const reqId = ++quoteReqIdRef.current;
     setLoading(true);
     try {
       const params = {
@@ -78,16 +80,20 @@ export const QuotesPage: React.FC = () => {
         search: debouncedSearch
       };
       const r = await api.get('/quotes', { params });
+      if (reqId !== quoteReqIdRef.current) return;
       const data = r.data.data;
       setItems(data.items || []);
       setTotal(data.total || 0);
       setSummary(data.summary || { total_val: 0, accepted_val: 0, sent_count: 0, accepted_count: 0, total_count: 0 });
     } catch (e: any) {
+      if (reqId !== quoteReqIdRef.current) return;
       setItems([]);
       setTotal(0);
       addToast('Lỗi khi tải danh sách báo giá', 'error');
     } finally {
-      setLoading(false);
+      if (reqId === quoteReqIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [page, dateRange, statusFilter, debouncedSearch]);
 
@@ -123,8 +129,8 @@ export const QuotesPage: React.FC = () => {
       onConfirm: async () => {
         try {
           await api.delete(`/quotes/${id}`);
-          setItems(p => p.filter(i => i.id !== id));
           addToast('Đã xóa báo giá', 'success');
+          fetchQuotes();
         } catch (e: any) {
           addToast('Lỗi khi xóa báo giá', 'error');
         } finally {
@@ -137,8 +143,8 @@ export const QuotesPage: React.FC = () => {
   const handleStatusChange = async (id: number, status: string) => {
     try {
       await api.put(`/quotes/${id}`, { status });
-      setItems(p => p.map(i => i.id === id ? { ...i, status } : i));
       addToast(`Đã cập nhật trạng thái báo giá`, 'success');
+      fetchQuotes();
     } catch (e: any) {
       addToast('Lỗi khi cập nhật trạng thái', 'error');
     }

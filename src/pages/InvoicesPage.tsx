@@ -53,7 +53,10 @@ export const InvoicesPage: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const invReqIdRef = React.useRef(0);
+
   const fetchInvoices = useCallback(async () => {
+    const reqId = ++invReqIdRef.current;
     setLoading(true);
     try {
       const params: any = { 
@@ -62,21 +65,25 @@ export const InvoicesPage: React.FC = () => {
         from: dateRange.from, 
         to: dateRange.to, 
         status: statusFilter,
-        search: search
+        search: debouncedSearch
       };
       const r = await api.get('/invoices', { params });
+      if (reqId !== invReqIdRef.current) return;
       const data = r.data.data;
       setItems(data.items || []);
       setTotal(data.total || 0);
       setSummary(data.summary || { total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
     } catch (e: any) {
+      if (reqId !== invReqIdRef.current) return;
       setItems([]);
       setTotal(0);
       addToast('Không thể kết nối với máy chủ Backend', 'error');
     } finally {
-      setLoading(false);
+      if (reqId === invReqIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [page, dateRange, statusFilter, search]);
+  }, [page, dateRange, statusFilter, debouncedSearch]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
 
@@ -154,8 +161,8 @@ export const InvoicesPage: React.FC = () => {
       onConfirm: async () => {
         try {
           await api.post(`/invoices/${inv.id}/pay`);
-          setItems(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid' } : i));
           addToast(`Đã cập nhật ${inv.invoice_number} thành Đã thanh toán`, 'success');
+          fetchInvoices();
         } catch (e: any) {
           addToast(e.response?.data?.message || 'Không thể cập nhật trạng thái', 'error');
         }

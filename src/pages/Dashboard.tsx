@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
@@ -98,8 +98,10 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const [consultantPage, setConsultantPage] = useState(1);
   const CONSULTANTS_PER_PAGE = 8;
 
+  const isFetchingDashboardRef = useRef(false);
+
   const fetchStatsOnly = async (metricVal: string, modeVal: string, signal?: AbortSignal) => {
-    if (loading) return; // Skip if main dashboard loading is in progress
+    if (loading || isFetchingDashboardRef.current) return; // Skip if main dashboard loading is in progress
     setModalChartLoading(true);
     try {
       const statsJson = await fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${modeVal}&chart_metric=${metricVal}`, { signal });
@@ -239,6 +241,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
   const fetchDashboard = async (signal?: AbortSignal) => {
     setLoading(true);
+    isFetchingDashboardRef.current = true;
     try {
       // BUG-04 fix: Dùng Promise.all để gọi song song, tiết kiệm ~1-2s
       // BUG-06 fix: Xử lý lỗi riêng từng API, không để lỗi một cái 'nuốt' cái kia
@@ -275,49 +278,47 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       if (e?.name !== 'AbortError') {
         console.error('Dashboard fetch error:', e);
       }
+    } finally {
+      isFetchingDashboardRef.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    if (isActive) {
-      // BUG-04 fix: Tạo AbortController để hủy fetch cũ khi dateFilter thay đổi nhanh
-      const abortController = new AbortController();
-      fetchDashboard(abortController.signal);
-      return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
+    if (!isActive) return;
+    const savedDate = localStorage.getItem('richland_global_date');
+    if (savedDate && savedDate !== dateFilter) {
+      setDateFilter(savedDate);
+      return;
     }
+    // BUG-04 fix: Tạo AbortController để hủy fetch cũ khi dateFilter thay đổi nhanh
+    const abortController = new AbortController();
+    fetchDashboard(abortController.signal);
+    return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
   }, [dateFilter, isActive]);
 
   useEffect(() => {
     if (isActive) {
-      fetchAPI('get_reports&status=pending&date=all&pageSize=1')
-        .then(res => { if (res.success) setPendingTicketsCount(res.total_count ?? 0); })
-        .catch(e => console.error(e));
-        
-      fetchAPI('get_held_leads&pageSize=1&date=all')
-        .then(res => { if (res.success) setHeldLeadsCount(res.total_count ?? 0); })
-        .catch(e => console.error(e));
-
-      fetchAPI('check-ins&status=pending_approval')
-        .then(res => { if (res.success && Array.isArray(res.data)) setPendingCheckInsCount(res.data.length); })
-        .catch(e => console.error(e));
-
-      fetchAPI('cooperation-slips')
+      fetchAPI('get_all_pending_counts')
         .then(res => {
-          if (res.success && Array.isArray(res.data)) {
-            const pending = res.data.filter((c: any) => c.status === 'pending_manager_approval');
-            setPendingCoopsCount(pending.length);
+          if (res.success && res.data) {
+            setPendingTicketsCount(Number(res.data.ticketsCount || 0));
+            setHeldLeadsCount(Number(res.data.heldCount || 0));
+            setPendingCheckInsCount(Number(res.data.checkinsCount || 0));
+            setPendingCoopsCount(Number(res.data.coopsCount || 0));
+            setPendingExpensesCount(Number(res.data.expensesCount || 0));
           }
         })
-        .catch(e => console.error(e));
-
-      fetchAPI('expenses?status=pending&limit=1')
-        .then(res => { if (res.success) setPendingExpensesCount(res.data?.total ?? 0); })
         .catch(e => console.error(e));
     }
   }, [isActive]);
 
+  const hasMountedChartRef = useRef(false);
   useEffect(() => {
+    if (!hasMountedChartRef.current) {
+      hasMountedChartRef.current = true;
+      return;
+    }
     if (isActive) {
       const abortController = new AbortController();
       const metric = showHealthModal ? healthChartMetric : 'lead';
@@ -325,16 +326,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       fetchStatsOnly(metric, mode, abortController.signal);
       return () => abortController.abort();
     }
-  }, [chartMode, healthChartMetric, showHealthModal, isActive]);
-
-  useEffect(() => {
-    if (isActive) {
-      const savedDate = localStorage.getItem('richland_global_date');
-      if (savedDate && savedDate !== dateFilter) {
-        setDateFilter(savedDate);
-      }
-    }
-  }, [isActive]);
+  }, [chartMode, healthChartMetric, showHealthModal]);
 
   useEffect(() => {
     const handleGlobalDate = (e: any) => {

@@ -4,13 +4,14 @@ require_once __DIR__ . '/config.php';          // DB constants + CORS origins
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        error_log('FATAL ERROR: ' . $error['message'] . ' in ' . $error['file'] . ' on line ' . $error['line']);
         if (!headers_sent()) {
             http_response_code(500);
             header('Content-Type: application/json; charset=UTF-8');
         }
         echo json_encode([
             'success' => false,
-            'message' => 'FATAL ERROR: ' . $error['message'] . ' in ' . $error['file'] . ' on line ' . $error['line']
+            'message' => 'Lỗi hệ thống nội bộ. Vui lòng thử lại sau.'
         ], JSON_UNESCAPED_UNICODE);
     }
 });
@@ -51,15 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-if (isset($_GET['action']) && $_GET['action'] === 'get_user_role') {
-    $db = Database::getInstance();
-    $res = $db->query("SELECT id, role, full_name, email, team_id, permissions_json FROM users WHERE email LIKE '%haidang%' OR full_name LIKE '%Đăng%'");
-    $users = $res->fetchAll(PDO::FETCH_ASSOC);
-    Database::close();
-    echo json_encode($users);
-    exit;
-}
-
 // ── Helper functions ──────────────────────────────────────────
 function respond(int $code, $data = null, string $message = '', bool $success = true): void {
     if (class_exists('Database')) {
@@ -84,8 +76,7 @@ function respond(int $code, $data = null, string $message = '', bool $success = 
 // ── Global Exception Handler ──────────────────────────────────
 set_exception_handler(function (Throwable $e) {
     error_log("GLOBAL EXCEPTION: " . $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine());
-    $msg = $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine();
-    respond(500, null, $msg, false);
+    respond(500, null, 'Lỗi hệ thống nội bộ. Vui lòng thử lại sau.', false);
 });
 
 function getBody(): array {
@@ -412,10 +403,13 @@ $db = Database::getInstance();
 // ── Auto-Migrate Database schema (Gated to avoid metadata locks on every request) ──
 if (isset($_GET['run_migrations']) && $_GET['run_migrations'] === 'richland2026') {
     try {
-        $db->exec("CREATE TABLE IF NOT EXISTS schema_migrations (
-            migration VARCHAR(255) PRIMARY KEY,
-            applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $hasSchemaTbl = $db->query("SHOW TABLES LIKE 'schema_migrations'")->fetchColumn();
+        if (!$hasSchemaTbl) {
+            $db->exec("CREATE TABLE schema_migrations (
+                migration VARCHAR(255) PRIMARY KEY,
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        }
 
         $applied = $db->query("SELECT migration FROM schema_migrations")->fetchAll(PDO::FETCH_COLUMN) ?: [];
         $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql', 'migrate_fractional_quantities.sql', 'migrate_pipeline_stage_slugs.sql', 'migrate_citizen_id_varchar.sql'];
@@ -442,41 +436,34 @@ if (isset($_GET['run_migrations']) && $_GET['run_migrations'] === 'richland2026'
     }
 }
 
-// ── Auto-wipe expired shift registrations ────────────────
-try {
-    $nightShiftEnd = '06:00';
-    $resEnd = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_end_time' LIMIT 1");
-    if ($resEnd) {
-        $sRow = $resEnd->fetch(PDO::FETCH_ASSOC);
-        if ($sRow && !empty($sRow['setting_value'])) {
-            $nightShiftEnd = $sRow['setting_value'];
-        }
-    }
-    $endHour = (int)explode(':', $nightShiftEnd)[0];
-    $currentHour = (int)date('H');
-    $activeNightShiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
-    
-    // Preserve historical registrations for attendance calendar & audit history according to system_settings retention (default 90 days, or 0 for permanent)
-    $retentionDays = 90;
-    try {
-        $retentionRow = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'shift_history_retention_days' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-        if ($retentionRow && isset($retentionRow['setting_value'])) {
-            $retentionDays = (int)$retentionRow['setting_value'];
-        }
-    } catch (Exception $e) {
-        $retentionDays = 90;
-    }
+// ── Auto-wipe expired shift registrations (throttled via lock file to avoid write locks on hot GET paths) ──
+if (mt_rand(1, 200) === 1) {
+    $shiftCleanupLock = sys_get_temp_dir() . '/richland_shift_cleanup.lock';
+    if (!file_exists($shiftCleanupLock) || (time() - @filemtime($shiftCleanupLock)) > 3600) {
+        @file_put_contents($shiftCleanupLock, (string)time());
+        try {
+            $retentionDays = 90;
+            try {
+                $retentionRow = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'shift_history_retention_days' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+                if ($retentionRow && isset($retentionRow['setting_value'])) {
+                    $retentionDays = (int)$retentionRow['setting_value'];
+                }
+            } catch (Exception $e) {
+                $retentionDays = 90;
+            }
 
-    if ($retentionDays > 0) {
-        $stmt1 = $db->prepare("DELETE FROM night_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)");
-        $stmt1->execute([$retentionDays]);
-        $stmt2 = $db->prepare("DELETE FROM weekend_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)");
-        $stmt2->execute([$retentionDays]);
-        $stmt3 = $db->prepare("DELETE FROM holiday_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)");
-        $stmt3->execute([$retentionDays]);
+            if ($retentionDays > 0) {
+                $stmt1 = $db->prepare("DELETE FROM night_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+                $stmt1->execute([$retentionDays]);
+                $stmt2 = $db->prepare("DELETE FROM weekend_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+                $stmt2->execute([$retentionDays]);
+                $stmt3 = $db->prepare("DELETE FROM holiday_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+                $stmt3->execute([$retentionDays]);
+            }
+        } catch (Exception $e) {
+            error_log("Shift Cleanup Error: " . $e->getMessage());
+        }
     }
-} catch (Exception $e) {
-    error_log("Shift Cleanup Error: " . $e->getMessage());
 }
 
 if ($resource === 'check') {

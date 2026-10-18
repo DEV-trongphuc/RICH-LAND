@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { Pagination } from '../components/ui/Pagination';
 import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle, AlertTriangle, ShieldAlert, ChevronRight, ChevronLeft } from 'lucide-react';
@@ -357,7 +357,10 @@ export const DealsPage: React.FC = () => {
     }
   };
 
+  const dealReqIdRef = useRef(0);
+
   const fetchData = async () => {
+    const reqId = ++dealReqIdRef.current;
     setLoading(true);
     try {
       const endpoint = pipelineView === 'contacts' ? '/contacts' : (pipelineView === 'companies' ? '/companies' : '/deals');
@@ -383,6 +386,7 @@ export const DealsPage: React.FC = () => {
       }
 
       const r = await api.get(endpoint, { params });
+      if (reqId !== dealReqIdRef.current) return;
       let dataItems = r.data.data?.items || [];
 
       const currentUser = useAuthStore.getState().user;
@@ -411,22 +415,29 @@ export const DealsPage: React.FC = () => {
       setItems(grouped);
       setTotal(r.data.data?.total || dataItems.length);
     } catch (e: any) {
+      if (reqId !== dealReqIdRef.current) return;
       console.error("Failed to fetch data", e);
       setItems({});
-    } finally { setLoading(false); }
+    } finally {
+      if (reqId === dealReqIdRef.current) {
+        setLoading(false);
+      }
+    }
   };
 
 
   useEffect(() => {
-    fetchProjects();
-    fetchCampaigns();
-    fetchSources();
-    fetchStages();
-  }, [pipelineView]);
+    Promise.all([
+      fetchProjects(),
+      fetchCampaigns(),
+      fetchSources(),
+      fetchStages()
+    ]);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
-  }, [pipelineView, teams]);
+  }, [teams]);
 
   useEffect(() => {
     const fetchGlobalSettings = async () => {
@@ -1267,8 +1278,8 @@ export const DealsPage: React.FC = () => {
               overflowX: 'auto', 
               padding: isMobile ? '0.75rem' : '1.5rem', 
               paddingBottom: '2rem', 
-              height: 'calc(100vh - 280px)',
-              minHeight: '520px',
+              height: 'calc(100dvh - 280px)',
+              minHeight: isMobile ? '420px' : '520px',
               flex: 1, 
               alignItems: 'stretch', 
               scrollSnapType: 'x mandatory',
@@ -1849,7 +1860,7 @@ export const DealsPage: React.FC = () => {
               <motion.div 
                 initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                 onClick={e => e.stopPropagation()}
-                style={{ background: 'var(--color-surface)', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '1.5rem', maxHeight: '80vh', overflowY: 'auto' }}
+                style={{ background: 'var(--color-surface)', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px)) 1.5rem', maxHeight: '85dvh', overflowY: 'auto' }}
               >
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '1rem', textAlign: 'center' }}>Chọn giai đoạn mới</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

@@ -451,16 +451,16 @@ class TriggerHelper {
         if (!isset($context['price']) && !isset($context['actual_value'])) {
             try {
                 $stmtDeal = $db->prepare("
-                    SELECT expected_value, actual_value 
+                    SELECT value 
                     FROM deals 
-                    WHERE contact_id = ? 
+                    WHERE contact_id = ? AND deleted_at IS NULL
                     ORDER BY id DESC 
                     LIMIT 1
                 ");
                 $stmtDeal->execute([$context['contact_id']]);
                 $deal = $stmtDeal->fetch(PDO::FETCH_ASSOC);
                 if ($deal) {
-                    $context['deal_price'] = (float)($deal['actual_value'] ?: $deal['expected_value'] ?: 0);
+                    $context['deal_price'] = (float)($deal['value'] ?: 0);
                 }
             } catch (\Throwable $e) {}
         }
@@ -483,9 +483,9 @@ class TriggerHelper {
         $email = $context['email'] ?? ($context['person_email'] ?? '');
         $timeNow = time();
 
-        $price = (float)($context['actual_value'] ?? ($context['expected_value'] ?? ($context['deal_price'] ?? ($context['budget'] ?? 13674109347))));
-        if ($price <= 0) {
-            $price = 13674109347;
+        $price = (float)($context['actual_value'] ?? ($context['expected_value'] ?? ($context['deal_price'] ?? ($context['price'] ?? ($context['budget'] ?? 0)))));
+        if ($price < 0) {
+            $price = 0;
         }
 
         $status = $context['pipeline_status'] ?? ($context['status'] ?? '');

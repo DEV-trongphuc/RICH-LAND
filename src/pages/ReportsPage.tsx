@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BarChart3, TrendingUp, Users, Briefcase, Download, ArrowUpRight, ArrowDownRight, Filter, DollarSign } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line, LabelList } from 'recharts';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
@@ -62,22 +62,33 @@ export const ReportsPage: React.FC = () => {
   const [referralData, setReferralData] = useState<any>(null);
   const [teams, setTeams] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [teamReady, setTeamReady] = useState(false);
   const [ownerPage, setOwnerPage] = useState(1);
   const [ownerPageSize] = useState(10);
+  const reportReqIdRef = useRef(0);
 
   useEffect(() => {
-    if (user && ['manager', 'admin', 'superadmin'].includes(user.role)) {
-      api.get('/teams').then(res => {
-        setTeams(res.data.data || res.data || []);
-      }).catch(() => {});
-      api.get('/users').then(res => {
-        const d = res.data.data;
-        setUsers(Array.isArray(d) ? d : (d?.items || []));
-      }).catch(() => {});
-    }
+    let active = true;
+    const loadTeamContext = async () => {
+      if (user && ['manager', 'admin', 'superadmin'].includes(user.role)) {
+        const [teamsRes, usersRes] = await Promise.all([
+          api.get('/teams').catch(() => null),
+          api.get('/users').catch(() => null)
+        ]);
+        if (!active) return;
+        if (teamsRes) setTeams(teamsRes.data.data || teamsRes.data || []);
+        if (usersRes) {
+          const d = usersRes.data.data;
+          setUsers(Array.isArray(d) ? d : (d?.items || []));
+        }
+      }
+      if (active) setTeamReady(true);
+    };
+    loadTeamContext();
+    return () => { active = false; };
   }, [user]);
 
-  const getEffectiveTeamId = () => {
+  const effectiveTeamId = useMemo(() => {
     if ((user as any)?.team_id) return (user as any).team_id;
     const me = users.find(u => Number(u.id) === Number(user?.id));
     if (me?.team_id) return me.team_id;
@@ -86,24 +97,28 @@ export const ReportsPage: React.FC = () => {
       return managedTeam?.id || null;
     }
     return null;
-  };
+  }, [user, users, teams]);
 
   const fetchSales = async () => {
+    const reqId = ++reportReqIdRef.current;
     if (!salesData) setLoading(true);
     try {
-      const r = await api.get('/reports/sales', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
+      const r = await api.get('/reports/sales', { params: { from: dateRange.from, to: dateRange.to, team_id: effectiveTeamId } });
+      if (reqId !== reportReqIdRef.current) return;
       setSalesData(r.data.data);
     } catch (e: any) {
       // silent fail — show empty charts
     } finally {
-      setLoading(false);
+      if (reqId === reportReqIdRef.current) setLoading(false);
     }
   };
 
   const fetchPipeline = async () => {
+    const reqId = ++reportReqIdRef.current;
     if (pipelineData.length === 0) setLoading(true);
     try {
-      const r = await api.get('/reports/pipeline', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
+      const r = await api.get('/reports/pipeline', { params: { from: dateRange.from, to: dateRange.to, team_id: effectiveTeamId } });
+      if (reqId !== reportReqIdRef.current) return;
       const raw = r.data.data || [];
       const mapped = raw.map((item: any) => ({
         ...item,
@@ -113,13 +128,17 @@ export const ReportsPage: React.FC = () => {
       setPipelineData(mapped);
     } catch (e: any) {
       // silent fail
-    } finally { setLoading(false); }
+    } finally {
+      if (reqId === reportReqIdRef.current) setLoading(false);
+    }
   };
 
   const fetchActivities = async () => {
+    const reqId = ++reportReqIdRef.current;
     if (!activityData) setLoading(true);
     try {
-      const r = await api.get('/reports/activities', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
+      const r = await api.get('/reports/activities', { params: { from: dateRange.from, to: dateRange.to, team_id: effectiveTeamId } });
+      if (reqId !== reportReqIdRef.current) return;
       const raw = r.data.data;
       if (raw) {
         if (raw.by_type) raw.by_type = raw.by_type.map((item: any) => ({ ...item, total: Number(item.total || 0) }));
@@ -128,13 +147,17 @@ export const ReportsPage: React.FC = () => {
       setActivityData(raw);
     } catch (e: any) {
       console.error("Failed to fetch activities", e);
-    } finally { setLoading(false); }
+    } finally {
+      if (reqId === reportReqIdRef.current) setLoading(false);
+    }
   };
 
   const fetchCustomers = async () => {
+    const reqId = ++reportReqIdRef.current;
     if (!customerData) setLoading(true);
     try {
-      const r = await api.get('/reports/customers', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
+      const r = await api.get('/reports/customers', { params: { from: dateRange.from, to: dateRange.to, team_id: effectiveTeamId } });
+      if (reqId !== reportReqIdRef.current) return;
       const raw = r.data.data;
       if (raw) {
         if (raw.by_source) raw.by_source = raw.by_source.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
@@ -144,13 +167,17 @@ export const ReportsPage: React.FC = () => {
       setCustomerData(raw);
     } catch (e: any) {
       console.error(e);
-    } finally { setLoading(false); }
+    } finally {
+      if (reqId === reportReqIdRef.current) setLoading(false);
+    }
   };
 
   const fetchCompanies = async () => {
+    const reqId = ++reportReqIdRef.current;
     if (!companyData) setLoading(true);
     try {
-      const r = await api.get('/reports/companies', { params: { team_id: getEffectiveTeamId() } });
+      const r = await api.get('/reports/companies', { params: { team_id: effectiveTeamId } });
+      if (reqId !== reportReqIdRef.current) return;
       const raw = r.data.data;
       if (raw) {
         if (raw.by_industry) raw.by_industry = raw.by_industry.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
@@ -160,13 +187,17 @@ export const ReportsPage: React.FC = () => {
       setCompanyData(raw);
     } catch (e: any) {
       console.error(e);
-    } finally { setLoading(false); }
+    } finally {
+      if (reqId === reportReqIdRef.current) setLoading(false);
+    }
   };
 
   const fetchExpenses = async () => {
+    const reqId = ++reportReqIdRef.current;
     if (!expenseData) setLoading(true);
     try {
-      const r = await api.get('/reports/expenses', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
+      const r = await api.get('/reports/expenses', { params: { from: dateRange.from, to: dateRange.to, team_id: effectiveTeamId } });
+      if (reqId !== reportReqIdRef.current) return;
       const raw = r.data.data;
       if (raw) {
         if (raw.by_category) raw.by_category = raw.by_category.map((item: any) => ({ ...item, total: Number(item.total || 0) }));
@@ -175,13 +206,17 @@ export const ReportsPage: React.FC = () => {
       setExpenseData(raw);
     } catch (e: any) {
       console.error(e);
-    } finally { setLoading(false); }
+    } finally {
+      if (reqId === reportReqIdRef.current) setLoading(false);
+    }
   };
 
   const fetchReferrals = async () => {
+    const reqId = ++reportReqIdRef.current;
     if (!referralData) setLoading(true);
     try {
-      const r = await api.get('/reports/referrals', { params: { team_id: getEffectiveTeamId() } });
+      const r = await api.get('/reports/referrals', { params: { team_id: effectiveTeamId } });
+      if (reqId !== reportReqIdRef.current) return;
       const raw = r.data.data;
       if (raw) {
         if (raw.top_referrers) raw.top_referrers = raw.top_referrers.map((item: any) => ({ ...item, referral_count: Number(item.referral_count || 0), total_revenue: Number(item.total_revenue || 0) }));
@@ -190,10 +225,13 @@ export const ReportsPage: React.FC = () => {
       setReferralData(raw);
     } catch (e: any) {
       console.error("Failed to fetch referrals reports", e);
-    } finally { setLoading(false); }
+    } finally {
+      if (reqId === reportReqIdRef.current) setLoading(false);
+    }
   };
 
   useEffect(() => {
+    if (!teamReady) return;
     if (tab === 'sales') fetchSales();
     else if (tab === 'pipeline') fetchPipeline();
     else if (tab === 'customers') fetchCustomers();
@@ -201,7 +239,7 @@ export const ReportsPage: React.FC = () => {
     else if (tab === 'expenses') fetchExpenses();
     else if (tab === 'activities') fetchActivities();
     else if (tab === 'referrals') fetchReferrals();
-  }, [tab, dateRange, teams, users]);
+  }, [tab, dateRange, effectiveTeamId, teamReady]);
 
   return (
     <div>
@@ -230,6 +268,7 @@ export const ReportsPage: React.FC = () => {
               setCompanyData(null);
               setExpenseData(null);
               setActivityData(null);
+              setReferralData(null);
             }} 
             style={isMobile ? { flex: 1, width: '100%' } : undefined}
             buttonStyle={isMobile ? { width: '100%', minWidth: '0px' } : undefined}

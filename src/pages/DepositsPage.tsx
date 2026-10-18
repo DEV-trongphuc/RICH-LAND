@@ -98,6 +98,13 @@ export default function DepositsPage() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const filteredDepositsList = React.useMemo(() => {
     if (user?.role === 'sale') {
@@ -214,15 +221,27 @@ export default function DepositsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [resDep, resCont, resProj, resCoop, resUsr] = await Promise.all([
-        fetchAPI('deposits'),
-        fetchAPI('contacts?limit=1000'),
-        fetchAPI('projects?bypass_roster=1'),
-        fetchAPI('cooperation-slips').catch(() => ({ success: false, data: [] })),
-        fetchAPI('users?all=1').catch(() => ({ success: false, data: [] }))
-      ]);
-
+      const resDep = await fetchAPI('deposits');
       if (resDep.success) setDeposits(resDep.data || []);
+    } catch (e: any) {
+      addToast(e.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!isCreateOpen || contacts.length > 0) return;
+    Promise.all([
+      fetchAPI('contacts?limit=500&minimal=1').catch(() => ({ success: false, data: [] })),
+      fetchAPI('projects?bypass_roster=1').catch(() => ({ success: false, data: [] })),
+      fetchAPI('cooperation-slips').catch(() => ({ success: false, data: [] })),
+      fetchAPI('users?all=1').catch(() => ({ success: false, data: [] }))
+    ]).then(([resCont, resProj, resCoop, resUsr]) => {
       if (resCont.success) {
         const allContacts = resCont.data?.items || resCont.data || [];
         const filteredContacts = (user?.role === 'sale') 
@@ -239,16 +258,8 @@ export default function DepositsPage() {
       if (resUsr.success) {
         setUsersList(resUsr.data || []);
       }
-    } catch (e: any) {
-      addToast(e.message || 'Lỗi kết nối', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+    });
+  }, [isCreateOpen, contacts.length, user?.role, user?.id]);
 
   // Check for pre-existing cooperation slip and load collaborators when selectedContactId changes
   useEffect(() => {
@@ -801,6 +812,116 @@ export default function DepositsPage() {
         />
       ) : (
         <div className="card" style={{ padding: 0, borderRadius: '16px', border: '1px solid var(--color-border-light)', overflow: 'hidden', background: 'var(--color-surface)', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
+          {isMobile ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem' }}>
+              {paginatedDeposits.map(dep => {
+                let statusText = 'Đang giao dịch';
+                let statusBg = 'rgba(245, 158, 11, 0.08)';
+                let statusColor = '#d97706';
+                if (dep.status === 'approved') {
+                  statusText = 'Hoàn tất cọc';
+                  statusBg = 'rgba(16, 185, 129, 0.08)';
+                  statusColor = '#059669';
+                } else if (dep.status === 'cancelled') {
+                  statusText = 'Đã bể cọc';
+                  statusBg = 'rgba(239, 68, 68, 0.08)';
+                  statusColor = '#dc2626';
+                }
+                const isCreator = String(dep.created_by) === String(user?.id);
+                const isOwner = String(dep.contact_owner_id) === String(user?.id);
+                const isStaff = user && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(user.role);
+                const canManage = isStaff || isCreator || isOwner;
+
+                return (
+                  <div
+                    key={dep.id}
+                    onClick={() => handleOpenManageMilestones(dep)}
+                    style={{
+                      padding: '0.875rem',
+                      borderRadius: '12px',
+                      border: '1px solid var(--color-border-light)',
+                      background: 'var(--color-bg)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.625rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <span style={{ padding: '4px 8px', background: 'rgba(189, 29, 45, 0.08)', color: 'var(--color-primary)', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem' }}>
+                        {dep.unit_code}
+                      </span>
+                      <span style={{ background: statusBg, color: statusColor, border: `1px solid ${statusColor}25`, padding: '3px 10px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 700 }}>
+                        {statusText}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{dep.project_name}</div>
+                      <div
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenContactDrawer(dep.contact_id, 'deals');
+                        }}
+                      >
+                        <Avatar src={dep.avatar_url} name={`${dep.last_name || ''} ${dep.first_name || ''}`} size="sm" style={{ width: 22, height: 22, fontSize: 10 }} />
+                        <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)' }}>
+                          Khách: <strong style={{ color: 'var(--color-primary, #BD1D2D)' }}>{dep.last_name} {dep.first_name}</strong> ({dep.phone})
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '6px', borderTop: '1px dashed var(--color-border)' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.85rem' }}>{formatMoney(dep.price)}</div>
+                        <div style={{ fontSize: '0.725rem', color: '#059669', fontWeight: 600 }}>HH: {formatMoney(dep.expected_commission)}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {dep.milestones.map((m, idx) => {
+                          const dotColor = m.status === 'approved' ? '#10b981' : m.status === 'paid' ? '#2563eb' : m.status === 'failed' ? '#ef4444' : '#6b7280';
+                          return (
+                            <span key={m.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', borderRadius: '6px', background: `${dotColor}12`, border: `1px solid ${dotColor}25`, fontSize: '0.675rem', fontWeight: 700, color: dotColor }}>
+                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: dotColor }} />
+                              Đ{idx + 1}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px', paddingTop: '4px' }} onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleOpenContactDrawer(dep.contact_id, 'deals')}
+                        style={{ flex: 1, minHeight: '36px', background: 'rgba(189, 29, 45, 0.08)', border: '1px solid rgba(189, 29, 45, 0.2)', color: 'var(--color-primary, #BD1D2D)', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        <Eye size={13} />
+                        <span>Chi tiết</span>
+                      </button>
+                      {dep.status !== 'cancelled' && canManage && (
+                        <>
+                          <button
+                            onClick={() => handleOpenManageMilestones(dep)}
+                            style={{ flex: 1, minHeight: '36px', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', color: '#2563eb', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            <Edit size={13} />
+                            <span>Cập nhật</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenCancel(dep.id)}
+                            style={{ flex: 1, minHeight: '36px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            <Ban size={13} />
+                            <span>Bể cọc</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
           <div className="table-wrap" style={{ maxHeight: '480px', overflowY: 'auto', overflowX: 'auto' }}>
             <table className="w-full text-left" style={{ borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
@@ -1053,6 +1174,7 @@ export default function DepositsPage() {
               </tbody>
             </table>
           </div>
+          )}
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
@@ -1131,8 +1253,8 @@ export default function DepositsPage() {
         width="620px"
       >
         <div style={{ padding: '0.5rem 0' }}>
-          <form onSubmit={handleCreateDeposit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '75vh', overflowY: 'auto', paddingRight: '4px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <form onSubmit={handleCreateDeposit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '75dvh', overflowY: 'auto', paddingRight: '4px' }}>
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Khách hàng</label>
                 <CustomSelect
@@ -1163,7 +1285,7 @@ export default function DepositsPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            <div className="responsive-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Mã căn hộ</label>
                 <input

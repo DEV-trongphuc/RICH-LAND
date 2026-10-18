@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Package, Plus, Edit, Trash2, LayoutGrid, List, Search, 
@@ -89,13 +89,14 @@ export default function InventoryPage() {
   const [adjustForm, setAdjustForm] = useState({ new_qty: '', reason: 'Điều chỉnh kiểm kho' });
   const [receivers, setReceivers] = useState<{value: string, label: string, sublabel?: string, avatar?: string}[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const batchReqIdRef = useRef(0);
 
   const { showConfirm, addToast, closeConfirm } = useUIStore();
 
 
   const fetchReceivers = async () => {
     try {
-      const res = await api.get('/contacts?limit=1000');
+      const res = await api.get('/contacts?limit=500&minimal=1');
       const raw = res.data?.data;
       const list = Array.isArray(raw) ? raw : (raw?.items || []);
       setReceivers(list.map((c: any) => ({
@@ -110,8 +111,8 @@ export default function InventoryPage() {
   };
 
   const fetchBatches = async () => {
+    const reqId = ++batchReqIdRef.current;
     setLoading(true);
-    // Always fetch from API
     try {
       const params: any = { 
         page, 
@@ -122,14 +123,19 @@ export default function InventoryPage() {
         order: sortBy.split('_')[1] === 'desc' ? 'DESC' : 'ASC'
       };
       const res = await api.get('/inventory', { params });
+      if (reqId !== batchReqIdRef.current) return;
       const data = res.data.data;
       setBatches(data.items || []);
       setTotal(data.total || 0);
       if (data.summary) setSummary(data.summary);
     } catch (err: any) {
-      console.error(err);
+      if (reqId === batchReqIdRef.current) {
+        console.error(err);
+      }
     } finally {
-      setLoading(false);
+      if (reqId === batchReqIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -156,9 +162,16 @@ export default function InventoryPage() {
   }, [page, debouncedSearch, statusFilter, sortBy]);
 
   useEffect(() => {
-    fetchGlobalLogs();
-    fetchReceivers();
-  }, []);
+    if (activeTab === 'history' && globalLogs.length === 0) {
+      fetchGlobalLogs();
+    }
+  }, [activeTab, globalLogs.length]);
+
+  useEffect(() => {
+    if (showExportModal && receivers.length === 0) {
+      fetchReceivers();
+    }
+  }, [showExportModal, receivers.length]);
 
   const archiveBatch = (id: number) => {
     showConfirm(
@@ -195,6 +208,7 @@ export default function InventoryPage() {
         addToast('Đã xuất kho nội bộ thành công', 'success');
         setShowExportModal(false);
         fetchBatches();
+        if (globalLogs.length > 0 || activeTab === 'history') fetchGlobalLogs();
       } else {
         addToast(res.data.message, 'error');
       }
@@ -220,6 +234,7 @@ export default function InventoryPage() {
         addToast('Đã điều chỉnh tồn kho thành công', 'success');
         setShowAdjustModal(false);
         fetchBatches();
+        if (globalLogs.length > 0 || activeTab === 'history') fetchGlobalLogs();
       } else {
         addToast(res.data.message, 'error');
       }
@@ -239,13 +254,13 @@ export default function InventoryPage() {
 
   const [now] = useState(() => Date.now());
 
-  const stats = {
+  const stats = useMemo(() => ({
     totalValue: summary.capital_value || 0,
     totalBatches: total,
     lowStock: batches.filter(b => b.current_qty > 0 && b.initial_qty > 0 && (b.current_qty / b.initial_qty) <= 0.10).length,
     outOfStock: summary.out_of_stock || 0,
     expiringSoon: batches.filter(b => b.expiry_date && new Date(b.expiry_date) <= new Date(now + 30 * 24 * 60 * 60 * 1000) && b.current_qty > 0).length
-  };
+  }), [summary.capital_value, summary.out_of_stock, total, batches, now]);
 
   const handleExport = () => {
     const params = new URLSearchParams();
@@ -641,7 +656,7 @@ export default function InventoryPage() {
           <input 
             placeholder="Tìm theo tên căn, mã căn (Block - Số tầng), dự án..." 
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
         

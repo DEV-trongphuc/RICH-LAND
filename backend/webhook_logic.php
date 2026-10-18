@@ -1527,43 +1527,50 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
     }
 
     // Calculate active count of available consultants (who pass all 5 gates and are currently on shift)
+    // Cache evaluation per consultant to avoid running checkConsultantGates / checkNightShiftAvailability / isConsultantOnNormalCooldown 3 times per consultant
     $activeCount = 0;
+    $evalCache = [];
     foreach ($consultants as $c) {
+        $cId = (int)$c['id'];
         $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
-        $isGatePassed = (checkConsultantGates($conn, (int)$c['id'], $lead) === true);
+        $gateResult = checkConsultantGates($conn, $cId, $lead);
+        $isGatePassed = ($gateResult === true);
         $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule']);
-        $cNightShift = checkNightShiftAvailability($conn, (int)$c['id'], $currentTime);
-        $isCool = isConsultantOnNormalCooldown($conn, (int)$c['id'], $roundId, $normalCooldownSec);
+        $cNightShift = checkNightShiftAvailability($conn, $cId, $currentTime);
+        $isCool = isConsultantOnNormalCooldown($conn, $cId, $roundId, $normalCooldownSec);
 
         // Trong ca trực đêm: BẮT BUỘC phải có duyệt đăng ký ca đêm ($cNightShift). Khung giờ ngày KHÔNG được dùng!
         $isOnDuty = $isNightShiftNow ? $cNightShift : ($cInWorkHours || $isGoldenHoursTime);
-        if (!$isOnVacation && $isGatePassed && $isOnDuty && !$isCool) {
+        $isEligible = (!$isOnVacation && $isGatePassed && $isOnDuty && !$isCool);
+        if ($isEligible) {
             $activeCount++;
         }
+        $evalCache[$cId] = [
+            'isOnVacation' => $isOnVacation,
+            'gateResult'   => $gateResult,
+            'isGatePassed' => $isGatePassed,
+            'isOnDuty'     => $isOnDuty,
+            'isCool'       => $isCool,
+            'isEligible'   => $isEligible,
+        ];
     }
 
     foreach ($consultants as $row) {
-        $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
-        $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
-        $isNightShiftActive = checkNightShiftAvailability($conn, (int)$row['id'], $currentTime);
-        
-        $gateResult = checkConsultantGates($conn, (int)$row['id'], $lead);
-        $isGatePassed = ($gateResult === true);
+        $rId = (int)$row['id'];
+        $ev = $evalCache[$rId];
+        $gateResult = $ev['gateResult'];
         if ($gateResult !== true) {
-            error_log("RICH LAND INFO: Consultant ID " . $row['id'] . " failed gate check: " . $gateResult);
+            error_log("RICH LAND INFO: Consultant ID " . $rId . " failed gate check: " . $gateResult);
         }
 
-        $isCool = isConsultantOnNormalCooldown($conn, (int)$row['id'], $roundId, $normalCooldownSec);
-
-        // Trong ca trực đêm: BẮT BUỘC phải có duyệt đăng ký ca đêm ($isNightShiftActive). Khung giờ ngày KHÔNG được dùng!
-        $isOnDuty = $isNightShiftNow ? $isNightShiftActive : ($isInWorkHours || $isGoldenHoursTime);
-        $isExcluded = (!empty($excludeIds) && in_array((int)$row['id'], $excludeIds, true));
-        $isAvailable = !$isExcluded && !$isOnVacation && $isGatePassed && $isOnDuty && !$isCool;
+        $isOnDuty = $ev['isOnDuty'];
+        $isExcluded = (!empty($excludeIds) && in_array($rId, $excludeIds, true));
+        $isAvailable = !$isExcluded && $ev['isEligible'];
 
         // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale. 
         // Nếu Sale này vừa nhận lead trước đó (absoluteLastAssignedId từ logs), ta sẽ bỏ qua lượt đền bù này nếu trong vòng còn có TVV khác đang hoạt động.
-        $isLastAssigned = ($absoluteLastAssignedId !== null && (int) $row['id'] === (int) $absoluteLastAssignedId);
+        $isLastAssigned = ($absoluteLastAssignedId !== null && $rId === (int) $absoluteLastAssignedId);
         $shouldSkipConsecutiveComp = ($isLastAssigned && $activeCount > 1);
 
         if (empty($compensatedConsultant) && $isAvailable && !$shouldSkipConsecutiveComp && intval($row['compensation_count']) > 0) {
@@ -1574,7 +1581,7 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
         // TỐI ƯU CÔNG BẰNG: Chọn người có skipped_credit cao nhất (ưu tiên ID thấp nếu hòa)
         if ($starvationEnabled === 1 && $isAvailable && $isOnDuty && intval($row['skipped_credit']) > 0) {
             if (empty($starvationConsultant) || intval($row['skipped_credit']) > intval($starvationConsultant['skipped_credit'])) {
-                $hourlyCount = $starvationCounts[(int) $row['id']] ?? 0;
+                $hourlyCount = $starvationCounts[$rId] ?? 0;
                 if ($hourlyCount < $starvationMaxPerHour) {
                     $starvationConsultant = $row;
                 }
@@ -1662,13 +1669,7 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
         $isExcluded = (!empty($excludeIds) && in_array($candId, $excludeIds, true));
 
         if (!$isExcluded) {
-            $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
-            $isGatePassed = (checkConsultantGates($conn, $candId, $lead) === true);
-            $cInWorkHours = isConsultantInWorkHours($currentTime, $candidate['work_start_time'], $candidate['work_end_time'], $candidate['work_schedule']);
-            $cNightShift = checkNightShiftAvailability($conn, $candId, $currentTime);
-            $isCool = isConsultantOnNormalCooldown($conn, $candId, $roundId, $normalCooldownSec);
-            $isOnDuty = $isNightShiftNow ? $cNightShift : ($cInWorkHours || $isGoldenHoursTime);
-            $isAvailable = !$isOnVacation && $isGatePassed && $isOnDuty && !$isCool;
+            $isAvailable = $evalCache[$candId]['isEligible'] ?? false;
 
             if ($isAvailable) {
                 $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
@@ -2252,8 +2253,39 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     return null;
 }
 
+function insertBatchGrabLeadOffers($conn, $leadId, array $consultants, $roundId, $countdownSec) {
+    $leadId = (int)$leadId;
+    $roundId = (int)$roundId;
+    $countdownSec = max(1, (int)$countdownSec);
+    if ($leadId <= 0 || $roundId <= 0 || empty($consultants)) {
+        return false;
+    }
+
+    $values = [];
+    $seenUserIds = [];
+    foreach ($consultants as $c) {
+        $uid = (int)($c['id'] ?? 0);
+        if ($uid <= 0 || isset($seenUserIds[$uid])) {
+            continue;
+        }
+        $seenUserIds[$uid] = true;
+        $values[] = "($leadId, $uid, $roundId, NOW(), DATE_ADD(NOW(), INTERVAL $countdownSec SECOND), 'pending')";
+    }
+    if (empty($values)) {
+        return false;
+    }
+
+    $sql = "INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) VALUES " . implode(', ', $values);
+    return $conn->query($sql);
+}
+
 function sendGrabOfferNotification($conn, $leadId, $consultantId, $roundId, $countdownSec, $competingNames = []) {
     if (!$leadId || !$consultantId || !$roundId) return;
+
+    // Nếu đã phát đồng thời qua sendBatchGrabTelegramSync (cả Telegram + Zalo qua curl_multi) thì bỏ qua để chống gửi trùng & chống N+1 query
+    if (!empty($GLOBALS['_grab_batch_notified'][(int)$leadId])) {
+        return;
+    }
 
     try {
         // 1. Get Sale info (zalo_chat_id, telegram_chat_id, name)
@@ -3128,8 +3160,8 @@ function checkConsultantGates($conn, $consultantId, $lead = null, $bypassBackpre
     }
 
     // GATE 5: Hạn mức Giờ Vàng (Golden Hours Cap per Consultant)
-    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
-    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
+    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '19:01';
+    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '20:30';
     $goldenMaxLeads = (int) get_system_setting($conn, 'golden_hours_max_leads_per_consultant');
     
     if ($goldenMaxLeads > 0) {

@@ -79,7 +79,10 @@ export const TicketsPage: React.FC = () => {
     return d.getTime() < now;
   };
 
+  const ticketReqIdRef = React.useRef(0);
+
   const fetchTickets = async () => {
+    const reqId = ++ticketReqIdRef.current;
     setLoading(true);
     // Always fetch from API
     try {
@@ -91,21 +94,25 @@ export const TicketsPage: React.FC = () => {
           status: filterStatus 
         } 
       });
+      if (reqId !== ticketReqIdRef.current) return;
       const data = r.data.data;
       setTickets(data.items || []);
       setTotal(data.total || 0);
     } catch (e: any) {
+      if (reqId !== ticketReqIdRef.current) return;
       setTickets([]);
       addToast('Không thể kết nối với máy chủ Backend', 'error');
     } finally {
-      setLoading(false);
+      if (reqId === ticketReqIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   const fetchRelatedData = async () => {
     try {
       const [cRes, uRes] = await Promise.all([
-        api.get('/contacts?limit=1000'),
+        api.get('/contacts?limit=500&minimal=1'),
         api.get('/users')
       ]);
       const cData = cRes.data.data; setContacts(Array.isArray(cData) ? cData : (cData?.items || []));
@@ -134,8 +141,10 @@ export const TicketsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchRelatedData();
-  }, []);
+    if ((showCreateModal || selectedTicket) && contacts.length === 0 && users.length === 0) {
+      fetchRelatedData();
+    }
+  }, [showCreateModal, selectedTicket, contacts.length, users.length]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -240,8 +249,11 @@ export const TicketsPage: React.FC = () => {
     setSaving(true);
     try {
       const r = await api.post('/tickets', payload);
-      const newTicket = r.data.data || { ...payload, id: Date.now(), assignee_name: 'Admin', created_at: new Date().toISOString(), due_date: new Date(Date.now() + 86400000).toISOString() };
-      setTickets([newTicket, ...tickets]);
+      if (r.data?.data) {
+        setTickets([r.data.data, ...tickets]);
+      } else {
+        fetchTickets();
+      }
       setShowCreateModal(false);
       setCreateForm({ subject: '', priority: 'medium', customer_name: '', contact_id: null, description: '', related_contacts: [], related_users: [] });
       addToast('Đã tạo Ticket thành công', 'success');

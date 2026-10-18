@@ -37,39 +37,22 @@ class TicketController {
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
-            $where[] = '(t.created_by = ? OR t.assignee_id = ? OR t.created_by IN (
-                SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
-                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
-            ) OR t.assignee_id IN (
-                SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
-                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
-            ) OR EXISTS (
+            $mgrUid = (int)$auth['user_id'];
+            $tStmt = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))) OR team_id = (SELECT team_id FROM users WHERE id = ?)");
+            $tStmt->execute([$mgrUid, $mgrUid]);
+            $mgrTeamIds = array_unique(array_merge([$mgrUid], array_map('intval', $tStmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+            $inMgrIds = implode(',', $mgrTeamIds);
+
+            $where[] = "(t.created_by IN ($inMgrIds) OR t.assignee_id IN ($inMgrIds) OR EXISTS (
                 SELECT 1 FROM contacts c 
                 WHERE c.tenant_id = t.tenant_id 
                   AND JSON_CONTAINS(t.related_contacts, CAST(c.id AS CHAR)) 
                   AND (
-                      c.owner_id = ? 
+                      c.owner_id IN ($inMgrIds)
                       OR FIND_IN_SET(?, c.collaborator_ids)
-                      OR c.owner_id IN (
-                          SELECT id FROM users WHERE team_id IN (
-                              SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
-                          ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
-                      )
                   )
-            ))';
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            // Added params for manager related contacts check:
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
+            ))";
+            $params[] = $mgrUid;
         }
 
         if ($unresolved) {
@@ -94,9 +77,9 @@ class TicketController {
 
         $stmt = $this->db->prepare("
             SELECT t.*, u.full_name as assignee_name, u.avatar_url as assignee_avatar,
-                   (SELECT COUNT(*) FROM ticket_comments tc WHERE tc.ticket_id = t.id) as comment_count,
-                   (SELECT tc.created_at FROM ticket_comments tc WHERE tc.ticket_id = t.id ORDER BY tc.created_at DESC LIMIT 1) as last_comment_at,
-                   (SELECT u2.full_name FROM ticket_comments tc JOIN users u2 ON tc.user_id = u2.id WHERE tc.ticket_id = t.id ORDER BY tc.created_at DESC LIMIT 1) as last_comment_user_name
+                   0 as comment_count,
+                   NULL as last_comment_at,
+                   NULL as last_comment_user_name
             FROM tickets t
             LEFT JOIN users u ON t.assignee_id = u.id
             WHERE $w 
@@ -105,7 +88,40 @@ class TicketController {
         ");
         $stmt->execute($params);
         $tickets = $stmt->fetchAll();
+
+        $ticketIds = array_values(array_filter(array_map(fn($tk) => (int)($tk['id'] ?? 0), $tickets)));
+        $commentStats = [];
+        if (!empty($ticketIds)) {
+            $inT = implode(',', array_fill(0, count($ticketIds), '?'));
+            $tcStmt = $this->db->prepare("
+                SELECT tc.ticket_id, tc.created_at, u2.full_name as user_name
+                FROM ticket_comments tc
+                LEFT JOIN users u2 ON tc.user_id = u2.id
+                WHERE tc.ticket_id IN ($inT)
+                ORDER BY tc.created_at DESC, tc.id DESC
+            ");
+            $tcStmt->execute($ticketIds);
+            while ($tcRow = $tcStmt->fetch(PDO::FETCH_ASSOC)) {
+                $tkId = (int)$tcRow['ticket_id'];
+                if (!isset($commentStats[$tkId])) {
+                    $commentStats[$tkId] = [
+                        'count' => 1,
+                        'last_at' => $tcRow['created_at'],
+                        'last_user' => $tcRow['user_name']
+                    ];
+                } else {
+                    $commentStats[$tkId]['count']++;
+                }
+            }
+        }
+
         foreach ($tickets as &$t) {
+            $tkId = (int)($t['id'] ?? 0);
+            if (isset($commentStats[$tkId])) {
+                $t['comment_count'] = $commentStats[$tkId]['count'];
+                $t['last_comment_at'] = $commentStats[$tkId]['last_at'];
+                $t['last_comment_user_name'] = $commentStats[$tkId]['last_user'];
+            }
             $t['related_contacts'] = json_decode($t['related_contacts'] ?? '[]');
             $t['related_users'] = json_decode($t['related_users'] ?? '[]');
         }
@@ -539,18 +555,19 @@ class TicketController {
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
-        // Delete ticket comments physical files
+        // Gather comment attachments before deleting ticket, but only delete them if ticket deletion succeeds
         $tcStmt = $this->db->prepare("SELECT body FROM ticket_comments WHERE ticket_id = ?");
         $tcStmt->execute([$id]);
         $tcRows = $tcStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        foreach ($tcRows as $r) {
-            if (!empty($r['body'])) deleteAttachmentFiles($r['body']);
-        }
-        $this->db->prepare("DELETE FROM ticket_comments WHERE ticket_id = ?")->execute([$id]);
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy ticket hoặc bạn không có quyền', false);
+
+        foreach ($tcRows as $r) {
+            if (!empty($r['body'])) deleteAttachmentFiles($r['body']);
+        }
+        $this->db->prepare("DELETE FROM ticket_comments WHERE ticket_id = ?")->execute([$id]);
         respond(200, null, 'Đã xóa ticket thành công');
     }
 
@@ -605,15 +622,13 @@ class TicketController {
 
         // 1. First, parse by data-user-id (HTML editor mentions)
         if (preg_match_all('/data-user-id="(\d+)"/i', $bodyText, $idMatches)) {
-            $uids = array_filter(array_map('intval', $idMatches[1]));
-            foreach ($uids as $uid) {
-                if ($uid !== (int)$auth['user_id']) {
-                    $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND id=?");
-                    $stmtUser->execute([$auth['tenant_id'], $uid]);
-                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
-                    if ($userRow) {
-                        $mentions[$uid] = $userRow;
-                    }
+            $uids = array_values(array_unique(array_filter(array_map('intval', $idMatches[1]), fn($u) => $u > 0 && $u !== (int)$auth['user_id'])));
+            if (!empty($uids)) {
+                $inUids = implode(',', array_fill(0, count($uids), '?'));
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND id IN ($inUids)");
+                $stmtUser->execute(array_merge([$auth['tenant_id']], $uids));
+                while ($userRow = $stmtUser->fetch(PDO::FETCH_ASSOC)) {
+                    $mentions[(int)$userRow['id']] = $userRow;
                 }
             }
         }
@@ -621,18 +636,17 @@ class TicketController {
         // 2. Plaintext @mention matching
         $matches = [];
         preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $bodyText, $matches);
-        $names = is_array($matches[1] ?? null) ? $matches[1] : [];
+        $names = is_array($matches[1] ?? null) ? array_values(array_unique(array_filter($matches[1]))) : [];
         if (!empty($names)) {
-            foreach ($names as $nameWithUnderscores) {
-                $fullName = str_replace('_', ' ', $nameWithUnderscores);
-                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND (full_name=? OR REPLACE(full_name, ' ', '_')=?)");
-                $stmtUser->execute([$auth['tenant_id'], $fullName, $nameWithUnderscores]);
-                $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
-                if ($userRow) {
-                    $uid = (int)$userRow['id'];
-                    if ($uid !== (int)$auth['user_id']) {
-                        $mentions[$uid] = $userRow;
-                    }
+            $fullNames = array_map(fn($n) => str_replace('_', ' ', $n), $names);
+            $inFull = implode(',', array_fill(0, count($fullNames), '?'));
+            $inUnder = implode(',', array_fill(0, count($names), '?'));
+            $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND (full_name IN ($inFull) OR REPLACE(full_name, ' ', '_') IN ($inUnder))");
+            $stmtUser->execute(array_merge([$auth['tenant_id']], $fullNames, $names));
+            while ($userRow = $stmtUser->fetch(PDO::FETCH_ASSOC)) {
+                $uid = (int)$userRow['id'];
+                if ($uid !== (int)$auth['user_id']) {
+                    $mentions[$uid] = $userRow;
                 }
             }
         }

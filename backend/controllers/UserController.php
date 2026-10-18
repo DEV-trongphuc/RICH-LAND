@@ -89,8 +89,13 @@ class UserController {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director', 'manager', 'sales', 'sale', 'assistant', 'viewer'], true)) {
             respond(403, null, 'Quyền truy cập không đủ', false);
         }
+        $canViewSensitive = in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director', 'manager', 'assistant'], true) || ((int)$auth['user_id'] === (int)$id);
         try {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,job_title,avatar_url,signature_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,two_factor_enabled,two_factor_type,permissions_json,bio FROM users WHERE id=? AND tenant_id=?");
+            if ($canViewSensitive) {
+                $stmt=$this->db->prepare("SELECT id,email,full_name,role,job_title,avatar_url,signature_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,two_factor_enabled,two_factor_type,permissions_json,bio,team_id FROM users WHERE id=? AND tenant_id=?");
+            } else {
+                $stmt=$this->db->prepare("SELECT id,email,full_name,role,job_title,avatar_url,phone,is_active,last_login_at,created_at,bio,team_id FROM users WHERE id=? AND tenant_id=?");
+            }
             $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
         } catch (PDOException $e) {
             $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,signature_url,phone,is_active,last_login_at,created_at FROM users WHERE id=? AND tenant_id=?");
@@ -100,25 +105,28 @@ class UserController {
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && (int)$auth['user_id'] !== (int)$id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
+        $isAdminRole = in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true);
+        if (!$isAdminRole && (int)$auth['user_id'] !== (int)$id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
+        $b = getBody();
         
         $fields = [
-            'email', 'full_name', 'phone', 'avatar_url', 'signature_url', 'is_active', 'dob', 'gender',
-            'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json', 'job_title', 'team_id',
-            'zalo_chat_id', 'telegram_chat_id', 'bio', 'work_start_time', 'work_end_time', 'work_schedule',
-            'overtime_mode', 'use_custom_work_hours', 'leave_start', 'leave_end', 'extra_fields_json'
+            'email', 'full_name', 'phone', 'avatar_url', 'signature_url', 'dob', 'gender',
+            'citizen_id', 'address', 'bank_name', 'bank_account', 'zalo_chat_id', 'telegram_chat_id', 'bio'
         ];
-        if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) {
-            $fields[] = 'role';
-            $fields[] = 'is_active';
+        if ($isAdminRole) {
+            $fields = array_merge($fields, [
+                'role', 'is_active', 'permissions_json', 'job_title', 'team_id',
+                'work_start_time', 'work_end_time', 'work_schedule', 'overtime_mode',
+                'use_custom_work_hours', 'leave_start', 'leave_end', 'extra_fields_json'
+            ]);
         }
 
         // Admin lockout prevention
-        if ($auth['user_id'] === $id) {
+        if ((int)$auth['user_id'] === (int)$id) {
             if (isset($b['role']) && !in_array($b['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) {
                 respond(403, null, 'Bạn không thể tự tước quyền quản trị của chính mình', false);
             }
-            if (isset($b['is_active']) && !$b['is_active']) {
+            if (array_key_exists('is_active', $b) && !$b['is_active']) {
                 respond(403, null, 'Bạn không thể tự khóa tài khoản của chính mình', false);
             }
         }
@@ -210,7 +218,8 @@ class UserController {
             if ($e->getCode() == '23000') {
                 respond(400, null, 'Không thể xóa người dùng này vì họ đang quản lý dữ liệu (liên hệ, hóa đơn, deal). Vui lòng chuyển trạng thái thành "Ngừng hoạt động" thay vì xóa.', false);
             }
-            respond(500, null, 'Lỗi cơ sở dữ liệu: ' . $e->getMessage(), false);
+            error_log('UserController::destroy SQL Error: ' . $e->getMessage());
+            respond(500, null, 'Lỗi hệ thống khi xóa người dùng.', false);
         }
     }
 

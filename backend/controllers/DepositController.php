@@ -34,19 +34,48 @@ class DepositController {
             $params[] = (string)$auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
-            $sql .= " AND (d.created_by = ? OR c.owner_id = ? OR d.created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)) OR c.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
+            $uid = (int)$auth['user_id'];
+            $tStmt = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $tStmt->execute([$uid]);
+            $teamIds = array_unique(array_merge([$uid], array_map('intval', $tStmt->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+            $inIds = implode(',', $teamIds);
+            $sql .= " AND (d.created_by IN ($inIds) OR c.owner_id IN ($inIds))";
         }
 
-        if (isset($_GET['contact_id'])) {
+        if (isset($_GET['contact_id']) && $_GET['contact_id'] !== '') {
             $sql .= " AND d.contact_id = ?";
             $params[] = (int)$_GET['contact_id'];
         }
+        if (isset($_GET['project_id']) && $_GET['project_id'] !== '') {
+            $sql .= " AND d.project_id = ?";
+            $params[] = (int)$_GET['project_id'];
+        }
+        if (isset($_GET['status']) && $_GET['status'] !== '' && $_GET['status'] !== 'all') {
+            $sql .= " AND d.status = ?";
+            $params[] = trim($_GET['status']);
+        }
+        if (!empty($_GET['from'])) {
+            $from = trim($_GET['from']);
+            $sql .= " AND d.created_at >= ?";
+            $params[] = strlen($from) === 10 ? ($from . ' 00:00:00') : $from;
+        }
+        if (!empty($_GET['to'])) {
+            $to = trim($_GET['to']);
+            $sql .= " AND d.created_at <= ?";
+            $params[] = strlen($to) === 10 ? ($to . ' 23:59:59') : $to;
+        }
+        if (!empty($_GET['search'])) {
+            $search = '%' . trim($_GET['search']) . '%';
+            $sql .= " AND (c.first_name LIKE ? OR c.last_name LIKE ? OR c.phone LIKE ? OR d.unit_code LIKE ? OR p.name LIKE ?)";
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+        }
 
-        $sql .= " ORDER BY d.created_at DESC";
+        $limit = isset($_GET['limit']) ? min(2000, max(10, (int)$_GET['limit'])) : 1000;
+        $sql .= " ORDER BY d.created_at DESC LIMIT $limit";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -138,15 +167,17 @@ class DepositController {
         $this->db->beginTransaction();
         try {
             // Check contact existence and ownership
-            $stmtC = $this->db->prepare("SELECT id, owner_id, pipeline_status, first_name, last_name FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+            $stmtC = $this->db->prepare("SELECT id, owner_id, pipeline_status, first_name, last_name, collaborator_ids FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL FOR UPDATE");
             $stmtC->execute([$contactId, $auth['tenant_id']]);
             $contact = $stmtC->fetch();
             if (!$contact) {
+                $this->db->rollBack();
                 respond(404, null, 'Khách hàng không tồn tại', false);
             }
 
             if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
                 if ($contact['owner_id'] != $auth['user_id']) {
+                    $this->db->rollBack();
                     respond(403, null, 'Bạn không thể tạo cọc cho khách hàng của người khác', false);
                 }
             } else if ($auth['role'] === 'manager') {
@@ -159,6 +190,7 @@ class DepositController {
                 $isTeamMember = $stmtLead->fetch();
 
                 if ($contact['owner_id'] != $auth['user_id'] && !$isTeamMember) {
+                    $this->db->rollBack();
                     respond(403, null, 'Bạn không thể tạo cọc cho khách hàng thuộc quản lý của nhóm khác', false);
                 }
             }
@@ -181,6 +213,7 @@ class DepositController {
                 $stmtExM->execute([$existingDepId]);
                 $exMilestones = $stmtExM->fetchAll(PDO::FETCH_ASSOC);
 
+                $this->db->rollBack();
                 respond(200, [
                     'id' => (int)$existingDepId,
                     'milestones' => $exMilestones,
@@ -283,6 +316,8 @@ class DepositController {
 
             // Trigger cooperation slip creation if createCoopSlip is true OR customShares has multiple shareholders OR coopSales is not empty!
             $shouldCreateCoop = ($createCoopSlip || !empty($coopSales) || count($customShares) > 1);
+            $deferredAutoSlip = null;
+            $coopCtrl = null;
 
             if ($shouldCreateCoop) {
                 // Build shares distribution using custom shares if provided by frontend
@@ -319,7 +354,7 @@ class DepositController {
 
                     $coopCtrl->syncCollaboratorsToContact((int)$contactId, $sharesJson);
                 } else {
-                    $coopCtrl->autoGenerateSlip($contactId, $depositId, $auth['user_id'], $customShares);
+                    $deferredAutoSlip = $coopCtrl->autoGenerateSlip($contactId, (int)$depositId, (int)$auth['user_id'], $customShares, false);
                 }
             } else {
                 // Solo sale (làm 1 mình) or user opted out of creating a coop slip.
@@ -340,6 +375,11 @@ class DepositController {
             $createdMilestones = $stmtGetM->fetchAll(PDO::FETCH_ASSOC);
 
             $this->db->commit();
+
+            // Dispatch deferred cooperation slip notifications outside DB transaction
+            if ($coopCtrl && $deferredAutoSlip && empty($deferredAutoSlip['is_single']) && !empty($deferredAutoSlip['slip_id'])) {
+                $coopCtrl->dispatchAutoSlipNotifications((int)$deferredAutoSlip['slip_id'], $deferredAutoSlip['shares'] ?? []);
+            }
             
             // Trigger Meta CAPI Purchase event (Pending state)
             require_once __DIR__ . '/../config/CapiHelper.php';
@@ -351,7 +391,9 @@ class DepositController {
                 'milestones' => $createdMilestones
             ], 'Tạo phiếu cọc và khởi tạo lịch thanh toán thành công');
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             respond(500, null, 'Lỗi lưu phiếu cọc: ' . $e->getMessage(), false);
         }
     }
@@ -461,13 +503,31 @@ class DepositController {
         
         $this->db->beginTransaction();
         try {
-            // Update milestone status
+            // Lock milestone row to prevent double-click race condition creating duplicate invoices
+            $stmtMile = $this->db->prepare("SELECT id, milestone_name, expected_amount, status FROM deposit_milestones WHERE id = ? AND deposit_id = ? FOR UPDATE");
+            $stmtMile->execute([$milestoneId, $id]);
+            $mileData = $stmtMile->fetch(PDO::FETCH_ASSOC);
+
+            if (!$mileData) {
+                $this->db->rollBack();
+                respond(404, null, 'Không tìm thấy đợt thanh toán cọc', false);
+            }
+            if (($mileData['status'] ?? '') === 'approved') {
+                $this->db->rollBack();
+                respond(409, null, 'Đợt thanh toán này đã được phê duyệt trước đó', false);
+            }
+
+            // Update milestone status atomically
             $stmt = $this->db->prepare("
                 UPDATE deposit_milestones 
                 SET status = 'approved', approval_date = NOW(), approved_by = ? 
-                WHERE id = ? AND deposit_id = ?
+                WHERE id = ? AND deposit_id = ? AND status != 'approved'
             ");
             $stmt->execute([$auth['user_id'], $milestoneId, $id]);
+            if ($stmt->rowCount() === 0) {
+                $this->db->rollBack();
+                respond(409, null, 'Đợt thanh toán này đã được phê duyệt trước đó', false);
+            }
 
             // Fetch deposit details to link the invoice and notify owner
             $stmtDep = $this->db->prepare("
@@ -483,14 +543,10 @@ class DepositController {
             $stmtDep->execute([$id]);
             $depositData = $stmtDep->fetch();
 
-            $stmtMile = $this->db->prepare("SELECT milestone_name, expected_amount FROM deposit_milestones WHERE id = ?");
-            $stmtMile->execute([$milestoneId]);
-            $mileData = $stmtMile->fetch();
-
+            $total = (float)$mileData['expected_amount'];
             if ($depositData && $mileData) {
                 $invoiceNum = 'INV-' . strtoupper(uniqid());
                 $title = "Hóa đơn đợt thanh toán: " . $mileData['milestone_name'] . " - Dự án " . ($depositData['project_name'] ?? 'BĐS');
-                $total = (float)$mileData['expected_amount'];
                 
                 $stmtInv = $this->db->prepare("
                     INSERT INTO invoices (tenant_id, contact_id, company_id, created_by, invoice_number, title, status, issue_date, due_date, paid_at, subtotal, total, notes)
@@ -507,6 +563,19 @@ class DepositController {
                     $total,
                     "Tự động tạo từ đợt UNC đặt cọc được duyệt. Mã phiếu cọc: #" . $id
                 ]);
+
+                // Sync contact's total_spent and order_count atomically inside the transaction
+                if (!empty($depositData['contact_id'])) {
+                    $cid = (int)$depositData['contact_id'];
+                    $tid = (int)$auth['tenant_id'];
+                    $stmtSyncC = $this->db->prepare("
+                        UPDATE contacts SET
+                            total_spent = COALESCE((SELECT SUM(total) FROM invoices WHERE contact_id = ? AND tenant_id = ? AND status = 'paid'), 0),
+                            order_count = COALESCE((SELECT COUNT(*) FROM invoices WHERE contact_id = ? AND tenant_id = ? AND status != 'cancelled'), 0)
+                        WHERE id = ? AND tenant_id = ?
+                    ");
+                    $stmtSyncC->execute([$cid, $tid, $cid, $tid, $cid, $tid]);
+                }
             }
 
             // Check if all milestones are approved. If so, approve the deposit slip as well
@@ -571,7 +640,9 @@ class DepositController {
 
             respond(200, null, 'Phê duyệt đợt thanh toán cọc thành công');
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             respond(500, null, 'Lỗi duyệt đợt tiền: ' . $e->getMessage(), false);
         }
     }
@@ -663,16 +734,25 @@ class DepositController {
 
         $this->db->beginTransaction();
         try {
-            // Fetch deposit info and check access
+            // Fetch deposit info and lock row to prevent double-cancellation race condition
             $stmtDep = $this->db->prepare("
                 SELECT d.contact_id, d.status, c.owner_id, c.tenant_id 
                 FROM deposits d 
                 JOIN contacts c ON d.contact_id = c.id
                 WHERE d.id = ? AND c.tenant_id = ?
+                FOR UPDATE
             ");
             $stmtDep->execute([$id, $auth['tenant_id']]);
             $dep = $stmtDep->fetch();
-            if (!$dep) respond(404, null, 'Phiếu cọc không tồn tại hoặc bạn không có quyền', false);
+            if (!$dep) {
+                $this->db->rollBack();
+                respond(404, null, 'Phiếu cọc không tồn tại hoặc bạn không có quyền', false);
+            }
+
+            if (($dep['status'] ?? '') === 'cancelled') {
+                $this->db->rollBack();
+                respond(409, null, 'Phiếu đặt cọc này đã bị hủy trước đó', false);
+            }
 
             if ($auth['role'] === 'manager') {
                 $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
@@ -684,6 +764,7 @@ class DepositController {
                 $isTeamMember = $stmtLead->fetch();
 
                 if ($dep['owner_id'] != $auth['user_id'] && !$isTeamMember) {
+                    $this->db->rollBack();
                     respond(403, null, 'Bạn không thể hủy cọc cho khách hàng thuộc quản lý của nhóm khác', false);
                 }
             }
@@ -697,7 +778,7 @@ class DepositController {
 
             if ($approvedCount === 0) {
                 // REDUCE KHTN TEMPERATURE BY 1 LEVEL (Decay rule)
-                $stmtC = $this->db->prepare("SELECT temperature, pipeline_status FROM contacts WHERE id = ?");
+                $stmtC = $this->db->prepare("SELECT temperature, pipeline_status FROM contacts WHERE id = ? FOR UPDATE");
                 $stmtC->execute([$contactId]);
                 $contact = $stmtC->fetch();
 
@@ -746,9 +827,9 @@ class DepositController {
                 $targetStatus = $demotedStatus;
                 $targetStageId = $daGapStageId ?: ($stages[3] ?? ($stages[0] ?? 0));
                 
-                // Get security timer durations dynamically
-                $timerKey = 'security_timer_' . $demotedStatus;
-                $duration = $this->getSetting($timerKey, '+5 days');
+                // Per AGENTS.md Section 14.1: Cancelling deposit before revenue grants 3-month protection timer
+                $timerKey = 'security_timer_cancel_deposit_' . $demotedStatus;
+                $duration = $this->getSetting($timerKey, '+3 months');
                 $expiresAt = date('Y-m-d H:i:s', strtotime($duration));
 
                 if ($hadBooking && $bookingStageId > 0) {
@@ -772,7 +853,7 @@ class DepositController {
             $stmtCancel = $this->db->prepare("UPDATE deposits SET status = 'cancelled', cancelled_reason = ? WHERE id = ?");
             $stmtCancel->execute([$reason, $id]);
 
-            // Email owner about cancellation
+            // Fetch owner info for post-commit notifications
             $stmtOwner = $this->db->prepare("
                 SELECT u.email, u.full_name, CONCAT(c.first_name, ' ', COALESCE(c.last_name, '')) as contact_name 
                 FROM contacts c
@@ -781,7 +862,11 @@ class DepositController {
             ");
             $stmtOwner->execute([$contactId]);
             $ownerRow = $stmtOwner->fetch();
-            
+
+            $this->db->commit();
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CANCEL_DEPOSIT', 'deposit', $id, "Hủy cọc/Bể cọc. Lý do: $reason");
+
+            // Email & Multi-channel notifications AFTER commit
             require_once __DIR__ . '/../mailer.php';
             if ($ownerRow && !empty($ownerRow['email'])) {
                 $emailSubject = "[RICH LAND] Báo cáo hủy cọc / Bể cọc khách hàng: " . $ownerRow['contact_name'];
@@ -789,7 +874,7 @@ class DepositController {
                 $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
                                 "Phiếu đặt cọc của khách hàng <strong>" . htmlspecialchars($ownerRow['contact_name']) . "</strong> (Phiếu cọc #" . $id . ") đã bị hủy.<br/>" .
                                 "Lý do: <em>" . htmlspecialchars($reason) . "</em>.<br/>" .
-                                "Trạng thái khách hàng đã được " . ($approvedCount === 0 ? "hạ về <strong>Đặt chỗ (Booking)</strong>" : "giữ nguyên <strong>Đặt cọc (Customer)</strong> do đã phát sinh doanh thu thực tế") . ".<br/>" .
+                                "Trạng thái khách hàng đã được " . ($approvedCount === 0 ? "hạ về <strong>Đặt chỗ (Booking / Đã gặp)</strong>" : "giữ nguyên <strong>Đặt cọc (Customer)</strong> do đã phát sinh doanh thu thực tế") . ".<br/>" .
                                 "Vui lòng kiểm tra trên RICH LAND CRM.";
                 sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
             }
@@ -807,11 +892,11 @@ class DepositController {
                 ]);
             }
 
-            $this->db->commit();
-            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CANCEL_DEPOSIT', 'deposit', $id, "Hủy cọc/Bể cọc. Lý do: $reason");
             respond(200, null, 'Báo cáo hủy cọc và cập nhật trạng thái khách hàng thành công');
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             respond(500, null, 'Lỗi báo hủy cọc: ' . $e->getMessage(), false);
         }
     }
@@ -823,7 +908,7 @@ class DepositController {
 
         // 1. Verify deposit ownership/permissions
         $stmtDep = $this->db->prepare("
-            SELECT d.id, d.created_by, c.owner_id, d.contact_id 
+            SELECT d.id, d.created_by, d.expected_commission, c.owner_id, d.contact_id, c.first_name, c.last_name
             FROM deposits d
             JOIN contacts c ON d.contact_id = c.id
             WHERE d.id = ? AND c.tenant_id = ?
@@ -846,6 +931,7 @@ class DepositController {
             }
         }
 
+        $deferredNotifications = [];
         $this->db->beginTransaction();
         try {
             $isAdmin = in_array(strtolower($auth['role'] ?? ''), ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'], true);
@@ -888,18 +974,6 @@ class DepositController {
 
                             logActivity($this->db, $tid, $auth['user_id'], 'ADMIN_UPDATE_COOP_SHARES', 'cooperation_slip', $coopId, "Admin đã cập nhật lại tỷ lệ hoa hồng cho phiếu cọc #$id");
 
-                            $stmtCust = $this->db->prepare("SELECT CONCAT(first_name, ' ', COALESCE(last_name,'')) FROM contacts WHERE id = ?");
-                            $stmtCust->execute([$dep['contact_id']]);
-                            $custName = $stmtCust->fetchColumn() ?: "Khách hàng";
-
-                            $notifySubject = "[RICH LAND] Admin cập nhật tỷ lệ phân chia hoa hồng";
-                            $notifyTitle = "CẬP NHẬT TỶ LỆ PHÂN CHIA HOA HỒNG";
-                            
-                            $notifyContent = "Chào bạn,<br/><br/>" .
-                                             "Admin đã cập nhật tỷ lệ phân chia hoa hồng cho giao dịch đặt cọc của khách hàng <strong>" . htmlspecialchars($custName) . "</strong>.<br/>" .
-                                             "Hoa hồng giao dịch dự kiến: <strong>" . number_format(isset($expComm) ? $expComm : ($dep['expected_commission'] ?? 0)) . " VND</strong>.<br/><br/>" .
-                                             "<strong>Tỷ lệ phân chia mới:</strong><br/>";
-                                             
                             $uIdsToNotify = array_keys($sharesMap);
                             if (!empty($uIdsToNotify)) {
                                 $inUsers = implode(',', array_fill(0, count($uIdsToNotify), '?'));
@@ -908,20 +982,13 @@ class DepositController {
                                 $usersList = $stmtUsers->fetchAll();
                                 
                                 foreach ($usersList as $u) {
-                                    $uPercent = $sharesMap[$u['id']] ?? 0;
-                                    $uAmt = ((isset($expComm) ? $expComm : ($dep['expected_commission'] ?? 0)) * $uPercent) / 100;
-                                    $notifyContent .= "- " . htmlspecialchars($u['full_name']) . ": <strong>" . $uPercent . "%</strong> (~ " . number_format($uAmt) . " VND)<br/>";
-                                }
-                                
-                                require_once __DIR__ . '/../NotificationService.php';
-                                foreach ($usersList as $u) {
-                                    NotificationService::send($this->db, $tid, 'MY_DEPOSIT_UPDATE', [
+                                    $deferredNotifications[] = [
                                         'user_id' => (int)$u['id'],
                                         'deposit_id' => $id,
-                                        'customer_name' => trim($dep['first_name'] . ' ' . ($dep['last_name'] ?? '')),
+                                        'customer_name' => trim(($dep['first_name'] ?? '') . ' ' . ($dep['last_name'] ?? '')),
                                         'status_text' => 'duyệt phiếu hợp tác chia sẻ hoa hồng',
                                         'reason' => 'Phiếu hợp tác đã được phê duyệt thành công'
-                                    ]);
+                                    ];
                                 }
                             }
                         }
@@ -991,9 +1058,19 @@ class DepositController {
             }
 
             $this->db->commit();
+
+            if (!empty($deferredNotifications)) {
+                require_once __DIR__ . '/../NotificationService.php';
+                foreach ($deferredNotifications as $nPayload) {
+                    NotificationService::send($this->db, $tid, 'MY_DEPOSIT_UPDATE', $nPayload);
+                }
+            }
+
             respond(200, null, 'Cập nhật lịch trình thanh toán thành công');
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             respond(500, null, $e->getMessage(), false);
         }
     }

@@ -669,9 +669,14 @@ if (!in_array($action, $publicActions)) {
         }
     }
 
-    // Ghi nhận thời gian hoạt động cuối cùng (last active time)
+    // Ghi nhận thời gian hoạt động cuối cùng (last active time) - throttled 60s per user to prevent row-lock contention
     if ($decodedUser && isset($decodedUser['id'])) {
-        $conn->query("UPDATE accounts SET last_login = NOW() WHERE id = " . (int) $decodedUser['id']);
+        $lastActiveUid = (int) $decodedUser['id'];
+        $lastActiveFile = sys_get_temp_dir() . '/rl_last_active_' . $lastActiveUid;
+        if (!file_exists($lastActiveFile) || (time() - @filemtime($lastActiveFile)) >= 60) {
+            @touch($lastActiveFile);
+            $conn->query("UPDATE accounts SET last_login = NOW() WHERE id = " . $lastActiveUid);
+        }
     }
 } else {
     $decodedUser = null; // Public actions have no user context
@@ -1129,7 +1134,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
         $projectName = trim($leadData['project_id']);
     }
     if (empty($project_id) && !empty($projectName)) {
-        $pStmt = $conn->prepare("SELECT id FROM projects WHERE name = ? OR title = ? LIMIT 1");
+        $pStmt = $conn->prepare("SELECT id FROM projects WHERE name = ? OR code = ? LIMIT 1");
         if ($pStmt) {
             $pStmt->bind_param("ss", $projectName, $projectName);
             $pStmt->execute();
@@ -1974,17 +1979,23 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                             sendBatchGrabTelegramSync($conn, $leadId, $eligibleConsultants, $assignedRoundId, $grabCountdownSeconds, $competingNames);
                         }
 
-                        // Create offers (Popup Web xuất hiện sau khi Telegram đã gửi xong)
-                        $offerStmt = $conn->prepare("
-                            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
-                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
-                        ");
+                        // Create offers (1 lệnh batch atomic để 100% Sale nhận lời mời cùng lúc)
+                        if (function_exists('insertBatchGrabLeadOffers')) {
+                            insertBatchGrabLeadOffers($conn, $leadId, $eligibleConsultants, $assignedRoundId, $grabCountdownSeconds);
+                        } else {
+                            $offerStmt = $conn->prepare("
+                                INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
+                                VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+                            ");
+                            foreach ($eligibleConsultants as $c) {
+                                $offerStmt->bind_param("iiii", $leadId, $c['id'], $assignedRoundId, $grabCountdownSeconds);
+                                $offerStmt->execute();
+                            }
+                            $offerStmt->close();
+                        }
                         foreach ($eligibleConsultants as $c) {
-                            $offerStmt->bind_param("iiii", $leadId, $c['id'], $assignedRoundId, $grabCountdownSeconds);
-                            $offerStmt->execute();
                             sendGrabOfferNotification($conn, $leadId, $c['id'], $assignedRoundId, $grabCountdownSeconds, $competingNames);
                         }
-                        $offerStmt->close();
                     } else if ($roundType === 'grab' && $status === 'pending_work_hours' && $leadId) {
                         $updL = $conn->prepare("UPDATE leads SET status = 'pending_work_hours', is_accepted = 0, assigned_to = NULL WHERE id = ?");
                         $updL->bind_param("i", $leadId);
@@ -3058,6 +3069,9 @@ switch ($action) {
         $page = isset($_GET['page']) ? (int) $_GET['page'] : 0;
         $pageSize = isset($_GET['pageSize']) ? (int) $_GET['pageSize'] : 50;
 
+        $subAssignedCond = ($isSale || $saleFilterId !== null) ? (" AND assigned_to = " . (int)$saleId) : "";
+        $subDrCond = ($isSale || $saleFilterId !== null) ? (" WHERE consultant_id = " . (int)$saleId) : "";
+
         // Count query for pagination support
         $sqlCount = "
             SELECT COUNT(*) as cnt
@@ -3065,11 +3079,10 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
-                WHERE status != 'silent'
+                WHERE status != 'silent' $subAssignedCond
                 GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
-            LEFT JOIN consultants cons ON dl.assigned_to = cons.id
             WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent')) OR (l.is_accepted = 1 AND $dateConditionDl) )
         ";
         $totalCount = 0;
@@ -3096,7 +3109,7 @@ switch ($action) {
                    COALESCE(l.created_at, dl.received_at) as created_at,
                    l.is_accepted, l.accepted_at, l.last_assigned_at, l.last_interaction_date, l.person_id,
                    r.round_name,
-                   c.name as sale_name, c.email as sale_email, c.avatar as sale_avatar,
+                   u.full_name as sale_name, u.email as sale_email, u.avatar_url as sale_avatar,
                    dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason, dr.created_at as report_created_at,
                    IFNULL(sc.lead_recall_minutes, 0) as lead_recall_minutes,
                    sc.sheet_name as connection_name,
@@ -3104,20 +3117,20 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
-                WHERE status != 'silent'
+                WHERE status != 'silent' $subAssignedCond
                 GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
-            LEFT JOIN consultants c ON dl.assigned_to = c.id
-            LEFT JOIN users u ON c.email = u.email
+            LEFT JOIN users u ON dl.assigned_to = u.id
             LEFT JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = u.id AND c_real.deleted_at IS NULL
             LEFT JOIN (
                 SELECT dr1.* FROM data_reports dr1
                 INNER JOIN (
                     SELECT lead_id, consultant_id, MAX(id) as max_dr_id
                     FROM data_reports
+                    $subDrCond
                     GROUP BY lead_id, consultant_id
                 ) dr2 ON dr1.id = dr2.max_dr_id
             ) dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
@@ -3161,13 +3174,12 @@ switch ($action) {
             if (!empty($validPersonIds)) {
                 $inClause = implode(',', $validPersonIds);
                 $tQuery = "SELECT c.person_id, c.id as contact_id, c.owner_id as id, 
-                           COALESCE(NULLIF(cons.name, ''), NULLIF(u.full_name, ''), 'Tư vấn viên') as name, 
-                           COALESCE(cons.avatar, u.avatar_url) as avatar, 
-                           COALESCE(cons.phone, u.phone) as consultant_phone,
+                           COALESCE(NULLIF(u.full_name, ''), 'Tư vấn viên') as name, 
+                           u.avatar_url as avatar, 
+                           u.phone as consultant_phone,
                            c.created_at as claimed_at 
                            FROM contacts c
                            LEFT JOIN users u ON c.owner_id = u.id
-                           LEFT JOIN consultants cons ON (cons.id = c.owner_id OR u.email = cons.email OR u.id = cons.id)
                            WHERE c.person_id IN ($inClause) AND (c.deleted_at IS NULL OR c.pipeline_status = 'not_lead')";
                 $tRes = $conn->query($tQuery);
             if ($tRes) {
@@ -3317,16 +3329,7 @@ switch ($action) {
 
         $saleUserId = (int)$decodedUser['id'];
         if (!$isSale && $saleFilterId !== null) {
-            $stmtUser = $conn->prepare("SELECT u.id FROM users u JOIN consultants cons ON u.email = cons.email WHERE cons.id = ?");
-            if ($stmtUser) {
-                $stmtUser->bind_param("i", $saleFilterId);
-                $stmtUser->execute();
-                $resUser = $stmtUser->get_result()->fetch_assoc();
-                if ($resUser) {
-                    $saleUserId = (int)$resUser['id'];
-                }
-                $stmtUser->close();
-            }
+            $saleUserId = (int)$saleFilterId;
         }
 
         $contactsWhere = ["c.tenant_id = ?", "c.deleted_at IS NULL"];
@@ -3349,146 +3352,66 @@ switch ($action) {
 
         $contactsWhereClause = implode(" AND ", $contactsWhere) . " AND " . $contactsDateCondition;
 
-        $stmtContactsCount = $conn->prepare("SELECT COUNT(*) as cnt FROM contacts c WHERE $contactsWhereClause");
         $contactsCount = 0;
-        if ($stmtContactsCount) {
-            $stmtContactsCount->bind_param($contactsTypes, ...$contactsParams);
-            $stmtContactsCount->execute();
-            $contactsCount = (int) ($stmtContactsCount->get_result()->fetch_assoc()['cnt'] ?? 0);
-            $stmtContactsCount->close();
-        }
-
-        // 1. DATA LỖI & TICKET
-        $stmtErrorTicket = $conn->prepare("
-            SELECT COUNT(DISTINCT c.id) as cnt 
-            FROM contacts c 
-            WHERE $contactsWhereClause 
-              AND (
-                EXISTS (
-                    SELECT 1 FROM data_reports dr 
-                    JOIN leads l2 ON dr.lead_id = l2.id 
-                    WHERE l2.person_id = c.person_id
-                )
-                OR EXISTS (
-                    SELECT 1 FROM leads l2 
-                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                    JOIN users u2 ON u2.id = c.owner_id
-                    JOIN consultants cons2 ON u2.email = cons2.email
-                    WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
-                )
-              )
-        ");
         $errorTicketCount = 0;
-        if ($stmtErrorTicket) {
-            $stmtErrorTicket->bind_param($contactsTypes, ...$contactsParams);
-            $stmtErrorTicket->execute();
-            $errorTicketCount = (int) ($stmtErrorTicket->get_result()->fetch_assoc()['cnt'] ?? 0);
-            $stmtErrorTicket->close();
-        }
-
-        // TỪ DATABANK
-        $stmtDatabank = $conn->prepare("
-            SELECT COUNT(DISTINCT c.id) as cnt 
-            FROM contacts c 
-            WHERE $contactsWhereClause 
-              AND NOT (
-                EXISTS (
-                    SELECT 1 FROM data_reports dr 
-                    JOIN leads l2 ON dr.lead_id = l2.id 
-                    WHERE l2.person_id = c.person_id
-                )
-                OR EXISTS (
-                    SELECT 1 FROM leads l2 
-                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                    JOIN users u2 ON u2.id = c.owner_id
-                    JOIN consultants cons2 ON u2.email = cons2.email
-                    WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
-                )
-              )
-              AND (c.source = 'databank' OR EXISTS (
-                  SELECT 1 FROM leads l2 
-                  JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                  JOIN users u2 ON u2.id = c.owner_id
-                  JOIN consultants cons2 ON u2.email = cons2.email
-                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status = 'databank_claim'
-              ))
-        ");
         $databankCount = 0;
-        if ($stmtDatabank) {
-            $stmtDatabank->bind_param($contactsTypes, ...$contactsParams);
-            $stmtDatabank->execute();
-            $databankCount = (int) ($stmtDatabank->get_result()->fetch_assoc()['cnt'] ?? 0);
-            $stmtDatabank->close();
-        }
-
-        // ĐƯỢC CHIA (Exclude coop contacts)
-        $stmtDistributed = $conn->prepare("
-            SELECT COUNT(DISTINCT c.id) as cnt 
-            FROM contacts c 
-            WHERE $contactsWhereClause 
-              AND NOT (
-                EXISTS (
-                    SELECT 1 FROM data_reports dr 
-                    JOIN leads l2 ON dr.lead_id = l2.id 
-                    WHERE l2.person_id = c.person_id
-                )
-                OR EXISTS (
-                    SELECT 1 FROM leads l2 
-                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                    JOIN users u2 ON u2.id = c.owner_id
-                    JOIN consultants cons2 ON u2.email = cons2.email
-                    WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
-                )
-              )
-              AND c.source NOT IN ('databank', 'ca_nhan', 'gioi_thieu')
-              AND (c.collaborator_ids IS NULL OR c.collaborator_ids = '')
-              AND EXISTS (
-                  SELECT 1 FROM leads l2 
-                  JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                  JOIN users u2 ON u2.id = c.owner_id
-                  JOIN consultants cons2 ON u2.email = cons2.email
-                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
-              )
-        ");
         $distributedCount = 0;
-        if ($stmtDistributed) {
-            $stmtDistributed->bind_param($contactsTypes, ...$contactsParams);
-            $stmtDistributed->execute();
-            $distributedCount = (int) ($stmtDistributed->get_result()->fetch_assoc()['cnt'] ?? 0);
-            $stmtDistributed->close();
-        }
-
-        // HỢP TÁC (COOP)
-        $stmtCoop = $conn->prepare("
-            SELECT COUNT(DISTINCT c.id) as cnt 
-            FROM contacts c 
-            WHERE $contactsWhereClause 
-              AND NOT (
-                EXISTS (
-                    SELECT 1 FROM data_reports dr 
-                    JOIN leads l2 ON dr.lead_id = l2.id 
-                    WHERE l2.person_id = c.person_id
-                )
-                OR EXISTS (
-                    SELECT 1 FROM leads l2 
-                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                    JOIN users u2 ON u2.id = c.owner_id
-                    JOIN consultants cons2 ON u2.email = cons2.email
-                    WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
-                )
-              )
-              AND (FIND_IN_SET(?, c.collaborator_ids) OR (c.owner_id = ? AND c.collaborator_ids IS NOT NULL AND c.collaborator_ids != ''))
-        ");
         $coopCount = 0;
-        if ($stmtCoop) {
-            $coopParams = $contactsParams;
-            $coopParams[] = $saleUserId;
-            $coopParams[] = $saleUserId;
-            $coopTypes = $contactsTypes . "ii";
-            $stmtCoop->bind_param($coopTypes, ...$coopParams);
-            $stmtCoop->execute();
-            $coopCount = (int) ($stmtCoop->get_result()->fetch_assoc()['cnt'] ?? 0);
-            $stmtCoop->close();
+
+        $stmtCombinedCounts = $conn->prepare("
+            SELECT 
+                COUNT(*) as total_cnt,
+                SUM(CASE WHEN is_err = 1 THEN 1 ELSE 0 END) as err_cnt,
+                SUM(CASE WHEN is_err = 0 AND is_dbk = 1 THEN 1 ELSE 0 END) as dbk_cnt,
+                SUM(CASE WHEN is_err = 0 AND is_dist = 1 THEN 1 ELSE 0 END) as dist_cnt,
+                SUM(CASE WHEN is_err = 0 AND is_coop = 1 THEN 1 ELSE 0 END) as coop_cnt
+            FROM (
+                SELECT 
+                    c.id,
+                    CASE WHEN c.person_id IS NOT NULL AND (
+                        EXISTS (
+                            SELECT 1 FROM leads l2 
+                            JOIN data_reports dr ON dr.lead_id = l2.id 
+                            WHERE l2.person_id = c.person_id
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM leads l2 
+                            JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                            WHERE l2.person_id = c.person_id AND dl2.assigned_to = c.owner_id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                        )
+                    ) THEN 1 ELSE 0 END as is_err,
+                    CASE WHEN c.source = 'databank' OR (c.person_id IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM leads l2 
+                        JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id AND dl2.assigned_to = c.owner_id AND dl2.status = 'databank_claim'
+                    )) THEN 1 ELSE 0 END as is_dbk,
+                    CASE WHEN c.source NOT IN ('databank', 'ca_nhan', 'gioi_thieu')
+                        AND (c.collaborator_ids IS NULL OR c.collaborator_ids = '')
+                        AND c.person_id IS NOT NULL
+                        AND EXISTS (
+                            SELECT 1 FROM leads l2 
+                            JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                            WHERE l2.person_id = c.person_id AND dl2.assigned_to = c.owner_id AND dl2.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
+                        ) THEN 1 ELSE 0 END as is_dist,
+                    CASE WHEN (FIND_IN_SET(?, c.collaborator_ids) OR (c.owner_id = ? AND c.collaborator_ids IS NOT NULL AND c.collaborator_ids != '')) THEN 1 ELSE 0 END as is_coop
+                FROM contacts c
+                WHERE $contactsWhereClause
+            ) sub_c
+        ");
+        if ($stmtCombinedCounts) {
+            $combinedParams = array_merge([$saleUserId, $saleUserId], $contactsParams);
+            $combinedTypes = "ii" . $contactsTypes;
+            $stmtCombinedCounts->bind_param($combinedTypes, ...$combinedParams);
+            $stmtCombinedCounts->execute();
+            $combRow = $stmtCombinedCounts->get_result()->fetch_assoc();
+            if ($combRow) {
+                $contactsCount = (int) ($combRow['total_cnt'] ?? 0);
+                $errorTicketCount = (int) ($combRow['err_cnt'] ?? 0);
+                $databankCount = (int) ($combRow['dbk_cnt'] ?? 0);
+                $distributedCount = (int) ($combRow['dist_cnt'] ?? 0);
+                $coopCount = (int) ($combRow['coop_cnt'] ?? 0);
+            }
+            $stmtCombinedCounts->close();
         }
 
         // TỰ NHẬP
@@ -3499,14 +3422,12 @@ switch ($action) {
             SELECT COALESCE(r.round_name, 'Tự nhập / Khác') as round_name, COUNT(c.id) as count
             FROM contacts c
             LEFT JOIN leads l ON c.person_id = l.person_id
-            LEFT JOIN users u2 ON u2.id = c.owner_id
-            LEFT JOIN consultants cons2 ON u2.email = cons2.email
             LEFT JOIN (
                 SELECT lead_id, assigned_to, MAX(round_id) as round_id 
                 FROM distribution_logs 
-                WHERE status != 'silent'
+                WHERE status != 'silent' $subAssignedCond
                 GROUP BY lead_id, assigned_to
-            ) dl ON dl.lead_id = l.id AND dl.assigned_to = cons2.id
+            ) dl ON dl.lead_id = l.id AND dl.assigned_to = c.owner_id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
             WHERE $contactsWhereClause
             GROUP BY COALESCE(r.round_name, 'Tự nhập / Khác')
@@ -3550,7 +3471,7 @@ switch ($action) {
         // 6. Query active consultants list if user is admin
         $consultantsList = [];
         if (!$isSale) {
-            $resC = $conn->query("SELECT c.id, c.name, c.email, c.avatar, u.id AS user_id FROM consultants c LEFT JOIN users u ON c.email = u.email WHERE c.status = 'active' ORDER BY c.name ASC");
+            $resC = $conn->query("SELECT id, name, email, avatar, id AS user_id FROM consultants WHERE status = 'active' ORDER BY name ASC");
             if ($resC) {
                 while ($row = $resC->fetch_assoc()) {
                     $consultantsList[] = $row;
@@ -3558,33 +3479,8 @@ switch ($action) {
             }
         }
 
-        $targetUserId = null;
-        if ($saleId > 0) {
-            $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
-            $stmtUId->bind_param("i", $saleId);
-            $stmtUId->execute();
-            $uRow = $stmtUId->get_result()->fetch_assoc();
-            $stmtUId->close();
-            if ($uRow) {
-                $targetUserId = (int)$uRow['id'];
-            }
-        }
-        if (!$targetUserId) {
-            $targetUserId = (int)$decodedUser['id'];
-        }
-
+        $targetUserId = ($saleId > 0) ? (int)$saleId : (int)$decodedUser['id'];
         $vacationMode = 0;
-        if ($targetUserId > 0) {
-            $stmtV = $conn->prepare("SELECT vacation_mode FROM users WHERE id = ?");
-            $stmtV->bind_param("i", $targetUserId);
-            $stmtV->execute();
-            $resV = $stmtV->get_result();
-            if ($rowV = $resV->fetch_assoc()) {
-                $vacationMode = (int) $rowV['vacation_mode'];
-            }
-            $stmtV->close();
-        }
-
         $consultantProfile = null;
         if ($targetUserId > 0) {
             $stmtP = $conn->prepare("SELECT id, full_name AS name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar_url AS avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account, extra_fields_json, bio FROM users WHERE id = ?");
@@ -3592,6 +3488,7 @@ switch ($action) {
             $stmtP->execute();
             $consultantProfile = $stmtP->get_result()->fetch_assoc();
             if ($consultantProfile) {
+                $vacationMode = (int)($consultantProfile['vacation_mode'] ?? 0);
                 if (!empty($consultantProfile['work_schedule'])) {
                     $consultantProfile['work_schedule'] = json_decode($consultantProfile['work_schedule'], true);
                 }
@@ -3791,25 +3688,48 @@ switch ($action) {
                 (l.person_id IS NOT NULL AND EXISTS (SELECT 1 FROM contacts c_del WHERE c_del.person_id = l.person_id AND c_del.deleted_at IS NOT NULL))
                 OR (l.phone IS NOT NULL AND l.phone != '' AND EXISTS (SELECT 1 FROM contacts c_del2 WHERE c_del2.phone = l.phone AND c_del2.deleted_at IS NOT NULL))
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM contacts c_act 
-                WHERE (c_act.person_id = l.person_id OR (l.phone IS NOT NULL AND l.phone != '' AND c_act.phone = l.phone)) 
-                AND c_act.deleted_at IS NULL
-            )
+            AND (l.person_id IS NULL OR NOT EXISTS (
+                SELECT 1 FROM contacts c_act1 
+                WHERE c_act1.person_id = l.person_id AND c_act1.deleted_at IS NULL
+            ))
+            AND (l.phone IS NULL OR l.phone = '' OR NOT EXISTS (
+                SELECT 1 FROM contacts c_act2 
+                WHERE c_act2.phone = l.phone AND c_act2.deleted_at IS NULL
+            ))
         )";
         $isFilteringActive = false;
+
+        $cPipeSubquery = "
+            LEFT JOIN (
+                SELECT person_id,
+                    MAX(CASE 
+                        WHEN deleted_at IS NULL AND pipeline_status = 'dong_deal' THEN 8
+                        WHEN deleted_at IS NULL AND pipeline_status = 'dat_coc' THEN 7
+                        WHEN deleted_at IS NULL AND pipeline_status = 'booking' THEN 6
+                        WHEN deleted_at IS NULL AND pipeline_status = 'da_gap' THEN 5
+                        WHEN deleted_at IS NULL AND pipeline_status IN ('dong_y_gap', 'thien_chi') THEN 4
+                        WHEN deleted_at IS NULL AND pipeline_status = 'quan_tam' THEN 3
+                        WHEN deleted_at IS NULL AND pipeline_status = 'cham_soc_dai_han' THEN 2
+                        WHEN pipeline_status = 'not_lead' THEN 1
+                        ELSE 0
+                    END) as max_rank
+                FROM contacts
+                WHERE person_id IS NOT NULL
+                GROUP BY person_id
+            ) c_pipe ON c_pipe.person_id = l.person_id
+        ";
 
         $leadPipelineExpr = "
             CASE 
                 WHEN p.is_blocked = 1 THEN 'not_lead'
-                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'dong_deal' AND c.deleted_at IS NULL) THEN 'dong_deal'
-                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'dat_coc' AND c.deleted_at IS NULL) THEN 'dat_coc'
-                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'booking' AND c.deleted_at IS NULL) THEN 'booking'
-                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'da_gap' AND c.deleted_at IS NULL) THEN 'da_gap'
-                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status IN ('dong_y_gap', 'thien_chi') AND c.deleted_at IS NULL) THEN 'thien_chi'
-                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'quan_tam' AND c.deleted_at IS NULL) THEN 'quan_tam'
-                WHEN EXISTS (SELECT 1 FROM contacts c WHERE c.person_id = l.person_id AND c.pipeline_status = 'cham_soc_dai_han' AND c.deleted_at IS NULL) THEN 'cham_soc_dai_han'
-                WHEN l.status = 'not_lead' OR dl.status = 'not_lead' OR EXISTS (SELECT 1 FROM contacts cnl WHERE cnl.person_id = l.person_id AND cnl.pipeline_status = 'not_lead') THEN 'not_lead'
+                WHEN c_pipe.max_rank = 8 THEN 'dong_deal'
+                WHEN c_pipe.max_rank = 7 THEN 'dat_coc'
+                WHEN c_pipe.max_rank = 6 THEN 'booking'
+                WHEN c_pipe.max_rank = 5 THEN 'da_gap'
+                WHEN c_pipe.max_rank = 4 THEN 'thien_chi'
+                WHEN c_pipe.max_rank = 3 THEN 'quan_tam'
+                WHEN c_pipe.max_rank = 2 THEN 'cham_soc_dai_han'
+                WHEN l.status = 'not_lead' OR dl.status = 'not_lead' OR c_pipe.max_rank = 1 THEN 'not_lead'
                 ELSE 'chua_xac_dinh'
             END
         ";
@@ -3939,7 +3859,8 @@ switch ($action) {
         }
 
         // Get total count first with all active filters
-        $joinLeads = (strpos($extraCondition, 'l.') !== false || strpos($extraCondition, 'p.') !== false || strpos($extraCondition, 'proj.') !== false) ? "LEFT JOIN leads l ON dl.lead_id = l.id LEFT JOIN projects proj ON l.project_id = proj.id LEFT JOIN persons p ON l.person_id = p.id" : "";
+        $joinPipe = (strpos($extraCondition, 'c_pipe.') !== false) ? $cPipeSubquery : "";
+        $joinLeads = (strpos($extraCondition, 'l.') !== false || strpos($extraCondition, 'p.') !== false || strpos($extraCondition, 'proj.') !== false || strpos($extraCondition, 'c_pipe.') !== false) ? "LEFT JOIN leads l ON dl.lead_id = l.id LEFT JOIN projects proj ON l.project_id = proj.id LEFT JOIN persons p ON l.person_id = p.id $joinPipe" : "";
         $joinConsultants = (strpos($extraCondition, 'c.') !== false) ? "LEFT JOIN consultants c ON dl.assigned_to = c.id" : "";
         $joinRounds = (strpos($extraCondition, 'dr.') !== false) ? "LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id" : "";
 
@@ -3960,8 +3881,9 @@ switch ($action) {
         $totalCount = (int) ($countRes->fetch_assoc()['cnt'] ?? 0);
 
         $statusCounts = [];
+        $overallTotalCount = 0;
         $statusCountRes = $conn->query("
-            SELECT dl.status, COUNT(*) as cnt 
+            SELECT dl.status, COUNT(*) as cnt, COUNT(DISTINCT dl.lead_id) as lead_cnt
             FROM distribution_logs dl 
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
@@ -3969,30 +3891,15 @@ switch ($action) {
                 WHERE $dateConditionSubQuery
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
-            $joinLeads 
-            $joinConsultants
-            $joinRounds
             WHERE $dateCondition
             GROUP BY dl.status
         ");
         if ($statusCountRes) {
             while ($scRow = $statusCountRes->fetch_assoc()) {
                 $statusCounts[$scRow['status']] = (int) $scRow['cnt'];
+                $overallTotalCount += (int) ($scRow['lead_cnt'] ?? 0);
             }
         }
-
-        $overallCountRes = $conn->query("
-            SELECT COUNT(DISTINCT dl.lead_id) as cnt 
-            FROM distribution_logs dl 
-            INNER JOIN (
-                SELECT lead_id, MAX(id) as max_id 
-                FROM distribution_logs 
-                WHERE $dateConditionSubQuery
-                GROUP BY lead_id
-            ) dl_max ON dl.id = dl_max.max_id
-            WHERE $dateCondition
-        ");
-        $overallTotalCount = (int) ($overallCountRes ? ($overallCountRes->fetch_assoc()['cnt'] ?? 0) : 0);
 
         $pipeCountRes = $conn->query("
             SELECT ($leadPipelineExpr) as p_status, COUNT(*) as cnt
@@ -4005,6 +3912,7 @@ switch ($action) {
             ) dl_max ON dl.id = dl_max.max_id
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN persons p ON l.person_id = p.id
+            $cPipeSubquery
             WHERE $dateCondition
             GROUP BY p_status
         ");
@@ -4122,6 +4030,7 @@ switch ($action) {
             LEFT JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN projects proj ON l.project_id = proj.id
             LEFT JOIN persons p ON l.person_id = p.id
+            $joinPipe
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
             LEFT JOIN (
@@ -4156,9 +4065,9 @@ switch ($action) {
                         c.id as contact_id, 
                         c.lead_id,
                         COALESCE(NULLIF(c.owner_id, 0), NULLIF(c.not_lead_proposed_by, 0), 0) as id, 
-                        COALESCE(NULLIF(cons.name, ''), NULLIF(u.full_name, ''), NULLIF(consNL.name, ''), NULLIF(uNL.full_name, ''), 'Tư vấn viên') as name, 
-                        COALESCE(cons.avatar, u.avatar_url, consNL.avatar, uNL.avatar_url) as avatar, 
-                        COALESCE(cons.phone, u.phone, consNL.phone, uNL.phone) as consultant_phone,
+                        COALESCE(NULLIF(u.full_name, ''), NULLIF(uNL.full_name, ''), 'Tư vấn viên') as name, 
+                        COALESCE(u.avatar_url, uNL.avatar_url) as avatar, 
+                        COALESCE(u.phone, uNL.phone) as consultant_phone,
                         COALESCE(tm.name, tmNL.name) as team_name, 
                         COALESCE(dr.round_name, '') as round_name,
                         c.pipeline_status, 
@@ -4169,11 +4078,9 @@ switch ($action) {
                         c.updated_at
                        FROM contacts c
                        LEFT JOIN users u ON (c.owner_id = u.id AND c.owner_id > 0)
-                       LEFT JOIN consultants cons ON (cons.id = c.owner_id OR (c.owner_id > 0 AND (u.email = cons.email OR u.id = cons.id)))
-                       LEFT JOIN teams tm ON (cons.team_id = tm.id OR u.team_id = tm.id)
+                       LEFT JOIN teams tm ON u.team_id = tm.id
                        LEFT JOIN users uNL ON (c.not_lead_proposed_by = uNL.id AND c.not_lead_proposed_by > 0)
-                       LEFT JOIN consultants consNL ON (consNL.id = c.not_lead_proposed_by OR (c.not_lead_proposed_by > 0 AND (uNL.email = consNL.email OR uNL.id = consNL.id)))
-                       LEFT JOIN teams tmNL ON (consNL.team_id = tmNL.id OR uNL.team_id = tmNL.id)
+                       LEFT JOIN teams tmNL ON uNL.team_id = tmNL.id
                        LEFT JOIN leads ld ON c.lead_id = ld.id
                        LEFT JOIN distribution_rounds dr ON ld.target_round_id = dr.id
                        WHERE c.person_id IN ($inClause) AND (c.deleted_at IS NULL OR c.pipeline_status = 'not_lead')
@@ -4611,7 +4518,7 @@ switch ($action) {
                 LEFT JOIN consultants c ON dl.assigned_to = c.id
                 LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
                 LEFT JOIN data_reports rep ON rep.lead_id = l.id AND rep.consultant_id = c.id
-                WHERE DATE(dl.received_at) = '$escapedDate' 
+                WHERE dl.received_at >= '$escapedDate 00:00:00' AND dl.received_at <= '$escapedDate 23:59:59'
                   AND dl.lead_id IS NOT NULL 
                   AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success')
                   AND l.is_accepted = 1
@@ -4647,7 +4554,7 @@ switch ($action) {
                 LEFT JOIN consultants c ON dl.assigned_to = c.id
                 LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
                 LEFT JOIN leads l ON dl.lead_id = l.id
-                WHERE DATE(dl.received_at) = '$escapedDate' 
+                WHERE dl.received_at >= '$escapedDate 00:00:00' AND dl.received_at <= '$escapedDate 23:59:59'
                   AND dl.lead_id IS NOT NULL 
                   AND dl.status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success')
                   AND l.is_accepted = 1
@@ -4683,7 +4590,7 @@ switch ($action) {
             FROM data_reports r
             LEFT JOIN leads l ON r.lead_id = l.id
             LEFT JOIN consultants c ON r.consultant_id = c.id
-            WHERE DATE(r.created_at) = '$escapedDate' $ticketFilter
+            WHERE r.created_at >= '$escapedDate 00:00:00' AND r.created_at <= '$escapedDate 23:59:59' $ticketFilter
         ");
 
         $tickets = [];
@@ -4724,7 +4631,7 @@ switch ($action) {
             FROM distribution_logs dl
             LEFT JOIN leads l ON dl.lead_id = l.id
             $blacklistJoin
-            WHERE DATE(dl.received_at) = '$escapedDate' AND dl.status IN ('blacklisted', 'error', 'no_consultant', 'reminder', 'duplicate') $blacklistFilter
+            WHERE dl.received_at >= '$escapedDate 00:00:00' AND dl.received_at <= '$escapedDate 23:59:59' AND dl.status IN ('blacklisted', 'error', 'no_consultant', 'reminder', 'duplicate') $blacklistFilter
         ");
 
         $blacklistLogs = [];
@@ -6850,6 +6757,59 @@ switch ($action) {
 
         $consultantStatuses = [];
         if ($cRes) {
+            // Batch-preload shift registrations & check-ins to eliminate N+1 queries inside loop
+            $holidayShiftUserIds = [];
+            if (!empty($holidayName)) {
+                $hStmt = $conn->prepare("SELECT user_id FROM holiday_shift_registrations WHERE shift_date = ? AND approved = 1");
+                if ($hStmt) {
+                    $hStmt->bind_param("s", $todayStr);
+                    $hStmt->execute();
+                    $hRes = $hStmt->get_result();
+                    while ($hRow = $hRes->fetch_assoc()) {
+                        $holidayShiftUserIds[(int)$hRow['user_id']] = true;
+                    }
+                    $hStmt->close();
+                }
+            }
+
+            $weekendShiftUserIds = [];
+            $wStmt = $conn->prepare("SELECT user_id FROM weekend_shift_registrations WHERE shift_date = ? AND approved = 1");
+            if ($wStmt) {
+                $wStmt->bind_param("s", $todayStr);
+                $wStmt->execute();
+                $wRes = $wStmt->get_result();
+                while ($wRow = $wRes->fetch_assoc()) {
+                    $weekendShiftUserIds[(int)$wRow['user_id']] = true;
+                }
+                $wStmt->close();
+            }
+
+            $nightShiftUserIds = [];
+            if ($isNightShiftNow) {
+                $nStmt = $conn->prepare("SELECT user_id FROM night_shift_registrations WHERE shift_date = ? AND approved = 1");
+                if ($nStmt) {
+                    $nStmt->bind_param("s", $shiftDate);
+                    $nStmt->execute();
+                    $nRes = $nStmt->get_result();
+                    while ($nRow = $nRes->fetch_assoc()) {
+                        $nightShiftUserIds[(int)$nRow['user_id']] = true;
+                    }
+                    $nStmt->close();
+                }
+            }
+
+            $checkInStatusByUser = [];
+            $ciStmt = $conn->prepare("SELECT user_id, status FROM check_ins WHERE check_in_date = ?");
+            if ($ciStmt) {
+                $ciStmt->bind_param("s", $todayStr);
+                $ciStmt->execute();
+                $ciRes = $ciStmt->get_result();
+                while ($ciRow = $ciRes->fetch_assoc()) {
+                    $checkInStatusByUser[(int)$ciRow['user_id']] = $ciRow['status'];
+                }
+                $ciStmt->close();
+            }
+
             while ($c = $cRes->fetch_assoc()) {
                 $uId = (int)$c['id'];
                 $isCool = isset($cooldowns[$uId]) && $cooldowns[$uId]['on_cooldown'];
@@ -6895,11 +6855,7 @@ switch ($action) {
                 $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
 
                 if (!empty($holidayName)) {
-                    $stmtCheckReg = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
-                    $stmtCheckReg->bind_param("is", $uId, $todayStr);
-                    $stmtCheckReg->execute();
-                    $hasHolidayShift = (bool)$stmtCheckReg->get_result()->fetch_assoc();
-                    $stmtCheckReg->close();
+                    $hasHolidayShift = !empty($holidayShiftUserIds[$uId]);
                     if (!$hasHolidayShift) {
                         $consultantStatuses[$uId] = [
                             'status' => 'no_holiday_shift',
@@ -6909,11 +6865,7 @@ switch ($action) {
                         continue;
                     }
                 } else if ($isRestDay) {
-                    $stmtCheckReg = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
-                    $stmtCheckReg->bind_param("is", $uId, $todayStr);
-                    $stmtCheckReg->execute();
-                    $hasWeekendShift = (bool)$stmtCheckReg->get_result()->fetch_assoc();
-                    $stmtCheckReg->close();
+                    $hasWeekendShift = !empty($weekendShiftUserIds[$uId]);
                     if (!$hasWeekendShift) {
                         $consultantStatuses[$uId] = [
                             'status' => 'no_weekend_shift',
@@ -6926,7 +6878,7 @@ switch ($action) {
 
                 $isApprovedNightShift = false;
                 if ($isNightShiftNow) {
-                    if (hasApprovedShiftForDate($conn, $uId, $shiftDate)) {
+                    if (!empty($nightShiftUserIds[$uId])) {
                         $isApprovedNightShift = true;
                     } else {
                         $consultantStatuses[$uId] = [
@@ -6958,13 +6910,9 @@ switch ($action) {
                 }
 
                 if (!$bypassCheckIn) {
-                    $stmtCheckin = $conn->prepare("SELECT status FROM check_ins WHERE user_id = ? AND check_in_date = ? LIMIT 1");
-                    $stmtCheckin->bind_param("is", $uId, $todayStr);
-                    $stmtCheckin->execute();
-                    $cInRow = $stmtCheckin->get_result()->fetch_assoc();
-                    $stmtCheckin->close();
+                    $cInStatus = $checkInStatusByUser[$uId] ?? null;
 
-                    if (!$cInRow) {
+                    if ($cInStatus === null) {
                         $consultantStatuses[$uId] = [
                             'status' => 'no_checkin',
                             'label' => 'Chưa chấm công',
@@ -6972,7 +6920,7 @@ switch ($action) {
                         ];
                         continue;
                     }
-                    if ($cInRow['status'] === 'pending_approval' && $allowPendingCheckin !== 1) {
+                    if ($cInStatus === 'pending_approval' && $allowPendingCheckin !== 1) {
                         $consultantStatuses[$uId] = [
                             'status' => 'pending_checkin',
                             'label' => 'Chờ duyệt check-in',
@@ -6980,7 +6928,7 @@ switch ($action) {
                         ];
                         continue;
                     }
-                    if ($cInRow['status'] === 'rejected') {
+                    if ($cInStatus === 'rejected') {
                         $consultantStatuses[$uId] = [
                             'status' => 'rejected_checkin',
                             'label' => 'Check-in bị từ chối',
@@ -7041,6 +6989,11 @@ switch ($action) {
             }
         }
 
+        $gwStart = $conn->real_escape_string((string)get_system_setting($conn, 'global_work_start_time'));
+        $gwEnd = $conn->real_escape_string((string)get_system_setting($conn, 'global_work_end_time'));
+        $gwSchedRaw = get_system_setting($conn, 'global_work_schedule');
+        $gwSchedSql = ($gwSchedRaw !== null) ? ("'" . $conn->real_escape_string((string)$gwSchedRaw) . "'") : "NULL";
+
         $res = $conn->query("
             SELECT 
                 c.id, 
@@ -7061,9 +7014,9 @@ switch ($action) {
                 c.status,
                 c.is_active,
                 c.last_login_at AS last_login,
-                IF(c.use_custom_work_hours = 1, c.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time,
-                IF(c.use_custom_work_hours = 1, c.work_end_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_end_time' LIMIT 1)) AS work_end_time,
-                IF(c.use_custom_work_hours = 1, c.work_schedule, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1)) AS work_schedule,
+                IF(c.use_custom_work_hours = 1, c.work_start_time, '$gwStart') AS work_start_time,
+                IF(c.use_custom_work_hours = 1, c.work_end_time, '$gwEnd') AS work_end_time,
+                IF(c.use_custom_work_hours = 1, c.work_schedule, $gwSchedSql) AS work_schedule,
                 t.name as team_name, 
                 t.branch as team_branch 
             FROM users c 
@@ -7527,14 +7480,19 @@ switch ($action) {
                 break;
             }
 
-            // Clean expired offers
-            $conn->query("UPDATE lead_offers SET status = 'expired' WHERE status = 'pending' AND expires_at < NOW()");
+            // Clean expired offers (throttled max 1 time per 15s across all concurrent requests to avoid write lock contention)
+            $expLockFile = sys_get_temp_dir() . '/rl_expire_offers.lock';
+            if (!file_exists($expLockFile) || (time() - @filemtime($expLockFile)) >= 15) {
+                @touch($expLockFile);
+                $conn->query("UPDATE lead_offers SET status = 'expired' WHERE status = 'pending' AND expires_at < NOW()");
+            }
 
             // Query active offers (excluding rounds where user is currently on cooldown)
             $stmt = $conn->prepare("
-                SELECT lo.id as offer_id, lo.lead_id, lo.round_id, lo.expires_at,
+                SELECT lo.id as offer_id, lo.lead_id, lo.round_id, lo.offered_at, lo.expires_at,
                        l.name as lead_name, l.source as lead_source, l.type as lead_type, l.note as lead_note,
                        TIMESTAMPDIFF(SECOND, NOW(), lo.expires_at) as seconds_remaining,
+                       GREATEST(1, TIMESTAMPDIFF(SECOND, lo.offered_at, lo.expires_at)) as total_seconds,
                        dr.round_name
                 FROM lead_offers lo
                 JOIN leads l ON lo.lead_id = l.id
@@ -7544,7 +7502,7 @@ switch ($action) {
                   AND lo.expires_at > NOW()
                   AND NOT EXISTS (
                       SELECT 1 FROM distribution_logs dl 
-                      WHERE (dl.assigned_to = lo.user_id OR dl.assigned_to = (SELECT c.id FROM consultants c WHERE c.email = (SELECT u.email FROM users u WHERE u.id = lo.user_id LIMIT 1) LIMIT 1))
+                      WHERE dl.assigned_to = lo.user_id
                         AND dl.round_id = lo.round_id 
                         AND dl.status = 'grabbed' 
                         AND dl.received_at >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
@@ -7557,7 +7515,7 @@ switch ($action) {
             $offers = $res->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
 
-            echo json_encode(['success' => true, 'offers' => $offers]);
+            echo json_encode(['success' => true, 'offers' => $offers, 'server_time' => date('Y-m-d H:i:s')]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
@@ -8617,25 +8575,22 @@ switch ($action) {
             }
         }
 
-        $res = $conn->query("SELECT r.*, p.name as project_name,
+        $res = $conn->query("SELECT r.*, MAX(p.name) as project_name,
                                     GROUP_CONCAT(c.name ORDER BY c.id ASC) as consultants, 
                                     GROUP_CONCAT(c.id ORDER BY c.id ASC) as consultant_ids,
-                                    (SELECT c2.name FROM consultants c2 WHERE c2.id = r.last_assigned_consultant_id) as last_assigned_name
+                                    MAX(c_last.full_name) as last_assigned_name
                                FROM distribution_rounds r 
                                LEFT JOIN projects p ON r.project_id = p.id
                                LEFT JOIN round_consultants rc ON r.id = rc.round_id
                                LEFT JOIN consultants c ON rc.consultant_id = c.id AND c.status = 'active'
+                               LEFT JOIN users c_last ON c_last.id = r.last_assigned_consultant_id
                                $roundFilter
                                GROUP BY r.id
                                ORDER BY r.is_active DESC, r.id DESC");
         $fbRoundId = 0;
-        $fbTypeStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_type' LIMIT 1");
-        $fbType = ($fbTypeStmt && $fbTypeStmt->num_rows > 0) ? $fbTypeStmt->fetch_assoc()['setting_value'] : 'round';
+        $fbType = get_system_setting($conn, 'fallback_type') ?: 'round';
         if ($fbType === 'round') {
-            $fbStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_round_id' LIMIT 1");
-            if ($fbStmt && $fbStmt->num_rows > 0) {
-                $fbRoundId = (int) $fbStmt->fetch_assoc()['setting_value'];
-            }
+            $fbRoundId = (int) get_system_setting($conn, 'fallback_round_id');
         }
         $todayStr = date('Y-m-d');
         $checkedInIds = [];
@@ -8697,6 +8652,7 @@ switch ($action) {
 
         $data = [];
         $roundIds = [];
+        $restDayCache = [];
         while ($row = $res->fetch_assoc()) {
             $row['is_active'] = (int) $row['is_active'];
             $row['is_schedule_active'] = (int) ($row['is_schedule_active'] ?? 0);
@@ -8720,7 +8676,10 @@ switch ($action) {
                         continue;
                     }
 
-                    $isRestDay = function_exists('isRestDayForUser') ? isRestDayForUser($conn, $cidInt, $todayStr) : false;
+                    if (!array_key_exists($cidInt, $restDayCache)) {
+                        $restDayCache[$cidInt] = function_exists('isRestDayForUser') ? isRestDayForUser($conn, $cidInt, $todayStr) : false;
+                    }
+                    $isRestDay = $restDayCache[$cidInt];
                     $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
 
                     if ($isNightShiftNow || $isWeekendOrHoliday) {
@@ -9883,9 +9842,6 @@ switch ($action) {
             $target = (int) ($input['target_round_id'] ?? 0);
             $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (string) $input['connection_id'] : null;
 
-            // Ensure column can store comma-separated values
-            $conn->query("ALTER TABLE routing_rules MODIFY connection_id VARCHAR(255) NULL");
-
             $stmt = $conn->prepare("INSERT INTO routing_rules (connection_id, condition_column, condition_operator, condition_value, target_round_id, conditions_json, logical_operator) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("ssssiss", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator);
 
@@ -9956,9 +9912,6 @@ switch ($action) {
             $logical_operator = $input['logical_operator'] ?? 'AND';
             $target = (int) ($input['target_round_id'] ?? 0);
             $conn_id = isset($input['connection_id']) && $input['connection_id'] !== 'all' ? (string) $input['connection_id'] : null;
-
-            // Ensure column can store comma-separated values
-            $conn->query("ALTER TABLE routing_rules MODIFY connection_id VARCHAR(255) NULL");
 
             $stmt = $conn->prepare("UPDATE routing_rules SET connection_id=?, condition_column=?, condition_operator=?, condition_value=?, target_round_id=?, conditions_json=?, logical_operator=? WHERE id=?");
             $stmt->bind_param("ssssissi", $conn_id, $col, $op, $val, $target, $conditions_json, $logical_operator, $id);
@@ -13150,16 +13103,22 @@ switch ($action) {
                         sendBatchGrabTelegramSync($conn, $lead_id, $eligibleConsultants, $targetRoundId, $grabCountdownSeconds, $competingNames);
                     }
 
-                    $offerStmt = $conn->prepare("
-                        INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
-                        VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
-                    ");
+                    if (function_exists('insertBatchGrabLeadOffers')) {
+                        insertBatchGrabLeadOffers($conn, $lead_id, $eligibleConsultants, $targetRoundId, $grabCountdownSeconds);
+                    } else {
+                        $offerStmt = $conn->prepare("
+                            INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
+                            VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+                        ");
+                        foreach ($eligibleConsultants as $c) {
+                            $offerStmt->bind_param("iiii", $lead_id, $c['id'], $targetRoundId, $grabCountdownSeconds);
+                            $offerStmt->execute();
+                        }
+                        $offerStmt->close();
+                    }
                     foreach ($eligibleConsultants as $c) {
-                        $offerStmt->bind_param("iiii", $lead_id, $c['id'], $targetRoundId, $grabCountdownSeconds);
-                        $offerStmt->execute();
                         sendGrabOfferNotification($conn, $lead_id, $c['id'], $targetRoundId, $grabCountdownSeconds, $competingNames);
                     }
-                    $offerStmt->close();
                 }
             } else if ($isDuplicate) {
                 // Skip Round-Robin, keep duplicate owner
@@ -14507,6 +14466,11 @@ switch ($action) {
         break;
 
     case 'alter_schema':
+        $colChk = $conn->query("SHOW COLUMNS FROM sheet_connections LIKE 'connection_type'");
+        if ($colChk && $colChk->num_rows > 0) {
+            echo json_encode(['success' => true, 'message' => 'Schema already up to date']);
+            break;
+        }
         $sql = "ALTER TABLE sheet_connections ADD COLUMN connection_type VARCHAR(20) DEFAULT 'sheets' AFTER spreadsheet_id";
         if ($conn->query($sql)) {
             echo json_encode(['success' => true, 'message' => 'Schema updated successfully']);
@@ -16199,9 +16163,10 @@ switch ($action) {
                 $curHour = (int)date('H');
                 $shiftDateToday = ($curHour < 6) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
                 if ($overtime_mode === 1) {
-                    $stmtNS = $conn->prepare("INSERT INTO night_shift_registrations (user_id, shift_date, approved) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE approved = 1");
+                    $nsAutoApprove = in_array(strtolower($_SESSION['role'] ?? ''), ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) ? 1 : 0;
+                    $stmtNS = $conn->prepare("INSERT INTO night_shift_registrations (user_id, shift_date, approved) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE shift_date = VALUES(shift_date)");
                     if ($stmtNS) {
-                        $stmtNS->bind_param("is", $targetUserId, $shiftDateToday);
+                        $stmtNS->bind_param("isi", $targetUserId, $shiftDateToday, $nsAutoApprove);
                         $stmtNS->execute();
                         $stmtNS->close();
                     }
@@ -17979,10 +17944,15 @@ switch ($action) {
                     ORDER BY c.name ASC";
         } else {
             $sql = "SELECT c.id, c.name, c.avatar, 1 as receive_ratio, 0 as round_id, 'Tất cả các Vòng' as round_name,
-                           (SELECT COALESCE(SUM(rc2.compensation_count), 0) FROM round_consultants rc2 WHERE rc2.consultant_id = c.id) as pending_compensation,
+                           COALESCE(rc2.comp_sum, 0) as pending_compensation,
                            0 as skip_count,
                            0 as current_turn_remaining
                     FROM consultants c
+                    LEFT JOIN (
+                        SELECT consultant_id, SUM(compensation_count) as comp_sum
+                        FROM round_consultants
+                        GROUP BY consultant_id
+                    ) rc2 ON rc2.consultant_id = c.id
                     WHERE c.status = 'active'
                     ORDER BY c.name ASC";
         }
@@ -18149,33 +18119,21 @@ switch ($action) {
         }
         unset($c);
 
-        // Query ticket error counts (data_reports approved)
+        // Query ticket error counts (approved & total) in a single pass
         $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
-        $ticketCountsSql = "SELECT consultant_id, COUNT(*) as cnt 
+        $ticketCountsSql = "SELECT consultant_id, 
+                                   COUNT(*) as total_cnt,
+                                   SUM(CASE WHEN status IN ('approved', 'approved_no_comp') THEN 1 ELSE 0 END) as approved_cnt
                             FROM data_reports 
-                            WHERE status IN ('approved', 'approved_no_comp') AND $dateConditionCreated" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
+                            WHERE $dateConditionCreated" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
                             GROUP BY consultant_id";
         $tktRes = $conn->query($ticketCountsSql);
         if ($tktRes) {
             while ($row = $tktRes->fetch_assoc()) {
                 $cId = (int) $row['consultant_id'];
                 if (isset($consultants[$cId])) {
-                    $consultants[$cId]['ticket_count'] = (int) $row['cnt'];
-                }
-            }
-        }
-
-        // Query total ticket counts (all data_reports)
-        $totalTicketCountsSql = "SELECT consultant_id, COUNT(*) as cnt 
-                                 FROM data_reports 
-                                 WHERE $dateConditionCreated" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
-                                 GROUP BY consultant_id";
-        $ttRes = $conn->query($totalTicketCountsSql);
-        if ($ttRes) {
-            while ($row = $ttRes->fetch_assoc()) {
-                $cId = (int) $row['consultant_id'];
-                if (isset($consultants[$cId])) {
-                    $consultants[$cId]['total_ticket_count'] = (int) $row['cnt'];
+                    $consultants[$cId]['ticket_count'] = (int) ($row['approved_cnt'] ?? 0);
+                    $consultants[$cId]['total_ticket_count'] = (int) ($row['total_cnt'] ?? 0);
                 }
             }
         }
@@ -18344,31 +18302,7 @@ switch ($action) {
 
         $whereClause = implode(" AND ", $where);
 
-        // Get total count of waves
-        $countSql = "
-            SELECT COUNT(*) as total_waves FROM (
-                SELECT 
-                    lo.lead_id, lo.round_id, lo.offered_at,
-                    CASE 
-                        WHEN SUM(CASE WHEN lo.status = 'accepted' THEN 1 ELSE 0 END) > 0 THEN 'success'
-                        WHEN SUM(CASE WHEN lo.status = 'pending' AND lo.expires_at > NOW() THEN 1 ELSE 0 END) > 0 THEN 'pending'
-                        ELSE 'expired'
-                    END as wave_status
-                FROM lead_offers lo
-                WHERE $whereClause
-                GROUP BY lo.lead_id, lo.round_id, lo.offered_at
-                $having
-            ) sub
-        ";
-        $stmtCnt = $conn->prepare($countSql);
-        if ($types && !empty($params)) {
-            $stmtCnt->bind_param($types, ...$params);
-        }
-        $stmtCnt->execute();
-        $totalWaves = (int)($stmtCnt->get_result()->fetch_assoc()['total_waves'] ?? 0);
-        $stmtCnt->close();
-
-        // Summary metrics
+        // Summary metrics (also provides total_waves for pagination)
         $sumSql = "
             SELECT 
                 COUNT(*) as total_count,
@@ -18398,6 +18332,16 @@ switch ($action) {
         $summaryRow = $stmtSum->get_result()->fetch_assoc();
         $stmtSum->close();
 
+        if ($status === 'success') {
+            $totalWaves = (int)($summaryRow['success_count'] ?? 0);
+        } else if ($status === 'expired') {
+            $totalWaves = (int)($summaryRow['expired_count'] ?? 0);
+        } else if ($status === 'pending') {
+            $totalWaves = (int)($summaryRow['pending_count'] ?? 0);
+        } else {
+            $totalWaves = (int)($summaryRow['total_count'] ?? 0);
+        }
+
         // Main data query
         $mainSql = "
             SELECT 
@@ -18409,9 +18353,9 @@ switch ($action) {
                 l.phone as lead_phone,
                 dr.round_name,
                 COUNT(lo.id) as total_signaled,
-                GROUP_CONCAT(CONCAT(lo.user_id, ':', COALESCE(u.full_name, c.name, 'TVV'), ':', lo.status) SEPARATOR ';') as consultants_summary,
+                GROUP_CONCAT(CONCAT(lo.user_id, ':', COALESCE(NULLIF(u.full_name, ''), 'TVV'), ':', lo.status) SEPARATOR ';') as consultants_summary,
                 MAX(CASE WHEN lo.status = 'accepted' THEN lo.user_id ELSE NULL END) as winner_id,
-                MAX(CASE WHEN lo.status = 'accepted' THEN COALESCE(u.full_name, c.name, 'TVV') ELSE NULL END) as winner_name,
+                MAX(CASE WHEN lo.status = 'accepted' THEN COALESCE(NULLIF(u.full_name, ''), 'TVV') ELSE NULL END) as winner_name,
                 MAX(CASE WHEN lo.status = 'accepted' THEN lo.responded_at ELSE NULL END) as winner_responded_at,
                 MAX(CASE WHEN lo.status = 'accepted' THEN TIMESTAMPDIFF(SECOND, lo.offered_at, lo.responded_at) ELSE NULL END) as response_time_seconds,
                 CASE 
@@ -18423,7 +18367,6 @@ switch ($action) {
             LEFT JOIN leads l ON lo.lead_id = l.id
             LEFT JOIN distribution_rounds dr ON lo.round_id = dr.id
             LEFT JOIN users u ON lo.user_id = u.id
-            LEFT JOIN consultants c ON (lo.user_id = c.id OR u.email = c.email)
             WHERE $whereClause
             GROUP BY lo.lead_id, lo.round_id, lo.offered_at
             $having
@@ -18894,16 +18837,6 @@ switch ($action) {
                         $upLead->execute();
                         $upLead->close();
 
-                        $offerStmt = $conn->prepare("
-                            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
-                            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
-                        ");
-                        foreach ($eligibleGrabConsultants as $ec) {
-                            $offerStmt->bind_param("iiii", $lead_id, $ec['id'], $target_round_id, $grabCountdownSeconds);
-                            $offerStmt->execute();
-                        }
-                        $offerStmt->close();
-
                         $logMsgAppend = "\n[Phát tín hiệu tranh nhận vòng " . $roundName . " cho " . count($eligibleGrabConsultants) . " Sale lúc " . date('Y-m-d H:i:s') . "]";
                         $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'pending_claim', round_id = ?, assigned_to = NULL, message = CONCAT(COALESCE(message, ''), ?) WHERE id = ?");
                         $upLog->bind_param("isi", $target_round_id, $logMsgAppend, $log_id);
@@ -18915,6 +18848,19 @@ switch ($action) {
                         require_once __DIR__ . '/telegram_bot.php';
                         if (function_exists('sendBatchGrabTelegramSync')) {
                             sendBatchGrabTelegramSync($conn, $lead_id, $eligibleGrabConsultants, $target_round_id, $grabCountdownSeconds, $competingNames);
+                        }
+                        if (function_exists('insertBatchGrabLeadOffers')) {
+                            insertBatchGrabLeadOffers($conn, $lead_id, $eligibleGrabConsultants, $target_round_id, $grabCountdownSeconds);
+                        } else {
+                            $offerStmt = $conn->prepare("
+                                INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
+                                VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+                            ");
+                            foreach ($eligibleGrabConsultants as $ec) {
+                                $offerStmt->bind_param("iiii", $lead_id, $ec['id'], $target_round_id, $grabCountdownSeconds);
+                                $offerStmt->execute();
+                            }
+                            $offerStmt->close();
                         }
                         foreach ($eligibleGrabConsultants as $ec) {
                             sendGrabOfferNotification($conn, $lead_id, $ec['id'], $target_round_id, $grabCountdownSeconds, $competingNames);
@@ -21618,33 +21564,37 @@ switch ($action) {
         }
 
         // Instant sync: release any leads whose security timer has expired back to Databank (is_public = 1)
-        // Vòng đời: không chuyển trong thời gian lý tưởng -> xuất hiện ở kho databank cho tới khi chuyển được lên trạng thái tiếp theo -> ẩn ở kho databank theo thời gian bảo mật đã set -> hết thời gian lại xuất hiện ở kho databank
-        $conn->query("
-            UPDATE persons p
-            JOIN contacts c ON c.person_id = p.id
-            SET p.is_public = 1, p.released_to_kho_at = IFNULL(p.released_to_kho_at, NOW())
-            WHERE c.security_expires_at <= NOW()
-              AND c.security_expires_at IS NOT NULL
-              AND c.deleted_at IS NULL
-              AND p.is_public = 0
-              AND p.is_blocked = 0
-              AND p.deleted_from_databank = 0
-              AND c.pipeline_status NOT IN (
-                  (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1),
-                  'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead'
-              )
-              AND NOT EXISTS (
-                  SELECT 1 FROM contacts c_active 
-                  WHERE c_active.person_id = p.id 
-                    AND c_active.deleted_at IS NULL 
-                    AND (c_active.security_expires_at > NOW() OR c_active.pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'))
-              )
-              AND NOT EXISTS (
-                  SELECT 1 FROM data_reports dr 
-                  WHERE dr.lead_id IN (SELECT id FROM leads WHERE person_id = p.id) 
-                    AND dr.status IN ('approved', 'approved_no_comp')
-              )
-        ");
+        // Throttled to once every 30s via lock file to prevent table-wide lock contention when multiple Sales open Databank
+        $dbkSyncLock = sys_get_temp_dir() . '/richland_databank_sync.lock';
+        if (!file_exists($dbkSyncLock) || (time() - @filemtime($dbkSyncLock)) >= 30) {
+            @touch($dbkSyncLock);
+            $conn->query("
+                UPDATE persons p
+                JOIN contacts c ON c.person_id = p.id
+                SET p.is_public = 1, p.released_to_kho_at = IFNULL(p.released_to_kho_at, NOW())
+                WHERE c.security_expires_at <= NOW()
+                  AND c.security_expires_at IS NOT NULL
+                  AND c.deleted_at IS NULL
+                  AND p.is_public = 0
+                  AND p.is_blocked = 0
+                  AND p.deleted_from_databank = 0
+                  AND c.pipeline_status NOT IN (
+                      (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1),
+                      'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead'
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM contacts c_active 
+                      WHERE c_active.person_id = p.id 
+                        AND c_active.deleted_at IS NULL 
+                        AND (c_active.security_expires_at > NOW() OR c_active.pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'))
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM data_reports dr 
+                      WHERE dr.lead_id IN (SELECT id FROM leads WHERE person_id = p.id) 
+                        AND dr.status IN ('approved', 'approved_no_comp')
+                  )
+            ");
+        }
 
         $blockCond = "
             AND p.is_blocked = 0 
@@ -21694,7 +21644,8 @@ switch ($action) {
                     WHERE p.released_to_kho_at IS NOT NULL
                       $deletedCond
                       $blockCond
-                    ORDER BY p.released_to_kho_at DESC";
+                    ORDER BY p.released_to_kho_at DESC
+                    LIMIT 1000";
         } else {
             $currentUserId = (int)($decodedUser['id'] ?? 0);
             $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
@@ -21724,30 +21675,13 @@ switch ($action) {
                       )
                       $deletedCond
                       $blockCond
-                    ORDER BY p.released_to_kho_at DESC";
-        }
-
-        // Batch-fetch all takers in 1 single fast query to eliminate N+1 loop
-        $allTakers = [];
-        $tRes = $conn->query("SELECT c.person_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
-                              FROM contacts c
-                              JOIN users u ON c.owner_id = u.id
-                              JOIN consultants cons ON u.email = cons.email
-                              WHERE c.deleted_at IS NULL");
-        if ($tRes) {
-            while ($tRow = $tRes->fetch_assoc()) {
-                $pid = (int)$tRow['person_id'];
-                $allTakers[$pid][] = [
-                    'id' => (int)$tRow['id'],
-                    'name' => $tRow['name'],
-                    'avatar' => $tRow['avatar'],
-                    'claimed_at' => $tRow['claimed_at']
-                ];
-            }
+                    ORDER BY p.released_to_kho_at DESC
+                    LIMIT 1000";
         }
 
         $res = $conn->query($sql);
         $publicLeads = [];
+        $personIds = [];
         if ($res) {
             while ($row = $res->fetch_assoc()) {
                 if (!$isStaffAdmin) {
@@ -21755,9 +21689,37 @@ switch ($action) {
                     $row['email'] = maskEmail($row['email']);
                 }
                 $personId = (int)$row['id'];
-                $row['takers'] = $allTakers[$personId] ?? [];
+                $personIds[] = $personId;
+                $row['takers'] = [];
                 $publicLeads[] = $row;
             }
+        }
+
+        // Batch-fetch takers ONLY for the returned person_ids to avoid full-table scan on contacts
+        if (!empty($personIds)) {
+            $allTakers = [];
+            $pidIn = implode(',', array_unique($personIds));
+            $tRes = $conn->query("SELECT c.person_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
+                                  FROM contacts c
+                                  JOIN users u ON c.owner_id = u.id
+                                  JOIN consultants cons ON u.email = cons.email
+                                  WHERE c.deleted_at IS NULL AND c.person_id IN ($pidIn)");
+            if ($tRes) {
+                while ($tRow = $tRes->fetch_assoc()) {
+                    $pid = (int)$tRow['person_id'];
+                    $allTakers[$pid][] = [
+                        'id' => (int)$tRow['id'],
+                        'name' => $tRow['name'],
+                        'avatar' => $tRow['avatar'],
+                        'claimed_at' => $tRow['claimed_at']
+                    ];
+                }
+            }
+            foreach ($publicLeads as &$pLead) {
+                $pid = (int)$pLead['id'];
+                $pLead['takers'] = $allTakers[$pid] ?? [];
+            }
+            unset($pLead);
         }
 
         $maxParallelClaims = (int) get_system_setting($conn, 'max_parallel_sales_per_client') ?: 2;

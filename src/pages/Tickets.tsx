@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2, Sparkles, Check, X, Edit, Copy, BarChart2, Scale, Calendar, Info, ArrowRight, Ban, UserPlus, Send, PlusCircle } from 'lucide-react';
 import {
@@ -630,7 +630,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
     setShowDateModal(false);
   };
 
+  const latestReportReqRef = useRef(0);
+
   const fetchReports = async () => {
+    const reqId = ++latestReportReqRef.current;
     setLoading(true);
     try {
       const queryParams = new URLSearchParams();
@@ -641,6 +644,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       if (dateFilter && dateFilter !== 'all') queryParams.set('date', dateFilter);
 
       const res = await fetchAPI(`get_reports&${queryParams.toString()}`);
+      if (reqId !== latestReportReqRef.current) return;
       if (res.success) {
         setReports(res.data);
         setTotalCount(res.total_count ?? 0);
@@ -653,25 +657,24 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         if (res.consultants) setConsultantOptions(res.consultants);
       }
     } catch (e: any) {
-      toast.error(t('Lỗi tải ticket: ') + e.message);
+      if (reqId === latestReportReqRef.current) {
+        toast.error(t('Lỗi tải ticket: ') + e.message);
+      }
     }
-    setLoading(false);
+    if (reqId === latestReportReqRef.current) {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (isActive) {
-      fetchReports();
+    if (!isActive) return;
+    const saved = localStorage.getItem('richland_global_date');
+    if (saved && saved !== dateFilter) {
+      setDateFilter(saved);
+      return;
     }
+    fetchReports();
   }, [searchParams, dateFilter, isActive]);
-
-  useEffect(() => {
-    if (isActive) {
-      const saved = localStorage.getItem('richland_global_date');
-      if (saved && saved !== dateFilter) {
-        setDateFilter(saved);
-      }
-    }
-  }, [isActive]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -685,55 +688,61 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
     return () => window.removeEventListener('global-date-change', handleGlobalDate);
   }, [dateFilter, isActive]);
 
+  const hasLoadedLookupsRef = useRef(false);
   useEffect(() => {
-    fetchAPI('get_settings')
-      .then(res => {
-        if (res.success && res.data) {
-          setTicketAutoApprove(Number(res.data.ticket_auto_approve_enabled) === 1);
-          if (res.data.ticket_auto_approve_rules) {
-            try {
-              const parsed = JSON.parse(res.data.ticket_auto_approve_rules);
-              if (Array.isArray(parsed)) setTicketAutoApproveRules(parsed);
-            } catch (e) {
-              console.error('Lỗi parse rule auto duyệt:', e);
+    if (!isActive || hasLoadedLookupsRef.current) return;
+    hasLoadedLookupsRef.current = true;
+
+    Promise.all([
+      fetchAPI('get_settings')
+        .then(res => {
+          if (res.success && res.data) {
+            setTicketAutoApprove(Number(res.data.ticket_auto_approve_enabled) === 1);
+            if (res.data.ticket_auto_approve_rules) {
+              try {
+                const parsed = JSON.parse(res.data.ticket_auto_approve_rules);
+                if (Array.isArray(parsed)) setTicketAutoApproveRules(parsed);
+              } catch (e) {
+                console.error('Lỗi parse rule auto duyệt:', e);
+              }
             }
           }
-        }
-      })
-      .catch(err => console.error('Lỗi tải cấu hình auto duyệt:', err));
+        })
+        .catch(err => console.error('Lỗi tải cấu hình auto duyệt:', err)),
 
-    fetchAPI('get_consultants')
-      .then(res => {
-        if (res.success && res.data) {
-          setAllConsultants(res.data);
-        }
-      })
-      .catch(err => console.error('Lỗi tải danh sách TVV:', err));
+      fetchAPI('get_consultants')
+        .then(res => {
+          if (res.success && res.data) {
+            setAllConsultants(res.data);
+          }
+        })
+        .catch(err => console.error('Lỗi tải danh sách TVV:', err)),
 
-    fetchAPI('get_accounts')
-      .then(res => {
-        if (res.success && res.data) {
-          setAllAccounts(res.data);
-        }
-      })
-      .catch(err => console.error('Lỗi tải danh sách tài khoản:', err));
+      fetchAPI('get_accounts')
+        .then(res => {
+          if (res.success && res.data) {
+            setAllAccounts(res.data);
+          }
+        })
+        .catch(err => console.error('Lỗi tải danh sách tài khoản:', err)),
 
-    fetchAPI('get_rounds')
-      .then(res => {
-        if (res.success && res.data) {
-          setRounds(res.data);
-        }
-      })
-      .catch(err => console.error('Lỗi tải vòng phân bổ:', err));
+      fetchAPI('get_rounds')
+        .then(res => {
+          if (res.success && res.data) {
+            setRounds(res.data);
+          }
+        })
+        .catch(err => console.error('Lỗi tải vòng phân bổ:', err)),
 
-    fetchAPI('get_connections')
-      .then(res => {
-        if (res.success && res.data) {
-          setConnections(res.data);
-        }
-      })
-      .catch(err => console.error('Lỗi tải nguồn kết nối:', err));
-  }, []);
+      fetchAPI('get_connections')
+        .then(res => {
+          if (res.success && res.data) {
+            setConnections(res.data);
+          }
+        })
+        .catch(err => console.error('Lỗi tải nguồn kết nối:', err))
+    ]);
+  }, [isActive]);
 
   const getUserAvatarByName = (name: string) => {
     if (!name || name === 'Hệ thống') return undefined;
@@ -943,7 +952,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   };
 
 
-  const roundOptions = [
+  const roundOptions = useMemo(() => [
     { value: 'all', label: t('Tất cả các vòng'), icon: <Zap size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...rounds.map(r => ({
       value: Number(r.id),
@@ -952,9 +961,9 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       disabled: Number(r.is_active) !== 1,
       disabledType: 'round' as const
     }))
-  ];
+  ], [rounds, t]);
 
-  const saleOptions = [
+  const saleOptions = useMemo(() => [
     { value: 'all', label: t('Tất cả Salepersons'), icon: <Users size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...allConsultants.map(c => ({
       value: Number(c.id),
@@ -964,16 +973,16 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
       disabledType: 'sale' as const
     }))
-  ];
+  ], [allConsultants, t]);
 
-  const connectionOptions = [
+  const connectionOptions = useMemo(() => [
     { value: 'all', label: t('Tất cả các nguồn'), icon: <Database size={14} style={{ color: 'var(--color-primary)' }} /> },
     ...connections.map(conn => ({
       value: Number(conn.id),
       label: conn.sheet_name,
       icon: <Database size={14} style={{ color: 'var(--color-text-muted)' }} />
     }))
-  ];
+  ], [connections, t]);
 
   const handleSaveAutoApprove = async () => {
     setSavingSettings(true);

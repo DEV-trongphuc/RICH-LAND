@@ -60,21 +60,12 @@ class DashboardController {
                     COALESCE(SUM(i.shipping_fee), 0) as total_shipping,
                     COALESCE(SUM(CASE WHEN i.shipping_customer_pay = 1 THEN i.shipping_fee ELSE 0 END), 0) as shipping_collected,
                     COALESCE(SUM(CASE WHEN i.shipping_customer_pay = 0 THEN i.shipping_fee ELSE 0 END), 0) as shop_paid_shipping,
-                    (
-                        SELECT COALESCE(SUM(ii.quantity * p.cost), 0)
-                        FROM invoice_items ii 
-                        JOIN products p ON ii.product_id = p.id 
-                        JOIN invoices i2 ON ii.invoice_id = i2.id
-                        WHERE i2.tenant_id = ? AND i2.status = 'paid' AND i2.paid_at BETWEEN ? AND ?
-                        $subqueryFilter
-                    ) as total_cogs
+                    0 as total_cogs
                 FROM invoices i
                 WHERE i.tenant_id = ? AND i.status = 'paid' AND i.paid_at BETWEEN ? AND ?
                 $mainFilter
             ";
             $pInv = array_merge(
-                [$tid, $fTs, $tTs],
-                $subqueryParams,
                 [$tid, $fTs, $tTs],
                 $mainParams
             );
@@ -315,16 +306,8 @@ class DashboardController {
         $pExp = array_merge([$tid, $startDateExp], $expenseParams);
         $expData = $this->queryAll($sqlExp, $pExp);
 
-        // Query 3: COGS
-        $sqlCogs = "SELECT DATE_FORMAT(i.paid_at, '%m/%Y') as month, SUM(ii.quantity * p.cost) as cogs
-                    FROM invoice_items ii 
-                    JOIN products p ON ii.product_id = p.id 
-                    JOIN invoices i ON ii.invoice_id = i.id
-                    WHERE i.tenant_id = ? AND i.status = 'paid' AND i.paid_at >= ?
-                    $invoiceSubFilter
-                    GROUP BY month";
-        $pCogs = array_merge([$tid, $startDate], $invoiceSubParams);
-        $cogsData = $this->queryAll($sqlCogs, $pCogs);
+        // Query 3: COGS (No physical inventory products table in Real Estate CRM)
+        $cogsData = [];
 
         // Map data in PHP
         $chart = [];
@@ -615,9 +598,9 @@ class DashboardController {
                     NULLIF(COUNT(DISTINCT l.id), 0), 1
                 ) as conversion_rate
             FROM leads l
-            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.deleted_at IS NULL
+            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.deleted_at IS NULL AND c.tenant_id = ?
             LEFT JOIN deposits dp ON dp.contact_id = c.id AND dp.status = 'approved'
-            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ?
+            WHERE l.created_at BETWEEN ? AND ?
             $filter
             GROUP BY donvi_chay
             ORDER BY total_leads DESC
@@ -657,9 +640,9 @@ class DashboardController {
                 ) as deposit_conversion_rate
             FROM leads l
             LEFT JOIN marketing_campaigns mc ON l.campaign_id = mc.id
-            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.deleted_at IS NULL
+            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.deleted_at IS NULL AND c.tenant_id = ?
             LEFT JOIN deposits dp ON dp.contact_id = c.id AND dp.status = 'approved'
-            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ?
+            WHERE l.created_at BETWEEN ? AND ?
             $filter
             GROUP BY campaign_name
             ORDER BY total_leads DESC
@@ -690,32 +673,32 @@ class DashboardController {
         // Funnel 5 standard milestones
         $totalLeads = (int)$this->queryScalar("
             SELECT COUNT(DISTINCT l.id) FROM leads l 
-            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone)
-            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? $filter
+            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.tenant_id = ?
+            WHERE l.created_at BETWEEN ? AND ? $filter
         ", $params);
 
         $qualified = (int)$this->queryScalar("
             SELECT COUNT(DISTINCT c.id) FROM contacts c 
             JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
-            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? AND c.stage_id >= 2 $filter
+            WHERE c.tenant_id = ? AND c.deleted_at IS NULL AND l.created_at BETWEEN ? AND ? AND c.stage_id >= 2 $filter
         ", $params);
 
         $meeting = (int)$this->queryScalar("
             SELECT COUNT(DISTINCT c.id) FROM contacts c 
             JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
-            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? AND c.stage_id IN (3, 4, 5, 6) $filter
+            WHERE c.tenant_id = ? AND c.deleted_at IS NULL AND l.created_at BETWEEN ? AND ? AND c.stage_id IN (3, 4, 5, 6) $filter
         ", $params);
 
         $booking = (int)$this->queryScalar("
             SELECT COUNT(DISTINCT c.id) FROM contacts c 
             JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
-            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? AND c.stage_id >= 5 $filter
+            WHERE c.tenant_id = ? AND c.deleted_at IS NULL AND l.created_at BETWEEN ? AND ? AND c.stage_id >= 5 $filter
         ", $params);
 
         $deposited = (int)$this->queryScalar("
             SELECT COUNT(DISTINCT c.id) FROM contacts c 
             JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
-            WHERE l.tenant_id = ? AND l.created_at BETWEEN ? AND ? AND (c.stage_id = 6 OR EXISTS(SELECT 1 FROM deposits dp WHERE dp.contact_id = c.id AND dp.status = 'approved')) $filter
+            WHERE c.tenant_id = ? AND c.deleted_at IS NULL AND l.created_at BETWEEN ? AND ? AND (c.stage_id = 6 OR EXISTS(SELECT 1 FROM deposits dp WHERE dp.contact_id = c.id AND dp.status = 'approved')) $filter
         ", $params);
 
         $funnel = [

@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, Fragment, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../api/axios';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap, Loader2, Video, StickyNote, ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw, Archive, Trash2 } from 'lucide-react';
@@ -478,12 +478,17 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [publicMaxClaims, setPublicMaxClaims] = useState<number>(2);
   const maxParallelSales = Math.max(1, Number(sysSettings?.max_parallel_sales_per_client || publicMaxClaims || 2));
 
+  const hasLoadedSettingsRef = useRef(false);
   useEffect(() => {
-    fetchAPI('get_settings').then(res => {
-      if (res && res.success) {
-        setSysSettings(res.data);
-      }
-    });
+    if (!isActive) return;
+    if (!hasLoadedSettingsRef.current) {
+      hasLoadedSettingsRef.current = true;
+      fetchAPI('get_settings').then(res => {
+        if (res && res.success) {
+          setSysSettings(res.data);
+        }
+      });
+    }
 
     const handleSettingsUpdated = (e: any) => {
       if (e.detail) {
@@ -492,7 +497,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     };
     window.addEventListener('system_settings_updated', handleSettingsUpdated);
     return () => window.removeEventListener('system_settings_updated', handleSettingsUpdated);
-  }, []);
+  }, [isActive]);
 
   const [searchInput, setSearchInput] = useState(searchTerm);
 
@@ -625,7 +630,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [serverStatusCounts, setServerStatusCounts] = useState<Record<string, number>>({});
   const [overallTotalCount, setOverallTotalCount] = useState(0);
 
+  const latestLeadsReqRef = useRef(0);
+
   const fetchLeads = async () => {
+    const reqId = ++latestLeadsReqRef.current;
     setLoading(true);
     try {
       const json = await fetchAPI(
@@ -640,6 +648,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         `&donvi_chay=${encodeURIComponent(donviChayFilter)}` +
         `&source=${encodeURIComponent(sourceFilter)}`
       );
+      if (reqId !== latestLeadsReqRef.current) return;
       if (json.success) {
         if (json.available_donvi_chay && Array.isArray(json.available_donvi_chay)) {
           setAvailableDonviChay(json.available_donvi_chay);
@@ -736,9 +745,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         }
       }
     } catch (e: any) {
-      toast.error(t('Lỗi tải dữ liệu: ') + e.message);
+      if (reqId === latestLeadsReqRef.current) {
+        toast.error(t('Lỗi tải dữ liệu: ') + e.message);
+      }
     }
-    setLoading(false);
+    if (reqId === latestLeadsReqRef.current) {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -755,12 +768,17 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   // DataList retains its own filter state defaulting to 'all' (Tất cả thời gian)
   // so users see all leads without being silently filtered by dashboard date presets
 
+  const hasLoadedLookupsRef = useRef(false);
   useEffect(() => {
-    fetchConsultants();
-    fetchProjects();
-    fetchAccounts();
-    fetchRounds();
-  }, []);
+    if (!isActive || hasLoadedLookupsRef.current) return;
+    hasLoadedLookupsRef.current = true;
+    Promise.all([
+      fetchConsultants(),
+      fetchProjects(),
+      fetchAccounts(),
+      fetchRounds()
+    ]);
+  }, [isActive]);
 
   useEffect(() => {
     const handleLeadAdded = () => {

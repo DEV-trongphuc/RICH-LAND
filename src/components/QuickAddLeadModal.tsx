@@ -1818,6 +1818,7 @@ export const QuickAddLeadModal = () => {
                     value={manualData.source}
                     onChange={e => setManualData({ ...manualData, source: e.target.value })}
                     onFocus={() => setShowSourceSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 180)}
                   />
                   {showSourceSuggestions && (
                     (() => {

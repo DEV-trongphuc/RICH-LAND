@@ -162,14 +162,14 @@ function runCooperationSlipsCron($conn = null, $pdo = null): int {
         // 3. Ghi audit log
         try {
             $logStmt = $pdo->prepare("
-                INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, description, created_at)
+                INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, new_data, created_at)
                 VALUES (?, ?, 'COOPERATION_SLIP_AUTO_DISPUTED', 'cooperation_slip', ?, ?, ?)
             ");
             $logStmt->execute([
                 $tenantId, 
                 $slip['created_by'] ?: 1, 
                 $slipId, 
-                "Tự động chuyển trạng thái PHIEU_TREO do quá 24h chưa ký từ: $missingNamesStr",
+                json_encode(['description' => "Tự động chuyển trạng thái PHIEU_TREO do quá 24h chưa ký từ: $missingNamesStr"], JSON_UNESCAPED_UNICODE),
                 $nowStr
             ]);
         } catch (\Throwable $logEx) {

@@ -103,12 +103,12 @@ export const ActivitiesPage: React.FC = () => {
   const [companies, setCompanies] = useState<any[]>([]);
 
   useEffect(() => {
-    if (showModal) {
-      api.get('/contacts', { params: { limit: 1000 } }).then(r => setContacts(r.data.data?.items || [])).catch(() => {});
-      api.get('/deals', { params: { limit: 1000 } }).then(r => setDeals(r.data.data?.items || r.data.data || [])).catch(() => {});
-      api.get('/companies', { params: { limit: 1000 } }).then(r => setCompanies(r.data.data?.items || [])).catch(() => {});
+    if (showModal && contacts.length === 0) {
+      api.get('/contacts', { params: { limit: 500, minimal: 1 } }).then(r => setContacts(r.data.data?.items || [])).catch(() => {});
+      api.get('/deals', { params: { limit: 500 } }).then(r => setDeals(r.data.data?.items || r.data.data || [])).catch(() => {});
+      api.get('/companies', { params: { limit: 500 } }).then(r => setCompanies(r.data.data?.items || [])).catch(() => {});
     }
-  }, [showModal]);
+  }, [showModal, contacts.length]);
 
   useEffect(() => {
     const isPrivileged = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user?.role || '');
@@ -145,7 +145,7 @@ export const ActivitiesPage: React.FC = () => {
     ];
   }, [consultantsList]);
 
-  const getRelatedOptions = () => {
+  const relatedOptions = useMemo(() => {
     if (form.related_type === 'contact') {
       return contacts.map(c => ({ value: c.id, label: c.name, sublabel: c.phone || c.email, avatar: c.avatar }));
     }
@@ -156,9 +156,12 @@ export const ActivitiesPage: React.FC = () => {
       return companies.map(c => ({ value: c.id, label: c.name, sublabel: c.industry }));
     }
     return [];
-  };
+  }, [form.related_type, contacts, deals, companies]);
+
+  const actReqIdRef = React.useRef(0);
 
   const fetchActivities = useCallback(async () => {
+    const reqId = ++actReqIdRef.current;
     setLoading(true);
     try {
       const params: any = { page, limit: PAGE_SIZE, search: debouncedSearch };
@@ -168,14 +171,18 @@ export const ActivitiesPage: React.FC = () => {
       if (filterUserId) params.user_id = filterUserId;
       
       const r = await api.get('/activities', { params });
+      if (reqId !== actReqIdRef.current) return;
       const data = r.data.data;
       setItems(data.items || []);
       setTotal(data.total || 0);
     } catch (e: any) {
+      if (reqId !== actReqIdRef.current) return;
       setItems([]);
       setTotal(0);
     } finally {
-      setLoading(false);
+      if (reqId === actReqIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [filterType, filterStatus, filterTeamId, filterUserId, debouncedSearch, page]);
 
@@ -203,10 +210,6 @@ export const ActivitiesPage: React.FC = () => {
       }
     }
   }, [window.location.search]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [filterType, filterStatus]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -304,8 +307,7 @@ export const ActivitiesPage: React.FC = () => {
           setItems(prev => prev.filter(a => a.id !== actItem.id));
           addToast('Đã xóa hoạt động thành công', 'success');
         } catch (e: any) {
-          addToast('Lỗi khi xóa hoạt động (Demo Mode)', 'error');
-          setItems(prev => prev.filter(a => a.id !== actItem.id));
+          addToast(e.response?.data?.message || 'Lỗi khi xóa hoạt động', 'error');
         } finally {
           closeConfirm();
         }
@@ -404,13 +406,13 @@ export const ActivitiesPage: React.FC = () => {
         {/* Quick filter chips */}
         <div className="no-scrollbar" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px' }}>
           {TYPES.map(t => (
-            <button key={t} onClick={() => setFilterType(filterType === t ? '' : t)}
+            <button key={t} onClick={() => { setFilterType(filterType === t ? '' : t); setPage(1); }}
               style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: filterType === t ? T_COLOR[t] : 'var(--color-surface)', color: filterType === t ? 'white' : 'var(--color-text)', border: `1px solid ${filterType === t ? T_COLOR[t] : 'var(--color-border)'}`, borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', transition: 'all 0.2s', cursor: 'pointer' }}>
               <span style={{ color: filterType === t ? 'white' : T_COLOR[t] }}>{T_ICON[t]}</span>
               {T_LABEL[t]} <span style={{ opacity: 0.75 }}>({counts[t] || 0})</span>
             </button>
           ))}
-          <button onClick={() => setFilterStatus(filterStatus === 'done' ? '' : 'done')}
+          <button onClick={() => { setFilterStatus(filterStatus === 'done' ? '' : 'done'); setPage(1); }}
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: filterStatus === 'done' ? 'var(--color-success)' : 'var(--color-surface)', color: filterStatus === 'done' ? 'white' : 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}>
             <CheckCircle2 size={14} /> Đã xong
           </button>
@@ -735,7 +737,7 @@ export const ActivitiesPage: React.FC = () => {
               <div className="form-group">
                 <label className="form-label">Chọn {form.related_type === 'contact' ? 'Khách hàng' : form.related_type === 'deal' ? 'Deal' : 'Công ty'}</label>
                 <CustomSelect 
-                  options={getRelatedOptions()} 
+                  options={relatedOptions} 
                   value={form.related_id} 
                   onChange={val => setForm({ ...form, related_id: val.toString() })} 
                   placeholder="Gõ để tìm kiếm..."

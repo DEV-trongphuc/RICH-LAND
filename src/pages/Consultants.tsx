@@ -412,15 +412,23 @@ const ConsultantsInner = () => {
     setTeamsLoading(false);
   };
 
+  const latestUsersReqRef = useRef(0);
+
   const fetchUsers = async () => {
+    const reqId = ++latestUsersReqRef.current;
     setLoading(true);
     try {
       const json = await fetchAPI('get_consultants');
+      if (reqId !== latestUsersReqRef.current) return;
       if (json.success) setUsers(Array.isArray(json.data) ? json.data : []);
     } catch (e: any) {
-      toast.error(t('Không thể tải dữ liệu: ') + e.message);
+      if (reqId === latestUsersReqRef.current) {
+        toast.error(t('Không thể tải dữ liệu: ') + e.message);
+      }
     }
-    setLoading(false);
+    if (reqId === latestUsersReqRef.current) {
+      setLoading(false);
+    }
   };
 
   const fetchAllSystemUsers = async () => {
@@ -580,10 +588,12 @@ const ConsultantsInner = () => {
   }, []);
 
   useEffect(() => {
-    fetchUsers();
-    fetchTeams();
-    fetchAllSystemUsers();
-    fetchProjects();
+    Promise.all([
+      fetchUsers(),
+      fetchTeams(),
+      fetchAllSystemUsers(),
+      fetchProjects()
+    ]);
   }, []);
 
   useEffect(() => {
@@ -994,9 +1004,17 @@ const ConsultantsInner = () => {
     }
   }, [statsModalOpen, statsConsultant, statsDateMode, statsStartDate, statsEndDate]);
 
-  const activeCount = users.filter(u => u.status === 'active').length;
-  const leaveCount = users.filter(u => u.status === 'leave').length;
-  const inactiveCount = users.filter(u => u.status === 'inactive').length;
+  const { activeCount, leaveCount, inactiveCount } = React.useMemo(() => {
+    let active = 0;
+    let leave = 0;
+    let inactive = 0;
+    for (const u of users) {
+      if (u.status === 'active') active++;
+      else if (u.status === 'leave') leave++;
+      else if (u.status === 'inactive') inactive++;
+    }
+    return { activeCount: active, leaveCount: leave, inactiveCount: inactive };
+  }, [users]);
 
   const filteredUsers = React.useMemo(() => {
     const query = searchQuery.toLowerCase().trim();

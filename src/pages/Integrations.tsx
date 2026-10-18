@@ -673,10 +673,12 @@ const IntegrationsInner = () => {
     } else if (selected) {
       setIsSavingMapping(true);
       try {
-        for (const item of newItems) {
-          const exists = (selected.mappings || []).some(m => m.sheet_column === item.sheet_column || m.system_field === item.system_field);
-          if (!exists) {
-            await fetchAPI('add_mapping', {
+        const itemsToAdd = newItems.filter(item =>
+          !(selected.mappings || []).some(m => m.sheet_column === item.sheet_column || m.system_field === item.system_field)
+        );
+        await Promise.all(
+          itemsToAdd.map(item =>
+            fetchAPI('add_mapping', {
               method: 'POST',
               body: JSON.stringify({
                 connection_id: selected.id,
@@ -684,9 +686,9 @@ const IntegrationsInner = () => {
                 system_field: item.system_field,
                 custom_label: item.custom_label
               })
-            });
-          }
-        }
+            })
+          )
+        );
         await fetchData();
         toast.success(t('Đã tự động nhận diện và map thành công {count} trường!').replace('{count}', String(matchedCount)));
       } catch (e: any) {
@@ -840,14 +842,16 @@ const IntegrationsInner = () => {
         body: JSON.stringify(payload)
       });
       if (json.success) {
-        // Add mappings
+        // Add mappings concurrently
         const connId = json.id;
-        for (const m of tempMappings) {
-          await fetchAPI('add_mapping', {
-            method: 'POST',
-            body: JSON.stringify({ connection_id: connId, sheet_column: m.sheet_col, system_field: m.sys_field, custom_label: m.custom_label })
-          });
-        }
+        await Promise.all(
+          tempMappings.map(m =>
+            fetchAPI('add_mapping', {
+              method: 'POST',
+              body: JSON.stringify({ connection_id: connId, sheet_column: m.sheet_col, system_field: m.sys_field, custom_label: m.custom_label })
+            })
+          )
+        );
         fetchData();
         toast.success(t('Đã thêm kết nối thành công'));
         setNewConnName('Sheet1');

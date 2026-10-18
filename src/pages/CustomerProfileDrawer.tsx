@@ -463,8 +463,21 @@ const MeetingCountdown: React.FC<{ dueDate: string }> = ({ dueDate }) => {
     };
 
     updateCountdown();
-    const interval = setInterval(updateCountdown, 30000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        updateCountdown();
+      }
+    }, 30000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        updateCountdown();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [dueDate]);
 
   if (!timeLeft) return null;
@@ -1711,7 +1724,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget', 'budget_range',
       'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data', 'collaborator_ids', 'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'nguoi_gioi_thieu_id',
       'phone2', 'dob', 'citizen_id', 'district', 'company', 'tax_code', 'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
-      'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai', 'facebook_link', 'link_fb'
+      'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai', 'facebook_link', 'link_fb', 'created_at', 'avatar_url'
     ];
 
     const cleanObject = (obj: any) => {
@@ -2568,72 +2581,80 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  const fetchCoopSlip = async () => {
+  const fetchCoopSlip = async (refreshDocsAndDeals = true) => {
     if (!contact?.id) return;
     setCoopLoading(true);
     setCoopError('');
     try {
       const usersEndpoint = 'users?all=1';
+      const shouldFetchUsers = salesUsers.length === 0;
       const [resSlips, resUsers, resDocs, resDeposits] = await Promise.all([
-        fetchAPI('cooperation-slips'),
-        fetchAPI(usersEndpoint),
-        api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`).catch(() => ({ data: { data: { items: [] } } })),
-        api.get(`/deposits?contact_id=${contact.id}`).catch(() => ({ data: { data: [] } }))
+        fetchAPI(`cooperation-slips?contact_id=${contact.id}`),
+        shouldFetchUsers ? fetchAPI(usersEndpoint) : Promise.resolve(null),
+        refreshDocsAndDeals
+          ? api.get(`/cloud-files?contact_id=${contact.id}&limit=200`).catch(() => ({ data: { data: { items: [] } } }))
+          : Promise.resolve(null),
+        refreshDocsAndDeals
+          ? api.get(`/deposits?contact_id=${contact.id}`).catch(() => ({ data: { data: [] } }))
+          : Promise.resolve(null)
       ]);
       
-      const docsData = resDocs?.data?.data?.items || [];
-      const mappedDocs = docsData.map((d: any) => ({
-        id: d.id,
-        name: d.name,
-        category: d.category || d.folder || 'general',
-        folder: d.folder || d.category || 'general',
-        path: d.file_path,
-        date: d.created_at ? new Date(d.created_at).toLocaleDateString('vi-VN') : '—',
-        type: d.name ? d.name.split('.').pop() : 'file'
-      }));
+      let mappedDocs: any[] = [];
+      if (refreshDocsAndDeals && resDocs && resDeposits) {
+        const docsData = resDocs?.data?.data?.items || [];
+        mappedDocs = docsData.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          category: d.category || d.folder || 'general',
+          folder: d.folder || d.category || 'general',
+          path: d.file_path,
+          date: d.created_at ? new Date(d.created_at).toLocaleDateString('vi-VN') : '—',
+          type: d.name ? d.name.split('.').pop() : 'file'
+        }));
 
-      const depositsData = resDeposits?.data?.data || [];
-      const depositsList = (Array.isArray(depositsData) ? depositsData : []).map((d: any) => ({
-        id: d.id,
-        title: `${d.project_name} - Căn ${d.unit_code}`,
-        value: d.price,
-        unit_code: d.unit_code,
-        price: d.price,
-        milestones: d.milestones || [],
-        contact_id: d.contact_id
-      }));
+        const depositsData = resDeposits?.data?.data || [];
+        const depositsList = (Array.isArray(depositsData) ? depositsData : []).map((d: any) => ({
+          id: d.id,
+          title: `${d.project_name} - Căn ${d.unit_code}`,
+          value: d.price,
+          unit_code: d.unit_code,
+          price: d.price,
+          milestones: d.milestones || [],
+          contact_id: d.contact_id
+        }));
 
-      // Merge deposit milestone payment proofs (UNC) into docs
-      depositsList.forEach((dep: any) => {
-        const milestones = dep.milestones || [];
-        milestones.forEach((m: any) => {
-          const fileUrl = m.unc_file_path || m.attachment_url;
-          if (fileUrl) {
-            const filename = (() => {
-              const base = fileUrl.split('/').pop() || `${m.name || 'Cọc'}_UNC`;
-              try { return decodeURIComponent(base); } catch (e) { return base; }
-            })();
-            const fileExt = filename.split('.').pop() || 'png';
-            const exists = mappedDocs.some((d: any) => d.path === fileUrl);
-            if (!exists) {
-              mappedDocs.push({
-                id: `milestone_attachment_${m.id}`,
-                name: filename,
-                date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
-                size: '—',
-                type: fileExt,
-                path: fileUrl,
-                category: 'Đặt cọc',
-                folder: 'Đặt cọc',
-                isMilestoneAttachment: true
-              });
+        // Merge deposit milestone payment proofs (UNC) into docs
+        depositsList.forEach((dep: any) => {
+          const milestones = dep.milestones || [];
+          milestones.forEach((m: any) => {
+            const fileUrl = m.unc_file_path || m.attachment_url;
+            if (fileUrl) {
+              const filename = (() => {
+                const base = fileUrl.split('/').pop() || `${m.name || 'Cọc'}_UNC`;
+                try { return decodeURIComponent(base); } catch (e) { return base; }
+              })();
+              const fileExt = filename.split('.').pop() || 'png';
+              const exists = mappedDocs.some((d: any) => d.path === fileUrl);
+              if (!exists) {
+                mappedDocs.push({
+                  id: `milestone_attachment_${m.id}`,
+                  name: filename,
+                  date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+                  size: '—',
+                  type: fileExt,
+                  path: fileUrl,
+                  category: 'Đặt cọc',
+                  folder: 'Đặt cọc',
+                  isMilestoneAttachment: true
+                });
+              }
             }
-          }
+          });
         });
-      });
 
-      setDocs(mappedDocs);
-      setDeals(depositsList);
+        setDocs(mappedDocs);
+        setDeals(depositsList);
+      }
 
       if (resSlips.success) {
         const found = (resSlips.data || []).find((s: any) => Number(s.contact_id) === Number(contact.id));
@@ -2650,29 +2671,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           // Merge coop slip attachment files into docs if any
           if (found.attachment_url) {
             const coopFiles = found.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean);
-            coopFiles.forEach((fileUrl: string, idx: number) => {
-              const filename = fileUrl.split('/').pop() || 'coop_file';
-              const exists = mappedDocs.some((d: any) => d.path === fileUrl);
-              if (!exists) {
-                mappedDocs.push({
-                  id: `coop_slip_attachment_${idx}`,
-                  name: filename,
-                  date: found.created_at ? new Date(found.created_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
-                  size: '—',
-                  type: filename.split('.').pop() || 'file',
-                  path: fileUrl,
-                  category: 'Tài liệu Hợp tác & Hoa hồng',
-                  folder: 'Tài liệu Hợp tác & Hoa hồng',
-                  isCoopAttachment: true
-                });
-              }
+            setDocs((prevDocs: any[]) => {
+              const baseDocs = refreshDocsAndDeals ? [...mappedDocs] : [...prevDocs];
+              coopFiles.forEach((fileUrl: string, idx: number) => {
+                const filename = fileUrl.split('/').pop() || 'coop_file';
+                const exists = baseDocs.some((d: any) => d.path === fileUrl);
+                if (!exists) {
+                  baseDocs.push({
+                    id: `coop_slip_attachment_${idx}`,
+                    name: filename,
+                    date: found.created_at ? new Date(found.created_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+                    size: '—',
+                    type: filename.split('.').pop() || 'file',
+                    path: fileUrl,
+                    category: 'Tài liệu Hợp tác & Hoa hồng',
+                    folder: 'Tài liệu Hợp tác & Hoa hồng',
+                    isCoopAttachment: true
+                  });
+                }
+              });
+              return baseDocs;
             });
-            setDocs([...mappedDocs]);
           }
         }
       }
 
-      if (resUsers.success) {
+      if (resUsers && resUsers.success) {
         const mapped = (resUsers.data || []).map((u: any) => ({
           ...u,
           value: String(u.id),
@@ -2689,10 +2713,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   useEffect(() => {
-    if (contact?.id) {
-      fetchCoopSlip();
+    if (isOpen && contact?.id) {
+      fetchCoopSlip(false);
     }
-  }, [contact?.id]);
+  }, [isOpen, contact?.id]);
 
   const handleCreateCoopSlip = async () => {
     // Validate customer status
@@ -3478,7 +3502,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
         try {
           if (companiesList.length === 0) {
-            const companiesRes = await api.get('/companies?limit=2000');
+            const companiesRes = await api.get('/companies?limit=500');
             setCompaniesList(companiesRes.data.data?.items || companiesRes.data.data || []);
           }
         } catch (err) {}
@@ -3506,7 +3530,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         })));
       }
 
-      if (true || tabToLoad === 'tasks' || tabToLoad === 'timeline') {
+      if (tabToLoad === 'tasks' || tabToLoad === 'timeline') {
         const [tasksRes, allTasksRes] = await Promise.all([
           api.get(`/activities?related_type=contact&related_id=${contact.id}`),
           api.get(`/activities?type=task&limit=200`)
@@ -3601,24 +3625,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
 
       if (tabToLoad === 'deals' || tabToLoad === 'cooperation' || tabToLoad === 'info' || !tabToLoad) {
-        api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`)
-          .then(res => {
-            const docsData = res.data.data?.items || [];
-            const mappedDocs = docsData.map((d: any) => ({
-              id: d.id,
-              name: d.name,
-              category: d.category || d.folder || 'general',
-              folder: d.folder || d.category || 'general',
-              path: d.file_path,
-              date: d.created_at ? new Date(d.created_at).toLocaleDateString('vi-VN') : '—',
-              type: d.name ? d.name.split('.').pop() : 'file'
-            }));
-            setDocs(mappedDocs);
-          })
-          .catch(err => console.error("Error pre-fetching cloud-files for cooperation check:", err));
+        const [docsRes, depositsRes] = await Promise.all([
+          api.get(`/cloud-files?contact_id=${contact.id}&limit=200`).catch(() => ({ data: { data: { items: [] } } })),
+          api.get(`/deposits?contact_id=${contact.id}`).catch(() => ({ data: { data: [] } }))
+        ]);
 
-        const depositsRes = await api.get(`/deposits?contact_id=${contact.id}`);
-        const depositsList = (depositsRes.data.data || []).map((d: any) => ({
+        const docsData = docsRes.data?.data?.items || [];
+        const mappedDocs = docsData.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          category: d.category || d.folder || 'general',
+          folder: d.folder || d.category || 'general',
+          path: d.file_path,
+          date: d.created_at ? new Date(d.created_at).toLocaleDateString('vi-VN') : '—',
+          type: d.name ? d.name.split('.').pop() : 'file'
+        }));
+
+        const depositsList = (depositsRes.data?.data || []).map((d: any) => ({
           id: d.id,
           title: `${d.project_name} - Căn ${d.unit_code}`,
           value: d.price,
@@ -3652,6 +3675,40 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           created_by: d.created_by,
           contact_owner_id: d.contact_owner_id
         }));
+
+        // Merge deposit milestone payment proofs (UNC) into docs
+        depositsList.forEach((dep: any) => {
+          const milestones = dep.milestones || [];
+          milestones.forEach((m: any) => {
+            const fileUrl = m.unc_file_path || m.attachment_url;
+            if (fileUrl) {
+              const filename = (() => {
+                const base = fileUrl.split('/').pop() || `${m.name || 'Cọc'}_UNC`;
+                try { return decodeURIComponent(base); } catch (e) { return base; }
+              })();
+              const fileExt = filename.split('.').pop() || 'png';
+              const exists = mappedDocs.some((d: any) => d.path === fileUrl);
+              if (!exists) {
+                mappedDocs.push({
+                  id: `milestone_attachment_${m.id}`,
+                  name: filename,
+                  date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+                  size: '—',
+                  type: fileExt,
+                  path: fileUrl,
+                  category: 'Đặt cọc',
+                  folder: 'Đặt cọc',
+                  isMilestoneAttachment: true
+                });
+              }
+            }
+          });
+        });
+
+        setDocs((prevDocs: any[]) => {
+          const coopAttachments = (prevDocs || []).filter((d: any) => d.isCoopAttachment && !mappedDocs.some((m: any) => m.path === d.path));
+          return [...mappedDocs, ...coopAttachments];
+        });
         setDeals(depositsList);
 
         // Auto-sync contact expected_revenue & win_probability based on current deposits
@@ -3697,7 +3754,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
 
       if (tabToLoad === 'docs') {
-        const docsRes = await api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`);
+        const docsRes = await api.get(`/cloud-files?contact_id=${contact.id}&limit=200`);
         const docsData = docsRes.data.data?.items || [];
         const mappedDocs = docsData.map((d: any) => ({
           id: d.id,
@@ -3720,7 +3777,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         let activeCoopSlip = coopSlip;
         if (!activeCoopSlip) {
           try {
-            const resSlips = await fetchAPI('cooperation-slips');
+            const resSlips = await fetchAPI(`cooperation-slips?contact_id=${contact.id}`);
             if (resSlips.success) {
               activeCoopSlip = (resSlips.data || []).find((s: any) => Number(s.contact_id) === Number(contact.id)) || null;
             }
@@ -3951,100 +4008,113 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   useEffect(() => {
     if (isOpen) {
-      api.get('/users?all=1').then(r => {
-        const d = r.data.data;
-        const list = Array.isArray(d) ? d : (d?.items || []);
-        const team = list.map((u: any) => ({
-          ...u,
-          id: u.id,
-          full_name: u.full_name || u.name,
-          avatar_url: u.avatar || u.avatar_url
-        })).filter((u: any) => {
-          if (!u || !u.role) return false;
-          const roleLower = u.role.toLowerCase();
-          return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(roleLower);
-        });
-        setUsers(team);
-      }).catch(() => {});
-      api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
-      api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });
-      api.get('/projects?bypass_roster=1').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
-      api.get('/marketing-campaigns?bypass_roster=1').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
-      api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
+      if (users.length === 0) {
+        api.get('/users?all=1').then(r => {
+          const d = r.data.data;
+          const list = Array.isArray(d) ? d : (d?.items || []);
+          const team = list.map((u: any) => ({
+            ...u,
+            id: u.id,
+            full_name: u.full_name || u.name,
+            avatar_url: u.avatar || u.avatar_url
+          })).filter((u: any) => {
+            if (!u || !u.role) return false;
+            const roleLower = u.role.toLowerCase();
+            return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(roleLower);
+          });
+          setUsers(team);
+        }).catch(() => {});
+      }
+      if (allTags.length === 0) {
+        api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
+      }
+      if (contacts.length === 0) {
+        api.get('/contacts?limit=500&minimal=1').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });
+      }
+      if (allowedProjects.length === 0) {
+        api.get('/projects?bypass_roster=1').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
+      }
+      if (allowedCampaigns.length === 0) {
+        api.get('/marketing-campaigns?bypass_roster=1').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
+      }
+      if (allowedTeams.length === 0) {
+        api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
+      }
 
       // Fetch dynamic business configurations (decay days & pipeline status hierarchy)
-      fetchAPI('get_settings')
-        .then(res => {
-          if (res && res.success && res.data) {
-            if (res.data.temperature_decay_days !== undefined) {
-              const val = parseInt(res.data.temperature_decay_days, 10);
-              if (!isNaN(val) && val > 0) {
-                setDecayDays(val);
-              }
-            }
-            if (res.data.temp_suggestion_call_duration_seconds !== undefined) {
-              const val = parseInt(res.data.temp_suggestion_call_duration_seconds, 10);
-              if (!isNaN(val) && val > 0) {
-                setTempSuggestionCallDuration(val);
-              }
-            }
-            if (res.data.temp_suggestion_required_notes !== undefined) {
-              const val = parseInt(res.data.temp_suggestion_required_notes, 10);
-              if (!isNaN(val) && val > 0) {
-                setTempSuggestionRequiredNotes(val);
-              }
-            }
-            if (res.data.allow_pipeline_backward !== undefined) {
-              setAllowPipelineBackward(res.data.allow_pipeline_backward === '1' || res.data.allow_pipeline_backward === 1);
-            }
-            if (res.data.allow_pipeline_skip !== undefined) {
-              setAllowPipelineSkip(res.data.allow_pipeline_skip === '1' || res.data.allow_pipeline_skip === 1);
-            }
-            if (res.data.coop_eligible_statuses) {
-              try {
-                setCoopEligibleStatuses(JSON.parse(res.data.coop_eligible_statuses));
-              } catch (e) {
-                setCoopEligibleStatuses(res.data.coop_eligible_statuses.split(',').map((s: string) => s.trim()).filter(Boolean));
-              }
-            }
-            if (res.data.coop_default_files) {
-              try {
-                setCoopDefaultFiles(JSON.parse(res.data.coop_default_files));
-              } catch (e) {
-                setCoopDefaultFiles(res.data.coop_default_files.split(',').map((s: string) => s.trim()).filter(Boolean));
-              }
-            }
-            if (res.data.pipeline_status_hierarchy) {
-              try {
-                const hierarchy = JSON.parse(res.data.pipeline_status_hierarchy);
-                let labels: Record<string, string> = {};
-                if (res.data.pipeline_status_labels) {
-                  try {
-                    labels = JSON.parse(res.data.pipeline_status_labels);
-                  } catch (e) {}
+      if (pipelineStages.length === 0) {
+        fetchAPI('get_settings')
+          .then(res => {
+            if (res && res.success && res.data) {
+              if (res.data.temperature_decay_days !== undefined) {
+                const val = parseInt(res.data.temperature_decay_days, 10);
+                if (!isNaN(val) && val > 0) {
+                  setDecayDays(val);
                 }
-                if (Array.isArray(hierarchy) && hierarchy.length > 0) {
-                  const mappedStages = hierarchy.map((slug: string, idx: number) => ({
-                    id: slug,
-                    name: getPrettyStageName(slug, labels[slug]),
-                    color: getStageColor(slug),
-                    order_index: idx
-                  }));
-                  setPipelineStages(mappedStages);
+              }
+              if (res.data.temp_suggestion_call_duration_seconds !== undefined) {
+                const val = parseInt(res.data.temp_suggestion_call_duration_seconds, 10);
+                if (!isNaN(val) && val > 0) {
+                  setTempSuggestionCallDuration(val);
                 }
-              } catch (e) {
-                console.error('Failed to parse pipeline stages from settings', e);
+              }
+              if (res.data.temp_suggestion_required_notes !== undefined) {
+                const val = parseInt(res.data.temp_suggestion_required_notes, 10);
+                if (!isNaN(val) && val > 0) {
+                  setTempSuggestionRequiredNotes(val);
+                }
+              }
+              if (res.data.allow_pipeline_backward !== undefined) {
+                setAllowPipelineBackward(res.data.allow_pipeline_backward === '1' || res.data.allow_pipeline_backward === 1);
+              }
+              if (res.data.allow_pipeline_skip !== undefined) {
+                setAllowPipelineSkip(res.data.allow_pipeline_skip === '1' || res.data.allow_pipeline_skip === 1);
+              }
+              if (res.data.coop_eligible_statuses) {
+                try {
+                  setCoopEligibleStatuses(JSON.parse(res.data.coop_eligible_statuses));
+                } catch (e) {
+                  setCoopEligibleStatuses(res.data.coop_eligible_statuses.split(',').map((s: string) => s.trim()).filter(Boolean));
+                }
+              }
+              if (res.data.coop_default_files) {
+                try {
+                  setCoopDefaultFiles(JSON.parse(res.data.coop_default_files));
+                } catch (e) {
+                  setCoopDefaultFiles(res.data.coop_default_files.split(',').map((s: string) => s.trim()).filter(Boolean));
+                }
+              }
+              if (res.data.pipeline_status_hierarchy) {
+                try {
+                  const hierarchy = JSON.parse(res.data.pipeline_status_hierarchy);
+                  let labels: Record<string, string> = {};
+                  if (res.data.pipeline_status_labels) {
+                    try {
+                      labels = JSON.parse(res.data.pipeline_status_labels);
+                    } catch (e) {}
+                  }
+                  if (Array.isArray(hierarchy) && hierarchy.length > 0) {
+                    const mappedStages = hierarchy.map((slug: string, idx: number) => ({
+                      id: slug,
+                      name: getPrettyStageName(slug, labels[slug]),
+                      color: getStageColor(slug),
+                      order_index: idx
+                    }));
+                    setPipelineStages(mappedStages);
+                  }
+                } catch (e) {
+                  console.error('Failed to parse pipeline stages from settings', e);
+                }
+              }
+              if (res.data.lead_scoring_rules) {
+                try {
+                  setScoringRules(JSON.parse(res.data.lead_scoring_rules));
+                } catch(e) {}
               }
             }
-            if (res.data.lead_scoring_rules) {
-              try {
-                setScoringRules(JSON.parse(res.data.lead_scoring_rules));
-              } catch(e) {}
-            }
-          }
-        })
-        .catch(() => {});
-
+          })
+          .catch(() => {});
+      }
     }
   }, [isOpen]);
 
@@ -7343,63 +7413,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         </button>
                                       ))}
                                     </div>
-                                    {group.title === 'Nghiệp vụ & Hỗ trợ' && (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-                                        {/* Nút Trả về Databank */}
-                                        <button
-                                          type="button"
-                                          onClick={isReleaseBlocked ? undefined : handleReturnToDatabank}
-                                          disabled={isReleaseBlocked}
-                                          style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            padding: '12px 14px',
-                                            borderRadius: '12px',
-                                            background: 'rgba(239, 68, 68, 0.05)',
-                                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                                            color: isReleaseBlocked ? 'var(--color-text-muted)' : '#ef4444',
-                                            fontWeight: 700,
-                                            fontSize: '0.875rem',
-                                            cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
-                                            opacity: isReleaseBlocked ? 0.5 : 1
-                                          }}
-                                        >
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <RotateCcw size={18} color="#ef4444" />
-                                            <span>{t('Trả về Databank')}</span>
-                                          </div>
-                                          <ChevronRight size={16} />
-                                        </button>
-
-                                        {/* Nút Báo cáo Not Lead */}
-                                        <button
-                                          type="button"
-                                          onClick={isReleaseBlocked ? undefined : () => setShowNotLeadModal(true)}
-                                          disabled={isReleaseBlocked}
-                                          style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            padding: '12px 14px',
-                                            borderRadius: '12px',
-                                            background: 'rgba(225, 29, 72, 0.05)',
-                                            border: '1px solid rgba(225, 29, 72, 0.2)',
-                                            color: isReleaseBlocked ? 'var(--color-text-muted)' : '#e11d48',
-                                            fontWeight: 700,
-                                            fontSize: '0.875rem',
-                                            cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
-                                            opacity: isReleaseBlocked ? 0.5 : 1
-                                          }}
-                                        >
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <UserX size={18} color="#e11d48" />
-                                            <span>{t('Báo cáo Not Lead')}</span>
-                                          </div>
-                                          <ChevronRight size={16} />
-                                        </button>
-                                      </div>
-                                    )}
                                   </div>
                                 );
                               });
@@ -15357,11 +15370,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 {/* Table Header */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr 1.5fr',
+                  minWidth: '640px',
                   gap: '12px',
                   alignItems: 'center',
                   padding: '8px 12px',
@@ -15381,7 +15395,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   <div style={{ textAlign: 'right' }}>Thao tác</div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto', paddingRight: 4, minWidth: '640px' }}>
                   {tempMilestones.map((m: any, idx: number) => {
                     const isLocked = m.status === 'approved' || m.status === 'paid';
                     return (

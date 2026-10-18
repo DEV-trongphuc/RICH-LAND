@@ -45,8 +45,10 @@ export const CompaniesPage: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(() => {
     return Number(localStorage.getItem('richland_companies_page_size')) || 10;
   });
+  const companyReqIdRef = React.useRef(0);
 
   const fetchCompanies = useCallback(async () => {
+    const reqId = ++companyReqIdRef.current;
     setLoading(true);
     try {
       const params: any = { page, limit: pageSize };
@@ -54,25 +56,25 @@ export const CompaniesPage: React.FC = () => {
       if (statusFilter) params.status = statusFilter;
       
       const r = await api.get('/companies', { params });
+      if (reqId !== companyReqIdRef.current) return;
       const data = r.data.data;
       setCompanies(data.items || []);
       setTotal(data.total || 0);
     } catch (e: any) {
+      if (reqId !== companyReqIdRef.current) return;
       setCompanies([]);
       setTotal(0);
       addToast('Không thể tải danh sách đại lý/đối tác', 'error');
     } finally {
-      setLoading(false);
+      if (reqId === companyReqIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [page, pageSize, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchCompanies();
   }, [fetchCompanies]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -190,7 +192,7 @@ export const CompaniesPage: React.FC = () => {
               type="text"
               placeholder="Tìm tên đại lý, khu vực thế mạnh..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
               className="form-input"
               style={{
                 paddingLeft: '36px',
@@ -204,7 +206,7 @@ export const CompaniesPage: React.FC = () => {
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
             {search && (
               <button
-                onClick={() => setSearch('')}
+                onClick={() => { setSearch(''); setPage(1); }}
                 style={{
                   position: 'absolute',
                   right: '12px',
@@ -272,7 +274,7 @@ export const CompaniesPage: React.FC = () => {
                     Trạng thái
                   </div>
                   <button 
-                    onClick={() => { setStatusFilter(''); setShowFiltersMenu(false); }}
+                    onClick={() => { setStatusFilter(''); setPage(1); setShowFiltersMenu(false); }}
                     style={{
                       padding: '8px 12px', fontSize: '0.8125rem', textAlign: 'left', borderRadius: '6px', border: 'none', cursor: 'pointer',
                       background: statusFilter === '' ? 'var(--color-bg)' : 'transparent',
@@ -284,7 +286,7 @@ export const CompaniesPage: React.FC = () => {
                   {STATUSES.map(st => (
                     <button 
                       key={st}
-                      onClick={() => { setStatusFilter(st); setShowFiltersMenu(false); }}
+                      onClick={() => { setStatusFilter(st); setPage(1); setShowFiltersMenu(false); }}
                       style={{
                         padding: '8px 12px', fontSize: '0.8125rem', textAlign: 'left', borderRadius: '6px', border: 'none', cursor: 'pointer',
                         background: statusFilter === st ? 'var(--color-bg)' : 'transparent',

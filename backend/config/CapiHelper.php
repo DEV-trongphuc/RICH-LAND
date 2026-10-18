@@ -165,7 +165,7 @@ class CapiHelper {
             if ($eventName === 'Purchase') {
                 $customData = [
                     'currency' => $currency ?: 'VND',
-                    'value' => (float)($value > 0 ? $value : 13674109347),
+                    'value' => (float)($value > 0 ? $value : 0),
                     'content_type' => 'real_estate',
                     'lead_event_source' => 'Rich Land CRM',
                     'event_source' => 'crm'

@@ -866,18 +866,15 @@ export const ContactsPage: React.FC = () => {
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        const projPromise = api.get('/projects?bypass_roster=1').catch(() => null);
-        const stagePromise = api.get('/pipeline-stages').catch(() => null);
-        const campaignPromise = api.get('/marketing-campaigns').catch(() => null);
-        
-        let teamsRes: any = null;
-        let usersRes: any = null;
-        
-        if (user && ['manager', 'admin', 'superadmin'].includes(user.role)) {
-          teamsRes = await api.get('/teams').catch(() => null);
-        }
-        
-        const [projRes, stageRes, campaignRes] = await Promise.all([projPromise, stagePromise, campaignPromise]);
+        const isManagerOrAdmin = Boolean(user && ['manager', 'admin', 'superadmin'].includes(user.role));
+        const [projRes, stageRes, campaignRes, teamsRes, usersRes, settingsRes] = await Promise.all([
+          api.get('/projects?bypass_roster=1').catch(() => null),
+          api.get('/pipeline-stages').catch(() => null),
+          api.get('/marketing-campaigns').catch(() => null),
+          isManagerOrAdmin ? api.get('/teams').catch(() => null) : Promise.resolve(null),
+          user ? api.get('/users?all=1').catch(() => null) : Promise.resolve(null),
+          api.get('/api.php?action=get_settings').catch(() => null)
+        ]);
         
         if (projRes) {
           const d = projRes.data.data;
@@ -891,23 +888,16 @@ export const ContactsPage: React.FC = () => {
           const d = campaignRes.data.data;
           setCampaigns(Array.isArray(d) ? d : (d?.items || []));
         }
-        
-        let loadedTeams: any[] = [];
         if (teamsRes) {
-          loadedTeams = teamsRes.data.data || teamsRes.data || [];
+          const loadedTeams = teamsRes.data.data || teamsRes.data || [];
           setTeams(loadedTeams);
         }
-        
-        if (user) {
-          usersRes = await api.get('/users?all=1').catch(() => null);
-          if (usersRes) {
-            const d = usersRes.data.data;
-            const list = Array.isArray(d) ? d : (d?.items || []);
-            setUsers(list);
-          }
+        if (usersRes) {
+          const d = usersRes.data.data;
+          const list = Array.isArray(d) ? d : (d?.items || []);
+          setUsers(list);
         }
         // Load lead scoring rules and decay days from settings
-        const settingsRes = await api.get('/api.php?action=get_settings').catch(() => null);
         if (settingsRes && settingsRes.data?.success && settingsRes.data?.data) {
           if (settingsRes.data.data.lead_scoring_rules) {
             try {

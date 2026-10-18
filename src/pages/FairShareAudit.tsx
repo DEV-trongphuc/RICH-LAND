@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import {
   Scale, Users, AlertTriangle, BarChart2, Info,
@@ -331,28 +331,38 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
     }
   };
 
+  const latestFairShareReqRef = useRef(0);
+
   const fetchStats = async (signal?: AbortSignal) => {
     if (!roundFilter) return; // Guard to prevent fetching before round filter is initialized
+    const reqId = ++latestFairShareReqRef.current;
     setLoading(true);
     try {
       const url = `get_fair_share_stats&date=${encodeURIComponent(dateFilter)}&round_id=${roundFilter}`;
-      const res = await fetchAPI(url);
-      if (signal?.aborted) return;
+      const res = await fetchAPI(url, { signal });
+      if (signal?.aborted || reqId !== latestFairShareReqRef.current) return;
 
       if (res.success) {
         setData(res.data);
       } else {
         toast.error(res.message || t('Lỗi tải dữ liệu đối soát'));
       }
-    } catch (e) {
-      console.error('Error fetching fair share stats:', e);
+    } catch (e: any) {
+      if (e?.name !== 'AbortError' && !signal?.aborted) {
+        console.error('Error fetching fair share stats:', e);
+      }
     }
-    setLoading(false);
+    if (!signal?.aborted && reqId === latestFairShareReqRef.current) {
+      setLoading(false);
+    }
   };
 
+  const hasLoadedRoundsRef = useRef(false);
   useEffect(() => {
+    if (!isActive || hasLoadedRoundsRef.current) return;
+    hasLoadedRoundsRef.current = true;
     fetchRounds();
-  }, []);
+  }, [isActive]);
 
   useEffect(() => {
     if (isActive) {
@@ -386,21 +396,16 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
   }, [searchParams, isActive]);
 
   useEffect(() => {
-    if (isActive) {
-      const abortController = new AbortController();
-      fetchStats(abortController.signal);
-      return () => abortController.abort();
+    if (!isActive) return;
+    const savedDate = localStorage.getItem('richland_global_date');
+    if (savedDate && savedDate !== dateFilter) {
+      setDateFilter(savedDate);
+      return;
     }
+    const abortController = new AbortController();
+    fetchStats(abortController.signal);
+    return () => abortController.abort();
   }, [dateFilter, roundFilter, isActive]);
-
-  useEffect(() => {
-    if (isActive) {
-      const savedDate = localStorage.getItem('richland_global_date');
-      if (savedDate && savedDate !== dateFilter) {
-        setDateFilter(savedDate);
-      }
-    }
-  }, [isActive]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -715,31 +720,31 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
   };
 
   // Formatting chart data for Data Source Balance
-  const sourceChartData = activeData?.consultants ? activeData.consultants.map((c: any) => {
+  const sourceChartData = useMemo(() => activeData?.consultants ? activeData.consultants.map((c: any) => {
     const item: any = { name: c.name };
     activeData.sources.forEach((src: string) => {
       item[src] = isSimulating ? Math.round(c.sources[src] || 0) : (c.sources[src] || 0);
     });
     return item;
-  }) : [];
+  }) : [], [activeData, isSimulating]);
 
   // Formatting chart data for Lead Quality (Assigned vs Duplicate vs Faulty Approved)
-  const qualityChartData = activeData?.consultants ? activeData.consultants.map((c: any) => ({
+  const qualityChartData = useMemo(() => activeData?.consultants ? activeData.consultants.map((c: any) => ({
     name: c.name,
     [t('Data bàn giao')]: Math.round(c.assigned_count),
     [t('Ticket')]: c.total_ticket_count,
     [t('Duyệt Ticket')]: c.ticket_count
-  })) : [];
+  })) : [], [activeData, t]);
 
   // Comparison chart data for simulation
-  const simulationChartData = data?.consultants ? data.consultants.map((c: any) => {
+  const simulationChartData = useMemo(() => data?.consultants ? data.consultants.map((c: any) => {
     const simC = simulatedData?.consultants?.find((sc: any) => sc.id === c.id);
     return {
       name: c.name,
       [t('Thực tế')]: c.assigned_count,
       [t('Giả lập')]: simC ? Math.round(simC.assigned_count) : 0
     };
-  }) : [];
+  }) : [], [data, simulatedData, t]);
 
   const sourceColors = ['#BD1D2D', '#10b981', '#fbbf24', '#f43f5e', '#BD1D2D', '#06b6d4'];
 

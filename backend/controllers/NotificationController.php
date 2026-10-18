@@ -13,12 +13,13 @@ class NotificationController {
         
         $userLookup = [];
         $userList = [];
-        try {
-            // Lấy avatar và thông tin từ bảng users (chứa đầy đủ full_name, username, avatar_url)
-            $avatarsStmt = $this->db->query("
-                SELECT id, full_name, username, email, avatar_url FROM users
-            ");
-            if ($avatarsStmt) {
+        if (!empty($items)) {
+            try {
+                // Lấy avatar và thông tin từ bảng users (chứa đầy đủ full_name, username, avatar_url)
+                $avatarsStmt = $this->db->prepare("
+                    SELECT id, full_name, username, email, avatar_url FROM users WHERE tenant_id = ?
+                ");
+                $avatarsStmt->execute([$auth['tenant_id']]);
                 foreach ($avatarsStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                     $fn = trim((string)($row['full_name'] ?? ''));
                     $un = trim((string)($row['username'] ?? ''));
@@ -35,8 +36,8 @@ class NotificationController {
                 }
                 // Sắp xếp tên dài trước để tránh khớp nhầm tên ngắn
                 usort($userList, fn($a, $b) => $b['len'] <=> $a['len']);
-            }
-        } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {}
+        }
 
         // Duyệt qua từng thông báo để lấy trực tiếp actor name & avatar
         foreach ($items as &$item) {

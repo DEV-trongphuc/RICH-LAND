@@ -503,11 +503,60 @@ function sendBatchGrabTelegramSync($conn, $leadId, array $consultants, $roundId,
     }
 
     $botToken = get_system_setting($conn, 'telegram_bot_token');
-    if (empty($botToken)) {
+    $zaloBotToken = get_system_setting($conn, 'zalo_bot_token');
+    if (empty($botToken) && empty($zaloBotToken)) {
+        $GLOBALS['_grab_batch_notified'][(int)$leadId] = true;
         return true;
     }
 
-    // Lấy tên vòng
+    // Batch-enrich telegram_chat_id & zalo_chat_id in 1 single query if missing from $consultants array
+    $missingIds = [];
+    foreach ($consultants as $c) {
+        $cid = (int)($c['id'] ?? 0);
+        if ($cid > 0 && (!array_key_exists('telegram_chat_id', $c) || !array_key_exists('zalo_chat_id', $c))) {
+            $missingIds[] = $cid;
+        }
+    }
+    if (!empty($missingIds)) {
+        $missingIds = array_values(array_unique($missingIds));
+        $idListSql = implode(',', $missingIds);
+        $userMap = [];
+        try {
+            if ($conn instanceof mysqli) {
+                $uRes = $conn->query("SELECT id, full_name AS name, telegram_chat_id, zalo_chat_id FROM users WHERE id IN ($idListSql)");
+                if ($uRes) {
+                    while ($uRow = $uRes->fetch_assoc()) {
+                        $userMap[(int)$uRow['id']] = $uRow;
+                    }
+                }
+            } elseif ($conn instanceof PDO) {
+                $uStmt = $conn->query("SELECT id, full_name AS name, telegram_chat_id, zalo_chat_id FROM users WHERE id IN ($idListSql)");
+                if ($uStmt) {
+                    while ($uRow = $uStmt->fetch(PDO::FETCH_ASSOC)) {
+                        $userMap[(int)$uRow['id']] = $uRow;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        foreach ($consultants as &$cRef) {
+            $cid = (int)($cRef['id'] ?? 0);
+            if (isset($userMap[$cid])) {
+                if (!isset($cRef['name']) && !isset($cRef['full_name'])) {
+                    $cRef['name'] = $userMap[$cid]['name'];
+                }
+                if (!array_key_exists('telegram_chat_id', $cRef)) {
+                    $cRef['telegram_chat_id'] = $userMap[$cid]['telegram_chat_id'];
+                }
+                if (!array_key_exists('zalo_chat_id', $cRef)) {
+                    $cRef['zalo_chat_id'] = $userMap[$cid]['zalo_chat_id'];
+                }
+            }
+        }
+        unset($cRef);
+    }
+
+    // Lấy tên vòng (1 query duy nhất cho cả batch)
     $roundName = 'Vòng Tranh Nhận';
     try {
         if ($conn instanceof mysqli) {
@@ -531,48 +580,80 @@ function sendBatchGrabTelegramSync($conn, $leadId, array $consultants, $roundId,
     $mins = ceil($countdownSec / 60);
 
     $competingTextTele = "";
+    $competingTextZalo = "";
     if (!empty($competingNames)) {
         $competingTextTele = "\n👥 <b>Số lượng TVV cùng tranh nhận:</b> " . count($competingNames) . "\n";
+        $competingTextZalo = "\n👥 Số lượng TVV cùng tranh nhận: " . count($competingNames) . "\n";
     }
 
     $mh = curl_multi_init();
     $curlHandles = [];
-    $url = "https://api.telegram.org/bot" . $botToken . "/sendMessage";
+    $teleUrl = !empty($botToken) ? ("https://api.telegram.org/bot" . $botToken . "/sendMessage") : '';
+    $zaloUrl = !empty($zaloBotToken) ? ("https://bot-api.zaloplatforms.com/bot" . $zaloBotToken . "/sendMessage") : '';
 
     foreach ($consultants as $c) {
-        $chatId = $c['telegram_chat_id'] ?? '';
-        // Ai chưa linked tele thì bỏ qua, không chặn luồng (Mục 18)
-        if (empty($chatId) || strtolower(trim($chatId)) === 'chưa liên kết') {
-            continue;
+        $saleName = $c['name'] ?? $c['full_name'] ?? 'Bạn';
+
+        // 1. Parallel Telegram Dispatch
+        $chatId = trim((string)($c['telegram_chat_id'] ?? ''));
+        if ($teleUrl !== '' && $chatId !== '' && strtolower($chatId) !== 'chưa liên kết') {
+            $teleMsg = "⚡ <b>[ TRANH NHẬN DATA NHANH - " . htmlspecialchars($roundTitle) . " ]</b> ⚡\n"
+                . "━━━━━━━━━━━━━━━━━━━━\n"
+                . "Chào <b>" . htmlspecialchars($saleName) . "</b>,\n\n"
+                . "Hệ thống vừa phát tín hiệu tranh nhận khách hàng mới thuộc vòng: <b>" . htmlspecialchars($roundName) . "</b>.\n"
+                . "⏰ Thời gian đếm ngược: <b>" . $mins . " phút</b>.\n"
+                . $competingTextTele
+                . "\n👉 <i>Vui lòng đăng nhập CRM và mở trang Bàn làm việc để TRANH NHẬN NGAY!</i>";
+
+            $payload = json_encode([
+                "chat_id" => $chatId,
+                "text" => $teleMsg,
+                "parse_mode" => "HTML"
+            ], JSON_UNESCAPED_UNICODE);
+
+            $ch = curl_init($teleUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+            curl_multi_add_handle($mh, $ch);
+            $curlHandles[] = ['ch' => $ch, 'user_id' => $c['id'], 'chat_id' => $chatId, 'channel' => 'telegram'];
         }
 
-        $saleName = $c['name'] ?? $c['full_name'] ?? 'Bạn';
-        $teleMsg = "⚡ <b>[ TRANH NHẬN DATA NHANH - " . htmlspecialchars($roundTitle) . " ]</b> ⚡\n"
-            . "━━━━━━━━━━━━━━━━━━━━\n"
-            . "Chào <b>" . htmlspecialchars($saleName) . "</b>,\n\n"
-            . "Hệ thống vừa phát tín hiệu tranh nhận khách hàng mới thuộc vòng: <b>" . htmlspecialchars($roundName) . "</b>.\n"
-            . "⏰ Thời gian đếm ngược: <b>" . $mins . " phút</b>.\n"
-            . $competingTextTele
-            . "\n👉 <i>Vui lòng đăng nhập CRM và mở trang Bàn làm việc để TRANH NHẬN NGAY!</i>";
+        // 2. Parallel Zalo Dispatch (cùng lúc với Telegram trong cùng curl_multi pool)
+        $zaloChatId = trim((string)($c['zalo_chat_id'] ?? ''));
+        if ($zaloUrl !== '' && $zaloChatId !== '' && strtolower($zaloChatId) !== 'chưa liên kết') {
+            $zaloMsg = "⚡ [ TRANH NHẬN DATA NHANH - $roundTitle ] ⚡\n"
+                . "━━━━━━━━━━━━━━━━━━━━\n"
+                . "Chào " . $saleName . ",\n\n"
+                . "Hệ thống vừa phát tín hiệu tranh nhận khách hàng mới thuộc vòng: " . $roundName . ".\n"
+                . "⏰ Thời gian đếm ngược: " . $mins . " phút.\n"
+                . $competingTextZalo
+                . "\n👉 Vui lòng đăng nhập CRM và mở trang BÀN LÀM VIỆC để TRANH NHẬN NGAY!";
 
-        $payload = json_encode([
-            "chat_id" => $chatId,
-            "text" => $teleMsg,
-            "parse_mode" => "HTML"
-        ], JSON_UNESCAPED_UNICODE);
+            $zPayload = json_encode([
+                "chat_id" => $zaloChatId,
+                "text" => $zaloMsg
+            ], JSON_UNESCAPED_UNICODE);
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Timeout tối đa 3s per Mục 18
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            $zch = curl_init($zaloUrl);
+            curl_setopt($zch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($zch, CURLOPT_POST, true);
+            curl_setopt($zch, CURLOPT_POSTFIELDS, $zPayload);
+            curl_setopt($zch, CURLOPT_HTTPHEADER, ["Content-Type: application/json; charset=utf-8"]);
+            curl_setopt($zch, CURLOPT_CONNECTTIMEOUT, 2);
+            curl_setopt($zch, CURLOPT_TIMEOUT, 3);
+            curl_setopt($zch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($zch, CURLOPT_SSL_VERIFYHOST, false);
 
-        curl_multi_add_handle($mh, $ch);
-        $curlHandles[] = ['ch' => $ch, 'user_id' => $c['id'], 'chat_id' => $chatId];
+            curl_multi_add_handle($mh, $zch);
+            $curlHandles[] = ['ch' => $zch, 'user_id' => $c['id'], 'chat_id' => $zaloChatId, 'channel' => 'zalo'];
+        }
     }
 
     if (!empty($curlHandles)) {
@@ -581,7 +662,7 @@ function sendBatchGrabTelegramSync($conn, $leadId, array $consultants, $roundId,
         do {
             $mrc = curl_multi_exec($mh, $active);
             if ($active > 0) {
-                curl_multi_select($mh, 0.05);
+                curl_multi_select($mh, 0.03);
             }
             if ((microtime(true) - $startTime) >= 3.0) {
                 break;
@@ -595,13 +676,14 @@ function sendBatchGrabTelegramSync($conn, $leadId, array $consultants, $roundId,
             curl_multi_remove_handle($mh, $ch);
             curl_close($ch);
 
-            $isSent = ($httpCode === 200);
+            $isSent = ($httpCode >= 200 && $httpCode < 300);
             if (function_exists('log_communication')) {
-                log_communication($conn ?? $GLOBALS['pdo'] ?? null, $leadId, 'telegram', $h['chat_id'], $isSent ? 'sent' : 'failed', $isSent ? null : ("HTTP: $httpCode"));
+                log_communication($conn ?? $GLOBALS['pdo'] ?? null, $leadId, $h['channel'], $h['chat_id'], $isSent ? 'sent' : 'failed', $isSent ? null : ("HTTP: $httpCode"));
             }
         }
     }
     curl_multi_close($mh);
+    $GLOBALS['_grab_batch_notified'][(int)$leadId] = true;
     return true;
 }
 

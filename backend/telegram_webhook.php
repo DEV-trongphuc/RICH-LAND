@@ -309,7 +309,7 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
             SELECT l.id, l.name, l.phone, l.email, l.source, l.created_at, c.name as sale_name, r.round_name
             FROM leads l
             LEFT JOIN consultants c ON l.assigned_to = c.id
-            LEFT JOIN distribution_rounds r ON l.round_id = r.id
+            LEFT JOIN distribution_rounds r ON l.target_round_id = r.id
             WHERE l.phone = ? OR l.email = ?
             ORDER BY l.id DESC LIMIT 1
         ");
@@ -342,7 +342,7 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
         $cmdArg = trim(substr($text, 8));
         if ($cmdArg === 'pending') {
             $resTick = $conn->query("
-                SELECT t.id, t.created_at, c.name as sale_name, l.name as lead_name, t.error_reason
+                SELECT t.id, t.created_at, c.name as sale_name, l.name as lead_name, t.reason as error_reason
                 FROM duplicate_log t
                 LEFT JOIN consultants c ON t.consultant_id = c.id
                 LEFT JOIN leads l ON t.lead_id = l.id

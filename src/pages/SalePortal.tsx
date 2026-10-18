@@ -102,6 +102,7 @@ const LeadRecallTimer: React.FC<{
     if (leadRecallMins <= 0) return;
 
     const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
       const elapsed = Date.now() - targetDate;
       const remaining = limitMs - elapsed;
       setRemainingMs(remaining);
@@ -155,14 +156,12 @@ const GrabLeadOfferModal: React.FC<{
   useEffect(() => {
     const calc = Math.max(0, Math.floor((targetExpiresAt - Date.now()) / 1000));
     setTimeLeft(calc);
-  }, [targetExpiresAt]);
-
-  useEffect(() => {
-    if (timeLeft <= 0) {
+    if (calc <= 0) {
       onClose();
       return;
     }
     const interval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
       const remaining = Math.max(0, Math.floor((targetExpiresAt - Date.now()) / 1000));
       setTimeLeft(remaining);
       if (remaining <= 0) {
@@ -171,7 +170,7 @@ const GrabLeadOfferModal: React.FC<{
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [targetExpiresAt, onClose, timeLeft]);
+  }, [targetExpiresAt, onClose]);
 
   const handleClaimClick = async () => {
     if (submitting) return;
@@ -180,7 +179,16 @@ const GrabLeadOfferModal: React.FC<{
     setSubmitting(false);
   };
 
-  const totalDuration = (Number(offer.seconds_remaining) || 300);
+  const totalDuration = useMemo(() => {
+    if (offer.total_seconds && Number(offer.total_seconds) > 0) {
+      return Number(offer.total_seconds);
+    }
+    if (offer.offered_at && offer.expires_at) {
+      const diff = Math.round((parseServerDate(offer.expires_at).getTime() - parseServerDate(offer.offered_at).getTime()) / 1000);
+      if (diff > 0) return diff;
+    }
+    return Number(offer.seconds_remaining) || 300;
+  }, [offer.total_seconds, offer.offered_at, offer.expires_at, offer.offer_id]);
   const percentage = Math.max(0, Math.min(100, (timeLeft / totalDuration) * 100));
 
   const mins = Math.floor(timeLeft / 60);
@@ -322,10 +330,11 @@ const GrabLeadOfferWidget: React.FC<{
   useEffect(() => {
     if (timeLeft <= 0) return;
     const interval = setInterval(() => {
-      setTimeLeft((prev: number) => prev - 1);
+      if (document.visibilityState !== 'visible') return;
+      setTimeLeft((prev: number) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
-  }, [timeLeft]);
+  }, [offer.lead_id, offer.offer_id]);
 
   const handleClaimClick = async () => {
     if (submitting) return;
@@ -1224,6 +1233,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, []);
 
   const fetchActiveOffers = async () => {
+    if (document.visibilityState !== 'visible') return;
     try {
       const res = await fetchAPI('get_active_offers');
       if (res && res.success) {
@@ -1240,8 +1250,35 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!isSale) return;
 
     fetchActiveOffers();
-    const interval = setInterval(fetchActiveOffers, 10000); // 10s polling
-    return () => clearInterval(interval);
+
+    // Đồng bộ nhịp polling theo đồng hồ chuẩn mỗi 3 giây (:00, :03, :06...) để mọi Sale hiển thị popup cùng 1 thời điểm, không bị lệch nhịp 10s
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const msToNextBoundary = 3000 - (Date.now() % 3000);
+    const alignTimeout = setTimeout(() => {
+      if (document.visibilityState === 'visible') {
+        fetchActiveOffers();
+      }
+      interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          fetchActiveOffers();
+        }
+      }, 3000);
+    }, msToNextBoundary);
+
+    const handleInstantWakeup = () => {
+      if (document.visibilityState === 'visible') {
+        fetchActiveOffers();
+      }
+    };
+    window.addEventListener('focus', handleInstantWakeup);
+    document.addEventListener('visibilitychange', handleInstantWakeup);
+
+    return () => {
+      clearTimeout(alignTimeout);
+      if (interval) clearInterval(interval);
+      window.removeEventListener('focus', handleInstantWakeup);
+      document.removeEventListener('visibilitychange', handleInstantWakeup);
+    };
   }, [user?.role]);
 
   const isGrabbingLeadRef = useRef(false);
@@ -2682,22 +2719,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [showSaleSignatureModal, setShowSaleSignatureModal] = useState(false);
 
   useEffect(() => {
-    const fetchUsersList = async () => {
-      try {
-        const res = await fetchAPI('users?all=1');
-        if (res && Array.isArray(res)) {
-          setAllUsersList(res);
-        } else if (res?.success && Array.isArray(res.data)) {
-          setAllUsersList(res.data);
-        }
-      } catch (err) {
-        console.warn('Failed to fetch users list in SalePortal:', err);
-      }
-    };
-    fetchUsersList();
-  }, []);
-
-  useEffect(() => {
     if (user?.signature_url) {
       setSaleSignatureUrl(user.signature_url);
     }
@@ -3034,8 +3055,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, [data.leads, effectiveRole, dismissedLeadIds, sysSettings, now]);
 
   useEffect(() => {
-    const intervalMs = activeIncomingOffer ? 100 : 10000;
-    const timer = setInterval(() => setNow(Date.now()), intervalMs);
+    const intervalMs = activeIncomingOffer ? 1000 : 10000;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      const activePaths = ['/', '/workspace', '/portal', '/account', '/calendar', '/databank', '/fair-share'];
+      if (!activePaths.includes(window.location.pathname)) return;
+      setNow(Date.now());
+    }, intervalMs);
     return () => clearInterval(timer);
   }, [activeIncomingOffer]);
 
@@ -3179,8 +3205,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, [theme, user]);
 
   useEffect(() => {
+    if (token && ALLOWED_PORTAL_ROLES.includes(user?.role || '')) {
+      return;
+    }
     let intervalId: any;
     const initGoogle = () => {
+      if (document.visibilityState !== 'visible') return;
       if (renderedRef.current) {
         clearInterval(intervalId);
         return;
@@ -3202,7 +3232,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     initGoogle();
     intervalId = setInterval(initGoogle, 500);
     return () => clearInterval(intervalId);
-  }, [user, theme]);
+  }, [token, user, theme]);
 
   const [portalTasks, setPortalTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
@@ -3353,7 +3383,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         start = p7.start;
         end = p7.end;
       }
-      let url = '/activities?type=call&status=done&limit=1000';
+      let url = '/activities?type=call&status=done&limit=200';
       if (start) url += `&start_date=${start}`;
       if (end) url += `&end_date=${end}`;
       
@@ -3432,7 +3462,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token) return;
     setLoadingWsTasks(true);
     try {
-      let url = '/activities?limit=5000';
+      let url = '/activities?limit=300';
       if (wsActivityType && wsActivityType !== 'all') {
         if (wsActivityType !== 'task') {
           url += `&type=${wsActivityType}`;
@@ -3452,17 +3482,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       const { start, end } = getPresetDates(wsDatePreset);
 
-      const res = await api.get(url);
-      if (res.data && res.data.data) {
-        let rawTasks = res.data.data.items || res.data.data || [];
-        if (wsActivityType === 'task') {
-          rawTasks = rawTasks.filter((item: any) => item.type === 'task' || (item.type === 'meeting' && item.status === 'planned'));
-        }
-        setWsTasks(rawTasks);
-        triggerRecurrenceCheck(rawTasks);
-      }
-
-      // Fetch completed calls count
+      // Fetch completed calls count concurrently with activities and task groups
       let callsUrl = '/activities?type=call&status=done&limit=1';
       let callsStart = wsDatePreset === 'all' ? '' : start;
       let callsEnd = wsDatePreset === 'all' ? '' : end;
@@ -3475,11 +3495,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         callsUrl += `&user_id=${currentUser?.id}`;
       }
 
-      const callsRes = await api.get(callsUrl);
+      const [res, callsRes] = await Promise.all([
+        api.get(url),
+        api.get(callsUrl),
+        fetchTaskGroups()
+      ]);
+
+      if (res.data && res.data.data) {
+        let rawTasks = res.data.data.items || res.data.data || [];
+        if (wsActivityType === 'task') {
+          rawTasks = rawTasks.filter((item: any) => item.type === 'task' || (item.type === 'meeting' && item.status === 'planned'));
+        }
+        setWsTasks(rawTasks);
+        triggerRecurrenceCheck(rawTasks);
+      }
+
       if (callsRes.data && callsRes.data.data) {
         setCompletedCallsCount(callsRes.data.data.total || 0);
       }
-      fetchTaskGroups();
     } catch (e) {
       console.error(e);
     } finally {
@@ -3950,20 +3983,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   useEffect(() => {
     if (activeTab === 'workspace') {
       fetchWorkspaceTasks();
-      fetchTaskGroups();
     }
   }, [activeTab, wsPriority, wsStatus, showDoneTasks, wsDatePreset, wsStartDate, wsEndDate, wsTeamId, wsUserId, wsActivityType, wsRelatedType, wsSubTab]);
-
-  useEffect(() => {
-    if (activeTab === 'workspace') {
-      api.get('/contacts?limit=100').then(res => {
-        if (res.data && res.data.data) {
-          const items = res.data.data.items || res.data.data || [];
-          setWsContacts(items);
-        }
-      }).catch(() => {});
-    }
-  }, [activeTab, user?.role]);
 
   useEffect(() => {
     if (token) {
@@ -3971,6 +3992,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       api.get(usersEndpoint).then(r => {
         const d = r.data.data;
         const list = Array.isArray(d) ? d : (d?.items || []);
+        setAllUsersList(list);
         const team = list.map((u: any) => ({
           ...u,
           id: u.id,
@@ -4442,7 +4464,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   // Fetch portal data when token is valid
   const loadPortalData = async (isSilent = false) => {
     if (!token || !ALLOWED_PORTAL_ROLES.includes(user?.role || '')) return;
-    const activePaths = ['/', '/workspace', '/account', '/calendar', '/databank', '/fair-share'];
+    const activePaths = ['/', '/workspace', '/portal', '/account', '/calendar', '/databank', '/fair-share'];
     if (!activePaths.includes(loc.pathname)) return;
     if (!isSilent && !data?.consultant_profile && loc.pathname !== '/account') setLoading(true);
     fetchPortalTasks();
@@ -4450,10 +4472,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
     if (!isSilent) {
       loadCheckInStatus();
-      loadNightShiftStatus();
-      loadWeekendShiftStatus();
-      loadHolidayShiftStatus();
-      loadWeeklyRegistrations();
     }
     try {
       let query = `get_sale_portal_data&search=${encodeURIComponent(search)}&round_id=${roundId}&date_mode=${dateMode}&sale_id=${saleIdFilter}`;
@@ -4463,7 +4481,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const json = await fetchAPI(query);
       if (json.success) {
         setData(json);
-        if (json.vacation_mode !== undefined) setPortalVacationMode(Boolean(Number(json.vacation_mode)));
+        if (json.vacation_mode !== undefined) {
+          const nextMode = Boolean(Number(json.vacation_mode));
+          setPortalVacationMode(nextMode);
+          if (!impersonatedSale?.id && !saleIdFilter) {
+            window.dispatchEvent(new CustomEvent('vacation-status-changed', { detail: nextMode }));
+          }
+        }
+        if (!impersonatedSale?.id && !saleIdFilter) {
+          if (json.uncontacted_count !== undefined) {
+            const count = Number(json.uncontacted_count) || 0;
+            sessionStorage.setItem('sale-uncontacted-count', String(count));
+            window.dispatchEvent(new CustomEvent('uncontacted-count-changed', { detail: count }));
+          } else if (json.leads) {
+            const count = json.leads.filter((l: any) =>
+              Number(l.is_accepted) === 1 &&
+              l.contact_id &&
+              !l.contact_last_contact &&
+              l.status !== 'reminder'
+            ).length;
+            sessionStorage.setItem('sale-uncontacted-count', String(count));
+            window.dispatchEvent(new CustomEvent('uncontacted-count-changed', { detail: count }));
+          }
+        }
       } else {
         if (!isSilent) toast.error(json.message || t('Không thể tải dữ liệu'));
       }
@@ -4506,6 +4546,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const res = await fetchAPI('check-ins?today_only=1');
       if (res.success) {
         setTodayCheckIn(res.data);
+        window.dispatchEvent(new CustomEvent('today-checkin-synced', { detail: res.data }));
       }
     } catch (err) {
       console.error("Error loading check-in status:", err);
@@ -4525,6 +4566,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const res = await fetchAPI(`get_night_shift_status${targetParam}`);
       if (res.success) {
         setNightShiftRegistered(Boolean(res.registered));
+        if (!targetParam) {
+          window.dispatchEvent(new CustomEvent('night-shift-synced', { detail: Boolean(res.registered) }));
+        }
         setNightShiftApproved(res.approved === 1 || res.approved === true);
         setNightShiftCanToggle(res.can_toggle || isUserAdminRole || isUserManagerRole);
         setNightShiftDate(res.shift_date);
@@ -5810,10 +5854,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
   useEffect(() => {
-    if (token && user?.id) {
+    if (activeTab === 'schedule' && token && user?.id) {
       fetchLeaveHistory();
     }
-  }, [token, user?.id, saleIdFilter, data.consultant_profile?.id]);
+  }, [activeTab, token, user?.id, saleIdFilter, data.consultant_profile?.id]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -5943,38 +5987,46 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (['sale', 'manager'].includes(String(displayUser?.role).toLowerCase())) {
         consultantParam = displayUser.name;
       }
-      const json = await fetchAPI(`get_calendar_stats&year=${year}&month=${month}&consultant=${encodeURIComponent(consultantParam)}`);
+      const startDateStr = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+      const endDateStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()} 23:59:59`;
+
+      const [json, actRes] = await Promise.all([
+        fetchAPI(`get_calendar_stats&year=${year}&month=${month}&consultant=${encodeURIComponent(consultantParam)}`),
+        api.get('/activities', {
+          params: {
+            start_date: startDateStr,
+            end_date: endDateStr,
+            limit: 300
+          }
+        })
+      ]);
+
       if (json.success) {
         setCalendarData(json.data || {});
       }
 
-      // Concurrently fetch the monthly activities (tasks, meetings, calls, notes)
-      const startDateStr = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
-      const endDateStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()} 23:59:59`;
-      const actRes = await api.get('/activities', {
-        params: {
-          start_date: startDateStr,
-          end_date: endDateStr,
-          limit: 300
-        }
-      });
       const actData = actRes.data?.data;
       const actItems = Array.isArray(actData?.items) ? actData.items : (Array.isArray(actData) ? actData : []);
       setCalendarActivities(actItems);
-
-      // Fetch contacts list for dropdown once if not loaded
-      if (contactsList.length === 0) {
-        const conRes = await api.get('/contacts?limit=1000');
-        const conData = conRes.data?.data;
-        const conItems = Array.isArray(conData?.items) ? conData.items : (Array.isArray(conData) ? conData : []);
-        setContactsList(conItems);
-      }
     } catch (e: any) {
       console.error('Lỗi tải thống kê lịch biểu: ', e.message);
     } finally {
       setCalendarLoading(false);
     }
   };
+
+  // Lazy-load minimal contacts list only when scheduler modal is opened
+  useEffect(() => {
+    if (schedulerModalOpen && token && contactsList.length === 0) {
+      api.get('/contacts?limit=500&minimal=1').then(conRes => {
+        const conData = conRes.data?.data;
+        const conItems = Array.isArray(conData?.items) ? conData.items : (Array.isArray(conData) ? conData : []);
+        setContactsList(conItems);
+      }).catch(err => {
+        console.error('Lỗi tải danh sách liên hệ lịch biểu:', err);
+      });
+    }
+  }, [schedulerModalOpen, token, contactsList.length]);
 
   useEffect(() => {
     if (activeTab === 'calendar') {
@@ -17937,18 +17989,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         document.body
       )}
 
-      {activeOffers.length > 0 && !dismissedOfferIds.includes(activeOffers[0].offer_id) && createPortal(
-        <GrabLeadOfferModal
-          offer={activeOffers[0]}
-          onClaim={handleGrabLead}
-          onClose={() => {
-            setDismissedOfferIds(prev => [...prev, activeOffers[0].offer_id]);
-          }}
-          t={t}
-          theme={theme}
-        />,
-        document.body
-      )}
+      {activeOffers.length > 0 && (() => {
+        const currentOffer = activeOffers.find((o: any) => !dismissedOfferIds.includes(Number(o.offer_id)));
+        if (!currentOffer) return null;
+        return createPortal(
+          <GrabLeadOfferModal
+            key={currentOffer.offer_id || currentOffer.lead_id}
+            offer={currentOffer}
+            onClaim={handleGrabLead}
+            onClose={() => {
+              setDismissedOfferIds(prev => [...prev, Number(currentOffer.offer_id)]);
+            }}
+            t={t}
+            theme={theme}
+          />,
+          document.body
+        );
+      })()}
 
       {/* Interactive Explanation Modals */}
       <CustomModal
@@ -18591,22 +18648,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </Suspense>
       )}
 
-      {/* Grab Lead Offer Modal */}
-      {activeOffers.length > 0 && (() => {
-        const currentOffer = activeOffers.find(o => !dismissedOfferIds.includes(Number(o.lead_id || o.offer_id)));
-        if (!currentOffer) return null;
-        return (
-          <GrabLeadOfferModal
-            key={currentOffer.offer_id || currentOffer.lead_id}
-            offer={currentOffer}
-            onClaim={handleGrabLead}
-            onClose={() => setDismissedOfferIds(prev => [...prev, Number(currentOffer.lead_id || currentOffer.offer_id)])}
-            t={t}
-            theme={theme}
-          />
-        );
-      })()}
-
       {/* 2-Minute Lead Offer Countdown Modal */}
       {activeIncomingOffer && !hideOfferModal && (
         <CustomModal
@@ -18822,18 +18863,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         </CustomModal>
       )}
-
-      {/* Real-time Grab Lead Offer Modal Popup */}
-      {activeOffers.filter((o: any) => !dismissedOfferIds.includes(o.offer_id)).slice(0, 1).map((offer: any) => (
-        <GrabLeadOfferModal
-          key={offer.offer_id}
-          offer={offer}
-          onClaim={handleGrabLead}
-          onClose={() => setDismissedOfferIds((prev) => [...prev, offer.offer_id])}
-          t={t}
-          theme={theme}
-        />
-      ))}
 
       {/* Task Participants List Modal */}
       {participantsModalOpen && (
