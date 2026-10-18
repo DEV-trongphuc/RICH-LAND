@@ -2923,7 +2923,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
                   {t("Khi TVV check-in trễ giờ quy định, hệ thống sẽ yêu cầu viết lý do. Người quản lý (Manager/Admin) có nghĩa vụ kiểm duyệt ảnh selfie và lý do đi trễ để phê duyệt trong thời gian SLA tối đa là ")}
-                  <strong>{sysSettings?.checkin_approval_sla_minutes || 60} {t("phút")}</strong>.
+                  <strong>{sysSettings?.checkin_approval_sla_minutes || 15} {t("phút")}</strong>.
                 </p>
               </div>
             </div>

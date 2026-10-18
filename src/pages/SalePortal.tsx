@@ -48,7 +48,7 @@ import { useUIStore } from '../store/uiStore';
 import { Package } from 'lucide-react';
 import { AssignedAssetsSection, type AssignedAsset } from '../components/ui/AssignedAssetsSection';
 
-import { fetchAPI } from '../utils/api';
+import { fetchAPI, clearSettingsCache } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { MentionInput } from '../components/ui/MentionInput';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -1141,12 +1141,55 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [dbLimitMonth, setDbLimitMonth] = useState(300);
   const [dbMaxParallelSales, setDbMaxParallelSales] = useState(2);
   const [dbApplicableSources, setDbApplicableSources] = useState('');
-  const [dbTimerChuaXacDinh, setDbTimerChuaXacDinh] = useState('');
-  const [dbTimerQuanTam, setDbTimerQuanTam] = useState('');
-  const [dbTimerThienChi, setDbTimerThienChi] = useState('');
-  const [dbTimerDongYGap, setDbTimerDongYGap] = useState('');
-  const [dbTimerDaGap, setDbTimerDaGap] = useState('');
-  const [dbTimerBooking, setDbTimerBooking] = useState('');
+  const [dbTimerChuaXacDinh, setDbTimerChuaXacDinh] = useState('+24 hours');
+  const [dbTimerQuanTam, setDbTimerQuanTam] = useState('+7 days');
+  const [dbTimerThienChi, setDbTimerThienChi] = useState('+7 days');
+  const [dbTimerDongYGap, setDbTimerDongYGap] = useState('+7 days');
+  const [dbTimerDaGap, setDbTimerDaGap] = useState('+7 days');
+  const [dbTimerBooking, setDbTimerBooking] = useState('+1 month');
+  const [dbTimerDatCoc, setDbTimerDatCoc] = useState('+10 years');
+  const [dbTimerDongDeal, setDbTimerDongDeal] = useState('+10 years');
+
+  // Admin Restore Reclaimed Databank Leads modal state
+  const [restoreReclaimedModalOpen, setRestoreReclaimedModalOpen] = useState(false);
+  const [restoreReclaimedPersonIds, setRestoreReclaimedPersonIds] = useState<number[]>([]);
+  const [restoreReclaimedTargetOwnerId, setRestoreReclaimedTargetOwnerId] = useState<string>('');
+  const [restoringReclaimed, setRestoringReclaimed] = useState(false);
+
+  const handleOpenRestoreReclaimedModal = (personIds: number[], defaultOwnerId?: number) => {
+    if (!personIds || personIds.length === 0) return;
+    setRestoreReclaimedPersonIds(personIds);
+    setRestoreReclaimedTargetOwnerId(defaultOwnerId ? String(defaultOwnerId) : '');
+    setRestoreReclaimedModalOpen(true);
+  };
+
+  const handleExecuteRestoreReclaimed = async () => {
+    if (restoreReclaimedPersonIds.length === 0 || restoringReclaimed) return;
+    setRestoringReclaimed(true);
+    try {
+      const res = await fetchAPI('restore_reclaimed_databank_leads', {
+        method: 'POST',
+        body: JSON.stringify({
+          person_ids: restoreReclaimedPersonIds,
+          target_owner_id: restoreReclaimedTargetOwnerId ? Number(restoreReclaimedTargetOwnerId) : 0
+        })
+      });
+      if (res && res.success) {
+        toast.success(res.message || t('Đã back lại thu hồi cho Sale thành công!'));
+        setRestoreReclaimedModalOpen(false);
+        setSelectedPublicLeads([]);
+        fetchPublicLeads();
+        loadPortalData(true);
+        window.dispatchEvent(new CustomEvent('contact-updated'));
+      } else {
+        toast.error(res?.message || t('Không thể back lại thu hồi'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + (e.message || ''));
+    } finally {
+      setRestoringReclaimed(false);
+    }
+  };
 
   useEffect(() => {
     if (sysSettings) {
@@ -1155,12 +1198,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       setDbLimitMonth(Number(sysSettings.databank_limit_per_month ?? 300));
       setDbMaxParallelSales(Number(sysSettings.max_parallel_sales_per_client ?? 2));
       setDbApplicableSources(sysSettings.databank_applicable_sources ?? '');
-      setDbTimerChuaXacDinh(sysSettings.security_timer_chua_xac_dinh ?? '');
-      setDbTimerQuanTam(sysSettings.security_timer_quan_tam ?? '');
-      setDbTimerThienChi(sysSettings.security_timer_thien_chi ?? '');
-      setDbTimerDongYGap(sysSettings.security_timer_dong_y_gap ?? '');
-      setDbTimerDaGap(sysSettings.security_timer_da_gap ?? '');
-      setDbTimerBooking(sysSettings.security_timer_booking ?? '');
+      setDbTimerChuaXacDinh(sysSettings.security_timer_chua_xac_dinh || '+24 hours');
+      setDbTimerQuanTam(sysSettings.security_timer_quan_tam || '+7 days');
+      const thienChiTimer = sysSettings.security_timer_thien_chi || sysSettings.security_timer_dong_y_gap || '+7 days';
+      setDbTimerThienChi(thienChiTimer);
+      setDbTimerDongYGap(thienChiTimer);
+      setDbTimerDaGap(sysSettings.security_timer_da_gap || '+7 days');
+      setDbTimerBooking(sysSettings.security_timer_booking || '+1 month');
+      setDbTimerDatCoc(sysSettings.security_timer_dat_coc || '+10 years');
+      setDbTimerDongDeal(sysSettings.security_timer_dong_deal || '+10 years');
     }
   }, [sysSettings]);
 
@@ -1178,9 +1224,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         security_timer_chua_xac_dinh: dbTimerChuaXacDinh,
         security_timer_quan_tam: dbTimerQuanTam,
         security_timer_thien_chi: dbTimerThienChi,
-        security_timer_dong_y_gap: dbTimerDongYGap,
+        security_timer_dong_y_gap: dbTimerThienChi,
         security_timer_da_gap: dbTimerDaGap,
-        security_timer_booking: dbTimerBooking
+        security_timer_booking: dbTimerBooking,
+        security_timer_dat_coc: dbTimerDatCoc,
+        security_timer_dong_deal: dbTimerDongDeal
       };
 
       const res = await fetchAPI('save_settings', {
@@ -1189,8 +1237,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       });
 
       if (res && res.success) {
-        toast.success(t("Cấu hình Kho Data Chung đã được lưu!"));
+        clearSettingsCache();
+        toast.success(t("Cấu hình Kho Data Chung đã được lưu và đồng bộ!"));
         setSysSettings(payload);
+        window.dispatchEvent(new CustomEvent('system_settings_updated', { detail: payload }));
         setShowDatabankSettingsModal(false);
         fetchPublicLeads();
       } else {
@@ -4903,11 +4953,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const today = new Date();
     const dayKey = today.getDay() === 0 ? '7' : String(today.getDay());
     const profile = impersonatedSale || data.consultant_profile;
-    let workStart = profile?.work_start_time || '08:00';
+    let workStart = profile?.work_start_time || sysSettings?.global_work_start_time || '08:00';
     if (profile?.work_schedule && profile.work_schedule[dayKey]?.start) {
       workStart = profile.work_schedule[dayKey].start;
     } else if (profile?.today_work_start_time) {
       workStart = profile.today_work_start_time;
+    } else if (sysSettings?.global_work_schedule && sysSettings.global_work_schedule[dayKey]?.start) {
+      workStart = sysSettings.global_work_schedule[dayKey].start;
     }
     const curHM = today.toTimeString().substring(0, 5); 
     return curHM > workStart;
@@ -4928,11 +4980,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           setPublicQuota((prev: any) => ({
             ...prev,
             claims_hour: prev?.claims_hour ?? 0,
-            limit_hour: prev?.limit_hour ?? 5,
+            limit_hour: prev?.limit_hour ?? Number(sysSettings?.databank_limit_per_hour || 5),
             claims_day: prev?.claims_day ?? 0,
-            limit_day: prev?.limit_day ?? 20,
+            limit_day: prev?.limit_day ?? Number(sysSettings?.databank_limit_per_day || 20),
             claims_month: prev?.claims_month ?? 0,
-            limit_month: prev?.limit_month ?? 300,
+            limit_month: prev?.limit_month ?? Number(sysSettings?.databank_limit_per_month || 300),
             max_parallel_sales_per_client: Number(res.max_parallel_claims)
           }));
         }
@@ -8619,21 +8671,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     {
                       label: t('Giờ'),
                       value: publicQuota.claims_hour ?? 0,
-                      limit: publicQuota.limit_hour ?? 5,
+                      limit: publicQuota.limit_hour ?? Number(sysSettings?.databank_limit_per_hour || 3),
                       icon: <Clock size={12} />,
                       color: 'var(--color-primary)',
                     },
                     {
                       label: t('Ngày'),
                       value: publicQuota.claims_day ?? 0,
-                      limit: publicQuota.limit_day ?? 20,
+                      limit: publicQuota.limit_day ?? Number(sysSettings?.databank_limit_per_day || 2),
                       icon: <Calendar size={12} />,
                       color: '#d97706',
                     },
                     {
                       label: t('Tháng'),
                       value: publicQuota.claims_month ?? 0,
-                      limit: publicQuota.limit_month ?? 300,
+                      limit: publicQuota.limit_month ?? Number(sysSettings?.databank_limit_per_month || 300),
                       icon: <Layers size={12} />,
                       color: '#2563eb',
                     }
@@ -8696,7 +8748,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
               {/* Action buttons for Admin */}
               {isAdmin && selectedPublicLeads.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => handleOpenRestoreReclaimedModal(selectedPublicLeads)}
+                    style={{
+                      height: '30px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      backgroundColor: 'rgba(217, 119, 6, 0.12)',
+                      color: '#d97706',
+                      border: '1px solid rgba(217, 119, 6, 0.3)',
+                      cursor: 'pointer'
+                    }}
+                    title={t('Back lại các lead bị thu hồi cho Sale cũ hoặc chỉ định Sale mới')}
+                  >
+                    <RotateCcw size={12} />
+                    {t('Back lại thu hồi')} ({selectedPublicLeads.length})
+                  </button>
+
                   {showDeletedFilter !== 'only' && (
                     <button
                       onClick={() => handleDeletePublicLeads(selectedPublicLeads)}
@@ -8892,6 +8966,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           <Building2 size={11} /> {lead.project_name}
                         </span>
                       )}
+                      {isAdmin && lead.reclaimed_from?.name && (
+                        <span style={{ fontSize: '0.7rem', color: '#d97706', fontWeight: 700, marginTop: '2px' }}>
+                          {t('Thu hồi từ')}: {lead.reclaimed_from.name}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
@@ -8971,7 +9050,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Liên hệ')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Trạng thái')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Thời gian ra kho')}</th>
-                    <th style={{ padding: '1rem', width: isAdmin ? 190 : 140 }}></th>
+                    <th style={{ padding: '1rem', width: isAdmin ? 230 : 140 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -9057,6 +9136,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 </span>
                               )}
                             </div>
+                            {isAdmin && lead.reclaimed_from?.name && (
+                              <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                background: 'rgba(217, 119, 6, 0.08)',
+                                border: '1px solid rgba(217, 119, 6, 0.2)',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                color: '#d97706',
+                                marginTop: '2px'
+                              }}>
+                                <RotateCcw size={10} />
+                                {t('Thu hồi từ')}: <strong>{lead.reclaimed_from.name}</strong>
+                              </div>
+                            )}
                             {(() => {
                               const currentUserRole = String(user?.role || displayUser?.role || '').toLowerCase();
                               const currentUserId = Number(user?.id || displayUser?.id || 0);
@@ -9125,6 +9222,32 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               <>
                                 {isAdmin && (
                                   <>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenRestoreReclaimedModal([lead.id]);
+                                      }}
+                                      className="btn sm outline"
+                                      style={{
+                                        height: 32,
+                                        padding: '0 10px',
+                                        borderRadius: '16px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px',
+                                        border: '1px solid rgba(217, 119, 6, 0.3)',
+                                        background: 'rgba(217, 119, 6, 0.08)',
+                                        color: '#d97706',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer'
+                                      }}
+                                      title={lead.reclaimed_from?.name ? `${t('Back lại cho')} ${lead.reclaimed_from.name}` : t('Back lại thu hồi cho Sale')}
+                                    >
+                                      <RotateCcw size={12} />
+                                      {t('Back lại')}
+                                    </button>
                                     {Number(lead.deleted_from_databank) === 1 ? (
                                       <button
                                         onClick={(e) => {
@@ -9357,6 +9480,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>
                   {t('SĐT:')} <strong>{adminActionLead.phone || '—'}</strong> | {t('Email:')} <strong>{adminActionLead.email || '—'}</strong>
                 </p>
+                {adminActionLead.reclaimed_from?.name && (
+                  <p style={{ fontSize: '0.78rem', color: '#d97706', fontWeight: 700, margin: '6px 0 0' }}>
+                    {t('Thu hồi từ Sale:')} {adminActionLead.reclaimed_from.name}
+                  </p>
+                )}
                 {adminActionLead.released_to_kho_at && (
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: '4px 0 0' }}>
                     {t('Thời gian ra kho:')} {parseServerDate(adminActionLead.released_to_kho_at).toLocaleString('vi-VN')}
@@ -9372,6 +9500,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 flexDirection: 'column', 
                 gap: '10px' 
               }}>
+                <button
+                  onClick={() => {
+                    const targetId = adminActionLead.id;
+                    setAdminActionLead(null);
+                    handleOpenRestoreReclaimedModal([targetId]);
+                  }}
+                  className="btn primary"
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#d97706', borderColor: '#d97706' }}
+                >
+                  <RotateCcw size={16} />
+                  {adminActionLead.reclaimed_from?.name
+                    ? `${t('Back lại thu hồi cho')} ${adminActionLead.reclaimed_from.name}`
+                    : t('Back lại thu hồi cho Sale')}
+                </button>
+
                 {Number(adminActionLead.deleted_from_databank) === 1 ? (
                   <button
                     onClick={() => {
@@ -9423,6 +9566,71 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     {t('Chặn vĩnh viễn liên hệ')}
                   </button>
                 )}
+              </div>
+            </div>
+          </CustomModal>
+        )}
+        {restoreReclaimedModalOpen && (
+          <CustomModal
+            isOpen={restoreReclaimedModalOpen}
+            onClose={() => !restoringReclaimed && setRestoreReclaimedModalOpen(false)}
+            title={t('Back lại khách hàng đã bị thu hồi')}
+            width="480px"
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
+              <div style={{
+                padding: '0.875rem 1rem',
+                borderRadius: '10px',
+                background: 'rgba(217, 119, 6, 0.08)',
+                border: '1px solid rgba(217, 119, 6, 0.2)',
+                fontSize: '0.82rem',
+                color: 'var(--color-text)',
+                lineHeight: 1.5
+              }}>
+                {t('Bạn đang chọn')} <strong>{restoreReclaimedPersonIds.length}</strong> {t('khách hàng trong Kho Databank để khôi phục quyền chăm sóc và gia hạn lại Đồng hồ bảo mật.')}
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '6px', display: 'block' }}>
+                  {t('Người nhận lại chăm sóc')}
+                </label>
+                <select
+                  className="form-select"
+                  value={restoreReclaimedTargetOwnerId}
+                  onChange={e => setRestoreReclaimedTargetOwnerId(e.target.value)}
+                  style={{ width: '100%', height: '40px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600 }}
+                >
+                  <option value="">{t('— Tự động trả về cho Sale bị thu hồi trước đó —')}</option>
+                  {users
+                    .filter((u: any) => !['blocked', 'inactive'].includes(String(u.status || '').toLowerCase()))
+                    .map((u: any) => (
+                      <option key={u.id} value={String(u.id)}>
+                        {u.name || u.username} ({u.role || 'Sale'})
+                      </option>
+                    ))}
+                </select>
+                <span style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)', marginTop: '6px', display: 'block' }}>
+                  {t('Nếu để trống, hệ thống sẽ tự động tìm và trả khách về đúng Sale đã từng giữ khách trước khi bị thu hồi.')}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+                <button
+                  className="btn outline"
+                  onClick={() => setRestoreReclaimedModalOpen(false)}
+                  disabled={restoringReclaimed}
+                >
+                  {t('Hủy')}
+                </button>
+                <button
+                  className="btn primary"
+                  onClick={handleExecuteRestoreReclaimed}
+                  disabled={restoringReclaimed}
+                  style={{ background: '#d97706', borderColor: '#d97706', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  {restoringReclaimed ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                  {restoringReclaimed ? t('Đang khôi phục...') : t('Xác nhận Back lại')}
+                </button>
               </div>
             </div>
           </CustomModal>
@@ -18346,11 +18554,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   setter: setDbTimerChuaXacDinh,
                   highlight: true
                 },
-                { label: t("Quan tâm"), value: dbTimerQuanTam, setter: setDbTimerQuanTam },
-                { label: t("Thiện chí"), value: dbTimerThienChi, setter: setDbTimerThienChi },
-                { label: t("Đồng ý gặp"), value: dbTimerDongYGap, setter: setDbTimerDongYGap },
-                { label: t("Đã gặp"), value: dbTimerDaGap, setter: setDbTimerDaGap },
-                { label: t("Booking"), value: dbTimerBooking, setter: setDbTimerBooking }
+                { label: sysSettings?.pipeline_status_labels?.quan_tam || t("Quan tâm"), value: dbTimerQuanTam, setter: setDbTimerQuanTam },
+                { label: sysSettings?.pipeline_status_labels?.thien_chi || sysSettings?.pipeline_status_labels?.dong_y_gap || t("Thiện chí"), value: dbTimerThienChi, setter: (val: string) => { setDbTimerThienChi(val); setDbTimerDongYGap(val); } },
+                { label: sysSettings?.pipeline_status_labels?.da_gap || t("Đã gặp"), value: dbTimerDaGap, setter: setDbTimerDaGap },
+                { label: sysSettings?.pipeline_status_labels?.booking || t("Booking"), value: dbTimerBooking, setter: setDbTimerBooking },
+                { label: sysSettings?.pipeline_status_labels?.dat_coc || t("Đặt cọc"), value: dbTimerDatCoc, setter: setDbTimerDatCoc },
+                { label: sysSettings?.pipeline_status_labels?.dong_deal || t("Đã đóng deal"), value: dbTimerDongDeal, setter: setDbTimerDongDeal }
               ].map((timer: any, idx) => {
                 const parsed = parseTimerString(timer.value);
                 return (
@@ -18557,9 +18766,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
                   {t("Để đảm bảo công bằng, mỗi Sale có một hạn mức nhận số từ Databank: tối đa ")}
-                  <strong>{sysSettings?.databank_limit_per_hour || 5} {t("số/giờ")}</strong>
+                  <strong>{sysSettings?.databank_limit_per_hour || 3} {t("số/giờ")}</strong>
+                  {t(", ")}
+                  <strong>{sysSettings?.databank_limit_per_day || 2} {t("số/ngày")}</strong>
                   {t(" và ")}
-                  <strong>{sysSettings?.databank_limit_per_day || 10} {t("số/ngày")}</strong>.
+                  <strong>{sysSettings?.databank_limit_per_month || 300} {t("số/tháng")}</strong>.
                   {t(" Nếu đạt ngưỡng tối đa, bạn cần chờ chu kỳ thời gian tiếp theo để có thể nhận thêm.")}
                 </p>
               </div>
@@ -18582,11 +18793,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {t("2. Đồng hồ bảo mật chăm sóc (Security Timer)")}
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  {t("Khi bạn nhận một lead từ Databank, đồng hồ bảo mật bắt đầu đếm ngược (Thời hạn bảo mật trạng thái Booking là ")}
-                  <strong>{sysSettings?.security_timer_booking || 120} {t("giờ")}</strong>
-                  {t(", Đã Gặp là ")}
-                  <strong>{sysSettings?.security_timer_da_gap || 72} {t("giờ")}</strong>
-                  {t("). Bạn CẦN thực hiện ít nhất 1 tương tác (gọi điện, tạo note chất lượng, đặt lịch hẹn) trước khi hết hạn. Nếu không tương tác, lead sẽ bị hệ thống TỰ ĐỘNG THU HỒI về lại Databank.")}
+                  {(() => {
+                    const fmtTimer = (raw: string | undefined, defVal: string) => {
+                      const p = parseTimerString(raw || defVal);
+                      const unitMap: Record<string, string> = { hours: t('giờ'), days: t('ngày'), weeks: t('tuần'), months: t('tháng'), years: t('năm') };
+                      return `${p.value} ${unitMap[p.unit] || t('giờ')}`;
+                    };
+                    const dbRecallHours = Number(sysSettings?.databank_claim_recall_hours || 0);
+                    const initialDbTimer = dbRecallHours > 0 ? `+${dbRecallHours} hours` : sysSettings?.security_timer_chua_xac_dinh;
+                    return (
+                      <>
+                        {t("Khi bạn nhận một lead từ Databank, đồng hồ bảo mật bắt đầu đếm ngược (Thời hạn giữ khách chưa xác định là ")}
+                        <strong>{fmtTimer(initialDbTimer, '+24 hours')}</strong>
+                        {t(", trạng thái Đã Gặp là ")}
+                        <strong>{fmtTimer(sysSettings?.security_timer_da_gap, '+7 days')}</strong>
+                        {t(", Booking là ")}
+                        <strong>{fmtTimer(sysSettings?.security_timer_booking, '+1 month')}</strong>
+                        {t("). Bạn CẦN thực hiện ít nhất 1 tương tác (gọi điện, tạo note chất lượng, đặt lịch hẹn) trước khi hết hạn. Nếu không tương tác, lead sẽ bị hệ thống TỰ ĐỘNG THU HỒI về lại Databank.")}
+                      </>
+                    );
+                  })()}
                 </p>
               </div>
             </div>

@@ -1639,25 +1639,9 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         $currentTime = date('H:i');
                         $nightWindow = getNightShiftWindowInfo($conn, $currentTime);
                         foreach ($activeConsultants as $c) {
-                            // Check cooldown (grab_cooldown_seconds)
-                            $cooldownStmt = $conn->prepare("
-                                SELECT 1 FROM distribution_logs 
-                                WHERE assigned_to = ? 
-                                  AND round_id = ? 
-                                  AND status = 'grabbed' 
-                                  AND received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND) 
-                                LIMIT 1
-                            ");
-                            if ($cooldownStmt) {
-                                $cooldownStmt->bind_param("iii", $c['id'], $assignedRoundId, $grabCooldownSeconds);
-                                $cooldownStmt->execute();
-                                $cdRes = $cooldownStmt->get_result();
-                                $isOnCooldown = ($cdRes && $cdRes instanceof mysqli_result) ? ($cdRes->num_rows > 0) : false;
-                                $cooldownStmt->close();
-
-                                if ($isOnCooldown) {
-                                    continue;
-                                }
+                            // Check cooldown (grab_cooldown_seconds) across both distribution_logs and lead_offers
+                            if (isConsultantOnGrabCooldown($conn, $c['id'], $assignedRoundId, $grabCooldownSeconds)) {
+                                continue;
                             }
 
                             // Check active on-duty / shift registration
@@ -3539,7 +3523,9 @@ switch ($action) {
             SELECT COUNT(*) as cnt 
             FROM contacts c
             WHERE c.deleted_at IS NULL
-              AND NOT EXISTS (SELECT 1 FROM activities WHERE related_type = 'contact' AND related_id = c.id)
+              AND (c.status IS NULL OR c.status != 'rejected')
+              AND c.pipeline_status IN ('chua_xac_dinh', 'quan_tam')
+              AND NOT EXISTS (SELECT 1 FROM activities WHERE (related_type = 'contact' AND related_id = c.id) OR contact_id = c.id)
               AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = c.id)
         ";
         if ($isSale) {
@@ -3553,7 +3539,9 @@ switch ($action) {
         if ($resUncontacted) {
             $uncontactedCount = (int) ($resUncontacted->fetch_assoc()['cnt'] ?? 0);
         }
-        $leadRecallMinutes = (int) get_system_setting($conn, 'lead_response_timeout_minutes');
+        $leadRecallMinutes = function_exists('get_lead_recall_minutes')
+            ? (int) get_lead_recall_minutes($conn)
+            : (int) (get_system_setting($conn, 'lead_response_timeout_minutes') ?: 2);
 
         echo json_encode([
             'success' => true,
@@ -5910,7 +5898,7 @@ switch ($action) {
         $weekendShiftDays = '6,7';
         $weekendMinCheckinDays = 0;
         $autoApproveNight = 1;
-        $autoApproveWeekend = 0;
+        $autoApproveWeekend = 1;
         $autoApproveHoliday = 0;
 
         $resSys = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (
@@ -6685,11 +6673,29 @@ switch ($action) {
         if ($cooldownSec > 0) {
             $statusList = implode(',', $statuses);
             $res = $conn->query("
-                SELECT assigned_to, MAX(received_at) as last_received 
-                FROM distribution_logs 
-                WHERE round_id = $roundId 
-                  AND status IN ($statusList) 
-                  AND received_at >= DATE_SUB(NOW(), INTERVAL $cooldownSec SECOND)
+                SELECT assigned_to, MAX(last_received) as last_received
+                FROM (
+                    SELECT dl.assigned_to, MAX(dl.received_at) as last_received 
+                    FROM distribution_logs dl
+                    WHERE dl.status IN ($statusList) 
+                      AND dl.received_at >= DATE_SUB(NOW(), INTERVAL $cooldownSec SECOND)
+                      AND (
+                          dl.round_id = $roundId
+                          OR (dl.round_id IS NULL AND EXISTS (
+                              SELECT 1 FROM lead_offers lo2
+                              WHERE lo2.lead_id = dl.lead_id AND lo2.round_id = $roundId
+                          ))
+                      )
+                    GROUP BY dl.assigned_to
+                    UNION ALL
+                    SELECT lo.user_id as assigned_to, MAX(COALESCE(lo.responded_at, lo.offered_at)) as last_received
+                    FROM lead_offers lo
+                    WHERE lo.round_id = $roundId
+                      AND lo.status = 'accepted'
+                      AND COALESCE(lo.responded_at, lo.offered_at) >= DATE_SUB(NOW(), INTERVAL $cooldownSec SECOND)
+                    GROUP BY lo.user_id
+                ) combined_cd
+                WHERE assigned_to IS NOT NULL AND assigned_to > 0
                 GROUP BY assigned_to
             ");
             if ($res) {
@@ -6745,7 +6751,10 @@ switch ($action) {
         }
         $reqCheckinWeekend = (int) get_system_setting($conn, 'require_checkin_weekend_lead');
         $reqCheckinHoliday = (int) get_system_setting($conn, 'require_checkin_holiday_lead');
+        $reqCheckinGeneral = get_system_setting($conn, 'require_checkin_to_receive_leads');
+        $requireCheckinWeekday = ($reqCheckinGeneral === null || $reqCheckinGeneral === '' || (int)$reqCheckinGeneral === 1);
         $allowPendingCheckin = (int) get_system_setting($conn, 'allow_lead_distribution_on_pending_checkin');
+        $requireOntimeCheckin = (int) get_system_setting($conn, 'require_ontime_checkin_to_receive_leads');
 
         $cRes = $conn->query("
             SELECT c.id, c.name, c.email, c.status, c.vacation_mode, c.leave_start, c.leave_end, 
@@ -6799,13 +6808,15 @@ switch ($action) {
             }
 
             $checkInStatusByUser = [];
-            $ciStmt = $conn->prepare("SELECT user_id, status FROM check_ins WHERE check_in_date = ?");
+            $checkInLateMinutesByUser = [];
+            $ciStmt = $conn->prepare("SELECT user_id, status, late_minutes FROM check_ins WHERE check_in_date = ?");
             if ($ciStmt) {
                 $ciStmt->bind_param("s", $todayStr);
                 $ciStmt->execute();
                 $ciRes = $ciStmt->get_result();
                 while ($ciRow = $ciRes->fetch_assoc()) {
                     $checkInStatusByUser[(int)$ciRow['user_id']] = $ciRow['status'];
+                    $checkInLateMinutesByUser[(int)$ciRow['user_id']] = (int)($ciRow['late_minutes'] ?? 0);
                 }
                 $ciStmt->close();
             }
@@ -6903,10 +6914,12 @@ switch ($action) {
                 // Check-in requirement gate (Gate 2)
                 $mustCheckinOnWeekend = ($isRestDay && $reqCheckinWeekend === 1);
                 $mustCheckinOnHoliday = (!empty($holidayName) && $reqCheckinHoliday === 1);
-                if ($mustCheckinOnWeekend || $mustCheckinOnHoliday) {
-                    $bypassCheckIn = $isApprovedNightShift;
+                if ($isApprovedNightShift) {
+                    $bypassCheckIn = true;
+                } else if ($isWeekendOrHoliday) {
+                    $bypassCheckIn = !($mustCheckinOnWeekend || $mustCheckinOnHoliday);
                 } else {
-                    $bypassCheckIn = $isWeekendOrHoliday || $isApprovedNightShift;
+                    $bypassCheckIn = !$requireCheckinWeekday;
                 }
 
                 if (!$bypassCheckIn) {
@@ -6932,6 +6945,14 @@ switch ($action) {
                         $consultantStatuses[$uId] = [
                             'status' => 'rejected_checkin',
                             'label' => 'Check-in bị từ chối',
+                            'on_cooldown' => false
+                        ];
+                        continue;
+                    }
+                    if ($requireOntimeCheckin === 1 && ($checkInLateMinutesByUser[$uId] ?? 0) > 0) {
+                        $consultantStatuses[$uId] = [
+                            'status' => 'late_checkin',
+                            'label' => 'Đi trễ (' . $checkInLateMinutesByUser[$uId] . 'p)',
                             'on_cooldown' => false
                         ];
                         continue;
@@ -7503,9 +7524,22 @@ switch ($action) {
                   AND NOT EXISTS (
                       SELECT 1 FROM distribution_logs dl 
                       WHERE dl.assigned_to = lo.user_id
-                        AND dl.round_id = lo.round_id 
                         AND dl.status = 'grabbed' 
                         AND dl.received_at >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
+                        AND (
+                            dl.round_id = lo.round_id
+                            OR (dl.round_id IS NULL AND EXISTS (
+                                SELECT 1 FROM lead_offers lo2
+                                WHERE lo2.lead_id = dl.lead_id AND lo2.round_id = lo.round_id
+                            ))
+                        )
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM lead_offers lo_prev
+                      WHERE lo_prev.user_id = lo.user_id
+                        AND lo_prev.round_id = lo.round_id
+                        AND lo_prev.status = 'accepted'
+                        AND COALESCE(lo_prev.responded_at, lo_prev.offered_at) >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
                   )
                 ORDER BY lo.expires_at ASC
             ");
@@ -7572,9 +7606,9 @@ switch ($action) {
                 break;
             }
 
-            // Lock and verify user's claim offer
+            // Lock and verify user's claim offer (select round_id directly from lead_offers!)
             $offerStmt = $conn->prepare("
-                SELECT id, expires_at 
+                SELECT id, round_id, expires_at 
                 FROM lead_offers 
                 WHERE lead_id = ? AND user_id = ? AND status = 'pending' 
                 FOR UPDATE
@@ -7592,39 +7626,76 @@ switch ($action) {
 
             if (strtotime($offerRes['expires_at']) < time()) {
                 $conn->query("UPDATE lead_offers SET status = 'expired' WHERE id = " . (int)$offerRes['id']);
-                $conn->rollback();
+                $conn->commit();
                 echo json_encode(['success' => false, 'message' => 'Thời gian đếm ngược nhận khách hàng này đã kết thúc']);
                 break;
             }
 
+            // Resolve round_id reliably: prioritize lead_offers.round_id, then leads.target_round_id, then distribution_logs.round_id
+            $targetRoundId = (int)($offerRes['round_id'] ?? 0);
+            if ($targetRoundId <= 0) {
+                $targetRoundId = (int)($resChk['target_round_id'] ?? 0);
+            }
+            if ($targetRoundId <= 0) {
+                $dlRoundStmt = $conn->prepare("SELECT round_id FROM distribution_logs WHERE lead_id = ? AND round_id IS NOT NULL ORDER BY id DESC LIMIT 1");
+                if ($dlRoundStmt) {
+                    $dlRoundStmt->bind_param("i", $lead_id);
+                    $dlRoundStmt->execute();
+                    $dlRoundRow = $dlRoundStmt->get_result()->fetch_assoc();
+                    $dlRoundStmt->close();
+                    if ($dlRoundRow && !empty($dlRoundRow['round_id'])) {
+                        $targetRoundId = (int)$dlRoundRow['round_id'];
+                    }
+                }
+            }
+
             // Cooldown check: verify if the user has grabbed another lead in this round within grab_cooldown_seconds
-            $targetRoundId = (int)($resChk['target_round_id'] ?? 0);
             if ($targetRoundId > 0) {
                 $cooldownStmt = $conn->prepare("
                     SELECT dr.grab_cooldown_seconds,
-                           TIMESTAMPDIFF(SECOND, MAX(dl.received_at), NOW()) as elapsed
+                           (
+                               SELECT TIMESTAMPDIFF(SECOND, MAX(last_grabbed_at), NOW())
+                               FROM (
+                                   SELECT dl.received_at AS last_grabbed_at
+                                   FROM distribution_logs dl
+                                   WHERE (dl.assigned_to = ? OR dl.assigned_to = (SELECT c.id FROM consultants c WHERE c.email = (SELECT u.email FROM users u WHERE u.id = ? LIMIT 1) LIMIT 1))
+                                     AND dl.status = 'grabbed'
+                                     AND dl.received_at >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
+                                     AND (
+                                         dl.round_id = dr.id
+                                         OR (dl.round_id IS NULL AND EXISTS (
+                                             SELECT 1 FROM lead_offers lo2
+                                             WHERE lo2.lead_id = dl.lead_id AND lo2.round_id = dr.id
+                                         ))
+                                     )
+                                   UNION ALL
+                                   SELECT COALESCE(lo_prev.responded_at, lo_prev.offered_at) AS last_grabbed_at
+                                   FROM lead_offers lo_prev
+                                   WHERE lo_prev.user_id = ?
+                                     AND lo_prev.round_id = dr.id
+                                     AND lo_prev.status = 'accepted'
+                                     AND lo_prev.lead_id != ?
+                                     AND COALESCE(lo_prev.responded_at, lo_prev.offered_at) >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
+                               ) cd_events
+                           ) as elapsed
                     FROM distribution_rounds dr
-                    LEFT JOIN distribution_logs dl ON dl.round_id = dr.id 
-                         AND (dl.assigned_to = ? OR dl.assigned_to = (SELECT c.id FROM consultants c WHERE c.email = (SELECT u.email FROM users u WHERE u.id = ? LIMIT 1) LIMIT 1))
-                         AND dl.status = 'grabbed'
-                         AND dl.received_at >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
                     WHERE dr.id = ?
-                    GROUP BY dr.id, dr.grab_cooldown_seconds
+                    LIMIT 1
                 ");
                 if ($cooldownStmt) {
-                    $cooldownStmt->bind_param("iii", $userId, $userId, $targetRoundId);
+                    $cooldownStmt->bind_param("iiiii", $userId, $userId, $userId, $lead_id, $targetRoundId);
                     $cooldownStmt->execute();
                     $cdRes = $cooldownStmt->get_result()->fetch_assoc();
                     $cooldownStmt->close();
 
                     if ($cdRes && $cdRes['elapsed'] !== null) {
                         $cdSec = (int)($cdRes['grab_cooldown_seconds'] ?? 3600);
-                        $elapsed = (int)$cdRes['elapsed'];
+                        $elapsed = max(0, (int)$cdRes['elapsed']);
                         if ($elapsed < $cdSec) {
                             $remainMins = max(1, ceil(($cdSec - $elapsed) / 60));
-                            // Expire remaining offers of this round for this user
+                            // Expire remaining offers of this round for this user and commit the expiration
                             $conn->query("UPDATE lead_offers SET status = 'expired' WHERE user_id = $userId AND round_id = $targetRoundId AND status = 'pending'");
-                            $conn->rollback();
+                            $conn->commit();
                             echo json_encode([
                                 'success' => false, 
                                 'message' => "Bạn đang trong thời gian chờ (còn khoảng $remainMins phút) trước khi được nhận data tiếp theo trong vòng này."
@@ -7685,8 +7756,9 @@ switch ($action) {
             }
 
             // User wins!
-            $stmtUp = $conn->prepare("UPDATE leads SET assigned_to = ?, is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW() WHERE id = ?");
-            $stmtUp->bind_param("ii", $userId, $lead_id);
+            $roundId = $targetRoundId > 0 ? $targetRoundId : null;
+            $stmtUp = $conn->prepare("UPDATE leads SET assigned_to = ?, is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW(), target_round_id = COALESCE(target_round_id, ?) WHERE id = ?");
+            $stmtUp->bind_param("iii", $userId, $roundId, $lead_id);
             $stmtUp->execute();
             $stmtUp->close();
 
@@ -7700,8 +7772,6 @@ switch ($action) {
             $upOtherOffers->bind_param("ii", $lead_id, $userId);
             $upOtherOffers->execute();
             $upOtherOffers->close();
-
-            $roundId = $resChk['target_round_id'] ? (int)$resChk['target_round_id'] : null;
 
             // Also immediately expire all other pending offers of this winning user in the same round (cooldown starts)
             if ($roundId) {
@@ -13081,6 +13151,9 @@ switch ($action) {
                     $cStmt->close();
 
                     foreach ($activeConsultants as $c) {
+                        if (isConsultantOnGrabCooldown($conn, $c['id'], $targetRoundId, $grabCooldownSeconds)) {
+                            continue;
+                        }
                         if (checkConsultantGates($conn, $c['id'], $lead, true) === true) {
                             $eligibleConsultants[] = $c;
                         }
@@ -13844,6 +13917,25 @@ switch ($action) {
         while ($row = $res->fetch_assoc()) {
             $data[$row['setting_key']] = $row['setting_value'];
         }
+        // Normalize synchronized security timer between thien_chi and dong_y_gap
+        if (!empty($data['security_timer_thien_chi'])) {
+            $data['security_timer_dong_y_gap'] = $data['security_timer_thien_chi'];
+        } elseif (!empty($data['security_timer_dong_y_gap'])) {
+            $data['security_timer_thien_chi'] = $data['security_timer_dong_y_gap'];
+        }
+        // Normalize default label of dong_y_gap -> Thiện chí
+        if (!empty($data['pipeline_status_labels'])) {
+            $lbls = json_decode($data['pipeline_status_labels'], true);
+            if (is_array($lbls)) {
+                if (($lbls['dong_y_gap'] ?? '') === 'Đồng ý gặp' || empty($lbls['dong_y_gap'])) {
+                    $lbls['dong_y_gap'] = 'Thiện chí';
+                }
+                if (empty($lbls['thien_chi']) || $lbls['thien_chi'] === 'Đồng ý gặp') {
+                    $lbls['thien_chi'] = $lbls['dong_y_gap'];
+                }
+                $data['pipeline_status_labels'] = json_encode($lbls, JSON_UNESCAPED_UNICODE);
+            }
+        }
         $data['backend_version'] = defined('BACKEND_VERSION') ? BACKEND_VERSION : '1.5.3';
         echo json_encode(['success' => true, 'data' => $data]);
         break;
@@ -14134,6 +14226,47 @@ switch ($action) {
                 if ($v !== null && $v !== '' && !is_array($rules)) {
                     echo json_encode(['success' => false, 'message' => 'Cấu hình quy tắc lọc thủ công không hợp lệ.']);
                     break 2;
+                }
+            }
+        }
+
+        // Bidirectionally synchronize security_timer_thien_chi and security_timer_dong_y_gap
+        if (isset($input['security_timer_thien_chi']) && !isset($input['security_timer_dong_y_gap'])) {
+            $input['security_timer_dong_y_gap'] = $input['security_timer_thien_chi'];
+        } elseif (isset($input['security_timer_dong_y_gap']) && !isset($input['security_timer_thien_chi'])) {
+            $input['security_timer_thien_chi'] = $input['security_timer_dong_y_gap'];
+        } elseif (isset($input['security_timer_thien_chi']) && isset($input['security_timer_dong_y_gap'])) {
+            $input['security_timer_dong_y_gap'] = $input['security_timer_thien_chi'];
+        }
+
+        // Normalize pipeline_status_labels so dong_y_gap / thien_chi is consistently "Thiện chí" unless customized
+        if (isset($input['pipeline_status_labels'])) {
+            $lblArr = is_array($input['pipeline_status_labels'])
+                ? $input['pipeline_status_labels']
+                : json_decode((string)$input['pipeline_status_labels'], true);
+            if (is_array($lblArr)) {
+                if (($lblArr['dong_y_gap'] ?? '') === 'Đồng ý gặp') {
+                    $lblArr['dong_y_gap'] = 'Thiện chí';
+                }
+                if (isset($lblArr['dong_y_gap']) && empty($lblArr['thien_chi'])) {
+                    $lblArr['thien_chi'] = $lblArr['dong_y_gap'];
+                }
+                $input['pipeline_status_labels'] = json_encode($lblArr, JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        // Sync uncontacted_lead_share_hours when security_timer_chua_xac_dinh is saved (keep databank_claim_recall_hours independent!)
+        if (!empty($input['security_timer_chua_xac_dinh']) && is_string($input['security_timer_chua_xac_dinh'])) {
+            if (preg_match('/\+\s*(\d+)\s*(hour|hours|day|days|month|months)/i', $input['security_timer_chua_xac_dinh'], $mTimer)) {
+                $numVal = (int)$mTimer[1];
+                $unitVal = strtolower($mTimer[2]);
+                $hoursComputed = $numVal;
+                if (strpos($unitVal, 'day') === 0) $hoursComputed = $numVal * 24;
+                elseif (strpos($unitVal, 'month') === 0) $hoursComputed = $numVal * 24 * 30;
+                if ($hoursComputed > 0) {
+                    if (!isset($input['uncontacted_lead_share_hours'])) {
+                        $input['uncontacted_lead_share_hours'] = (string)$hoursComputed;
+                    }
                 }
             }
         }
@@ -16160,10 +16293,15 @@ switch ($action) {
         if ($success && $successC) {
             // Synchronize overtime_mode to night_shift_registrations
             if (isset($input['overtime_mode'])) {
+                $nsEndTimeStr = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+                $nsEndHour = (int)explode(':', $nsEndTimeStr)[0];
                 $curHour = (int)date('H');
-                $shiftDateToday = ($curHour < 6) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+                $shiftDateToday = ($curHour < $nsEndHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
                 if ($overtime_mode === 1) {
-                    $nsAutoApprove = in_array(strtolower($_SESSION['role'] ?? ''), ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) ? 1 : 0;
+                    $callerRole = strtolower($decodedUser['role'] ?? $_SESSION['role'] ?? '');
+                    $autoApproveNsSetting = get_system_setting($conn, 'auto_approve_night_shift');
+                    $isAutoApproveNs = ($autoApproveNsSetting === null || $autoApproveNsSetting === '' || (int)$autoApproveNsSetting === 1);
+                    $nsAutoApprove = ($isAutoApproveNs || in_array($callerRole, ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) ? 1 : 0;
                     $stmtNS = $conn->prepare("INSERT INTO night_shift_registrations (user_id, shift_date, approved) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE shift_date = VALUES(shift_date)");
                     if ($stmtNS) {
                         $stmtNS->bind_param("isi", $targetUserId, $shiftDateToday, $nsAutoApprove);
@@ -16182,6 +16320,10 @@ switch ($action) {
 
             // Synchronize weekend_shifts array to weekend_shift_registrations
             if (isset($input['weekend_shifts']) && is_array($input['weekend_shifts'])) {
+                $callerRole = strtolower($decodedUser['role'] ?? $_SESSION['role'] ?? '');
+                $autoApproveWsSetting = get_system_setting($conn, 'auto_approve_weekend_shift');
+                $isAutoApproveWs = ($autoApproveWsSetting === null || $autoApproveWsSetting === '' || (int)$autoApproveWsSetting === 1);
+                $wsAutoApprove = ($isAutoApproveWs || in_array($callerRole, ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) ? 1 : 0;
                 foreach ($input['weekend_shifts'] as $ws) {
                     $wsDate = isset($ws['date']) ? trim($ws['date']) : '';
                     $wsReg = !empty($ws['register']);
@@ -16199,9 +16341,9 @@ switch ($action) {
                         }
 
                         if ($wsReg) {
-                            $stmtWS = $conn->prepare("INSERT INTO weekend_shift_registrations (user_id, shift_date, approved) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE approved = 1");
+                            $stmtWS = $conn->prepare("INSERT INTO weekend_shift_registrations (user_id, shift_date, approved) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE shift_date = VALUES(shift_date)");
                             if ($stmtWS) {
-                                $stmtWS->bind_param("is", $targetUserId, $wsDate);
+                                $stmtWS->bind_param("isi", $targetUserId, $wsDate, $wsAutoApprove);
                                 $stmtWS->execute();
                                 $stmtWS->close();
                             }
@@ -17451,6 +17593,8 @@ switch ($action) {
               AND l.is_accepted = 1 
               AND l.source NOT IN ('ca_nhan', 'gioi_thieu')
               AND c.id IS NOT NULL 
+              AND c.pipeline_status IN ('chua_xac_dinh', 'quan_tam')
+              AND (c.status IS NULL OR c.status != 'rejected')
               AND NOT EXISTS (SELECT 1 FROM activities WHERE related_type = 'contact' AND related_id = c.id)
               AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = c.id)
               $managerFilterLeads
@@ -18816,12 +18960,9 @@ switch ($action) {
                 $eligibleGrabConsultants = [];
                 $competingNames = [];
                 foreach ($activeConsultants as $c) {
-                    $chkCd = $conn->prepare("SELECT 1 FROM distribution_logs WHERE assigned_to = ? AND round_id = ? AND status = 'grabbed' AND received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND) LIMIT 1");
-                    $chkCd->bind_param("iii", $c['id'], $target_round_id, $grabCooldownSeconds);
-                    $chkCd->execute();
-                    $inCd = $chkCd->get_result()->num_rows > 0;
-                    $chkCd->close();
-                    if ($inCd) continue;
+                    if (isConsultantOnGrabCooldown($conn, $c['id'], $target_round_id, $grabCooldownSeconds)) {
+                        continue;
+                    }
 
                     if (checkConsultantGates($conn, $c['id'], $leadRowData, true) === true) {
                         $eligibleGrabConsultants[] = $c;
@@ -21474,10 +21615,12 @@ switch ($action) {
 
             $createdBy = $saleUserId;
             $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
-            $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+3 hours';
-            $shareHours = (int)get_system_setting($conn, 'uncontacted_lead_share_hours');
-            if ($shareHours > 0) {
-                $chuaXacDinhDuration = "+$shareHours hours";
+            $databankRecallRaw = get_system_setting($conn, 'databank_claim_recall_hours');
+            $databankRecallHours = ($databankRecallRaw !== null && $databankRecallRaw !== '') ? (int)$databankRecallRaw : 24;
+            if ($databankRecallHours > 0) {
+                $chuaXacDinhDuration = "+{$databankRecallHours} hours";
+            } else {
+                $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+24 hours';
             }
             $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
@@ -21698,6 +21841,7 @@ switch ($action) {
         // Batch-fetch takers ONLY for the returned person_ids to avoid full-table scan on contacts
         if (!empty($personIds)) {
             $allTakers = [];
+            $reclaimedMap = [];
             $pidIn = implode(',', array_unique($personIds));
             $tRes = $conn->query("SELECT c.person_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
                                   FROM contacts c
@@ -21715,9 +21859,41 @@ switch ($action) {
                     ];
                 }
             }
+
+            if ($isStaffAdmin) {
+                $rRes = $conn->query("
+                    SELECT c.person_id, c.id as contact_id, c.owner_id as user_id,
+                           COALESCE(cons.name, u.full_name) as sale_name,
+                           COALESCE(cons.avatar, u.avatar_url) as sale_avatar,
+                           c.deleted_at as reclaimed_at
+                    FROM contacts c
+                    JOIN users u ON c.owner_id = u.id
+                    LEFT JOIN consultants cons ON u.email = cons.email
+                    WHERE c.deleted_at IS NOT NULL AND c.person_id IN ($pidIn)
+                    ORDER BY c.deleted_at DESC, c.id DESC
+                ");
+                if ($rRes) {
+                    while ($rRow = $rRes->fetch_assoc()) {
+                        $pid = (int)$rRow['person_id'];
+                        if (!isset($reclaimedMap[$pid])) {
+                            $reclaimedMap[$pid] = [
+                                'contact_id' => (int)$rRow['contact_id'],
+                                'user_id' => (int)$rRow['user_id'],
+                                'name' => $rRow['sale_name'],
+                                'avatar' => $rRow['sale_avatar'],
+                                'reclaimed_at' => $rRow['reclaimed_at']
+                            ];
+                        }
+                    }
+                }
+            }
+
             foreach ($publicLeads as &$pLead) {
                 $pid = (int)$pLead['id'];
                 $pLead['takers'] = $allTakers[$pid] ?? [];
+                if ($isStaffAdmin) {
+                    $pLead['reclaimed_from'] = $reclaimedMap[$pid] ?? null;
+                }
             }
             unset($pLead);
         }
@@ -22030,11 +22206,10 @@ switch ($action) {
              $stmtU->execute();
              $stmtU->close();
 
-             // Clear owner on contacts and reset status, and soft-delete them
+             // Soft-delete contacts (keep owner_id intact for Admin rollback history)
              $stmtDel = $conn->prepare("
                  UPDATE contacts 
-                 SET owner_id = NULL, 
-                     pipeline_status = 'chua_xac_dinh',
+                 SET pipeline_status = 'chua_xac_dinh',
                      status = 'lead',
                      security_expires_at = NULL,
                      parallel_assigned = 0,
@@ -22059,6 +22234,161 @@ switch ($action) {
         } catch (Exception $ex) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $ex->getMessage()]);
+        }
+        break;
+
+    case 'restore_reclaimed_databank_leads':
+        $role = $decodedUser['role'] ?? '';
+        if (!in_array($role, ['admin', 'superadmin', 'super_admin', 'director', 'manager'], true)) {
+            echo json_encode(['success' => false, 'message' => 'Chỉ Quản trị viên hoặc Quản lý mới có quyền khôi phục (Back lại) thu hồi!']);
+            break;
+        }
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $personIds = array_values(array_unique(array_filter(array_map('intval', (array)($input['person_ids'] ?? ($input['person_id'] ? [$input['person_id']] : []))))));
+        $contactIds = array_values(array_unique(array_filter(array_map('intval', (array)($input['contact_ids'] ?? [])))));
+        $leadIds = array_values(array_unique(array_filter(array_map('intval', (array)($input['lead_ids'] ?? [])))));
+        $targetOwnerId = isset($input['target_owner_id']) ? (int)$input['target_owner_id'] : 0;
+        $hideFromDatabank = !isset($input['hide_from_databank']) || (bool)$input['hide_from_databank'];
+
+        if (empty($personIds) && empty($contactIds) && empty($leadIds)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 khách hàng để khôi phục!']);
+            break;
+        }
+
+        // Map consultant_id -> user_id if needed
+        if ($targetOwnerId > 0) {
+            $chkU = $conn->query("SELECT id FROM users WHERE id = $targetOwnerId LIMIT 1");
+            if (!$chkU || $chkU->num_rows === 0) {
+                $chkC = $conn->query("SELECT u.id FROM consultants c JOIN users u ON u.email = c.email WHERE c.id = $targetOwnerId LIMIT 1");
+                if ($chkC && ($rC = $chkC->fetch_assoc())) {
+                    $targetOwnerId = (int)$rC['id'];
+                }
+            }
+        }
+
+        if (!empty($leadIds)) {
+            $lidIn = implode(',', $leadIds);
+            $lRes = $conn->query("SELECT person_id FROM leads WHERE id IN ($lidIn) AND person_id IS NOT NULL");
+            if ($lRes) {
+                while ($lr = $lRes->fetch_assoc()) {
+                    $personIds[] = (int)$lr['person_id'];
+                }
+            }
+            $personIds = array_values(array_unique(array_filter($personIds)));
+        }
+
+        if (!empty($personIds)) {
+            $pidIn = implode(',', $personIds);
+            $cRes = $conn->query("SELECT id, person_id FROM contacts WHERE person_id IN ($pidIn) ORDER BY (deleted_at IS NOT NULL) DESC, id DESC");
+            $seenP = [];
+            if ($cRes) {
+                while ($cr = $cRes->fetch_assoc()) {
+                    $p = (int)$cr['person_id'];
+                    if (!isset($seenP[$p])) {
+                        $seenP[$p] = true;
+                        $contactIds[] = (int)$cr['id'];
+                    }
+                }
+            }
+            $contactIds = array_values(array_unique(array_filter($contactIds)));
+        }
+
+        if (empty($contactIds)) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy hồ sơ chăm sóc trước đó của khách hàng này để khôi phục!']);
+            break;
+        }
+
+        $cidIn = implode(',', $contactIds);
+        $rowsRes = $conn->query("SELECT id, person_id, lead_id, owner_id, first_name, last_name, phone, pipeline_status FROM contacts WHERE id IN ($cidIn)");
+        $restoredCount = 0;
+        $freshExpires = date('Y-m-d H:i:s', strtotime('+3 days'));
+
+        $conn->begin_transaction();
+        try {
+            if ($rowsRes) {
+                while ($c = $rowsRes->fetch_assoc()) {
+                    $cid = (int)$c['id'];
+                    $pid = (int)($c['person_id'] ?? 0);
+                    $lid = (int)($c['lead_id'] ?? 0);
+                    if ($lid <= 0 && $pid > 0) {
+                        $lr = $conn->query("SELECT id FROM leads WHERE person_id = $pid ORDER BY id DESC LIMIT 1");
+                        if ($lr && ($lrow = $lr->fetch_assoc())) $lid = (int)$lrow['id'];
+                    }
+
+                    $restoreUserId = $targetOwnerId > 0 ? $targetOwnerId : (int)($c['owner_id'] ?? 0);
+                    if ($restoreUserId <= 0 && $pid > 0) {
+                        $rdl = $conn->query("SELECT user_id FROM returned_databank_leads WHERE person_id = $pid ORDER BY id DESC LIMIT 1");
+                        if ($rdl && ($rdlRow = $rdl->fetch_assoc())) $restoreUserId = (int)$rdlRow['user_id'];
+                    }
+                    if ($restoreUserId <= 0 && $lid > 0) {
+                        $dlRes = $conn->query("SELECT assigned_to FROM distribution_logs WHERE lead_id = $lid AND assigned_to IS NOT NULL AND assigned_to > 0 ORDER BY FIELD(status, 'recalled_to_databank', 'recalled', 'released_to_kho', 'databank_claim', 'grabbed', 'assigned'), id DESC LIMIT 1");
+                        if ($dlRes && ($dlRow = $dlRes->fetch_assoc())) {
+                            $rawAss = (int)$dlRow['assigned_to'];
+                            $uChk = $conn->query("SELECT id FROM users WHERE id = $rawAss LIMIT 1");
+                            if ($uChk && $uChk->num_rows > 0) {
+                                $restoreUserId = $rawAss;
+                            } else {
+                                $cChk = $conn->query("SELECT u.id FROM consultants c JOIN users u ON u.email = c.email WHERE c.id = $rawAss LIMIT 1");
+                                if ($cChk && ($cRow = $cChk->fetch_assoc())) $restoreUserId = (int)$cRow['id'];
+                            }
+                        }
+                    }
+
+                    if ($restoreUserId <= 0) continue;
+
+                    $stmtUpC = $conn->prepare("
+                        UPDATE contacts
+                        SET owner_id = ?,
+                            deleted_at = NULL,
+                            security_expires_at = ?,
+                            created_at = CASE WHEN pipeline_status IN ('chua_xac_dinh', 'not_lead_pending') THEN NOW() ELSE created_at END,
+                            updated_at = NOW()
+                        WHERE id = ?
+                    ");
+                    $stmtUpC->bind_param("isi", $restoreUserId, $freshExpires, $cid);
+                    $stmtUpC->execute();
+                    $stmtUpC->close();
+
+                    if ($pid > 0) {
+                        $conn->query("DELETE FROM returned_databank_leads WHERE person_id = $pid AND user_id = $restoreUserId");
+                        if ($hideFromDatabank) {
+                            $conn->query("UPDATE persons SET is_public = 0, released_to_kho_at = NULL WHERE id = $pid");
+                        }
+                    }
+
+                    if ($lid > 0) {
+                        $consId = 0;
+                        $cRes2 = $conn->query("SELECT c.id FROM users u JOIN consultants c ON u.email = c.email WHERE u.id = $restoreUserId LIMIT 1");
+                        if ($cRes2 && ($cr2 = $cRes2->fetch_assoc())) $consId = (int)$cr2['id'];
+                        if ($consId > 0) {
+                            $conn->query("UPDATE leads SET assigned_to = $consId, status = 'assigned', is_accepted = 1, last_assigned_at = NOW(), last_interaction_date = NOW() WHERE id = $lid");
+                        }
+                        logDistribution($conn, $lid, $consId > 0 ? $consId : $restoreUserId, null, 'assigned', 'Admin khôi phục (Back lại) khách hàng đã thu hồi về cho Sale chăm sóc tiếp', false);
+                    }
+
+                    $custName = trim(($c['last_name'] ?? '') . ' ' . ($c['first_name'] ?? ''));
+                    $notifTitle = "Khách hàng thu hồi đã được khôi phục";
+                    $notifBody = "Quản trị viên đã khôi phục (Back lại) khách hàng {$custName} ({$c['phone']}) về danh sách chăm sóc của bạn.";
+                    $link = '/contacts?id=' . $cid;
+                    $stmtN = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'lead_assigned', ?)");
+                    if ($stmtN) {
+                        $stmtN->bind_param("isss", $restoreUserId, $notifTitle, $notifBody, $link);
+                        $stmtN->execute();
+                        $stmtN->close();
+                    }
+
+                    $restoredCount++;
+                }
+            }
+            $conn->commit();
+            if ($restoredCount > 0) {
+                echo json_encode(['success' => true, 'restored_count' => $restoredCount, 'message' => "Đã khôi phục (Back lại) thành công {$restoredCount} khách hàng về cho Sale!"]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Không xác định được Sale phụ trách cũ để khôi phục. Vui lòng chọn cụ thể Sale cần nhận lại!']);
+            }
+        } catch (Exception $ex) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Lỗi khôi phục thu hồi: ' . $ex->getMessage()]);
         }
         break;
 

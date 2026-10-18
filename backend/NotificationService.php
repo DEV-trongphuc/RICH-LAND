@@ -1205,49 +1205,97 @@ class NotificationService {
             $stmtRole = $db->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
             $stmtRole->execute([$currentUserId]);
             $userRole = strtolower($stmtRole->fetchColumn() ?: '');
-            if (in_array($userRole, ['admin', 'superadmin', 'super_admin'])) {
+            if (in_array($userRole, ['admin', 'superadmin', 'super_admin'], true)) {
                 return true;
             }
 
-            // Exclude non-manager / standard sale staff
-            if (in_array($userRole, ['sale', 'employee', 'staff'])) {
+            $stmtJson = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix_config' LIMIT 1");
+            $stmtJson->execute();
+            $rawJson = $stmtJson->fetchColumn();
+            $matrixConfig = $rawJson ? (json_decode($rawJson, true) ?: []) : [];
+            $modCfg = $matrixConfig[$moduleKey] ?? [];
+
+            // Helper to check if currentUserId is Team Leader / Co-Leader of submitterUserId
+            $isTeamLeaderOfSubmitter = false;
+            if ($submitterUserId > 0) {
+                $stmtUser = $db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+                $stmtUser->execute([$submitterUserId]);
+                $subTeamId = $stmtUser->fetchColumn();
+
+                if ($subTeamId) {
+                    $stmtTeam = $db->prepare("SELECT leader_id, co_leader_ids FROM teams WHERE id = ? LIMIT 1");
+                    $stmtTeam->execute([$subTeamId]);
+                    $tRow = $stmtTeam->fetch(PDO::FETCH_ASSOC);
+
+                    if ($tRow) {
+                        if ((int)($tRow['leader_id'] ?? 0) === $currentUserId) {
+                            $isTeamLeaderOfSubmitter = true;
+                        } elseif (!empty($tRow['co_leader_ids'])) {
+                            $coList = array_map('trim', explode(',', $tRow['co_leader_ids']));
+                            if (in_array((string)$currentUserId, $coList, true)) {
+                                $isTeamLeaderOfSubmitter = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 1. Check Expense Money Tiers if configured
+            if ($moduleKey === 'expense' && !empty($modCfg['money_tiers']) && is_array($modCfg['money_tiers'])) {
+                foreach ($modCfg['money_tiers'] as $tier) {
+                    $maxAmt = $tier['max_amount'] ?? null;
+                    if ($maxAmt === null || (float)$maxAmt <= 0 || $amount <= (float)$maxAmt) {
+                        $appType = $tier['approver_type'] ?? '';
+                        if ($appType === 'team_leader' && $isTeamLeaderOfSubmitter) {
+                            return true;
+                        }
+                        $tierUserIds = array_map('intval', $tier['user_ids'] ?? []);
+                        if (!empty($tierUserIds) && in_array($currentUserId, $tierUserIds, true)) {
+                            return true;
+                        }
+                        $tierRoles = array_map('strtolower', $tier['roles'] ?? []);
+                        if (!empty($tierRoles) && in_array($userRole, $tierRoles, true)) {
+                            return true;
+                        }
+                        // Also allow higher-level designated global approvers if configured on the module
+                        $globalUserIds = array_map('intval', $modCfg['designated_user_ids'] ?? []);
+                        if (!empty($globalUserIds) && in_array($currentUserId, $globalUserIds, true)) {
+                            return true;
+                        }
+                        $globalRoles = array_map('strtolower', $modCfg['designated_roles'] ?? []);
+                        if (!empty($globalRoles) && in_array($userRole, $globalRoles, true)) {
+                            return true;
+                        }
+                        return false;
+                    }
+                }
+            }
+
+            // 2. Check Level 2: Explicitly Designated User IDs or Designated Roles
+            $designatedUserIds = array_map('intval', $modCfg['designated_user_ids'] ?? []);
+            if (!empty($designatedUserIds) && in_array($currentUserId, $designatedUserIds, true)) {
+                return true;
+            }
+            $designatedRoles = array_map('strtolower', $modCfg['designated_roles'] ?? []);
+            if (!empty($designatedRoles) && in_array($userRole, $designatedRoles, true)) {
+                return true;
+            }
+
+            // 3. Check Level 1: Team Leader when enable_team_leader is active
+            if (!empty($modCfg['enable_team_leader']) && $isTeamLeaderOfSubmitter) {
+                return true;
+            }
+
+            // Exclude non-manager / standard sale staff from fallback if not explicitly designated above
+            if (in_array($userRole, ['sale', 'sales', 'employee', 'staff'], true)) {
                 return false;
             }
 
-            // Resolve list of valid approvers for this event
+            // Resolve list of valid approvers for this event (fallback)
             $approvers = self::getApproversForEvent($db, $tenantId, $moduleKey, $submitterUserId, $amount);
             foreach ($approvers as $app) {
                 if ((int)($app['id'] ?? 0) === $currentUserId) {
                     return true;
-                }
-            }
-
-            // Additional check: If current user is Team Leader of submitter, grant permission when enable_team_leader is active
-            if ($submitterUserId > 0 && $submitterUserId !== $currentUserId) {
-                $stmtJson = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix_config' LIMIT 1");
-                $stmtJson->execute();
-                $rawJson = $stmtJson->fetchColumn();
-                $matrixConfig = $rawJson ? (json_decode($rawJson, true) ?: []) : [];
-                $modCfg = $matrixConfig[$moduleKey] ?? [];
-
-                if (!empty($modCfg['enable_team_leader'])) {
-                    $stmtUser = $db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
-                    $stmtUser->execute([$submitterUserId]);
-                    $subTeamId = $stmtUser->fetchColumn();
-
-                    if ($subTeamId) {
-                        $stmtTeam = $db->prepare("SELECT leader_id, co_leader_ids FROM teams WHERE id = ? LIMIT 1");
-                        $stmtTeam->execute([$subTeamId]);
-                        $tRow = $stmtTeam->fetch(PDO::FETCH_ASSOC);
-
-                        if ($tRow) {
-                            if ((int)($tRow['leader_id'] ?? 0) === $currentUserId) return true;
-                            if (!empty($tRow['co_leader_ids'])) {
-                                $coList = array_map('trim', explode(',', $tRow['co_leader_ids']));
-                                if (in_array((string)$currentUserId, $coList)) return true;
-                            }
-                        }
-                    }
                 }
             }
 

@@ -1444,27 +1444,8 @@ try {
             $currentTime = date('H:i');
             $nightWindow = getNightShiftWindowInfo($conn, $currentTime);
             foreach ($activeConsultants as $c) {
-                // Check cooldown (grab_cooldown_seconds)
-                $isOnCooldown = false;
-                $cooldownStmt = $conn->prepare("
-                    SELECT 1 FROM distribution_logs 
-                    WHERE assigned_to = ? 
-                      AND round_id = ? 
-                      AND status = 'grabbed' 
-                      AND received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND) 
-                    LIMIT 1
-                ");
-                if ($cooldownStmt) {
-                    $cooldownStmt->bind_param("iii", $c['id'], $targetRoundId, $grabCooldownSeconds);
-                    $cooldownStmt->execute();
-                    $cdRes = $cooldownStmt->get_result();
-                    if ($cdRes && $cdRes instanceof mysqli_result) {
-                        $isOnCooldown = ($cdRes->num_rows > 0);
-                    }
-                    $cooldownStmt->close();
-                }
-
-                if ($isOnCooldown) {
+                // Check cooldown (grab_cooldown_seconds) across both distribution_logs and lead_offers
+                if (isConsultantOnGrabCooldown($conn, $c['id'], $targetRoundId, $grabCooldownSeconds)) {
                     continue;
                 }
 
@@ -1593,10 +1574,24 @@ try {
         $updAi->close();
     }
 
+    if ($leadId && $targetRoundId) {
+        $updTargetRound = $conn->prepare("UPDATE leads SET target_round_id = ? WHERE id = ?");
+        if ($updTargetRound) {
+            $updTargetRound->bind_param("ii", $targetRoundId, $leadId);
+            $updTargetRound->execute();
+            $updTargetRound->close();
+        }
+    }
+
     if ($status === 'pending_claim' && $leadId && !empty($eligibleConsultants)) {
         // Set lead status to pending_claim in database
-        $updL = $conn->prepare("UPDATE leads SET status = 'pending_claim', is_accepted = 0, assigned_to = NULL WHERE id = ?");
-        $updL->bind_param("i", $leadId);
+        $updL = $conn->prepare("UPDATE leads SET status = 'pending_claim', is_accepted = 0, assigned_to = NULL, target_round_id = ? WHERE id = ?");
+        $updL->bind_param("ii", $targetRoundId, $leadId);
+        $updL->execute();
+        $updL->close();
+    } elseif ($roundType === 'grab' && $status === 'pending_work_hours' && $leadId) {
+        $updL = $conn->prepare("UPDATE leads SET status = 'pending_work_hours', is_accepted = 0, assigned_to = NULL, target_round_id = ? WHERE id = ?");
+        $updL->bind_param("ii", $targetRoundId, $leadId);
         $updL->execute();
         $updL->close();
     }

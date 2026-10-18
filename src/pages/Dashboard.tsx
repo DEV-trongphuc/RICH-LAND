@@ -1837,16 +1837,22 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                 </span>
                               </td>
                               <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                                <span style={{
-                                  padding: '2px 6px',
-                                  borderRadius: '4px',
-                                  fontWeight: 700,
-                                  fontSize: '0.75rem',
-                                  background: uncontacted >= 5 ? 'rgba(220, 38, 38, 0.1)' : uncontacted >= 3 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(13, 148, 136, 0.08)',
-                                  color: uncontacted >= 5 ? '#DC2626' : uncontacted >= 3 ? '#D97706' : '#0D9488'
-                                }}>
-                                  {uncontacted}/5
-                                </span>
+                                {(() => {
+                                  const bpLimit = Number(settings?.backpressure_limit || settings?.max_uncontacted_leads || 5);
+                                  const bpWarn = Math.max(1, Math.ceil(bpLimit * 0.6));
+                                  return (
+                                    <span style={{
+                                      padding: '2px 6px',
+                                      borderRadius: '4px',
+                                      fontWeight: 700,
+                                      fontSize: '0.75rem',
+                                      background: uncontacted >= bpLimit ? 'rgba(220, 38, 38, 0.1)' : uncontacted >= bpWarn ? 'rgba(245, 158, 11, 0.1)' : 'rgba(13, 148, 136, 0.08)',
+                                      color: uncontacted >= bpLimit ? '#DC2626' : uncontacted >= bpWarn ? '#D97706' : '#0D9488'
+                                    }}>
+                                      {uncontacted}/{bpLimit}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td style={{ padding: '8px 12px', minWidth: '150px' }}>
                                 <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: 'var(--color-bg)' }}>

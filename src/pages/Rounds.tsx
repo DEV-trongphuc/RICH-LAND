@@ -470,19 +470,25 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   const hasLoadedLookupsRef = useRef(false);
   useEffect(() => {
-    if (!isActive || hasLoadedLookupsRef.current) return;
-    hasLoadedLookupsRef.current = true;
-    Promise.all([
-      fetchConsultants(),
-      fetchAccounts(),
-      fetchProjects(),
-      fetchCampaigns(),
-      fetchAPI('get_system_settings').then(res => {
+    const loadSystemSettings = () => {
+      fetchAPI('get_settings').then(res => {
         if (res && res.success && res.data && res.data.lead_max_recall_attempts !== undefined) {
           setSystemMaxAttempts(Number(res.data.lead_max_recall_attempts) || 2);
         }
-      }).catch(() => {})
-    ]);
+      }).catch(() => {});
+    };
+    window.addEventListener('system_settings_updated', loadSystemSettings);
+    if (isActive && !hasLoadedLookupsRef.current) {
+      hasLoadedLookupsRef.current = true;
+      Promise.all([
+        fetchConsultants(),
+        fetchAccounts(),
+        fetchProjects(),
+        fetchCampaigns(),
+        loadSystemSettings()
+      ]);
+    }
+    return () => window.removeEventListener('system_settings_updated', loadSystemSettings);
   }, [isActive]);
 
   useEffect(() => {

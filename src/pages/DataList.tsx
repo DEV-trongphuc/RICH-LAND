@@ -5662,7 +5662,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             }} />
 
                             {distributionLogs.map((log: any, idx: number) => {
-                              const isRecalled = log.status === 'recalled';
+                              const isRecalled = log.status === 'recalled' || log.status === 'recalled_to_databank';
                               const isAssigned = log.status === 'assigned';
                               
                               const dotColor = isRecalled ? '#ef4444' : isAssigned ? '#10b981' : '#f59e0b';
@@ -5707,7 +5707,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                     boxShadow: theme === 'dark' ? 'none' : '0 2px 6px rgba(0, 0, 0, 0.02)'
                                   }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                         <span style={{
                                           fontSize: '0.65rem',
                                           fontWeight: 800,
@@ -5733,9 +5733,66 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                           </span>
                                         )}
                                       </div>
-                                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
-                                        <Clock size={11} style={{ color: dotColor }} /> {log.received_at}
-                                      </span>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {isRecalled && ['admin', 'superadmin', 'super_admin'].includes(user?.role || '') && (selectedLead?.person_id || (selectedLead as any)?.contact_id) && (
+                                          <button
+                                            type="button"
+                                            onClick={async () => {
+                                              try {
+                                                const pId = Number(selectedLead?.person_id || 0);
+                                                const cId = Number((selectedLead as any)?.contact_id || 0);
+                                                if (pId > 0) {
+                                                  const res = await fetchAPI('restore_reclaimed_databank_leads', {
+                                                    method: 'POST',
+                                                    body: JSON.stringify({
+                                                      person_ids: [pId],
+                                                      target_owner_id: log.consultant_id ? Number(log.consultant_id) : 0
+                                                    })
+                                                  });
+                                                  if (res.success) {
+                                                    toast.success(res.message || `Đã Back lại thu hồi cho ${log.consultant_name || 'Sale'}!`);
+                                                    fetchLeads();
+                                                  } else {
+                                                    toast.error(res.message || 'Không thể khôi phục');
+                                                  }
+                                                } else if (cId > 0) {
+                                                  const res = await api.post('/contacts/bulk-restore-reclaimed', {
+                                                    ids: [cId],
+                                                    target_owner_id: log.consultant_id ? Number(log.consultant_id) : 0
+                                                  });
+                                                  if (res.data?.success !== false) {
+                                                    toast.success(res.data?.message || `Đã Back lại thu hồi cho ${log.consultant_name || 'Sale'}!`);
+                                                    fetchLeads();
+                                                  } else {
+                                                    toast.error(res.data?.message || 'Không thể khôi phục');
+                                                  }
+                                                }
+                                              } catch (err: any) {
+                                                toast.error(err?.response?.data?.message || err?.message || 'Lỗi khi khôi phục');
+                                              }
+                                            }}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '4px',
+                                              padding: '2px 8px',
+                                              borderRadius: '6px',
+                                              fontSize: '0.68rem',
+                                              fontWeight: 700,
+                                              background: 'rgba(16, 185, 129, 0.12)',
+                                              color: '#059669',
+                                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                                              cursor: 'pointer'
+                                            }}
+                                            title={`Khôi phục (Back lại) khách này cho ${log.consultant_name || 'Sale cũ'}`}
+                                          >
+                                            <RotateCcw size={11} /> Back lại
+                                          </button>
+                                        )}
+                                        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                                          <Clock size={11} style={{ color: dotColor }} /> {log.received_at}
+                                        </span>
+                                      </div>
                                     </div>
 
                                     {log.message && (

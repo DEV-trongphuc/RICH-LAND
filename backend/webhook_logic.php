@@ -1231,8 +1231,8 @@ if (!function_exists('getNightShiftWindowInfo')) {
             $currentTime = substr(trim($currentTime), 0, 5);
         }
 
-        $start = get_system_setting($conn, 'night_shift_start_time') ?: '19:01';
-        $end = get_system_setting($conn, 'night_shift_end_time') ?: '08:39';
+        $start = get_system_setting($conn, 'night_shift_start_time') ?: '18:00';
+        $end = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
         $start = substr(trim($start), 0, 5);
         $end = substr(trim($end), 0, 5);
 
@@ -1404,8 +1404,8 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
     }
 
     $isRoundRobin = ($roundType === 'round_robin');
-    $normalCooldownSec = 0;
-    // Normal round robin has NO cooldown delay between leads. Cooldown only applies to grab rounds.
+    $normalCooldownMin = (int) get_system_setting($conn, 'normal_round_cooldown_minutes');
+    $normalCooldownSec = max(0, $normalCooldownMin * 60);
 
     // Get absolute last assigned consultant for this round from distribution_logs to prevent back-to-back leads
     $absoluteLastAssignedId = null;
@@ -1517,8 +1517,8 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
     $nightShiftWindow = getNightShiftWindowInfo($conn, $currentTime);
     $isNightShiftNow = $nightShiftWindow['is_night_shift'];
 
-    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '19:01';
-    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '20:30';
+    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
+    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
     $isGoldenHoursTime = false;
     if ($goldenHoursStart < $goldenHoursEnd) {
         $isGoldenHoursTime = ($currentTime >= $goldenHoursStart && $currentTime <= $goldenHoursEnd);
@@ -2253,6 +2253,84 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     return null;
 }
 
+if (!function_exists('isConsultantOnGrabCooldown')) {
+    function isConsultantOnGrabCooldown($conn, $consultantId, $roundId, $cooldownSec = null): bool {
+        $consultantId = (int)$consultantId;
+        $roundId = (int)$roundId;
+        if ($consultantId <= 0 || $roundId <= 0 || !$conn) {
+            return false;
+        }
+
+        if ($cooldownSec === null) {
+            $cooldownSec = 3600;
+            $rStmt = $conn->prepare("SELECT grab_cooldown_seconds FROM distribution_rounds WHERE id = ? LIMIT 1");
+            if ($rStmt) {
+                $rStmt->bind_param("i", $roundId);
+                $rStmt->execute();
+                $rRes = $rStmt->get_result();
+                if ($rRes && ($rRow = $rRes->fetch_assoc())) {
+                    $cooldownSec = isset($rRow['grab_cooldown_seconds']) ? (int)$rRow['grab_cooldown_seconds'] : 3600;
+                }
+                $rStmt->close();
+            }
+        } else {
+            $cooldownSec = (int)$cooldownSec;
+        }
+
+        if ($cooldownSec <= 0) {
+            return false;
+        }
+
+        // 1. Check distribution_logs (matching round_id directly OR via lead_offers for historical rows where round_id was NULL)
+        $dlStmt = $conn->prepare("
+            SELECT 1 FROM distribution_logs dl
+            WHERE dl.assigned_to = ?
+              AND dl.status = 'grabbed'
+              AND dl.received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND)
+              AND (
+                  dl.round_id = ?
+                  OR (dl.round_id IS NULL AND EXISTS (
+                      SELECT 1 FROM lead_offers lo2
+                      WHERE lo2.lead_id = dl.lead_id AND lo2.round_id = ?
+                  ))
+              )
+            LIMIT 1
+        ");
+        if ($dlStmt) {
+            $dlStmt->bind_param("iiii", $consultantId, $cooldownSec, $roundId, $roundId);
+            $dlStmt->execute();
+            $dlRes = $dlStmt->get_result();
+            $inDlCooldown = ($dlRes && $dlRes->num_rows > 0);
+            $dlStmt->close();
+            if ($inDlCooldown) {
+                return true;
+            }
+        }
+
+        // 2. Check lead_offers (where status = 'accepted' in this round within cooldown window)
+        $loStmt = $conn->prepare("
+            SELECT 1 FROM lead_offers lo
+            WHERE lo.user_id = ?
+              AND lo.round_id = ?
+              AND lo.status = 'accepted'
+              AND COALESCE(lo.responded_at, lo.offered_at) >= DATE_SUB(NOW(), INTERVAL ? SECOND)
+            LIMIT 1
+        ");
+        if ($loStmt) {
+            $loStmt->bind_param("iii", $consultantId, $roundId, $cooldownSec);
+            $loStmt->execute();
+            $loRes = $loStmt->get_result();
+            $inLoCooldown = ($loRes && $loRes->num_rows > 0);
+            $loStmt->close();
+            if ($inLoCooldown) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 function insertBatchGrabLeadOffers($conn, $leadId, array $consultants, $roundId, $countdownSec) {
     $leadId = (int)$leadId;
     $roundId = (int)$roundId;
@@ -2261,11 +2339,26 @@ function insertBatchGrabLeadOffers($conn, $leadId, array $consultants, $roundId,
         return false;
     }
 
+    $cooldownSec = null;
+    $rStmt = $conn->prepare("SELECT grab_cooldown_seconds FROM distribution_rounds WHERE id = ? LIMIT 1");
+    if ($rStmt) {
+        $rStmt->bind_param("i", $roundId);
+        $rStmt->execute();
+        $rRes = $rStmt->get_result();
+        if ($rRes && ($rRow = $rRes->fetch_assoc())) {
+            $cooldownSec = isset($rRow['grab_cooldown_seconds']) ? (int)$rRow['grab_cooldown_seconds'] : 3600;
+        }
+        $rStmt->close();
+    }
+
     $values = [];
     $seenUserIds = [];
     foreach ($consultants as $c) {
         $uid = (int)($c['id'] ?? 0);
         if ($uid <= 0 || isset($seenUserIds[$uid])) {
+            continue;
+        }
+        if (isConsultantOnGrabCooldown($conn, $uid, $roundId, $cooldownSec)) {
             continue;
         }
         $seenUserIds[$uid] = true;
@@ -2278,6 +2371,7 @@ function insertBatchGrabLeadOffers($conn, $leadId, array $consultants, $roundId,
     $sql = "INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) VALUES " . implode(', ', $values);
     return $conn->query($sql);
 }
+
 
 function sendGrabOfferNotification($conn, $leadId, $consultantId, $roundId, $countdownSec, $competingNames = []) {
     if (!$leadId || !$consultantId || !$roundId) return;
@@ -2782,14 +2876,17 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
     $nightShiftWindow = getNightShiftWindowInfo($conn, $currentTime);
     $isNightShiftNow = $nightShiftWindow['is_night_shift'];
 
-    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '19:01';
-    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '20:30';
+    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
+    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
     $isGoldenHoursTime = false;
     if ($goldenHoursStart < $goldenHoursEnd) {
         $isGoldenHoursTime = ($currentTime >= $goldenHoursStart && $currentTime <= $goldenHoursEnd);
     } else {
         $isGoldenHoursTime = ($currentTime >= $goldenHoursStart || $currentTime <= $goldenHoursEnd);
     }
+
+    $normalCooldownMin = (int) get_system_setting($conn, 'normal_round_cooldown_minutes');
+    $normalCooldownSec = max(0, $normalCooldownMin * 60);
 
     // Calculate active count of available consultants (who pass all 5 gates and are currently on shift)
     $activeCount = 0;
@@ -2798,8 +2895,9 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
         $isGatePassed = (checkConsultantGates($conn, (int)$c['id'], $lead) === true);
         $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule']);
         $cNightShift = checkNightShiftAvailability($conn, (int)$c['id'], $currentTime);
+        $isCool = isConsultantOnNormalCooldown($conn, (int)$c['id'], $roundId, $normalCooldownSec);
         $isOnDuty = $isNightShiftNow ? $cNightShift : ($cInWorkHours || $isGoldenHoursTime);
-        if (!$isOnVacation && $isGatePassed && $isOnDuty) {
+        if (!$isOnVacation && $isGatePassed && $isOnDuty && !$isCool) {
             $activeCount++;
         }
     }
@@ -2808,6 +2906,7 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
         $isNightShiftActive = checkNightShiftAvailability($conn, (int)$row['id'], $currentTime);
+        $isCool = isConsultantOnNormalCooldown($conn, (int)$row['id'], $roundId, $normalCooldownSec);
         
         $gateResult = checkConsultantGates($conn, (int)$row['id'], $lead);
         $isGatePassed = ($gateResult === true);
@@ -2815,7 +2914,7 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
             error_log("RICH LAND INFO (Sim): Consultant ID " . $row['id'] . " failed gate check: " . $gateResult);
         }
         $isOnDuty = $isNightShiftNow ? $isNightShiftActive : ($isInWorkHours || $isGoldenHoursTime);
-        $isAvailable = !$isOnVacation && $isGatePassed && $isOnDuty;
+        $isAvailable = !$isOnVacation && $isGatePassed && $isOnDuty && !$isCool;
 
         // Priority 1: Compensation
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale.
@@ -2881,7 +2980,8 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
 
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
         $isGatePassed = (checkConsultantGates($conn, (int)$candidate['id'], $lead) === true);
-        $isAvailable = !$isOnVacation && $isGatePassed;
+        $isCool = isConsultantOnNormalCooldown($conn, (int)$candidate['id'], $roundId, $normalCooldownSec);
+        $isAvailable = !$isOnVacation && $isGatePassed && !$isCool;
 
         if ($isAvailable) {
             $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
@@ -3160,8 +3260,8 @@ function checkConsultantGates($conn, $consultantId, $lead = null, $bypassBackpre
     }
 
     // GATE 5: Hạn mức Giờ Vàng (Golden Hours Cap per Consultant)
-    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '19:01';
-    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '20:30';
+    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
+    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
     $goldenMaxLeads = (int) get_system_setting($conn, 'golden_hours_max_leads_per_consultant');
     
     if ($goldenMaxLeads > 0) {
@@ -4750,10 +4850,10 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
         }
 
         $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
-        $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+6 hours';
-        $shareHours = (int)get_system_setting($conn, 'uncontacted_lead_share_hours');
-        if ($shareHours > 0) {
-            $chuaXacDinhDuration = "+$shareHours hours";
+        $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus);
+        if (empty($chuaXacDinhDuration)) {
+            $shareHours = (int)get_system_setting($conn, 'uncontacted_lead_share_hours');
+            $chuaXacDinhDuration = $shareHours > 0 ? "+$shareHours hours" : '+3 hours';
         }
         $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 

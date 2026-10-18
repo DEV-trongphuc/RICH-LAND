@@ -538,6 +538,9 @@ switch ($resource) {
         $auth = requireAuth();
         $ctrl = new ContactController($db);
         if ($resourceId === 'bulk-delete' && $method === 'POST') $ctrl->bulkDelete($auth);
+        elseif ($resourceId === 'bulk-collaborators' && $method === 'POST') $ctrl->bulkUpdateCollaborators($auth);
+        elseif ($resourceId === 'bulk-assign' && $method === 'POST') $ctrl->bulkAssignOwner($auth);
+        elseif ($resourceId === 'bulk-restore-reclaimed' && $method === 'POST') $ctrl->bulkRestoreReclaimed($auth);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);

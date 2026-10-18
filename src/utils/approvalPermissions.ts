@@ -92,8 +92,8 @@ export function hasModuleApprovalAccess(
     }
   }
 
-  // Managers still get view access to managerial modules unless explicitly restricted
-  if (role === 'manager') {
+  // Managers only get fallback approval access when the module has not been explicitly configured
+  if (!config[moduleKey] && role === 'manager') {
     return true;
   }
 

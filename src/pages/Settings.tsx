@@ -70,7 +70,8 @@ const formatExcelDate = (val: string) => {
 const SLUG_TO_LABEL: Record<string, string> = {
   chua_xac_dinh: 'Chưa xác định',
   quan_tam: 'Quan tâm',
-  dong_y_gap: 'Đồng ý gặp',
+  dong_y_gap: 'Thiện chí',
+  thien_chi: 'Thiện chí',
   da_gap: 'Đã gặp',
   booking: 'Booking',
   dat_coc: 'Đặt cọc',
@@ -403,12 +404,14 @@ const SettingsInner = () => {
   const [coopDefaultFiles, setCoopDefaultFiles] = useState<string>("UNC.png,CMND.png");
 
   const [securityTimers, setSecurityTimers] = useState<Record<string, string>>({
-    chua_xac_dinh: '+3 hours',
+    chua_xac_dinh: '+6 hours',
     quan_tam: '+1 day',
     thien_chi: '+3 days',
-    dong_y_gap: '+4 days',
+    dong_y_gap: '+3 days',
     da_gap: '+5 days',
-    booking: '+3 months'
+    booking: '+3 months',
+    dat_coc: '+6 months',
+    dong_deal: '+12 months'
   });
   const [databankApplicableSources, setDatabankApplicableSources] = useState<string>("R3_Fb,R3,R2,broadcast");
   const [availableSources, setAvailableSources] = useState<string[]>([]);
@@ -425,7 +428,8 @@ const SettingsInner = () => {
   const [pipelineStatusLabels, setPipelineStatusLabels] = useState<Record<string, string>>({
     chua_xac_dinh: 'Chưa xác định',
     quan_tam: 'Quan tâm',
-    dong_y_gap: 'Đồng ý gặp',
+    dong_y_gap: 'Thiện chí',
+    thien_chi: 'Thiện chí',
     da_gap: 'Đã gặp',
     booking: 'Booking',
     dat_coc: 'Đặt cọc',
@@ -1060,12 +1064,14 @@ const SettingsInner = () => {
         if (json.data.coop_eligible_statuses !== undefined) setCoopEligibleStatuses(json.data.coop_eligible_statuses);
         if (json.data.coop_default_files !== undefined) setCoopDefaultFiles(json.data.coop_default_files);
         const timers: Record<string, string> = {
-          chua_xac_dinh: '+3 hours',
+          chua_xac_dinh: '+6 hours',
           quan_tam: '+1 day',
           thien_chi: '+3 days',
-          dong_y_gap: '+4 days',
+          dong_y_gap: '+3 days',
           da_gap: '+5 days',
-          booking: '+3 months'
+          booking: '+3 months',
+          dat_coc: '+6 months',
+          dong_deal: '+12 months'
         };
         Object.keys(json.data).forEach(key => {
           if (key.startsWith('security_timer_')) {
@@ -1073,6 +1079,13 @@ const SettingsInner = () => {
             timers[statusSlug] = json.data[key];
           }
         });
+        if (json.data.security_timer_thien_chi) {
+          timers.dong_y_gap = json.data.security_timer_thien_chi;
+          timers.thien_chi = json.data.security_timer_thien_chi;
+        } else if (json.data.security_timer_dong_y_gap) {
+          timers.thien_chi = json.data.security_timer_dong_y_gap;
+          timers.dong_y_gap = json.data.security_timer_dong_y_gap;
+        }
         setSecurityTimers(timers);
         if (json.data.databank_applicable_sources !== undefined) setDatabankApplicableSources(json.data.databank_applicable_sources);
         if (json.data.pipeline_status_hierarchy) {
@@ -1084,7 +1097,15 @@ const SettingsInner = () => {
         if (json.data.pipeline_status_labels) {
           try {
             const parsed = JSON.parse(json.data.pipeline_status_labels);
-            if (parsed && typeof parsed === 'object') setPipelineStatusLabels(parsed);
+            if (parsed && typeof parsed === 'object') {
+              if (!parsed.dong_y_gap || parsed.dong_y_gap === 'Đồng ý gặp') {
+                parsed.dong_y_gap = 'Thiện chí';
+              }
+              if (!parsed.thien_chi || parsed.thien_chi === 'Đồng ý gặp') {
+                parsed.thien_chi = parsed.dong_y_gap;
+              }
+              setPipelineStatusLabels(parsed);
+            }
           } catch { /* ignore */ }
         }
         if (json.data.standard_commission_rate !== undefined) setStandardCommissionRate(Number(json.data.standard_commission_rate));
@@ -1224,6 +1245,14 @@ const SettingsInner = () => {
         }, 300);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const handleExternalSettingsUpdate = () => {
+      fetchSettings();
+    };
+    window.addEventListener('system_settings_updated', handleExternalSettingsUpdate);
+    return () => window.removeEventListener('system_settings_updated', handleExternalSettingsUpdate);
   }, []);
 
   useEffect(() => {
@@ -2125,14 +2154,20 @@ const SettingsInner = () => {
   };
 
   const renderInlineDurationInput = (statusSlug: string) => {
-    const value = securityTimers[statusSlug] || '+3 days';
+    const value = (statusSlug === 'dong_y_gap' || statusSlug === 'thien_chi')
+      ? (securityTimers.thien_chi || securityTimers.dong_y_gap || '+3 days')
+      : (securityTimers[statusSlug] || '+3 days');
     const { num, unit } = parseSecurityTimer(value);
 
     const onChange = (newVal: string) => {
-      setSecurityTimers(prev => ({
-        ...prev,
-        [statusSlug]: newVal
-      }));
+      setSecurityTimers(prev => {
+        const next = { ...prev, [statusSlug]: newVal };
+        if (statusSlug === 'dong_y_gap' || statusSlug === 'thien_chi') {
+          next.dong_y_gap = newVal;
+          next.thien_chi = newVal;
+        }
+        return next;
+      });
     };
 
     return (
@@ -7662,11 +7697,11 @@ function doPost(e) {
                                   <ToggleSwitch
                                     checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
                                     onChange={checked => {
-                                      if (checked) {
-                                        setCoopEligibleStatuses(status);
-                                      } else {
-                                        setCoopEligibleStatuses('');
-                                      }
+                                      const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
+                                      const nextList = checked
+                                        ? Array.from(new Set([...currentList, status]))
+                                        : currentList.filter((s: string) => s !== status);
+                                      setCoopEligibleStatuses(nextList.join(','));
                                     }}
                                   />
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, userSelect: 'none' }}>
@@ -7749,11 +7784,11 @@ function doPost(e) {
                                   <ToggleSwitch
                                     checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
                                     onChange={checked => {
-                                      if (checked) {
-                                        setCoopEligibleStatuses(status);
-                                      } else {
-                                        setCoopEligibleStatuses('');
-                                      }
+                                      const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
+                                      const nextList = checked
+                                        ? Array.from(new Set([...currentList, status]))
+                                        : currentList.filter((s: string) => s !== status);
+                                      setCoopEligibleStatuses(nextList.join(','));
                                     }}
                                   />
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, userSelect: 'none' }}>

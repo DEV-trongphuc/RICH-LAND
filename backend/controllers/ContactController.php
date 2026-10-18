@@ -36,12 +36,25 @@ class ContactController {
         $sortBy  = $_GET['sort'] ?? 'created_at';
         $order   = $_GET['order'] ?? 'DESC';
 
-        $where  = ['c.tenant_id = ?', 'c.deleted_at IS NULL', 'c.owner_id IS NOT NULL'];
-        $params = [$tid];
+        $isReclaimedView = ($pipelineStatus === 'reclaimed' || $status === 'reclaimed') && !in_array($auth['role'] ?? '', ['sale', 'sales', 'consultant', 'viewer'], true);
+        if ($isReclaimedView) {
+            $pipelineStatus = 'reclaimed';
+            if ($status === 'reclaimed') $status = '';
+            $where  = [
+                'c.tenant_id = ?',
+                'c.deleted_at IS NOT NULL',
+                'NOT EXISTS (SELECT 1 FROM persons p_del WHERE p_del.id = c.person_id AND COALESCE(p_del.deleted_from_databank, 0) = 1)'
+            ];
+            $params = [$tid];
+        } else {
+            $where  = ['c.tenant_id = ?', 'c.deleted_at IS NULL', 'c.owner_id IS NOT NULL'];
+            $params = [$tid];
+        }
 
         // Validating sort fields
-        $allowedSort = ['created_at', 'updated_at', 'first_name', 'lead_score', 'last_contact'];
-        if (!in_array($sortBy, $allowedSort)) $sortBy = 'created_at';
+        $allowedSort = ['created_at', 'updated_at', 'first_name', 'lead_score', 'last_contact', 'deleted_at'];
+        if (!in_array($sortBy, $allowedSort)) $sortBy = $isReclaimedView ? 'deleted_at' : 'created_at';
+        if ($isReclaimedView && !isset($_GET['sort'])) $sortBy = 'deleted_at';
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
 
         $scope = $this->getScope($auth, 'leads', 'read');
@@ -95,7 +108,7 @@ class ContactController {
         }
         $knownPipelineStatuses = [
             'chua_xac_dinh', 'cham_soc_dai_han', 'quan_tam', 'dong_y_gap', 'thien_chi',
-            'da_gap', 'booking', 'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead'
+            'da_gap', 'booking', 'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead', 'reclaimed'
         ];
         if ($status && in_array($status, $knownPipelineStatuses, true)) {
             if (empty($pipelineStatus)) {
@@ -236,7 +249,7 @@ class ContactController {
         $stageCountParams = $params;
 
         // Apply stage filter or pipeline_status filter to the specific query
-        if ($pipelineStatus !== '') {
+        if ($pipelineStatus !== '' && !$isReclaimedView) {
             if ($pipelineStatus === 'dong_y_gap' || $pipelineStatus === 'thien_chi') {
                 $where[] = "(c.pipeline_status IN ('dong_y_gap', 'thien_chi'))";
             } else if ($pipelineStatus === 'dat_coc' || $pipelineStatus === 'da_coc') {
@@ -307,10 +320,37 @@ class ContactController {
         // Calculate counts per pipeline stage for quick status tabs
         $stageCounts = [];
         try {
-            $scWhereStr = implode(' AND ', $stageCountWhere);
+            $activeScWhere = $stageCountWhere;
+            if ($isReclaimedView) {
+                $activeScWhere = ['c.tenant_id = ?', 'c.deleted_at IS NULL', 'c.owner_id IS NOT NULL'];
+                foreach (array_slice($stageCountWhere, 3) as $cond) {
+                    $activeScWhere[] = $cond;
+                }
+            }
+            $scWhereStr = implode(' AND ', $activeScWhere);
             $scStmt = $this->db->prepare("SELECT c.pipeline_status, COUNT(*) as cnt FROM contacts c WHERE $scWhereStr GROUP BY c.pipeline_status");
             $scStmt->execute($stageCountParams);
             $stageCounts = $scStmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+
+            // Also compute reclaimed count for Admin / Manager / Director
+            if (!in_array($auth['role'] ?? '', ['sale', 'sales', 'consultant', 'viewer'], true)) {
+                if ($isReclaimedView) {
+                    $stageCounts['reclaimed'] = $total;
+                } else {
+                    $reclaimedWhere = [
+                        'c.tenant_id = ?',
+                        'c.deleted_at IS NOT NULL',
+                        'NOT EXISTS (SELECT 1 FROM persons p_del WHERE p_del.id = c.person_id AND COALESCE(p_del.deleted_from_databank, 0) = 1)'
+                    ];
+                    foreach (array_slice($stageCountWhere, 3) as $cond) {
+                        $reclaimedWhere[] = $cond;
+                    }
+                    $rcWhereStr = implode(' AND ', $reclaimedWhere);
+                    $rcStmt = $this->db->prepare("SELECT COUNT(*) FROM contacts c WHERE $rcWhereStr");
+                    $rcStmt->execute($stageCountParams);
+                    $stageCounts['reclaimed'] = (int)$rcStmt->fetchColumn();
+                }
+            }
         } catch (\Exception $e) {
             $stageCounts = [];
         }
@@ -1693,23 +1733,34 @@ class ContactController {
 
     private function getSecurityExpiration(string $status): ?string {
         $defaultDurations = [
-            'chua_xac_dinh' => '+6 hours',
+            'chua_xac_dinh' => '+3 hours',
             'quan_tam' => '+1 day',
             'thien_chi' => '+3 days',
-            'dong_y_gap' => '+4 days',
+            'dong_y_gap' => '+3 days',
             'da_gap' => '+5 days',
             'booking' => '+3 months',
             'dat_coc' => '+6 months',
-            'dong_deal' => '+12 months'
+            'dong_deal' => '+12 months',
+            'cham_soc_dai_han' => '+30 days'
         ];
         $default = $defaultDurations[$status] ?? '+3 days';
-        $duration = $this->getSetting('security_timer_' . $status, $default);
-        
-        $triggerStatus = $this->getSetting('parallel_assignment_trigger_status', 'chua_xac_dinh');
-        if ($status === $triggerStatus) {
-            $shareHours = (int)$this->getSetting('uncontacted_lead_share_hours', '6');
-            if ($shareHours > 0) {
-                $duration = "+$shareHours hours";
+        if ($status === 'dong_y_gap' || $status === 'thien_chi') {
+            $thienChiVal = $this->getSetting('security_timer_thien_chi', '');
+            $dongYGapVal = $this->getSetting('security_timer_dong_y_gap', '');
+            $duration = $thienChiVal !== '' ? $thienChiVal : ($dongYGapVal !== '' ? $dongYGapVal : $default);
+        } else {
+            $duration = $this->getSetting('security_timer_' . $status, '');
+            if ($duration === '') {
+                $triggerStatus = $this->getSetting('parallel_assignment_trigger_status', 'chua_xac_dinh');
+                if ($status === $triggerStatus) {
+                    $shareHours = (int)$this->getSetting('uncontacted_lead_share_hours', '3');
+                    if ($shareHours > 0) {
+                        $duration = "+$shareHours hours";
+                    }
+                }
+            }
+            if ($duration === '') {
+                $duration = $default;
             }
         }
         
@@ -1795,13 +1846,12 @@ class ContactController {
         $activeCount = (int)$stmtCount->fetchColumn();
 
         if ($activeCount <= 1) {
-            // Only this sale owns this Person. Release to Databank!
+            // Only this sale owns this Person. Release to Databank (keep owner_id on soft-deleted record for Admin rollback history)!
             $defaultStageId = $this->getStageIdFromSlug('chua_xac_dinh', $tid);
             
             $stmtRelease = $this->db->prepare("
                 UPDATE contacts 
-                SET owner_id = NULL, 
-                    pipeline_status = 'chua_xac_dinh', 
+                SET pipeline_status = 'chua_xac_dinh', 
                     stage_id = ?, 
                     status = 'lead',
                     security_expires_at = NULL,
@@ -2146,6 +2196,482 @@ class ContactController {
         ];
 
         respond(200, $result, 'Lấy danh sách người hỗ trợ thành công');
+    }
+
+    /**
+     * POST /contacts/bulk-collaborators
+     * Bulk add / replace / remove co-care collaborators (Người cùng chăm sóc)
+     * Accessible to Sales (for their own contacts), Managers (for team), and Admins (for all).
+     */
+    public function bulkUpdateCollaborators(array $auth): void {
+        if (($auth['role'] ?? '') === 'viewer') {
+            respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
+        }
+        $tid = (int)($auth['tenant_id'] ?? 1);
+        $currentUserId = (int)($auth['user_id'] ?? 0);
+        $b = getBody();
+
+        $rawContactIds = $b['contact_ids'] ?? [];
+        if (is_string($rawContactIds)) {
+            $rawContactIds = explode(',', $rawContactIds);
+        }
+        $contactIds = array_values(array_unique(array_filter(array_map('intval', (array)$rawContactIds))));
+        if (empty($contactIds)) {
+            respond(422, null, 'Vui lòng chọn ít nhất 1 khách hàng', false);
+        }
+        if (count($contactIds) > 500) {
+            respond(422, null, 'Chỉ hỗ trợ thao tác tối đa 500 khách hàng mỗi lần', false);
+        }
+
+        $mode = in_array($b['mode'] ?? 'add', ['add', 'replace', 'remove'], true) ? $b['mode'] : 'add';
+        $rawCollabIds = $b['collaborator_ids'] ?? [];
+        if (is_string($rawCollabIds)) {
+            $rawCollabIds = explode(',', $rawCollabIds);
+        }
+        $inputCollabIds = array_values(array_unique(array_filter(array_map('intval', (array)$rawCollabIds))));
+        if ($mode !== 'replace' && empty($inputCollabIds)) {
+            respond(422, null, 'Vui lòng chọn ít nhất 1 nhân sự chăm sóc', false);
+        }
+
+        // Map any consultant IDs to user IDs if needed
+        $resolvedCollabIds = [];
+        if (!empty($inputCollabIds)) {
+            $inCollab = implode(',', array_fill(0, count($inputCollabIds), '?'));
+            $stmtMap = $this->db->prepare("
+                SELECT DISTINCT u.id
+                FROM users u
+                LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id)
+                WHERE u.id IN ($inCollab) OR c.id IN ($inCollab)
+            ");
+            $stmtMap->execute(array_merge($inputCollabIds, $inputCollabIds));
+            $mapped = $stmtMap->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($mapped as $muid) {
+                if ((int)$muid > 0) $resolvedCollabIds[] = (int)$muid;
+            }
+            if (empty($resolvedCollabIds)) {
+                $resolvedCollabIds = $inputCollabIds;
+            }
+            $resolvedCollabIds = array_values(array_unique($resolvedCollabIds));
+        }
+
+        // Role Matrix Isolation check
+        $scope = $this->getScope($auth, 'leads', 'write');
+        $inClause = implode(',', array_fill(0, count($contactIds), '?'));
+        $sqlFetch = "SELECT id, first_name, last_name, owner_id, created_by, collaborator_ids FROM contacts WHERE tenant_id = ? AND deleted_at IS NULL AND id IN ($inClause)";
+        $fetchParams = array_merge([$tid], $contactIds);
+
+        if ($scope === 'own') {
+            $sqlFetch .= " AND (owner_id = ? OR created_by = ? OR FIND_IN_SET(?, collaborator_ids))";
+            $fetchParams[] = $currentUserId;
+            $fetchParams[] = $currentUserId;
+            $fetchParams[] = $currentUserId;
+        } else if ($scope === 'team') {
+            $stmtTeam = $this->db->prepare("
+                SELECT id FROM users 
+                WHERE team_id IN (
+                    SELECT id FROM teams 
+                    WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
+            ");
+            $stmtTeam->execute([$currentUserId, $currentUserId]);
+            $teamIds = array_unique(array_merge([$currentUserId], array_map('intval', $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [])));
+            $teamClause = implode(',', $teamIds);
+            $sqlFetch .= " AND (owner_id IN ($teamClause) OR created_by IN ($teamClause))";
+        } else if ($scope !== 'all') {
+            respond(403, null, 'Bạn không có quyền cập nhật khách hàng', false);
+        }
+
+        $stmtContacts = $this->db->prepare($sqlFetch);
+        $stmtContacts->execute($fetchParams);
+        $rows = $stmtContacts->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($rows)) {
+            respond(403, null, 'Không tìm thấy khách hàng hợp lệ hoặc bạn không phải người phụ trách các khách hàng đã chọn', false);
+        }
+
+        $updatedIds = [];
+        $newlyAddedByUser = [];
+
+        $this->db->beginTransaction();
+        try {
+            $stmtUpdate = $this->db->prepare("UPDATE contacts SET collaborator_ids = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?");
+            $stmtInsAccess = $this->db->prepare("INSERT IGNORE INTO quyen_truy_cap (contact_id, user_id) VALUES (?, ?)");
+            $stmtDelAccess = $this->db->prepare("DELETE FROM quyen_truy_cap WHERE contact_id = ? AND user_id = ?");
+
+            foreach ($rows as $row) {
+                $cid = (int)$row['id'];
+                $ownerId = (int)($row['owner_id'] ?? 0);
+                $oldCollabs = array_values(array_unique(array_filter(array_map('intval', explode(',', $row['collaborator_ids'] ?? '')))));
+
+                if ($mode === 'add') {
+                    $newCollabs = array_values(array_unique(array_merge($oldCollabs, $resolvedCollabIds)));
+                } else if ($mode === 'remove') {
+                    $newCollabs = array_values(array_diff($oldCollabs, $resolvedCollabIds));
+                } else {
+                    $newCollabs = $resolvedCollabIds;
+                }
+
+                // Never include main owner_id inside collaborator_ids
+                $newCollabs = array_values(array_filter($newCollabs, function($uid) use ($ownerId) {
+                    return $uid > 0 && $uid !== $ownerId;
+                }));
+
+                $newCollabStr = !empty($newCollabs) ? implode(',', $newCollabs) : null;
+                $stmtUpdate->execute([$newCollabStr, $cid, $tid]);
+                $updatedIds[] = $cid;
+
+                $added = array_diff($newCollabs, $oldCollabs);
+                $removed = array_diff($oldCollabs, $newCollabs);
+
+                foreach ($added as $auid) {
+                    try { $stmtInsAccess->execute([$cid, $auid]); } catch (\Throwable $e) {}
+                    if ($auid !== $currentUserId) {
+                        $newlyAddedByUser[$auid][] = trim(($row['last_name'] ?? '') . ' ' . ($row['first_name'] ?? ''));
+                    }
+                }
+                foreach ($removed as $ruid) {
+                    try { $stmtDelAccess->execute([$cid, $ruid]); } catch (\Throwable $e) {}
+                }
+            }
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            respond(500, null, 'Lỗi cập nhật người chăm sóc hàng loạt: ' . $e->getMessage(), false);
+        }
+
+        // Send concise grouped notification per newly added collaborator (no external spam!)
+        if (!empty($newlyAddedByUser)) {
+            require_once __DIR__ . '/../NotificationService.php';
+            $inviterName = $auth['full_name'] ?? 'Đồng nghiệp';
+            foreach ($newlyAddedByUser as $targetUid => $custNames) {
+                $countCust = count($custNames);
+                $sampleNames = implode(', ', array_slice($custNames, 0, 3)) . ($countCust > 3 ? " và " . ($countCust - 3) . " khách khác" : "");
+                try {
+                    NotificationService::send($this->db, $tid, 'COOP_INVITATION', [
+                        'user_id' => (int)$targetUid,
+                        'customer_name' => $sampleNames,
+                        'inviter_name' => $inviterName,
+                        'contact_id' => $updatedIds[0] ?? 0
+                    ]);
+                } catch (\Throwable $e) {}
+            }
+        }
+
+        logActivity($this->db, $tid, $currentUserId, 'BULK_UPDATE_COLLABORATORS', 'contact', $updatedIds[0] ?? 0, json_encode([
+            'mode' => $mode,
+            'collaborator_ids' => $resolvedCollabIds,
+            'updated_count' => count($updatedIds),
+            'contact_ids' => $updatedIds
+        ]));
+
+        $updatedCount = count($updatedIds);
+        respond(200, [
+            'updated_count' => $updatedCount,
+            'contact_ids' => $updatedIds,
+            'collaborator_ids' => $resolvedCollabIds
+        ], "Đã cập nhật người cùng chăm sóc cho {$updatedCount} khách hàng thành công!");
+    }
+
+    /**
+     * POST /contacts/bulk-assign
+     * Bulk change main owner_id for selected contacts (Admin / Manager / Director)
+     */
+    public function bulkAssignOwner(array $auth): void {
+        if (in_array($auth['role'] ?? '', ['sale', 'sales', 'consultant', 'viewer'], true)) {
+            respond(403, null, 'Chỉ Quản trị viên hoặc Trưởng nhóm mới có quyền chuyển người phụ trách chính hàng loạt', false);
+        }
+        $tid = (int)($auth['tenant_id'] ?? 1);
+        $currentUserId = (int)($auth['user_id'] ?? 0);
+        $b = getBody();
+
+        $rawContactIds = $b['contact_ids'] ?? [];
+        if (is_string($rawContactIds)) {
+            $rawContactIds = explode(',', $rawContactIds);
+        }
+        $contactIds = array_values(array_unique(array_filter(array_map('intval', (array)$rawContactIds))));
+        $targetOwnerId = (int)($b['owner_id'] ?? 0);
+        $keepOldAsCollab = !empty($b['keep_old_owner_as_collaborator']);
+
+        if (empty($contactIds) || $targetOwnerId <= 0) {
+            respond(422, null, 'Vui lòng chọn danh sách khách hàng và nhân viên phụ trách mới', false);
+        }
+
+        // Resolve targetOwnerId to users.id
+        $stmtUser = $this->db->prepare("SELECT id, full_name FROM users WHERE id = ? LIMIT 1");
+        $stmtUser->execute([$targetOwnerId]);
+        $targetUser = $stmtUser->fetch(PDO::FETCH_ASSOC);
+        if (!$targetUser) {
+            respond(404, null, 'Không tìm thấy nhân viên phụ trách mới', false);
+        }
+
+        $inClause = implode(',', array_fill(0, count($contactIds), '?'));
+        $stmtContacts = $this->db->prepare("SELECT id, owner_id, collaborator_ids, pipeline_status FROM contacts WHERE tenant_id = ? AND id IN ($inClause)");
+        $stmtContacts->execute(array_merge([$tid], $contactIds));
+        $rows = $stmtContacts->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($rows)) {
+            respond(404, null, 'Không tìm thấy khách hàng để chuyển phụ trách', false);
+        }
+
+        $updatedIds = [];
+        $this->db->beginTransaction();
+        try {
+            $stmtUp = $this->db->prepare("UPDATE contacts SET owner_id = ?, collaborator_ids = ?, deleted_at = NULL, updated_at = NOW() WHERE id = ? AND tenant_id = ?");
+            foreach ($rows as $row) {
+                $cid = (int)$row['id'];
+                $oldOwner = (int)($row['owner_id'] ?? 0);
+                $collabs = array_values(array_unique(array_filter(array_map('intval', explode(',', $row['collaborator_ids'] ?? '')))));
+                if ($keepOldAsCollab && $oldOwner > 0 && $oldOwner !== $targetOwnerId) {
+                    $collabs[] = $oldOwner;
+                }
+                $collabs = array_values(array_unique(array_filter($collabs, function($uid) use ($targetOwnerId) {
+                    return $uid > 0 && $uid !== $targetOwnerId;
+                })));
+                $collabStr = !empty($collabs) ? implode(',', $collabs) : null;
+                $stmtUp->execute([$targetOwnerId, $collabStr, $cid, $tid]);
+                $updatedIds[] = $cid;
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            respond(500, null, 'Lỗi chuyển người phụ trách hàng loạt: ' . $e->getMessage(), false);
+        }
+
+        logActivity($this->db, $tid, $currentUserId, 'BULK_ASSIGN_OWNER', 'contact', $updatedIds[0] ?? 0, json_encode([
+            'target_owner_id' => $targetOwnerId,
+            'keep_old_owner_as_collaborator' => $keepOldAsCollab,
+            'updated_count' => count($updatedIds),
+            'contact_ids' => $updatedIds
+        ]));
+
+        $cnt = count($updatedIds);
+        respond(200, [
+            'updated_count' => $cnt,
+            'contact_ids' => $updatedIds,
+            'owner_id' => $targetOwnerId,
+            'owner_name' => $targetUser['full_name']
+        ], "Đã gán người phụ trách chính ({$targetUser['full_name']}) cho {$cnt} khách hàng thành công!");
+    }
+
+    /**
+     * POST /contacts/bulk-restore-reclaimed
+     * Admin / Manager restores (back lại) reclaimed/returned contacts or leads back to their previous Sale or a selected Sale.
+     */
+    public function bulkRestoreReclaimed(array $auth): void {
+        if (in_array($auth['role'] ?? '', ['sale', 'sales', 'consultant', 'viewer'], true)) {
+            respond(403, null, 'Chỉ Quản trị viên hoặc Quản lý mới có quyền khôi phục (Back lại) khách hàng đã thu hồi!', false);
+        }
+        $tid = (int)($auth['tenant_id'] ?? 1);
+        $adminUserId = (int)($auth['user_id'] ?? 0);
+        $b = getBody();
+
+        $contactIds = array_values(array_unique(array_filter(array_map('intval', (array)($b['contact_ids'] ?? [])))));
+        $personIds  = array_values(array_unique(array_filter(array_map('intval', (array)($b['person_ids'] ?? [])))));
+        $leadIds    = array_values(array_unique(array_filter(array_map('intval', (array)($b['lead_ids'] ?? [])))));
+        $targetOwnerId = isset($b['target_owner_id']) && (int)$b['target_owner_id'] > 0 ? (int)$b['target_owner_id'] : 0;
+        $hideFromDatabank = !isset($b['hide_from_databank']) || (bool)$b['hide_from_databank'];
+
+        if (empty($contactIds) && empty($personIds) && empty($leadIds)) {
+            respond(422, null, 'Vui lòng chọn ít nhất 1 khách hàng cần khôi phục thu hồi', false);
+        }
+
+        // Resolve targetOwnerId if a consultant_id was passed instead of user_id
+        if ($targetOwnerId > 0) {
+            $stmtChkU = $this->db->prepare("SELECT id FROM users WHERE id = ? LIMIT 1");
+            $stmtChkU->execute([$targetOwnerId]);
+            if (!$stmtChkU->fetchColumn()) {
+                $stmtFromCons = $this->db->prepare("SELECT u.id FROM consultants c JOIN users u ON u.email = c.email WHERE c.id = ? LIMIT 1");
+                $stmtFromCons->execute([$targetOwnerId]);
+                $mappedUid = (int)$stmtFromCons->fetchColumn();
+                if ($mappedUid > 0) $targetOwnerId = $mappedUid;
+            }
+        }
+
+        // If lead_ids were provided (e.g., from DataList recalled timeline), map them to person_ids & contact_ids
+        if (!empty($leadIds)) {
+            $inLeads = implode(',', array_fill(0, count($leadIds), '?'));
+            $stmtLeads = $this->db->prepare("SELECT id, person_id, phone FROM leads WHERE id IN ($inLeads)");
+            $stmtLeads->execute($leadIds);
+            foreach ($stmtLeads->fetchAll(PDO::FETCH_ASSOC) as $lRow) {
+                if (!empty($lRow['person_id'])) {
+                    $personIds[] = (int)$lRow['person_id'];
+                }
+            }
+            $personIds = array_values(array_unique(array_filter($personIds)));
+        }
+
+        // If person_ids were provided (e.g., from Kho Databank), find the latest soft-deleted or expired contact for each person_id
+        if (!empty($personIds)) {
+            $inPersons = implode(',', array_fill(0, count($personIds), '?'));
+            $stmtFindContacts = $this->db->prepare("
+                SELECT c.id, c.person_id, c.deleted_at
+                FROM contacts c
+                WHERE c.tenant_id = ? AND c.person_id IN ($inPersons)
+                ORDER BY (c.deleted_at IS NOT NULL) DESC, c.id DESC
+            ");
+            $stmtFindContacts->execute(array_merge([$tid], $personIds));
+            $seenPersons = [];
+            foreach ($stmtFindContacts->fetchAll(PDO::FETCH_ASSOC) as $fc) {
+                $pid = (int)$fc['person_id'];
+                if (!isset($seenPersons[$pid])) {
+                    $seenPersons[$pid] = true;
+                    $contactIds[] = (int)$fc['id'];
+                }
+            }
+            $contactIds = array_values(array_unique(array_filter($contactIds)));
+        }
+
+        if (empty($contactIds)) {
+            respond(404, null, 'Không tìm thấy bản ghi khách hàng tương ứng để khôi phục', false);
+        }
+
+        $inContacts = implode(',', array_fill(0, count($contactIds), '?'));
+        $stmtContacts = $this->db->prepare("
+            SELECT c.id, c.person_id, c.lead_id, c.owner_id, c.first_name, c.last_name, c.phone, c.pipeline_status, c.source, c.deleted_at
+            FROM contacts c
+            WHERE c.tenant_id = ? AND c.id IN ($inContacts)
+        ");
+        $stmtContacts->execute(array_merge([$tid], $contactIds));
+        $contacts = $stmtContacts->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($contacts)) {
+            respond(404, null, 'Không tìm thấy hồ sơ khách hàng cần khôi phục', false);
+        }
+
+        $restoredCount = 0;
+        $restoredDetails = [];
+
+        $this->db->beginTransaction();
+        try {
+            foreach ($contacts as $c) {
+                $cid = (int)$c['id'];
+                $pid = (int)($c['person_id'] ?? 0);
+                $lid = (int)($c['lead_id'] ?? 0);
+                if ($lid <= 0 && $pid > 0) {
+                    $stL = $this->db->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+                    $stL->execute([$pid]);
+                    $lid = (int)$stL->fetchColumn();
+                }
+
+                // Determine which Sale (users.id) to restore to
+                $restoreUserId = $targetOwnerId > 0 ? $targetOwnerId : (int)($c['owner_id'] ?? 0);
+
+                // Fallback 1: check returned_databank_leads
+                if ($restoreUserId <= 0 && $pid > 0) {
+                    $stRdl = $this->db->prepare("SELECT user_id FROM returned_databank_leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+                    $stRdl->execute([$pid]);
+                    $restoreUserId = (int)$stRdl->fetchColumn();
+                }
+
+                // Fallback 2: check distribution_logs (recalled_to_databank, recalled, released_to_kho, databank_claim, assigned)
+                if ($restoreUserId <= 0 && $lid > 0) {
+                    $stDl = $this->db->prepare("
+                        SELECT assigned_to FROM distribution_logs
+                        WHERE lead_id = ? AND assigned_to IS NOT NULL AND assigned_to > 0
+                        ORDER BY FIELD(status, 'recalled_to_databank', 'recalled', 'released_to_kho', 'databank_claim', 'grabbed', 'assigned'), id DESC
+                        LIMIT 1
+                    ");
+                    $stDl->execute([$lid]);
+                    $rawAssigned = (int)$stDl->fetchColumn();
+                    if ($rawAssigned > 0) {
+                        $stMapU = $this->db->prepare("SELECT id FROM users WHERE id = ? LIMIT 1");
+                        $stMapU->execute([$rawAssigned]);
+                        if ($stMapU->fetchColumn()) {
+                            $restoreUserId = $rawAssigned;
+                        } else {
+                            $stMapC = $this->db->prepare("SELECT u.id FROM consultants c JOIN users u ON u.email = c.email WHERE c.id = ? LIMIT 1");
+                            $stMapC->execute([$rawAssigned]);
+                            $restoreUserId = (int)$stMapC->fetchColumn();
+                        }
+                    }
+                }
+
+                if ($restoreUserId <= 0) {
+                    continue;
+                }
+
+                $statusSlug = !empty($c['pipeline_status']) && $c['pipeline_status'] !== 'not_lead' ? $c['pipeline_status'] : 'chua_xac_dinh';
+                $freshExpires = $this->getSecurityExpiration($statusSlug);
+                // Ensure at least +24 hours protection when Admin explicitly restores a reclaimed contact
+                $minTomorrow = date('Y-m-d H:i:s', strtotime('+24 hours'));
+                if (!$freshExpires || $freshExpires < $minTomorrow) {
+                    $freshExpires = $minTomorrow;
+                }
+
+                // Restore contact: clear deleted_at, set owner_id, refresh security_expires_at, and refresh created_at if chua_xac_dinh so cron_sync won't immediately re-recall it
+                $stmtRestore = $this->db->prepare("
+                    UPDATE contacts
+                    SET owner_id = ?,
+                        deleted_at = NULL,
+                        security_expires_at = ?,
+                        created_at = CASE WHEN pipeline_status IN ('chua_xac_dinh', 'not_lead_pending') THEN NOW() ELSE created_at END,
+                        updated_at = NOW()
+                    WHERE id = ? AND tenant_id = ?
+                ");
+                $stmtRestore->execute([$restoreUserId, $freshExpires, $cid, $tid]);
+
+                if ($pid > 0) {
+                    // Remove returner lock so this Sale has full access
+                    $stmtDelReturn = $this->db->prepare("DELETE FROM returned_databank_leads WHERE person_id = ? AND user_id = ?");
+                    $stmtDelReturn->execute([$pid, $restoreUserId]);
+
+                    if ($hideFromDatabank) {
+                        $stmtHideKho = $this->db->prepare("UPDATE persons SET is_public = 0, released_to_kho_at = NULL WHERE id = ?");
+                        $stmtHideKho->execute([$pid]);
+                    }
+                }
+
+                // Also sync lead table if applicable
+                if ($lid > 0) {
+                    $stConsId = $this->db->prepare("SELECT c.id FROM users u JOIN consultants c ON u.email = c.email WHERE u.id = ? LIMIT 1");
+                    $stConsId->execute([$restoreUserId]);
+                    $consId = (int)$stConsId->fetchColumn();
+                    if ($consId > 0) {
+                        $stUpLead = $this->db->prepare("UPDATE leads SET assigned_to = ?, status = 'assigned', is_accepted = 1, last_assigned_at = NOW(), last_interaction_date = NOW() WHERE id = ?");
+                        $stUpLead->execute([$consId, $lid]);
+                    }
+
+                    $stLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, NULL, 'assigned', ?)");
+                    $stLog->execute([$lid, $consId > 0 ? $consId : $restoreUserId, 'Admin khôi phục (Back lại) khách hàng đã thu hồi cho Sale chăm sóc tiếp']);
+                }
+
+                // Notify the Sale that Admin restored their customer
+                $custName = trim(($c['last_name'] ?? '') . ' ' . ($c['first_name'] ?? ''));
+                $notifTitle = "Khách hàng thu hồi đã được khôi phục";
+                $notifBody = "Quản trị viên đã khôi phục (Back lại) khách hàng {$custName} ({$c['phone']}) về danh sách chăm sóc của bạn.";
+                $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'lead_assigned', ?)");
+                $stNotif->execute([$restoreUserId, $tid, $notifTitle, $notifBody, '/contacts?id=' . $cid]);
+
+                $restoredCount++;
+                $restoredDetails[] = [
+                    'contact_id' => $cid,
+                    'person_id' => $pid,
+                    'owner_id' => $restoreUserId,
+                    'security_expires_at' => $freshExpires
+                ];
+            }
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            respond(500, null, 'Lỗi khôi phục khách hàng thu hồi: ' . $e->getMessage(), false);
+        }
+
+        if ($restoredCount === 0) {
+            respond(422, null, 'Không xác định được Sale phụ trách cũ để khôi phục. Vui lòng chọn cụ thể Sale cần nhận lại!', false);
+        }
+
+        logActivity($this->db, $tid, $adminUserId, 'BULK_RESTORE_RECLAIMED', 'contact', $restoredDetails[0]['contact_id'] ?? 0, json_encode([
+            'restored_count' => $restoredCount,
+            'target_owner_id' => $targetOwnerId,
+            'details' => $restoredDetails
+        ]));
+
+        respond(200, [
+            'restored_count' => $restoredCount,
+            'items' => $restoredDetails
+        ], "Đã khôi phục (Back lại) thành công {$restoredCount} khách hàng về cho Sale!");
     }
 }
 

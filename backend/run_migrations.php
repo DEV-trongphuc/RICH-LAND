@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 201;
+$targetVersion = 202;
 $currentVersion = 186;
 
 // Query current DB version
@@ -579,8 +579,26 @@ try {
         }
     }
 
+    // 11.5 Backfill round_id on distribution_logs (status='grabbed') and target_round_id on leads from lead_offers
+    $conn->query("
+        UPDATE distribution_logs dl
+        SET dl.round_id = COALESCE(
+            (SELECT lo.round_id FROM lead_offers lo WHERE lo.lead_id = dl.lead_id AND lo.round_id > 0 ORDER BY FIELD(lo.status, 'accepted', 'expired', 'pending'), lo.id DESC LIMIT 1),
+            (SELECT l.target_round_id FROM leads l WHERE l.id = dl.lead_id AND l.target_round_id > 0 LIMIT 1)
+        )
+        WHERE dl.status = 'grabbed' AND (dl.round_id IS NULL OR dl.round_id = 0)
+    ");
+    $conn->query("
+        UPDATE leads l
+        SET l.target_round_id = COALESCE(
+            (SELECT lo.round_id FROM lead_offers lo WHERE lo.lead_id = l.id AND lo.round_id > 0 ORDER BY FIELD(lo.status, 'accepted', 'expired', 'pending'), lo.id DESC LIMIT 1),
+            (SELECT dl.round_id FROM distribution_logs dl WHERE dl.lead_id = l.id AND dl.round_id > 0 ORDER BY dl.id DESC LIMIT 1)
+        )
+        WHERE l.target_round_id IS NULL OR l.target_round_id = 0
+    ");
+
     // 12. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '201') ON DUPLICATE KEY UPDATE setting_value = '201'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '202') ON DUPLICATE KEY UPDATE setting_value = '202'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

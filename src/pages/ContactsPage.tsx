@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers, MoreHorizontal, ChevronRight, Share2, DollarSign, SlidersHorizontal, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, UserPlus, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers, MoreHorizontal, ChevronRight, Share2, DollarSign, SlidersHorizontal, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -32,22 +32,57 @@ const PAGE_SIZE = 10;
 const STATUS_LABEL: Record<string,string> = { lead:'Lead mới', qualified:'Đủ điều kiện', customer:'Khách hàng', churned:'Đã rời' };
 const STATUS_CLASS: Record<string,string> = { lead:'info', qualified:'warning', customer:'success', churned:'danger' };
 
-export const PIPELINE_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  chua_xac_dinh: { label: '2. Chưa xác định', color: '#BD1D2D', bg: 'rgba(189, 29, 45, 0.1)', border: 'rgba(189, 29, 45, 0.2)' },
-  cham_soc_dai_han: { label: '3. Chăm sóc dài hạn', color: '#0D9488', bg: 'rgba(13, 148, 136, 0.12)', border: 'rgba(13, 148, 136, 0.25)' },
-  quan_tam: { label: '4. Quan tâm', color: '#ca8a04', bg: 'rgba(234, 179, 8, 0.12)', border: 'rgba(234, 179, 8, 0.25)' },
-  dong_y_gap: { label: '5. Thiện chí', color: '#ea580c', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.25)' },
-  thien_chi: { label: '5. Thiện chí', color: '#ea580c', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.25)' },
-  da_gap: { label: '6. Đã gặp', color: '#c026d3', bg: 'rgba(192, 38, 211, 0.12)', border: 'rgba(192, 38, 211, 0.25)' },
-  booking: { label: '7. Booking', color: '#2563eb', bg: 'rgba(37, 99, 235, 0.12)', border: 'rgba(37, 99, 235, 0.25)' },
-  dat_coc: { label: '8. Đặt cọc', color: '#059669', bg: 'rgba(5, 150, 105, 0.12)', border: 'rgba(5, 150, 105, 0.3)' },
-  da_coc: { label: '8. Đặt cọc', color: '#059669', bg: 'rgba(5, 150, 105, 0.12)', border: 'rgba(5, 150, 105, 0.3)' },
-  dong_deal: { label: '9. Đã đóng deal', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)' },
-  thanh_cong: { label: '9. Đã đóng deal', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)' },
-  not_lead: { label: 'Not Lead', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.12)', border: 'rgba(107, 114, 128, 0.25)' }
+export const PIPELINE_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; numPrefix?: string }> = {
+  chua_xac_dinh: { label: '2. Chưa xác định', numPrefix: '2.', color: '#BD1D2D', bg: 'rgba(189, 29, 45, 0.1)', border: 'rgba(189, 29, 45, 0.2)' },
+  cham_soc_dai_han: { label: '3. Chăm sóc dài hạn', numPrefix: '3.', color: '#0D9488', bg: 'rgba(13, 148, 136, 0.12)', border: 'rgba(13, 148, 136, 0.25)' },
+  quan_tam: { label: '4. Quan tâm', numPrefix: '4.', color: '#ca8a04', bg: 'rgba(234, 179, 8, 0.12)', border: 'rgba(234, 179, 8, 0.25)' },
+  dong_y_gap: { label: '5. Thiện chí', numPrefix: '5.', color: '#ea580c', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.25)' },
+  thien_chi: { label: '5. Thiện chí', numPrefix: '5.', color: '#ea580c', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.25)' },
+  da_gap: { label: '6. Đã gặp', numPrefix: '6.', color: '#c026d3', bg: 'rgba(192, 38, 211, 0.12)', border: 'rgba(192, 38, 211, 0.25)' },
+  booking: { label: '7. Booking', numPrefix: '7.', color: '#2563eb', bg: 'rgba(37, 99, 235, 0.12)', border: 'rgba(37, 99, 235, 0.25)' },
+  dat_coc: { label: '8. Đặt cọc', numPrefix: '8.', color: '#059669', bg: 'rgba(5, 150, 105, 0.12)', border: 'rgba(5, 150, 105, 0.3)' },
+  da_coc: { label: '8. Đặt cọc', numPrefix: '8.', color: '#059669', bg: 'rgba(5, 150, 105, 0.12)', border: 'rgba(5, 150, 105, 0.3)' },
+  dong_deal: { label: '9. Đã đóng deal', numPrefix: '9.', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)' },
+  thanh_cong: { label: '9. Đã đóng deal', numPrefix: '9.', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)' },
+  not_lead: { label: 'Not Lead', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.12)', border: 'rgba(107, 114, 128, 0.25)' },
+  reclaimed: { label: 'Đã thu hồi', color: '#d97706', bg: 'rgba(217, 119, 6, 0.12)', border: 'rgba(217, 119, 6, 0.25)' }
 };
 
-const renderContactStatusBadge = (c: any) => {
+const getDynamicPipelineLabel = (slug: string, customLabels?: Record<string, string>) => {
+  const cfg = PIPELINE_STATUS_CONFIG[slug];
+  if (!cfg) return slug;
+  if (!customLabels) return cfg.label;
+  const normalizedSlug = slug === 'dong_y_gap' ? 'thien_chi' : (slug === 'da_coc' ? 'dat_coc' : (slug === 'thanh_cong' ? 'dong_deal' : slug));
+  const custom = customLabels[normalizedSlug] || customLabels[slug];
+  if (custom && String(custom).trim()) {
+    const clean = String(custom).trim();
+    if (cfg.numPrefix && !/^\d+\./.test(clean)) {
+      return `${cfg.numPrefix} ${clean}`;
+    }
+    return clean;
+  }
+  return cfg.label;
+};
+
+const renderContactStatusBadge = (c: any, customLabels?: Record<string, string>) => {
+  if (c.deleted_at) {
+    return (
+      <span 
+        className="badge" 
+        style={{ 
+          backgroundColor: 'rgba(217, 119, 6, 0.12)', 
+          color: '#d97706', 
+          border: '1px solid rgba(217, 119, 6, 0.28)',
+          fontWeight: 700,
+          borderRadius: '12px',
+          padding: '3px 8px',
+          fontSize: '0.72rem'
+        }}
+      >
+        Đã thu hồi
+      </span>
+    );
+  }
   if (c.report_status === 'approved' || c.report_status === 'approved_no_comp') {
     return (
       <span 
@@ -82,7 +117,7 @@ const renderContactStatusBadge = (c: any) => {
           fontSize: '0.72rem'
         }}
       >
-        {cfg.label}
+        {getDynamicPipelineLabel(st, customLabels)}
       </span>
     );
   }
@@ -288,15 +323,36 @@ const AGO_DAYS = (d: string) => d ? Math.floor((Date.now()-new Date(d).getTime()
 export const ContactsPage: React.FC = () => {
   const { user } = useAuth();
   const isSale = (user?.role as string) === 'sale' || (user?.role as string) === 'sales' || (user?.role as string) === 'telesale';
+  const isAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || '').toLowerCase());
   const navigate = useNavigate();
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [uncontactedCount, setUncontactedCount] = useState(() => {
     return Number(sessionStorage.getItem('sale-uncontacted-count')) || 0;
   });
+  const [maxUncontactedLeads, setMaxUncontactedLeads] = useState<number>(5);
+  const [defaultRecallMinutes, setDefaultRecallMinutes] = useState<number>(2);
+  const [pipelineStatusLabels, setPipelineStatusLabels] = useState<Record<string, string>>({});
+  const [customReportReasons, setCustomReportReasons] = useState<string[]>([]);
   const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
   const [pendingLeadsList, setPendingLeadsList] = useState<any[]>([]);
   const [acceptingPending, setAcceptingPending] = useState(false);
   const [initialMetadataLoaded, setInitialMetadataLoaded] = useState(false);
+
+  // Bulk Collaborators / Assign / Restore Reclaimed states
+  const [showBulkCollabModal, setShowBulkCollabModal] = useState(false);
+  const [bulkCollabUserIds, setBulkCollabUserIds] = useState<number[]>([]);
+  const [bulkCollabMode, setBulkCollabMode] = useState<'add' | 'set' | 'remove'>('add');
+  const [bulkCollabSearch, setBulkCollabSearch] = useState('');
+  const [isSubmittingBulkCollab, setIsSubmittingBulkCollab] = useState(false);
+
+  const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
+  const [bulkAssignOwnerId, setBulkAssignOwnerId] = useState<string>('');
+  const [isSubmittingBulkAssign, setIsSubmittingBulkAssign] = useState(false);
+
+  const [showBulkRestoreModal, setShowBulkRestoreModal] = useState(false);
+  const [bulkRestoreTargetIds, setBulkRestoreTargetIds] = useState<number[]>([]);
+  const [bulkRestoreOwnerId, setBulkRestoreOwnerId] = useState<string>('');
+  const [isSubmittingBulkRestore, setIsSubmittingBulkRestore] = useState(false);
 
   useEffect(() => {
     if (isSale) {
@@ -310,7 +366,7 @@ export const ContactsPage: React.FC = () => {
                 return false;
               }
               // Hết hạn rồi thì vứt, không hiển thị banner
-              const leadRecallMins = Number(l.lead_recall_minutes) || 2;
+              const leadRecallMins = Number(l.lead_recall_minutes) || defaultRecallMinutes || 2;
               const limitMs = leadRecallMins * 60 * 1000;
               const targetDate = new Date((l.last_assigned_at || l.last_interaction_date || l.received_at || '').replace(/-/g, '/')).getTime();
               if (limitMs > 0 && targetDate > 0 && (Date.now() - targetDate) >= limitMs) {
@@ -332,7 +388,7 @@ export const ContactsPage: React.FC = () => {
         window.removeEventListener('lead-accepted', loadPending);
       };
     }
-  }, [isSale]);
+  }, [isSale, defaultRecallMinutes]);
 
   const handleDirectAcceptLeads = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -449,26 +505,28 @@ export const ContactsPage: React.FC = () => {
   const PIPELINE_TABS = useMemo(() => {
     const baseTabs = [
       { id: 'all', label: 'Tất cả', color: '#64748b' },
-      { id: 'chua_xac_dinh', label: '2. Chưa xác định', color: '#BD1D2D' },
-      { id: 'cham_soc_dai_han', label: '3. Chăm sóc dài hạn', color: '#0D9488' },
-      { id: 'quan_tam', label: '4. Quan tâm', color: '#EAB308' },
-      { id: 'dong_y_gap', label: '5. Thiện chí', color: '#F97316' },
-      { id: 'da_gap', label: '6. Đã gặp', color: '#C026D3' },
-      { id: 'booking', label: '7. Booking', color: '#2563EB' },
-      { id: 'dat_coc', label: '8. Đặt cọc', color: '#059669' },
-      { id: 'dong_deal', label: '9. Đã đóng deal', color: '#10B981' }
+      { id: 'chua_xac_dinh', label: getDynamicPipelineLabel('chua_xac_dinh', pipelineStatusLabels), color: '#BD1D2D' },
+      { id: 'cham_soc_dai_han', label: getDynamicPipelineLabel('cham_soc_dai_han', pipelineStatusLabels), color: '#0D9488' },
+      { id: 'quan_tam', label: getDynamicPipelineLabel('quan_tam', pipelineStatusLabels), color: '#EAB308' },
+      { id: 'dong_y_gap', label: getDynamicPipelineLabel('dong_y_gap', pipelineStatusLabels), color: '#F97316' },
+      { id: 'da_gap', label: getDynamicPipelineLabel('da_gap', pipelineStatusLabels), color: '#C026D3' },
+      { id: 'booking', label: getDynamicPipelineLabel('booking', pipelineStatusLabels), color: '#2563EB' },
+      { id: 'dat_coc', label: getDynamicPipelineLabel('dat_coc', pipelineStatusLabels), color: '#059669' },
+      { id: 'dong_deal', label: getDynamicPipelineLabel('dong_deal', pipelineStatusLabels), color: '#10B981' }
     ];
 
     if (!isSale) {
       baseTabs.push({ id: 'not_lead', label: 'Not Lead / Chờ duyệt', color: '#6b7280' });
+      baseTabs.push({ id: 'reclaimed', label: 'Đã thu hồi', color: '#d97706' });
     }
 
     return baseTabs;
-  }, [isSale]);
+  }, [isSale, pipelineStatusLabels]);
 
   const getTotalActiveCount = () => {
     if (stageCounts && Object.keys(stageCounts).length > 0) {
       return Object.entries(stageCounts).reduce((acc, [st, cnt]) => {
+        if (st === 'reclaimed') return acc;
         if (isSale && st === 'not_lead') return acc;
         return acc + Number(cnt || 0);
       }, 0);
@@ -897,20 +955,58 @@ export const ContactsPage: React.FC = () => {
           const list = Array.isArray(d) ? d : (d?.items || []);
           setUsers(list);
         }
-        // Load lead scoring rules and decay days from settings
-        if (settingsRes && settingsRes.data?.success && settingsRes.data?.data) {
-          if (settingsRes.data.data.lead_scoring_rules) {
+        // Load lead scoring rules, decay days, backpressure_limit / max_uncontacted_leads, pipeline labels, and report reasons from settings
+        const applySysSettings = (sData: any) => {
+          if (!sData) return;
+          if (sData.lead_scoring_rules) {
             try {
-              const parsed = JSON.parse(settingsRes.data.data.lead_scoring_rules);
+              const parsed = typeof sData.lead_scoring_rules === 'string' ? JSON.parse(sData.lead_scoring_rules) : sData.lead_scoring_rules;
               setScoringRules(parsed);
-            } catch(e) {}
+            } catch (e) {}
           }
-          if (settingsRes.data.data.temperature_decay_days) {
-            const parsedDays = parseInt(settingsRes.data.data.temperature_decay_days, 10);
+          if (sData.temperature_decay_days) {
+            const parsedDays = parseInt(sData.temperature_decay_days, 10);
             if (!isNaN(parsedDays) && parsedDays > 0) {
               setDecayDays(parsedDays);
             }
           }
+          const rawBp = sData.backpressure_limit ?? sData.max_uncontacted_leads;
+          if (rawBp !== undefined) {
+            const parsedMax = parseInt(String(rawBp), 10);
+            if (!isNaN(parsedMax) && parsedMax > 0) {
+              setMaxUncontactedLeads(parsedMax);
+            }
+          }
+          if (sData.lead_response_timeout_minutes !== undefined) {
+            const parsedMins = parseInt(String(sData.lead_response_timeout_minutes), 10);
+            if (!isNaN(parsedMins) && parsedMins > 0) {
+              setDefaultRecallMinutes(parsedMins);
+            }
+          }
+          if (sData.pipeline_status_labels) {
+            try {
+              const parsedLabels = typeof sData.pipeline_status_labels === 'string'
+                ? JSON.parse(sData.pipeline_status_labels)
+                : sData.pipeline_status_labels;
+              if (parsedLabels && typeof parsedLabels === 'object') {
+                setPipelineStatusLabels(parsedLabels);
+              }
+            } catch (e) {}
+          }
+          if (sData.report_error_reasons) {
+            try {
+              const parsedReasons = typeof sData.report_error_reasons === 'string'
+                ? JSON.parse(sData.report_error_reasons)
+                : sData.report_error_reasons;
+              if (Array.isArray(parsedReasons)) {
+                setCustomReportReasons(parsedReasons.filter(Boolean));
+              }
+            } catch (e) {}
+          }
+        };
+
+        if (settingsRes && settingsRes.data?.success && settingsRes.data?.data) {
+          applySysSettings(settingsRes.data.data);
         }
       } catch (err) {
         console.error("Error loading metadata:", err);
@@ -922,6 +1018,51 @@ export const ContactsPage: React.FC = () => {
     if (user) {
       loadMetadata();
     }
+
+    const handleSettingsReload = () => {
+      api.get('/api.php?action=get_settings').then(res => {
+        if (res && res.data?.success && res.data?.data) {
+          const sData = res.data.data;
+          if (sData.lead_scoring_rules) {
+            try {
+              const parsed = typeof sData.lead_scoring_rules === 'string' ? JSON.parse(sData.lead_scoring_rules) : sData.lead_scoring_rules;
+              setScoringRules(parsed);
+            } catch (e) {}
+          }
+          if (sData.temperature_decay_days) {
+            const parsedDays = parseInt(sData.temperature_decay_days, 10);
+            if (!isNaN(parsedDays) && parsedDays > 0) setDecayDays(parsedDays);
+          }
+          const rawBp = sData.backpressure_limit ?? sData.max_uncontacted_leads;
+          if (rawBp !== undefined) {
+            const parsedMax = parseInt(String(rawBp), 10);
+            if (!isNaN(parsedMax) && parsedMax > 0) setMaxUncontactedLeads(parsedMax);
+          }
+          if (sData.lead_response_timeout_minutes !== undefined) {
+            const parsedMins = parseInt(String(sData.lead_response_timeout_minutes), 10);
+            if (!isNaN(parsedMins) && parsedMins > 0) setDefaultRecallMinutes(parsedMins);
+          }
+          if (sData.pipeline_status_labels) {
+            try {
+              const parsedLabels = typeof sData.pipeline_status_labels === 'string'
+                ? JSON.parse(sData.pipeline_status_labels)
+                : sData.pipeline_status_labels;
+              if (parsedLabels && typeof parsedLabels === 'object') setPipelineStatusLabels(parsedLabels);
+            } catch (e) {}
+          }
+          if (sData.report_error_reasons) {
+            try {
+              const parsedReasons = typeof sData.report_error_reasons === 'string'
+                ? JSON.parse(sData.report_error_reasons)
+                : sData.report_error_reasons;
+              if (Array.isArray(parsedReasons)) setCustomReportReasons(parsedReasons.filter(Boolean));
+            } catch (e) {}
+          }
+        }
+      }).catch(() => {});
+    };
+    window.addEventListener('system_settings_updated', handleSettingsReload);
+    return () => window.removeEventListener('system_settings_updated', handleSettingsReload);
   }, [user]);
 
   const handleApplyFilters = () => {
@@ -1093,9 +1234,109 @@ export const ContactsPage: React.FC = () => {
     window.open(`${api.defaults.baseURL}/export?${params.toString()}`, '_blank');
     addToast('Đang tải xuống dữ liệu Export...', 'info');
   };
-  const bulkTag    = () => addToast('Mở gán tag hàng loạt...', 'info');
-  const bulkEmail  = () => addToast(`Soạn email cho ${selected.size} liên hệ...`, 'info');
-  const bulkAssign = () => addToast('Gán nhân viên phụ trách...', 'info');
+  const bulkTag = () => addToast('Mở gán tag hàng loạt...', 'info');
+  const bulkEmail = () => addToast(`Soạn email cho ${selected.size} liên hệ...`, 'info');
+
+  const bulkCollaborators = () => {
+    if (selected.size === 0) return;
+    setBulkCollabUserIds([]);
+    setBulkCollabMode('add');
+    setBulkCollabSearch('');
+    setShowBulkCollabModal(true);
+  };
+
+  const handleSubmitBulkCollaborators = async () => {
+    if (selected.size === 0) return;
+    if (bulkCollabMode !== 'set' && bulkCollabUserIds.length === 0) {
+      addToast('Vui lòng chọn ít nhất 1 nhân sự chăm sóc', 'error');
+      return;
+    }
+    setIsSubmittingBulkCollab(true);
+    try {
+      const res = await api.post('/contacts/bulk-collaborators', {
+        ids: Array.from(selected),
+        collaborator_ids: bulkCollabUserIds,
+        mode: bulkCollabMode
+      });
+      if (res.data?.success) {
+        addToast(res.data.message || 'Đã cập nhật người chăm sóc hàng loạt', 'success');
+        setShowBulkCollabModal(false);
+        setSelected(new Set());
+        fetchData();
+      } else {
+        addToast(res.data?.message || 'Cập nhật thất bại', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Lỗi khi cập nhật người chăm sóc hàng loạt', 'error');
+    } finally {
+      setIsSubmittingBulkCollab(false);
+    }
+  };
+
+  const bulkAssign = () => {
+    if (selected.size === 0) return;
+    setBulkAssignOwnerId('');
+    setShowBulkAssignModal(true);
+  };
+
+  const handleSubmitBulkAssign = async () => {
+    if (selected.size === 0) return;
+    if (!bulkAssignOwnerId) {
+      addToast('Vui lòng chọn nhân viên phụ trách mới', 'error');
+      return;
+    }
+    setIsSubmittingBulkAssign(true);
+    try {
+      const res = await api.post('/contacts/bulk-assign', {
+        ids: Array.from(selected),
+        owner_id: Number(bulkAssignOwnerId)
+      });
+      if (res.data?.success) {
+        addToast(res.data.message || 'Đã chuyển người phụ trách thành công', 'success');
+        setShowBulkAssignModal(false);
+        setSelected(new Set());
+        fetchData();
+      } else {
+        addToast(res.data?.message || 'Chuyển phụ trách thất bại', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Lỗi khi chuyển người phụ trách', 'error');
+    } finally {
+      setIsSubmittingBulkAssign(false);
+    }
+  };
+
+  const openBulkRestoreReclaimed = (ids?: number[]) => {
+    const targetIds = ids && ids.length > 0 ? ids : Array.from(selected);
+    if (targetIds.length === 0) return;
+    setBulkRestoreTargetIds(targetIds);
+    setBulkRestoreOwnerId('');
+    setShowBulkRestoreModal(true);
+  };
+
+  const handleSubmitBulkRestore = async () => {
+    if (bulkRestoreTargetIds.length === 0) return;
+    setIsSubmittingBulkRestore(true);
+    try {
+      const payload: any = { ids: bulkRestoreTargetIds };
+      if (bulkRestoreOwnerId) {
+        payload.target_owner_id = Number(bulkRestoreOwnerId);
+      }
+      const res = await api.post('/contacts/bulk-restore-reclaimed', payload);
+      if (res.data?.success) {
+        addToast(res.data.message || 'Đã back lại thu hồi thành công', 'success');
+        setShowBulkRestoreModal(false);
+        setSelected(new Set());
+        fetchData();
+      } else {
+        addToast(res.data?.message || 'Không thể khôi phục khách hàng', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Lỗi khi back lại thu hồi', 'error');
+    } finally {
+      setIsSubmittingBulkRestore(false);
+    }
+  };
 
   const handleCreateContact = async () => {
     if (!createForm.first_name.trim()) { addToast('Vui lòng nhập họ tên', 'error'); return; }
@@ -2011,18 +2252,18 @@ export const ContactsPage: React.FC = () => {
   return (
     <div>
       {/* Sale uncontacted warning badge (nếu có) */}
-      {user?.role === 'sale' && uncontactedCount > 0 && (
+      {isSale && uncontactedCount > 0 && (
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '6px',
-          background: uncontactedCount >= 5 
+          background: uncontactedCount >= maxUncontactedLeads 
             ? 'rgba(239, 68, 68, 0.1)' 
             : 'var(--color-bg-light)',
-          border: uncontactedCount >= 5 
+          border: uncontactedCount >= maxUncontactedLeads 
             ? '1px solid rgba(239, 68, 68, 0.25)' 
             : '1px solid var(--color-border)',
-          color: uncontactedCount >= 5 
+          color: uncontactedCount >= maxUncontactedLeads 
             ? 'var(--color-danger)' 
             : 'var(--color-text)',
           borderRadius: '20px',
@@ -2031,8 +2272,8 @@ export const ContactsPage: React.FC = () => {
           fontWeight: 700,
           marginBottom: '0.5rem'
         }}>
-          <AlertTriangle size={12} style={{ color: uncontactedCount >= 5 ? 'var(--color-danger)' : 'var(--color-warning)' }} />
-          <span>Chưa tương tác: <strong>{uncontactedCount}/5</strong></span>
+          <AlertTriangle size={12} style={{ color: uncontactedCount >= maxUncontactedLeads ? 'var(--color-danger)' : 'var(--color-warning)' }} />
+          <span>Chưa tương tác: <strong>{uncontactedCount}/{maxUncontactedLeads}</strong></span>
         </div>
       )}
 
@@ -2332,6 +2573,34 @@ export const ContactsPage: React.FC = () => {
                         <span>{isSale ? "Thêm data cá nhân" : "Thêm data nhanh"}</span>
                       </button>
 
+                      <button
+                        onClick={() => {
+                          setIsMultiSelectMode(prev => {
+                            if (prev) setSelected(new Set());
+                            return !prev;
+                          });
+                          setShowMobileActions(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: 'none',
+                          background: isMultiSelectMode ? 'var(--color-bg-light)' : 'transparent',
+                          color: isMultiSelectMode ? 'var(--color-primary)' : 'var(--color-text)',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          textAlign: 'left',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <CheckSquare size={13} />
+                        <span>{isMultiSelectMode ? 'Tắt chọn nhiều' : 'Chọn nhiều (Thao tác loạt)'}</span>
+                      </button>
+
                       <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '2px 0' }} />
                       {/* Advanced Filter Toggle (opens drawer directly on advanced tab) */}
                       <button
@@ -2551,6 +2820,39 @@ export const ContactsPage: React.FC = () => {
                     {activeFiltersCount}
                   </span>
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMultiSelectMode(prev => {
+                    if (prev) setSelected(new Set());
+                    return !prev;
+                  });
+                }}
+                style={{
+                  height: '38px',
+                  padding: '0 0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  border: isMultiSelectMode ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  background: isMultiSelectMode ? 'rgba(189, 29, 45, 0.08)' : 'var(--color-surface)',
+                  color: isMultiSelectMode ? 'var(--color-primary)' : 'var(--color-text)',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s',
+                  boxShadow: 'var(--shadow-sm)',
+                  outline: 'none',
+                  whiteSpace: 'nowrap'
+                }}
+                title="Chọn nhiều khách hàng để thêm người chăm sóc, gán phụ trách hoặc back thu hồi hàng loạt"
+              >
+                <CheckSquare size={14} />
+                <span>{isMultiSelectMode ? 'Đang chọn nhiều' : 'Chọn nhiều'}</span>
               </button>
 
               <button
@@ -3163,25 +3465,32 @@ export const ContactsPage: React.FC = () => {
       <AnimatePresence>
         {isMultiSelectMode && selected.size > 0 && (
           <motion.div initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
-            style={{ position:'sticky', top:68, zIndex:100, marginBottom:'0.75rem', padding:'0.75rem 1.25rem', background:'var(--color-primary)', borderRadius:'var(--radius-xl)', display:'flex', alignItems:'center', gap:'0.75rem', boxShadow:'0 8px 24px rgba(163, 20, 34,0.3)' }}>
+            style={{ position:'sticky', top:68, zIndex:100, marginBottom:'0.75rem', padding:'0.75rem 1.25rem', background:'var(--color-primary)', borderRadius:'var(--radius-xl)', display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap', boxShadow:'0 8px 24px rgba(163, 20, 34,0.3)' }}>
             <span style={{ color:'white', fontWeight:700, fontSize:'0.875rem' }}>{selected.size} đã chọn</span>
             <div style={{ flex:1 }}/>
             {[
+              { label:'Người chăm sóc', action:bulkCollaborators, icon: <UserPlus size={14} /> },
+              ...(!isSale ? [
+                { label:'Chuyển phụ trách', action:bulkAssign, icon: <User size={14} /> },
+              ] : []),
+              ...(isAdmin ? [
+                { label:'Back lại thu hồi', action: () => openBulkRestoreReclaimed(), icon: <RotateCcw size={14} /> },
+              ] : []),
               { label:'Email', action:bulkEmail },
               { label:'Tag',   action:bulkTag   },
               ...(!isSale ? [
-                { label:'Gán',  action:bulkAssign},
-                { label:'Xuất', action:bulkExport },
+                { label:'Xuất Excel', action:bulkExport },
               ] : [])
-            ].map(b=>(
+            ].map((b: any)=>(
               <button key={b.label} onClick={b.action}
-                style={{ padding:'0.375rem 0.875rem', background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'var(--radius-lg)', color:'white', fontWeight:600, fontSize:'0.8125rem', cursor:'pointer' }}>
+                style={{ padding:'0.375rem 0.75rem', background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'var(--radius-lg)', color:'white', fontWeight:600, fontSize:'0.8rem', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:'5px', whiteSpace:'nowrap' }}>
+                {b.icon}
                 {b.label}
               </button>
             ))}
             {['admin', 'superadmin', 'super_admin'].includes(user?.role || '') && (
               <button onClick={bulkDelete}
-                style={{ padding:'0.375rem 0.875rem', background:'rgba(239,68,68,0.8)', border:'none', borderRadius:'var(--radius-lg)', color:'white', fontWeight:700, fontSize:'0.8125rem', cursor:'pointer' }}>
+                style={{ padding:'0.375rem 0.75rem', background:'rgba(239,68,68,0.8)', border:'none', borderRadius:'var(--radius-lg)', color:'white', fontWeight:700, fontSize:'0.8rem', cursor:'pointer' }}>
                 Xóa
               </button>
             )}
@@ -3436,7 +3745,34 @@ export const ContactsPage: React.FC = () => {
                         )}
                         {columns.find(col => col.id === 'status')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                            {renderContactStatusBadge(c)}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              {renderContactStatusBadge(c, pipelineStatusLabels)}
+                              {c.deleted_at && isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openBulkRestoreReclaimed([c.id]);
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    padding: '2px 7px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    background: 'rgba(16, 185, 129, 0.12)',
+                                    color: '#059669',
+                                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Khôi phục (Back lại) khách đã thu hồi"
+                                >
+                                  <RotateCcw size={11} /> Back lại
+                                </button>
+                              )}
+                            </div>
                           </td>
                         )}
 
@@ -3815,8 +4151,35 @@ export const ContactsPage: React.FC = () => {
                           
                           {/* Status Badges & Score */}
                           <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                              {renderContactStatusBadge(c)}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '6px', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                {renderContactStatusBadge(c, pipelineStatusLabels)}
+                                {c.deleted_at && isAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openBulkRestoreReclaimed([c.id]);
+                                    }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                      padding: '2px 7px',
+                                      borderRadius: '6px',
+                                      fontSize: '0.68rem',
+                                      fontWeight: 700,
+                                      background: 'rgba(16, 185, 129, 0.12)',
+                                      color: '#059669',
+                                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                                      cursor: 'pointer'
+                                    }}
+                                    title="Khôi phục (Back lại) khách đã thu hồi"
+                                  >
+                                    <RotateCcw size={11} /> Back lại
+                                  </button>
+                                )}
+                              </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Đánh giá:</span>
                                 <span style={{ 
@@ -4009,13 +4372,20 @@ export const ContactsPage: React.FC = () => {
             <div className="form-group" style={{ marginBottom: '1.25rem' }}>
               <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Lý do báo lỗi (Chọn mẫu có sẵn)</label>
               <CustomSelect
-                options={[
-                  { value: 'Số điện thoại không đúng / Thuê bao', label: 'Số điện thoại không đúng / Thuê bao' },
-                  { value: 'Không có nhu cầu mua dự án nào (rác)', label: 'Không có nhu cầu mua dự án nào (rác)' },
-                  { value: 'Trùng số với Sale khác', label: 'Trùng số với Sale khác' },
-                  { value: 'Khách hàng từ chối làm việc ngay lập tức', label: 'Khách hàng từ chối làm việc ngay lập tức' },
-                  { value: 'Lý do khác...', label: 'Lý do khác...' }
-                ]}
+                options={
+                  customReportReasons.length > 0
+                    ? [
+                        ...customReportReasons.map(r => ({ value: r, label: r })),
+                        { value: 'Lý do khác...', label: 'Lý do khác...' }
+                      ]
+                    : [
+                        { value: 'Số điện thoại không đúng / Thuê bao', label: 'Số điện thoại không đúng / Thuê bao' },
+                        { value: 'Không có nhu cầu mua dự án nào (rác)', label: 'Không có nhu cầu mua dự án nào (rác)' },
+                        { value: 'Trùng số với Sale khác', label: 'Trùng số với Sale khác' },
+                        { value: 'Khách hàng từ chối làm việc ngay lập tức', label: 'Khách hàng từ chối làm việc ngay lập tức' },
+                        { value: 'Lý do khác...', label: 'Lý do khác...' }
+                      ]
+                }
                 value={reportReasonType}
                 onChange={(val) => setReportReasonType(String(val))}
               />
@@ -4060,6 +4430,191 @@ export const ContactsPage: React.FC = () => {
                 }}
               >
                 {submittingReport ? 'Đang gửi...' : 'Gửi báo cáo lỗi'}
+              </button>
+            </div>
+          </div>
+        </CustomModal>
+      )}
+
+      {/* Modal 1: Thêm / Gỡ Người chăm sóc hàng loạt */}
+      {showBulkCollabModal && (
+        <CustomModal
+          isOpen={showBulkCollabModal}
+          onClose={() => !isSubmittingBulkCollab && setShowBulkCollabModal(false)}
+          title={`Người chăm sóc hàng loạt (${selected.size} khách hàng)`}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Chế độ thực hiện</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {[
+                  { id: 'add', label: 'Thêm cộng dồn', desc: 'Giữ nguyên người cũ' },
+                  { id: 'set', label: 'Thay thế toàn bộ', desc: 'Ghi đè danh sách mới' },
+                  { id: 'remove', label: 'Gỡ bỏ', desc: 'Xóa người được chọn' }
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setBulkCollabMode(m.id as any)}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '10px',
+                      border: bulkCollabMode === m.id ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: bulkCollabMode === m.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                      color: bulkCollabMode === m.id ? 'var(--color-primary)' : 'var(--color-text)',
+                      textAlign: 'left',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{m.label}</div>
+                    <div style={{ fontSize: '0.68rem', opacity: 0.75, marginTop: '2px' }}>{m.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label className="form-label" style={{ fontWeight: 700, margin: 0 }}>
+                  Chọn người chăm sóc ({bulkCollabUserIds.length} đã chọn)
+                </label>
+                {bulkCollabUserIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setBulkCollabUserIds([])}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Bỏ chọn hết
+                  </button>
+                )}
+              </div>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Tìm theo tên hoặc email nhân sự..."
+                value={bulkCollabSearch}
+                onChange={e => setBulkCollabSearch(e.target.value)}
+                style={{ marginBottom: '8px' }}
+              />
+              <div className="custom-scrollbar" style={{ maxHeight: '240px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '6px' }}>
+                {users
+                  .filter(u => {
+                    if (!bulkCollabSearch.trim()) return true;
+                    const q = bulkCollabSearch.toLowerCase();
+                    return (u.full_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+                  })
+                  .map(u => {
+                    const uid = Number(u.id);
+                    const checked = bulkCollabUserIds.includes(uid);
+                    return (
+                      <div
+                        key={u.id}
+                        onClick={() => {
+                          setBulkCollabUserIds(prev =>
+                            prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]
+                          );
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          background: checked ? 'var(--color-primary-light)' : 'transparent',
+                          marginBottom: '2px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Avatar name={u.full_name || u.email || 'U'} src={u.avatar_url || u.avatar} size={28} />
+                          <div>
+                            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text)' }}>{u.full_name}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{u.email || u.role}</div>
+                          </div>
+                        </div>
+                        <CustomCheckbox checked={checked} onChange={() => {}} />
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
+              <button className="btn outline" onClick={() => setShowBulkCollabModal(false)} disabled={isSubmittingBulkCollab}>
+                Hủy
+              </button>
+              <button className="btn primary" onClick={handleSubmitBulkCollaborators} disabled={isSubmittingBulkCollab}>
+                {isSubmittingBulkCollab ? 'Đang xử lý...' : 'Áp dụng ngay'}
+              </button>
+            </div>
+          </div>
+        </CustomModal>
+      )}
+
+      {/* Modal 2: Chuyển Sale phụ trách hàng loạt */}
+      {showBulkAssignModal && (
+        <CustomModal
+          isOpen={showBulkAssignModal}
+          onClose={() => !isSubmittingBulkAssign && setShowBulkAssignModal(false)}
+          title={`Chuyển phụ trách hàng loạt (${selected.size} khách hàng)`}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Chọn Sale phụ trách mới</label>
+              <CustomSelect
+                value={bulkAssignOwnerId}
+                onChange={val => setBulkAssignOwnerId(String(val))}
+                options={[
+                  { value: '', label: '-- Chọn nhân sự phụ trách --' },
+                  ...users.map(u => ({ value: String(u.id), label: `${u.full_name} (${u.role || 'Sale'})` }))
+                ]}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
+              <button className="btn outline" onClick={() => setShowBulkAssignModal(false)} disabled={isSubmittingBulkAssign}>
+                Hủy
+              </button>
+              <button className="btn primary" onClick={handleSubmitBulkAssign} disabled={isSubmittingBulkAssign}>
+                {isSubmittingBulkAssign ? 'Đang chuyển...' : 'Xác nhận chuyển'}
+              </button>
+            </div>
+          </div>
+        </CustomModal>
+      )}
+
+      {/* Modal 3: Back lại (Khôi phục) khách hàng đã thu hồi */}
+      {showBulkRestoreModal && (
+        <CustomModal
+          isOpen={showBulkRestoreModal}
+          onClose={() => !isSubmittingBulkRestore && setShowBulkRestoreModal(false)}
+          title={`Khôi phục (Back lại) ${bulkRestoreTargetIds.length} khách đã thu hồi`}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
+            <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '0.82rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
+              Hệ thống sẽ khôi phục các khách hàng đã bị thu hồi về lại danh sách đang chăm sóc của Sale và tự động cấp lại thời gian bảo mật theo cấu hình.
+            </div>
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Người nhận lại khách hàng</label>
+              <CustomSelect
+                value={bulkRestoreOwnerId}
+                onChange={val => setBulkRestoreOwnerId(String(val))}
+                options={[
+                  { value: '', label: '🔄 Khôi phục về đúng Sale phụ trách cũ trước khi bị thu hồi (Mặc định)' },
+                  ...users.map(u => ({ value: String(u.id), label: `Chuyển cho: ${u.full_name}` }))
+                ]}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
+              <button className="btn outline" onClick={() => setShowBulkRestoreModal(false)} disabled={isSubmittingBulkRestore}>
+                Hủy
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleSubmitBulkRestore}
+                disabled={isSubmittingBulkRestore}
+                style={{ background: '#10b981', borderColor: '#10b981' }}
+              >
+                {isSubmittingBulkRestore ? 'Đang khôi phục...' : `Back lại (${bulkRestoreTargetIds.length} khách)`}
               </button>
             </div>
           </div>

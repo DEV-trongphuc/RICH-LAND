@@ -1637,34 +1637,49 @@ class ActivityController {
     }
 
     private function getSecurityExpiration(string $status, ?string $baseDate = null): ?string {
-        $key = 'security_timer_' . $status;
         $fallback = [
             'chua_xac_dinh' => '+3 hours',
             'quan_tam' => '+1 day',
             'thien_chi' => '+3 days',
-            'dong_y_gap' => '+4 days',
+            'dong_y_gap' => '+3 days',
             'da_gap' => '+5 days',
             'booking' => '+3 months',
+            'dat_coc' => '+6 months',
+            'dong_deal' => '+12 months',
+            'cham_soc_dai_han' => '+30 days',
         ];
-        if (!isset($fallback[$status])) {
-            return null;
-        }
         $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
-        $stmt->execute([$key]);
-        $val = $stmt->fetchColumn();
-        $duration = ($val !== false && $val !== null && $val !== '') ? $val : $fallback[$status];
-        
-        $stmtTrigger = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'parallel_assignment_trigger_status' LIMIT 1");
-        $stmtTrigger->execute();
-        $triggerStatus = $stmtTrigger->fetchColumn() ?: 'chua_xac_dinh';
-        
-        if ($status === $triggerStatus) {
-            $stmtHours = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'uncontacted_lead_share_hours' LIMIT 1");
-            $stmtHours->execute();
-            $shareHoursVal = $stmtHours->fetchColumn();
-            $shareHours = ($shareHoursVal !== false && $shareHoursVal !== null && $shareHoursVal !== '') ? (int)$shareHoursVal : 3;
-            if ($shareHours > 0) {
-                $duration = "+$shareHours hours";
+        if ($status === 'dong_y_gap' || $status === 'thien_chi') {
+            $stmt->execute(['security_timer_thien_chi']);
+            $val = $stmt->fetchColumn();
+            if ($val === false || $val === null || $val === '') {
+                $stmt->execute(['security_timer_dong_y_gap']);
+                $val = $stmt->fetchColumn();
+            }
+            $duration = ($val !== false && $val !== null && $val !== '') ? $val : ($fallback[$status] ?? '+3 days');
+        } else {
+            $stmt->execute(['security_timer_' . $status]);
+            $val = $stmt->fetchColumn();
+            $duration = ($val !== false && $val !== null && $val !== '') ? $val : '';
+            if ($duration === '') {
+                $stmtTrigger = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'parallel_assignment_trigger_status' LIMIT 1");
+                $stmtTrigger->execute();
+                $triggerStatus = $stmtTrigger->fetchColumn() ?: 'chua_xac_dinh';
+                if ($status === $triggerStatus) {
+                    $stmtHours = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'uncontacted_lead_share_hours' LIMIT 1");
+                    $stmtHours->execute();
+                    $shareHoursVal = $stmtHours->fetchColumn();
+                    $shareHours = ($shareHoursVal !== false && $shareHoursVal !== null && $shareHoursVal !== '') ? (int)$shareHoursVal : 3;
+                    if ($shareHours > 0) {
+                        $duration = "+$shareHours hours";
+                    }
+                }
+            }
+            if ($duration === '') {
+                if (!isset($fallback[$status])) {
+                    return null;
+                }
+                $duration = $fallback[$status];
             }
         }
         

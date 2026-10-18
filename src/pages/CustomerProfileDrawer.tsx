@@ -1955,7 +1955,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return 'warm'; // Nóng
     }
     const durationSec = parseInt(noteDuration, 10) || 0;
-    if (noteChannel === 'call' && durationSec > tempSuggestionCallDuration && notes.length >= tempSuggestionRequiredNotes) {
+    if (noteChannel === 'call' && durationSec >= tempSuggestionCallDuration && notes.length >= tempSuggestionRequiredNotes) {
       return 'neutral'; // Ấm
     }
     return 'cold'; // Lạnh
@@ -4041,8 +4041,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
       }
 
-      // Fetch dynamic business configurations (decay days & pipeline status hierarchy)
-      if (pipelineStages.length === 0) {
+      // Fetch dynamic business configurations (decay days, pipeline status hierarchy,coop eligible statuses, lead scoring)
+      const loadDrawerSettings = () => {
         fetchAPI('get_settings')
           .then(res => {
             if (res && res.success && res.data) {
@@ -4114,7 +4114,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             }
           })
           .catch(() => {});
-      }
+      };
+      loadDrawerSettings();
+      window.addEventListener('system_settings_updated', loadDrawerSettings);
+      return () => window.removeEventListener('system_settings_updated', loadDrawerSettings);
     }
   }, [isOpen]);
 

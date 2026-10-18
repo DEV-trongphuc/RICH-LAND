@@ -542,7 +542,7 @@ class CheckInController {
     }
 
     public function update(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'director', 'assistant', 'manager']);
+        require_once __DIR__ . '/../NotificationService.php';
         $b = getBody();
         $status = trim($b['status'] ?? '');
         $reason = trim($b['reason'] ?? ''); // Optionally update reason or note
@@ -573,7 +573,19 @@ class CheckInController {
             respond(403, null, 'Bạn không có quyền thao tác trên dữ liệu này', false);
         }
 
-        if ($auth['role'] === 'manager') {
+        $canApproveMatrix = NotificationService::canUserApproveModule(
+            $this->db,
+            (int)$auth['tenant_id'],
+            'attendance',
+            (int)$auth['user_id'],
+            (int)$row['user_id']
+        );
+
+        if (!$canApproveMatrix && !in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director', 'assistant', 'manager'], true)) {
+            respond(403, null, 'Bạn không có quyền phê duyệt yêu cầu chấm công này', false);
+        }
+
+        if ($auth['role'] === 'manager' && !$canApproveMatrix) {
             $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
             $stmtUserTeam->execute([$row['user_id']]);
             $targetUserTeamId = $stmtUserTeam->fetchColumn();

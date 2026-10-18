@@ -749,6 +749,9 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     $eligibleGrabConsultants = [];
                     foreach ($activeConsultants as $c) {
                         require_once __DIR__ . '/webhook_logic.php';
+                        if (isConsultantOnGrabCooldown($conn, $c['id'], $row['round_id'], $grabCooldownSeconds)) {
+                            continue;
+                        }
                         if (checkConsultantGates($conn, $c['id'], $leadRowData, true) === true) {
                             $eligibleGrabConsultants[] = $c;
                         }
@@ -1453,6 +1456,9 @@ if (!function_exists('recallInactiveLeads')) {
 
                         foreach ($activeConsultants as $c) {
                             require_once __DIR__ . '/webhook_logic.php';
+                            if (isConsultantOnGrabCooldown($conn, $c['id'], $roundId, $grabCooldownSeconds)) {
+                                continue;
+                            }
                             if (checkConsultantGates($conn, $c['id'], $leadRowData, true) === true) {
                                 $eligibleGrabConsultants[] = $c;
                             }
@@ -1750,23 +1756,14 @@ if (!function_exists('recallExpiredGrabLeads')) {
                     ];
                     
                     if ($cRes) {
+                        require_once __DIR__ . '/webhook_logic.php';
                         while ($c = $cRes->fetch_assoc()) {
-                            // Check cooldown block
-                            $cooldownRes = $conn->query("
-                                SELECT 1 FROM distribution_logs 
-                                WHERE assigned_to = " . (int)$c['id'] . " 
-                                  AND round_id = $roundId 
-                                  AND status = 'grabbed' 
-                                  AND received_at >= DATE_SUB(NOW(), INTERVAL $cooldownSec SECOND) 
-                                LIMIT 1
-                            ");
-                            $isOnCooldown = ($cooldownRes && $cooldownRes->num_rows > 0);
-                            if ($isOnCooldown) {
+                            // Check cooldown block across both distribution_logs and lead_offers
+                            if (isConsultantOnGrabCooldown($conn, $c['id'], $roundId, $cooldownSec)) {
                                 continue;
                             }
                             
                             // Check gates & on-duty status
-                            require_once __DIR__ . '/webhook_logic.php';
                             $currentTime = date('H:i');
                             $nightWindow = getNightShiftWindowInfo($conn, $currentTime);
 
@@ -1843,6 +1840,7 @@ if (!function_exists('recallUnprocessedDatabankClaimedLeads')) {
               AND c.deleted_at IS NULL
               AND c.pipeline_status IN ('chua_xac_dinh', 'not_lead_pending')
               AND c.created_at <= DATE_SUB(NOW(), INTERVAL ? HOUR)
+              AND (c.security_expires_at IS NULL OR c.security_expires_at <= NOW())
         ");
         if (!$stmt) return;
         $stmt->bind_param("i", $recallHours);
@@ -1857,16 +1855,26 @@ if (!function_exists('recallUnprocessedDatabankClaimedLeads')) {
         foreach ($contactsToRecall as $cRow) {
             $contactId = (int)$cRow['contact_id'];
             $ownerId = (int)$cRow['owner_id'];
+            $personId = (int)($cRow['person_id'] ?? 0);
             $fullName = trim(($cRow['first_name'] ?? '') . ' ' . ($cRow['last_name'] ?? ''));
             $leadId = $cRow['lead_id'] ? (int)$cRow['lead_id'] : null;
 
             $conn->begin_transaction();
             try {
-                // Soft delete contact for this sale
+                // Soft delete contact for this sale (keep owner_id intact for Admin rollback history)
                 $stmtDel = $conn->prepare("UPDATE contacts SET deleted_at = NOW() WHERE id = ?");
                 $stmtDel->bind_param("i", $contactId);
                 $stmtDel->execute();
                 $stmtDel->close();
+
+                if ($personId > 0) {
+                    $stmtPub = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = IFNULL(released_to_kho_at, NOW()) WHERE id = ? AND COALESCE(deleted_from_databank, 0) = 0");
+                    if ($stmtPub) {
+                        $stmtPub->bind_param("i", $personId);
+                        $stmtPub->execute();
+                        $stmtPub->close();
+                    }
+                }
 
                 // Distribution log
                 if ($leadId) {
@@ -2697,21 +2705,8 @@ foreach ($connections as $connItem) {
 
                             $currentTime = date('H:i');
                             foreach ($activeConsultants as $c) {
-                                // Check cooldown (grab_cooldown_seconds)
-                                $cooldownStmt = $conn->prepare("
-                                    SELECT 1 FROM distribution_logs 
-                                    WHERE assigned_to = ? 
-                                      AND round_id = ? 
-                                      AND status = 'grabbed' 
-                                      AND received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND) 
-                                    LIMIT 1
-                                ");
-                                $cooldownStmt->bind_param("iii", $c['id'], $targetRoundId, $grabCooldownSeconds);
-                                $cooldownStmt->execute();
-                                $isOnCooldown = $cooldownStmt->get_result()->num_rows > 0;
-                                $cooldownStmt->close();
-
-                                if ($isOnCooldown) {
+                                // Check cooldown (grab_cooldown_seconds) across both distribution_logs and lead_offers
+                                if (isConsultantOnGrabCooldown($conn, $c['id'], $targetRoundId, $grabCooldownSeconds)) {
                                     continue;
                                 }
 
@@ -4430,6 +4425,52 @@ if (!defined('DIAG_TOKEN')) {
         runCooperationSlipsCron($conn);
     } catch (Exception $coopEx) {
         logSync("Error running cooperation slips cron: " . $coopEx->getMessage());
+    }
+
+    // --- Tự động giảm nhiệt độ khách hàng không tương tác theo thiết lập temperature_decay_days ---
+    try {
+        $decayDaysRaw = get_system_setting($conn, 'temperature_decay_days');
+        $decayDays = ($decayDaysRaw !== null && $decayDaysRaw !== '') ? (int)$decayDaysRaw : 7;
+        if ($decayDays > 0) {
+            $lastDecayRun = get_system_setting($conn, 'last_temperature_decay_cron_date') ?: '';
+            $todayDate = date('Y-m-d');
+            if ($lastDecayRun !== $todayDate) {
+                $conn->query("
+                    UPDATE contacts c
+                    SET c.temperature = CASE
+                        WHEN c.temperature = 'hot' THEN 'warm'
+                        WHEN c.temperature = 'warm' THEN 'cold'
+                        ELSE c.temperature
+                    END,
+                    c.updated_at = NOW()
+                    WHERE c.deleted_at IS NULL
+                      AND c.is_databank = 0
+                      AND c.temperature IN ('hot', 'warm')
+                      AND COALESCE(c.updated_at, c.created_at) <= DATE_SUB(NOW(), INTERVAL {$decayDays} DAY)
+                      AND NOT EXISTS (
+                          SELECT 1 FROM activities a
+                          WHERE a.related_type = 'contact'
+                            AND a.related_id = c.id
+                            AND a.deleted_at IS NULL
+                            AND a.created_at > DATE_SUB(NOW(), INTERVAL {$decayDays} DAY)
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM notes n
+                          WHERE n.entity_type = 'contact'
+                            AND n.entity_id = c.id
+                            AND n.created_at > DATE_SUB(NOW(), INTERVAL {$decayDays} DAY)
+                      )
+                ");
+                $stmtSaveDecayDate = $conn->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('last_temperature_decay_cron_date', ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+                if ($stmtSaveDecayDate) {
+                    $stmtSaveDecayDate->bind_param("s", $todayDate);
+                    $stmtSaveDecayDate->execute();
+                    $stmtSaveDecayDate->close();
+                }
+            }
+        }
+    } catch (Exception $decayEx) {
+        logSync("Error running temperature decay cron: " . $decayEx->getMessage());
     }
 
     if (php_sapi_name() === 'cli') {

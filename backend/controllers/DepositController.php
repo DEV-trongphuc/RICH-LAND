@@ -158,6 +158,15 @@ class DepositController {
         $unitCode  = trim($b['unit_code'] ?? '');
         $price     = (float)($b['price'] ?? 0);
         $expectedCommission = (float)($b['expected_commission'] ?? 0);
+        if ($expectedCommission <= 0 && $price > 0) {
+            $commRate = (float)$this->getSetting('standard_commission_rate', '0.03');
+            if ($commRate > 1) {
+                $commRate = $commRate / 100.0;
+            }
+            if ($commRate > 0) {
+                $expectedCommission = round($price * $commRate);
+            }
+        }
         $milestones = $b['milestones'] ?? []; // Array of { name, amount }
 
         if (!$contactId || !$projectId || !$unitCode || $price <= 0) {
@@ -499,7 +508,15 @@ class DepositController {
     }
 
     public function approveMilestone(array $auth, int $id, int $milestoneId): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'assistant', 'director']);
+        require_once __DIR__ . '/../NotificationService.php';
+        $stmtCreator = $this->db->prepare("SELECT d.created_by, c.owner_id FROM deposits d LEFT JOIN contacts c ON d.contact_id = c.id WHERE d.id = ? LIMIT 1");
+        $stmtCreator->execute([$id]);
+        $depOwnerRow = $stmtCreator->fetch(PDO::FETCH_ASSOC);
+        $submitterId = (int)($depOwnerRow['created_by'] ?? ($depOwnerRow['owner_id'] ?? 0));
+        $canApproveMatrix = NotificationService::canUserApproveModule($this->db, (int)$auth['tenant_id'], 'deposit', (int)$auth['user_id'], $submitterId);
+        if (!$canApproveMatrix && !in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'assistant', 'director'], true)) {
+            respond(403, null, 'Bạn không có quyền phê duyệt đợt thanh toán cọc này', false);
+        }
         
         $this->db->beginTransaction();
         try {
@@ -648,7 +665,15 @@ class DepositController {
     }
 
     public function rejectMilestone(array $auth, int $id, int $milestoneId): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'assistant', 'director']);
+        require_once __DIR__ . '/../NotificationService.php';
+        $stmtCreator = $this->db->prepare("SELECT d.created_by, c.owner_id FROM deposits d LEFT JOIN contacts c ON d.contact_id = c.id WHERE d.id = ? LIMIT 1");
+        $stmtCreator->execute([$id]);
+        $depOwnerRow = $stmtCreator->fetch(PDO::FETCH_ASSOC);
+        $submitterId = (int)($depOwnerRow['created_by'] ?? ($depOwnerRow['owner_id'] ?? 0));
+        $canApproveMatrix = NotificationService::canUserApproveModule($this->db, (int)$auth['tenant_id'], 'deposit', (int)$auth['user_id'], $submitterId);
+        if (!$canApproveMatrix && !in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'assistant', 'director'], true)) {
+            respond(403, null, 'Bạn không có quyền từ chối đợt thanh toán cọc này', false);
+        }
         
         $b = getBody();
         $reason = trim($b['reason'] ?? 'Không rõ lý do');
@@ -728,7 +753,7 @@ class DepositController {
     }
 
     public function cancelDeposit(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
+        require_once __DIR__ . '/../NotificationService.php';
         $b = getBody();
         $reason = trim($b['reason'] ?? 'Khách hủy mua');
 
@@ -736,7 +761,7 @@ class DepositController {
         try {
             // Fetch deposit info and lock row to prevent double-cancellation race condition
             $stmtDep = $this->db->prepare("
-                SELECT d.contact_id, d.status, c.owner_id, c.tenant_id 
+                SELECT d.contact_id, d.status, d.created_by, c.owner_id, c.tenant_id 
                 FROM deposits d 
                 JOIN contacts c ON d.contact_id = c.id
                 WHERE d.id = ? AND c.tenant_id = ?
@@ -754,7 +779,14 @@ class DepositController {
                 respond(409, null, 'Phiếu đặt cọc này đã bị hủy trước đó', false);
             }
 
-            if ($auth['role'] === 'manager') {
+            $submitterId = (int)($dep['owner_id'] ?: ($dep['created_by'] ?? 0));
+            $canApproveMatrix = NotificationService::canUserApproveModule($this->db, (int)$auth['tenant_id'], 'deposit', (int)$auth['user_id'], $submitterId);
+            if (!$canApproveMatrix && !in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
+                $this->db->rollBack();
+                respond(403, null, 'Bạn không có quyền hủy phiếu cọc này', false);
+            }
+
+            if ($auth['role'] === 'manager' && !$canApproveMatrix) {
                 $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
                 $stmtUserTeam->execute([$dep['owner_id']]);
                 $targetUserTeamId = $stmtUserTeam->fetchColumn();
@@ -827,9 +859,12 @@ class DepositController {
                 $targetStatus = $demotedStatus;
                 $targetStageId = $daGapStageId ?: ($stages[3] ?? ($stages[0] ?? 0));
                 
-                // Per AGENTS.md Section 14.1: Cancelling deposit before revenue grants 3-month protection timer
-                $timerKey = 'security_timer_cancel_deposit_' . $demotedStatus;
-                $duration = $this->getSetting($timerKey, '+3 months');
+                // Dynamically read security timer for demoted status from system_settings
+                $timerKey = 'security_timer_' . $demotedStatus;
+                $duration = $this->getSetting($timerKey, '');
+                if ($duration === '') {
+                    $duration = $this->getSetting('security_timer_cancel_deposit_' . $demotedStatus, '+3 months');
+                }
                 $expiresAt = date('Y-m-d H:i:s', strtotime($duration));
 
                 if ($hadBooking && $bookingStageId > 0) {

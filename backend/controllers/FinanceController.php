@@ -1188,29 +1188,54 @@ class FinanceController
 
     public function approveExpense(array $auth, int $id): void
     {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin', 'superadmin', 'director'], true)) respond(403, null, 'Bạn không có quyền duyệt chi phí', false);
-        requireRole($auth, ['admin', 'manager', 'super_admin', 'superadmin', 'director']);
+        require_once __DIR__ . '/../NotificationService.php';
 
-        // Find creator of the expense
+        // Find creator and amount of the expense
         $stmtExp = $this->db->prepare("SELECT created_by, title, amount FROM expenses WHERE id=? AND tenant_id=?");
         $stmtExp->execute([$id, $auth['tenant_id']]);
         $expenseRow = $stmtExp->fetch();
         if (!$expenseRow) respond(404, null, 'Không tìm thấy chi phí', false);
 
-        if ($auth['role'] === 'manager') {
-            $creatorId = (int)$expenseRow['created_by'];
-            
-            // Check if creator belongs to the manager's team
-            $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
-            $stmtUserTeam->execute([$creatorId]);
-            $targetUserTeamId = $stmtUserTeam->fetchColumn();
+        $creatorId = (int)$expenseRow['created_by'];
+        $expenseAmount = (float)($expenseRow['amount'] ?? 0);
 
-            $stmtLead = $this->db->prepare("SELECT 1 FROM teams WHERE id = ? AND leader_id = ?");
-            $stmtLead->execute([$targetUserTeamId, $auth['user_id']]);
-            $isTeamMember = $stmtLead->fetch();
+        $canApproveMatrix = NotificationService::canUserApproveModule(
+            $this->db,
+            (int)$auth['tenant_id'],
+            'expense',
+            (int)$auth['user_id'],
+            $creatorId,
+            $expenseAmount
+        );
 
-            if ($creatorId !== (int)$auth['user_id'] && !$isTeamMember) {
-                respond(403, null, 'Bạn chỉ có quyền phê duyệt chi phí cho nhân viên thuộc nhóm của mình', false);
+        // Check if expense money_tiers are explicitly configured in approval_matrix_config
+        $stmtJson = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix_config' LIMIT 1");
+        $stmtJson->execute();
+        $rawJson = $stmtJson->fetchColumn();
+        $matrixConfig = $rawJson ? (json_decode($rawJson, true) ?: []) : [];
+        $hasExpenseMatrix = !empty($matrixConfig['expense']['money_tiers']) || !empty($matrixConfig['expense']['designated_roles']) || !empty($matrixConfig['expense']['designated_user_ids']);
+
+        if ($hasExpenseMatrix && !in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
+            if (!$canApproveMatrix) {
+                respond(403, null, 'Khoản chi phí này vượt hạn mức phê duyệt hoặc bạn không nằm trong danh sách người duyệt được cấu hình', false);
+            }
+        } else {
+            if (!$canApproveMatrix && !in_array($auth['role'], ['admin', 'manager', 'super_admin', 'superadmin', 'director'], true)) {
+                respond(403, null, 'Bạn không có quyền duyệt chi phí', false);
+            }
+            if ($auth['role'] === 'manager' && !$canApproveMatrix) {
+                // Check if creator belongs to the manager's team
+                $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+                $stmtUserTeam->execute([$creatorId]);
+                $targetUserTeamId = $stmtUserTeam->fetchColumn();
+
+                $stmtLead = $this->db->prepare("SELECT 1 FROM teams WHERE id = ? AND leader_id = ?");
+                $stmtLead->execute([$targetUserTeamId, $auth['user_id']]);
+                $isTeamMember = $stmtLead->fetch();
+
+                if ($creatorId !== (int)$auth['user_id'] && !$isTeamMember) {
+                    respond(403, null, 'Bạn chỉ có quyền phê duyệt chi phí cho nhân viên thuộc nhóm của mình', false);
+                }
             }
         }
 
