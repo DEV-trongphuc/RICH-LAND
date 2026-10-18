@@ -7651,56 +7651,73 @@ switch ($action) {
 
             // Cooldown check: verify if the user has grabbed another lead in this round within grab_cooldown_seconds
             if ($targetRoundId > 0) {
-                $cooldownStmt = $conn->prepare("
-                    SELECT dr.grab_cooldown_seconds,
-                           (
-                               SELECT TIMESTAMPDIFF(SECOND, MAX(last_grabbed_at), NOW())
-                               FROM (
-                                   SELECT dl.received_at AS last_grabbed_at
-                                   FROM distribution_logs dl
-                                   WHERE (dl.assigned_to = ? OR dl.assigned_to = (SELECT c.id FROM consultants c WHERE c.email = (SELECT u.email FROM users u WHERE u.id = ? LIMIT 1) LIMIT 1))
-                                     AND dl.status = 'grabbed'
-                                     AND dl.received_at >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
-                                     AND (
-                                         dl.round_id = dr.id
-                                         OR (dl.round_id IS NULL AND EXISTS (
-                                             SELECT 1 FROM lead_offers lo2
-                                             WHERE lo2.lead_id = dl.lead_id AND lo2.round_id = dr.id
-                                         ))
-                                     )
-                                   UNION ALL
-                                   SELECT COALESCE(lo_prev.responded_at, lo_prev.offered_at) AS last_grabbed_at
-                                   FROM lead_offers lo_prev
-                                   WHERE lo_prev.user_id = ?
-                                     AND lo_prev.round_id = dr.id
-                                     AND lo_prev.status = 'accepted'
-                                     AND lo_prev.lead_id != ?
-                                     AND COALESCE(lo_prev.responded_at, lo_prev.offered_at) >= DATE_SUB(NOW(), INTERVAL COALESCE(dr.grab_cooldown_seconds, 3600) SECOND)
-                               ) cd_events
-                           ) as elapsed
-                    FROM distribution_rounds dr
-                    WHERE dr.id = ?
-                    LIMIT 1
-                ");
-                if ($cooldownStmt) {
-                    $cooldownStmt->bind_param("iiiii", $userId, $userId, $userId, $lead_id, $targetRoundId);
-                    $cooldownStmt->execute();
-                    $cdRes = $cooldownStmt->get_result()->fetch_assoc();
-                    $cooldownStmt->close();
+                $cdSec = 3600;
+                $roundCdStmt = $conn->prepare("SELECT grab_cooldown_seconds FROM distribution_rounds WHERE id = ? LIMIT 1");
+                if ($roundCdStmt) {
+                    $roundCdStmt->bind_param("i", $targetRoundId);
+                    $roundCdStmt->execute();
+                    $roundCdRow = $roundCdStmt->get_result()->fetch_assoc();
+                    $roundCdStmt->close();
+                    if ($roundCdRow && isset($roundCdRow['grab_cooldown_seconds'])) {
+                        $cdSec = (int)$roundCdRow['grab_cooldown_seconds'];
+                    }
+                }
 
-                    if ($cdRes && $cdRes['elapsed'] !== null) {
-                        $cdSec = (int)($cdRes['grab_cooldown_seconds'] ?? 3600);
-                        $elapsed = max(0, (int)$cdRes['elapsed']);
-                        if ($elapsed < $cdSec) {
-                            $remainMins = max(1, ceil(($cdSec - $elapsed) / 60));
-                            // Expire remaining offers of this round for this user and commit the expiration
-                            $conn->query("UPDATE lead_offers SET status = 'expired' WHERE user_id = $userId AND round_id = $targetRoundId AND status = 'pending'");
-                            $conn->commit();
-                            echo json_encode([
-                                'success' => false, 
-                                'message' => "Bạn đang trong thời gian chờ (còn khoảng $remainMins phút) trước khi được nhận data tiếp theo trong vòng này."
-                            ]);
-                            break;
+                if ($cdSec > 0) {
+                    $cooldownStmt = $conn->prepare("
+                        SELECT TIMESTAMPDIFF(SECOND, MAX(last_grabbed_at), NOW()) AS elapsed
+                        FROM (
+                            SELECT dl.received_at AS last_grabbed_at
+                            FROM distribution_logs dl
+                            WHERE (dl.assigned_to = ? OR dl.assigned_to = (SELECT c.id FROM consultants c WHERE c.email = (SELECT u.email FROM users u WHERE u.id = ? LIMIT 1) LIMIT 1))
+                              AND dl.status = 'grabbed'
+                              AND dl.received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND)
+                              AND (
+                                  dl.round_id = ?
+                                  OR (dl.round_id IS NULL AND EXISTS (
+                                      SELECT 1 FROM lead_offers lo2
+                                      WHERE lo2.lead_id = dl.lead_id AND lo2.round_id = ?
+                                  ))
+                              )
+                            UNION ALL
+                            SELECT COALESCE(lo_prev.responded_at, lo_prev.offered_at) AS last_grabbed_at
+                            FROM lead_offers lo_prev
+                            WHERE lo_prev.user_id = ?
+                              AND lo_prev.round_id = ?
+                              AND lo_prev.status = 'accepted'
+                              AND lo_prev.lead_id != ?
+                              AND COALESCE(lo_prev.responded_at, lo_prev.offered_at) >= DATE_SUB(NOW(), INTERVAL ? SECOND)
+                        ) cd_events
+                    ");
+                    if ($cooldownStmt) {
+                        $cooldownStmt->bind_param(
+                            "iiiiiiiii",
+                            $userId,
+                            $userId,
+                            $cdSec,
+                            $targetRoundId,
+                            $targetRoundId,
+                            $userId,
+                            $targetRoundId,
+                            $lead_id,
+                            $cdSec
+                        );
+                        $cooldownStmt->execute();
+                        $cdRes = $cooldownStmt->get_result()->fetch_assoc();
+                        $cooldownStmt->close();
+
+                        if ($cdRes && $cdRes['elapsed'] !== null) {
+                            $elapsed = max(0, (int)$cdRes['elapsed']);
+                            if ($elapsed < $cdSec) {
+                                $remainMins = max(1, ceil(($cdSec - $elapsed) / 60));
+                                $conn->query("UPDATE lead_offers SET status = 'expired' WHERE user_id = $userId AND round_id = $targetRoundId AND status = 'pending'");
+                                $conn->commit();
+                                echo json_encode([
+                                    'success' => false, 
+                                    'message' => "Bạn đang trong thời gian chờ (còn khoảng $remainMins phút) trước khi được nhận data tiếp theo trong vòng này."
+                                ]);
+                                break;
+                            }
                         }
                     }
                 }

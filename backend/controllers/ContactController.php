@@ -2211,7 +2211,7 @@ class ContactController {
         $currentUserId = (int)($auth['user_id'] ?? 0);
         $b = getBody();
 
-        $rawContactIds = $b['contact_ids'] ?? [];
+        $rawContactIds = $b['contact_ids'] ?? $b['ids'] ?? [];
         if (is_string($rawContactIds)) {
             $rawContactIds = explode(',', $rawContactIds);
         }
@@ -2223,7 +2223,11 @@ class ContactController {
             respond(422, null, 'Chỉ hỗ trợ thao tác tối đa 500 khách hàng mỗi lần', false);
         }
 
-        $mode = in_array($b['mode'] ?? 'add', ['add', 'replace', 'remove'], true) ? $b['mode'] : 'add';
+        $rawMode = $b['mode'] ?? 'add';
+        if ($rawMode === 'set') {
+            $rawMode = 'replace';
+        }
+        $mode = in_array($rawMode, ['add', 'replace', 'remove'], true) ? $rawMode : 'add';
         $rawCollabIds = $b['collaborator_ids'] ?? [];
         if (is_string($rawCollabIds)) {
             $rawCollabIds = explode(',', $rawCollabIds);
@@ -2290,13 +2294,14 @@ class ContactController {
         }
 
         $updatedIds = [];
+        $updatedContactsMap = [];
         $newlyAddedByUser = [];
+        $batchAccessInserts = [];
+        $batchAccessDeletes = [];
 
         $this->db->beginTransaction();
         try {
             $stmtUpdate = $this->db->prepare("UPDATE contacts SET collaborator_ids = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?");
-            $stmtInsAccess = $this->db->prepare("INSERT IGNORE INTO quyen_truy_cap (contact_id, user_id) VALUES (?, ?)");
-            $stmtDelAccess = $this->db->prepare("DELETE FROM quyen_truy_cap WHERE contact_id = ? AND user_id = ?");
 
             foreach ($rows as $row) {
                 $cid = (int)$row['id'];
@@ -2319,18 +2324,39 @@ class ContactController {
                 $newCollabStr = !empty($newCollabs) ? implode(',', $newCollabs) : null;
                 $stmtUpdate->execute([$newCollabStr, $cid, $tid]);
                 $updatedIds[] = $cid;
+                $updatedContactsMap[$cid] = $newCollabStr ?? '';
 
                 $added = array_diff($newCollabs, $oldCollabs);
                 $removed = array_diff($oldCollabs, $newCollabs);
 
                 foreach ($added as $auid) {
-                    try { $stmtInsAccess->execute([$cid, $auid]); } catch (\Throwable $e) {}
+                    $batchAccessInserts[] = [$cid, (int)$auid];
                     if ($auid !== $currentUserId) {
                         $newlyAddedByUser[$auid][] = trim(($row['last_name'] ?? '') . ' ' . ($row['first_name'] ?? ''));
                     }
                 }
                 foreach ($removed as $ruid) {
-                    try { $stmtDelAccess->execute([$cid, $ruid]); } catch (\Throwable $e) {}
+                    $batchAccessDeletes[] = [$cid, (int)$ruid];
+                }
+            }
+
+            if (!empty($batchAccessInserts)) {
+                $placeholders = implode(',', array_fill(0, count($batchAccessInserts), '(?, ?)'));
+                $flatIns = [];
+                foreach ($batchAccessInserts as $pair) {
+                    $flatIns[] = $pair[0];
+                    $flatIns[] = $pair[1];
+                }
+                try {
+                    $stmtBatchIns = $this->db->prepare("INSERT IGNORE INTO quyen_truy_cap (contact_id, user_id) VALUES $placeholders");
+                    $stmtBatchIns->execute($flatIns);
+                } catch (\Throwable $e) {}
+            }
+
+            if (!empty($batchAccessDeletes)) {
+                $stmtDelAccess = $this->db->prepare("DELETE FROM quyen_truy_cap WHERE contact_id = ? AND user_id = ?");
+                foreach ($batchAccessDeletes as $pair) {
+                    try { $stmtDelAccess->execute([$pair[0], $pair[1]]); } catch (\Throwable $e) {}
                 }
             }
 
@@ -2369,7 +2395,8 @@ class ContactController {
         respond(200, [
             'updated_count' => $updatedCount,
             'contact_ids' => $updatedIds,
-            'collaborator_ids' => $resolvedCollabIds
+            'collaborator_ids' => $resolvedCollabIds,
+            'updated_contacts' => $updatedContactsMap
         ], "Đã cập nhật người cùng chăm sóc cho {$updatedCount} khách hàng thành công!");
     }
 
@@ -2385,7 +2412,7 @@ class ContactController {
         $currentUserId = (int)($auth['user_id'] ?? 0);
         $b = getBody();
 
-        $rawContactIds = $b['contact_ids'] ?? [];
+        $rawContactIds = $b['contact_ids'] ?? $b['ids'] ?? [];
         if (is_string($rawContactIds)) {
             $rawContactIds = explode(',', $rawContactIds);
         }
@@ -2397,10 +2424,18 @@ class ContactController {
             respond(422, null, 'Vui lòng chọn danh sách khách hàng và nhân viên phụ trách mới', false);
         }
 
-        // Resolve targetOwnerId to users.id
-        $stmtUser = $this->db->prepare("SELECT id, full_name FROM users WHERE id = ? LIMIT 1");
+        // Resolve targetOwnerId to users.id (with fallback from consultants.id)
+        $stmtUser = $this->db->prepare("SELECT id, full_name, avatar_url FROM users WHERE id = ? LIMIT 1");
         $stmtUser->execute([$targetOwnerId]);
         $targetUser = $stmtUser->fetch(PDO::FETCH_ASSOC);
+        if (!$targetUser) {
+            $stmtFromCons = $this->db->prepare("SELECT u.id, u.full_name, u.avatar_url FROM consultants c JOIN users u ON u.email = c.email WHERE c.id = ? LIMIT 1");
+            $stmtFromCons->execute([$targetOwnerId]);
+            $targetUser = $stmtFromCons->fetch(PDO::FETCH_ASSOC);
+            if ($targetUser) {
+                $targetOwnerId = (int)$targetUser['id'];
+            }
+        }
         if (!$targetUser) {
             respond(404, null, 'Không tìm thấy nhân viên phụ trách mới', false);
         }
@@ -2415,6 +2450,9 @@ class ContactController {
         }
 
         $updatedIds = [];
+        $updatedContactsMap = [];
+        $batchAccessInserts = [];
+
         $this->db->beginTransaction();
         try {
             $stmtUp = $this->db->prepare("UPDATE contacts SET owner_id = ?, collaborator_ids = ?, deleted_at = NULL, updated_at = NOW() WHERE id = ? AND tenant_id = ?");
@@ -2424,6 +2462,7 @@ class ContactController {
                 $collabs = array_values(array_unique(array_filter(array_map('intval', explode(',', $row['collaborator_ids'] ?? '')))));
                 if ($keepOldAsCollab && $oldOwner > 0 && $oldOwner !== $targetOwnerId) {
                     $collabs[] = $oldOwner;
+                    $batchAccessInserts[] = [$cid, $oldOwner];
                 }
                 $collabs = array_values(array_unique(array_filter($collabs, function($uid) use ($targetOwnerId) {
                     return $uid > 0 && $uid !== $targetOwnerId;
@@ -2431,7 +2470,27 @@ class ContactController {
                 $collabStr = !empty($collabs) ? implode(',', $collabs) : null;
                 $stmtUp->execute([$targetOwnerId, $collabStr, $cid, $tid]);
                 $updatedIds[] = $cid;
+                $updatedContactsMap[$cid] = [
+                    'owner_id' => $targetOwnerId,
+                    'owner_name' => $targetUser['full_name'],
+                    'owner_avatar' => $targetUser['avatar_url'] ?? null,
+                    'collaborator_ids' => $collabStr ?? ''
+                ];
             }
+
+            if (!empty($batchAccessInserts)) {
+                $placeholders = implode(',', array_fill(0, count($batchAccessInserts), '(?, ?)'));
+                $flatIns = [];
+                foreach ($batchAccessInserts as $pair) {
+                    $flatIns[] = $pair[0];
+                    $flatIns[] = $pair[1];
+                }
+                try {
+                    $stmtBatchIns = $this->db->prepare("INSERT IGNORE INTO quyen_truy_cap (contact_id, user_id) VALUES $placeholders");
+                    $stmtBatchIns->execute($flatIns);
+                } catch (\Throwable $e) {}
+            }
+
             $this->db->commit();
         } catch (\Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
@@ -2450,7 +2509,9 @@ class ContactController {
             'updated_count' => $cnt,
             'contact_ids' => $updatedIds,
             'owner_id' => $targetOwnerId,
-            'owner_name' => $targetUser['full_name']
+            'owner_name' => $targetUser['full_name'],
+            'owner_avatar' => $targetUser['avatar_url'] ?? null,
+            'updated_contacts' => $updatedContactsMap
         ], "Đã gán người phụ trách chính ({$targetUser['full_name']}) cho {$cnt} khách hàng thành công!");
     }
 
@@ -2466,7 +2527,11 @@ class ContactController {
         $adminUserId = (int)($auth['user_id'] ?? 0);
         $b = getBody();
 
-        $contactIds = array_values(array_unique(array_filter(array_map('intval', (array)($b['contact_ids'] ?? [])))));
+        $rawContactIds = $b['contact_ids'] ?? $b['ids'] ?? [];
+        if (is_string($rawContactIds)) {
+            $rawContactIds = explode(',', $rawContactIds);
+        }
+        $contactIds = array_values(array_unique(array_filter(array_map('intval', (array)$rawContactIds))));
         $personIds  = array_values(array_unique(array_filter(array_map('intval', (array)($b['person_ids'] ?? [])))));
         $leadIds    = array_values(array_unique(array_filter(array_map('intval', (array)($b['lead_ids'] ?? [])))));
         $targetOwnerId = isset($b['target_owner_id']) && (int)$b['target_owner_id'] > 0 ? (int)$b['target_owner_id'] : 0;
@@ -2544,12 +2609,41 @@ class ContactController {
 
         $this->db->beginTransaction();
         try {
+            $stL = $this->db->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $stRdl = $this->db->prepare("SELECT user_id FROM returned_databank_leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $stDl = $this->db->prepare("
+                SELECT assigned_to FROM distribution_logs
+                WHERE lead_id = ? AND assigned_to IS NOT NULL AND assigned_to > 0
+                ORDER BY FIELD(status, 'recalled_to_databank', 'recalled', 'released_to_kho', 'databank_claim', 'grabbed', 'assigned'), id DESC
+                LIMIT 1
+            ");
+            $stMapU = $this->db->prepare("SELECT id FROM users WHERE id = ? LIMIT 1");
+            $stMapC = $this->db->prepare("SELECT u.id FROM consultants c JOIN users u ON u.email = c.email WHERE c.id = ? LIMIT 1");
+            $stmtRestore = $this->db->prepare("
+                UPDATE contacts
+                SET owner_id = ?,
+                    deleted_at = NULL,
+                    security_expires_at = ?,
+                    created_at = CASE WHEN pipeline_status IN ('chua_xac_dinh', 'not_lead_pending') THEN NOW() ELSE created_at END,
+                    updated_at = NOW()
+                WHERE id = ? AND tenant_id = ?
+            ");
+            $stmtDelReturn = $this->db->prepare("DELETE FROM returned_databank_leads WHERE person_id = ? AND user_id = ?");
+            $stmtHideKho = $this->db->prepare("UPDATE persons SET is_public = 0, released_to_kho_at = NULL WHERE id = ?");
+            $stConsId = $this->db->prepare("SELECT c.id FROM users u JOIN consultants c ON u.email = c.email WHERE u.id = ? LIMIT 1");
+            $stUpLead = $this->db->prepare("UPDATE leads SET assigned_to = ?, status = 'assigned', is_accepted = 1, last_assigned_at = NOW(), last_interaction_date = NOW() WHERE id = ?");
+            $stLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, NULL, 'assigned', ?)");
+            $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'lead_assigned', ?)");
+
+            $userToConsCache = [];
+            $expiryCache = [];
+            $minTomorrow = date('Y-m-d H:i:s', strtotime('+24 hours'));
+
             foreach ($contacts as $c) {
                 $cid = (int)$c['id'];
                 $pid = (int)($c['person_id'] ?? 0);
                 $lid = (int)($c['lead_id'] ?? 0);
                 if ($lid <= 0 && $pid > 0) {
-                    $stL = $this->db->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
                     $stL->execute([$pid]);
                     $lid = (int)$stL->fetchColumn();
                 }
@@ -2559,28 +2653,19 @@ class ContactController {
 
                 // Fallback 1: check returned_databank_leads
                 if ($restoreUserId <= 0 && $pid > 0) {
-                    $stRdl = $this->db->prepare("SELECT user_id FROM returned_databank_leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
                     $stRdl->execute([$pid]);
                     $restoreUserId = (int)$stRdl->fetchColumn();
                 }
 
-                // Fallback 2: check distribution_logs (recalled_to_databank, recalled, released_to_kho, databank_claim, assigned)
+                // Fallback 2: check distribution_logs
                 if ($restoreUserId <= 0 && $lid > 0) {
-                    $stDl = $this->db->prepare("
-                        SELECT assigned_to FROM distribution_logs
-                        WHERE lead_id = ? AND assigned_to IS NOT NULL AND assigned_to > 0
-                        ORDER BY FIELD(status, 'recalled_to_databank', 'recalled', 'released_to_kho', 'databank_claim', 'grabbed', 'assigned'), id DESC
-                        LIMIT 1
-                    ");
                     $stDl->execute([$lid]);
                     $rawAssigned = (int)$stDl->fetchColumn();
                     if ($rawAssigned > 0) {
-                        $stMapU = $this->db->prepare("SELECT id FROM users WHERE id = ? LIMIT 1");
                         $stMapU->execute([$rawAssigned]);
                         if ($stMapU->fetchColumn()) {
                             $restoreUserId = $rawAssigned;
                         } else {
-                            $stMapC = $this->db->prepare("SELECT u.id FROM consultants c JOIN users u ON u.email = c.email WHERE c.id = ? LIMIT 1");
                             $stMapC->execute([$rawAssigned]);
                             $restoreUserId = (int)$stMapC->fetchColumn();
                         }
@@ -2592,55 +2677,41 @@ class ContactController {
                 }
 
                 $statusSlug = !empty($c['pipeline_status']) && $c['pipeline_status'] !== 'not_lead' ? $c['pipeline_status'] : 'chua_xac_dinh';
-                $freshExpires = $this->getSecurityExpiration($statusSlug);
-                // Ensure at least +24 hours protection when Admin explicitly restores a reclaimed contact
-                $minTomorrow = date('Y-m-d H:i:s', strtotime('+24 hours'));
-                if (!$freshExpires || $freshExpires < $minTomorrow) {
-                    $freshExpires = $minTomorrow;
+                if (!isset($expiryCache[$statusSlug])) {
+                    $exp = $this->getSecurityExpiration($statusSlug);
+                    if (!$exp || $exp < $minTomorrow) {
+                        $exp = $minTomorrow;
+                    }
+                    $expiryCache[$statusSlug] = $exp;
                 }
+                $freshExpires = $expiryCache[$statusSlug];
 
-                // Restore contact: clear deleted_at, set owner_id, refresh security_expires_at, and refresh created_at if chua_xac_dinh so cron_sync won't immediately re-recall it
-                $stmtRestore = $this->db->prepare("
-                    UPDATE contacts
-                    SET owner_id = ?,
-                        deleted_at = NULL,
-                        security_expires_at = ?,
-                        created_at = CASE WHEN pipeline_status IN ('chua_xac_dinh', 'not_lead_pending') THEN NOW() ELSE created_at END,
-                        updated_at = NOW()
-                    WHERE id = ? AND tenant_id = ?
-                ");
                 $stmtRestore->execute([$restoreUserId, $freshExpires, $cid, $tid]);
 
                 if ($pid > 0) {
-                    // Remove returner lock so this Sale has full access
-                    $stmtDelReturn = $this->db->prepare("DELETE FROM returned_databank_leads WHERE person_id = ? AND user_id = ?");
                     $stmtDelReturn->execute([$pid, $restoreUserId]);
-
                     if ($hideFromDatabank) {
-                        $stmtHideKho = $this->db->prepare("UPDATE persons SET is_public = 0, released_to_kho_at = NULL WHERE id = ?");
                         $stmtHideKho->execute([$pid]);
                     }
                 }
 
                 // Also sync lead table if applicable
                 if ($lid > 0) {
-                    $stConsId = $this->db->prepare("SELECT c.id FROM users u JOIN consultants c ON u.email = c.email WHERE u.id = ? LIMIT 1");
-                    $stConsId->execute([$restoreUserId]);
-                    $consId = (int)$stConsId->fetchColumn();
+                    if (!array_key_exists($restoreUserId, $userToConsCache)) {
+                        $stConsId->execute([$restoreUserId]);
+                        $userToConsCache[$restoreUserId] = (int)$stConsId->fetchColumn();
+                    }
+                    $consId = $userToConsCache[$restoreUserId];
                     if ($consId > 0) {
-                        $stUpLead = $this->db->prepare("UPDATE leads SET assigned_to = ?, status = 'assigned', is_accepted = 1, last_assigned_at = NOW(), last_interaction_date = NOW() WHERE id = ?");
                         $stUpLead->execute([$consId, $lid]);
                     }
 
-                    $stLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, NULL, 'assigned', ?)");
                     $stLog->execute([$lid, $consId > 0 ? $consId : $restoreUserId, 'Admin khôi phục (Back lại) khách hàng đã thu hồi cho Sale chăm sóc tiếp']);
                 }
 
-                // Notify the Sale that Admin restored their customer
                 $custName = trim(($c['last_name'] ?? '') . ' ' . ($c['first_name'] ?? ''));
                 $notifTitle = "Khách hàng thu hồi đã được khôi phục";
                 $notifBody = "Quản trị viên đã khôi phục (Back lại) khách hàng {$custName} ({$c['phone']}) về danh sách chăm sóc của bạn.";
-                $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'lead_assigned', ?)");
                 $stNotif->execute([$restoreUserId, $tid, $notifTitle, $notifBody, '/contacts?id=' . $cid]);
 
                 $restoredCount++;

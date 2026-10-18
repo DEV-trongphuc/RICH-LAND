@@ -347,11 +347,13 @@ export const ContactsPage: React.FC = () => {
 
   const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
   const [bulkAssignOwnerId, setBulkAssignOwnerId] = useState<string>('');
+  const [bulkAssignKeepCollab, setBulkAssignKeepCollab] = useState<boolean>(false);
   const [isSubmittingBulkAssign, setIsSubmittingBulkAssign] = useState(false);
 
   const [showBulkRestoreModal, setShowBulkRestoreModal] = useState(false);
   const [bulkRestoreTargetIds, setBulkRestoreTargetIds] = useState<number[]>([]);
   const [bulkRestoreOwnerId, setBulkRestoreOwnerId] = useState<string>('');
+  const [bulkRestoreHideDatabank, setBulkRestoreHideDatabank] = useState<boolean>(true);
   const [isSubmittingBulkRestore, setIsSubmittingBulkRestore] = useState(false);
 
   useEffect(() => {
@@ -1237,6 +1239,63 @@ export const ContactsPage: React.FC = () => {
   const bulkTag = () => addToast('Mở gán tag hàng loạt...', 'info');
   const bulkEmail = () => addToast(`Soạn email cho ${selected.size} liên hệ...`, 'info');
 
+  const selectedContactsStats = useMemo(() => {
+    const ownerCountByUser: Record<number, number> = {};
+    const collabCountByUser: Record<number, number> = {};
+    const activeCollabSet = new Set<number>();
+    if (selected.size > 0) {
+      for (const c of contacts) {
+        if (!c || !selected.has(c.id)) continue;
+        const oid = Number(c.owner_id || 0);
+        if (oid > 0) {
+          ownerCountByUser[oid] = (ownerCountByUser[oid] || 0) + 1;
+        }
+        const rawCollabs = String(c.collaborator_ids || '')
+          .split(',')
+          .map(s => Number(s.trim()))
+          .filter(n => n > 0 && n !== oid);
+        for (const cid of rawCollabs) {
+          collabCountByUser[cid] = (collabCountByUser[cid] || 0) + 1;
+          activeCollabSet.add(cid);
+        }
+      }
+    }
+    return {
+      ownerCountByUser,
+      collabCountByUser,
+      activeCollabUserIds: Array.from(activeCollabSet)
+    };
+  }, [contacts, selected]);
+
+  const filteredBulkCollabUsers = useMemo(() => {
+    const q = bulkCollabSearch.trim().toLowerCase();
+    const list = users.filter(u => {
+      if (!u || !u.id) return false;
+      if (String(u.status || '').toLowerCase() === 'inactive' || Number(u.is_active ?? 1) === 0) return false;
+      if (!q) return true;
+      return (
+        String(u.full_name || '').toLowerCase().includes(q) ||
+        String(u.email || '').toLowerCase().includes(q) ||
+        String(u.phone || '').toLowerCase().includes(q) ||
+        String(u.role || '').toLowerCase().includes(q)
+      );
+    });
+
+    return [...list].sort((a, b) => {
+      const aid = Number(a.id);
+      const bid = Number(b.id);
+      const aCollab = selectedContactsStats.collabCountByUser[aid] || 0;
+      const bCollab = selectedContactsStats.collabCountByUser[bid] || 0;
+      if (bulkCollabMode === 'remove' && aCollab !== bCollab) {
+        return bCollab - aCollab;
+      }
+      if (aCollab !== bCollab) {
+        return bCollab - aCollab;
+      }
+      return String(a.full_name || '').localeCompare(String(b.full_name || ''), 'vi');
+    });
+  }, [users, bulkCollabSearch, bulkCollabMode, selectedContactsStats]);
+
   const bulkCollaborators = () => {
     if (selected.size === 0) return;
     setBulkCollabUserIds([]);
@@ -1251,14 +1310,42 @@ export const ContactsPage: React.FC = () => {
       addToast('Vui lòng chọn ít nhất 1 nhân sự chăm sóc', 'error');
       return;
     }
+    const targetIds = Array.from(selected);
+    const effectiveMode = bulkCollabMode === 'set' ? 'replace' : bulkCollabMode;
     setIsSubmittingBulkCollab(true);
     try {
       const res = await api.post('/contacts/bulk-collaborators', {
-        ids: Array.from(selected),
+        contact_ids: targetIds,
+        ids: targetIds,
         collaborator_ids: bulkCollabUserIds,
-        mode: bulkCollabMode
+        mode: effectiveMode
       });
       if (res.data?.success) {
+        const updatedMap = res.data?.data?.updated_contacts || {};
+        const selectedSet = new Set(targetIds);
+        setContacts(prev =>
+          prev.map(c => {
+            if (!selectedSet.has(c.id)) return c;
+            if (updatedMap[c.id] !== undefined) {
+              return { ...c, collaborator_ids: updatedMap[c.id] };
+            }
+            const oid = Number(c.owner_id || 0);
+            const oldList = String(c.collaborator_ids || '')
+              .split(',')
+              .map(s => Number(s.trim()))
+              .filter(n => n > 0 && n !== oid);
+            let nextList: number[] = [];
+            if (effectiveMode === 'add') {
+              nextList = Array.from(new Set([...oldList, ...bulkCollabUserIds]));
+            } else if (effectiveMode === 'remove') {
+              nextList = oldList.filter(id => !bulkCollabUserIds.includes(id));
+            } else {
+              nextList = [...bulkCollabUserIds];
+            }
+            nextList = nextList.filter(id => id > 0 && id !== oid);
+            return { ...c, collaborator_ids: nextList.join(',') };
+          })
+        );
         addToast(res.data.message || 'Đã cập nhật người chăm sóc hàng loạt', 'success');
         setShowBulkCollabModal(false);
         setSelected(new Set());
@@ -1276,6 +1363,7 @@ export const ContactsPage: React.FC = () => {
   const bulkAssign = () => {
     if (selected.size === 0) return;
     setBulkAssignOwnerId('');
+    setBulkAssignKeepCollab(false);
     setShowBulkAssignModal(true);
   };
 
@@ -1285,13 +1373,37 @@ export const ContactsPage: React.FC = () => {
       addToast('Vui lòng chọn nhân viên phụ trách mới', 'error');
       return;
     }
+    const targetIds = Array.from(selected);
+    const newOwnerId = Number(bulkAssignOwnerId);
     setIsSubmittingBulkAssign(true);
     try {
       const res = await api.post('/contacts/bulk-assign', {
-        ids: Array.from(selected),
-        owner_id: Number(bulkAssignOwnerId)
+        contact_ids: targetIds,
+        ids: targetIds,
+        owner_id: newOwnerId,
+        keep_old_owner_as_collaborator: bulkAssignKeepCollab
       });
       if (res.data?.success) {
+        const updatedMap = res.data?.data?.updated_contacts || {};
+        const targetUserObj = users.find(u => Number(u.id) === newOwnerId);
+        const newOwnerName = res.data?.data?.owner_name || targetUserObj?.full_name || '';
+        const newOwnerAvatar = res.data?.data?.owner_avatar || targetUserObj?.avatar_url || targetUserObj?.avatar || null;
+        const selectedSet = new Set(targetIds);
+
+        setContacts(prev =>
+          prev.map(c => {
+            if (!selectedSet.has(c.id)) return c;
+            if (updatedMap[c.id]) {
+              return { ...c, ...updatedMap[c.id] };
+            }
+            return {
+              ...c,
+              owner_id: newOwnerId,
+              owner_name: newOwnerName || c.owner_name,
+              owner_avatar: newOwnerAvatar
+            };
+          })
+        );
         addToast(res.data.message || 'Đã chuyển người phụ trách thành công', 'success');
         setShowBulkAssignModal(false);
         setSelected(new Set());
@@ -1311,6 +1423,7 @@ export const ContactsPage: React.FC = () => {
     if (targetIds.length === 0) return;
     setBulkRestoreTargetIds(targetIds);
     setBulkRestoreOwnerId('');
+    setBulkRestoreHideDatabank(true);
     setShowBulkRestoreModal(true);
   };
 
@@ -1318,7 +1431,11 @@ export const ContactsPage: React.FC = () => {
     if (bulkRestoreTargetIds.length === 0) return;
     setIsSubmittingBulkRestore(true);
     try {
-      const payload: any = { ids: bulkRestoreTargetIds };
+      const payload: any = {
+        contact_ids: bulkRestoreTargetIds,
+        ids: bulkRestoreTargetIds,
+        hide_from_databank: bulkRestoreHideDatabank
+      };
       if (bulkRestoreOwnerId) {
         payload.target_owner_id = Number(bulkRestoreOwnerId);
       }
@@ -3461,43 +3578,118 @@ export const ContactsPage: React.FC = () => {
         onChange={setColumns} 
       />
 
-      {/* Bulk Action Bar */}
-      <AnimatePresence>
-        {isMultiSelectMode && selected.size > 0 && (
-          <motion.div initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
-            style={{ position:'sticky', top:68, zIndex:100, marginBottom:'0.75rem', padding:'0.75rem 1.25rem', background:'var(--color-primary)', borderRadius:'var(--radius-xl)', display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap', boxShadow:'0 8px 24px rgba(163, 20, 34,0.3)' }}>
-            <span style={{ color:'white', fontWeight:700, fontSize:'0.875rem' }}>{selected.size} đã chọn</span>
-            <div style={{ flex:1 }}/>
-            {[
-              { label:'Người chăm sóc', action:bulkCollaborators, icon: <UserPlus size={14} /> },
-              ...(!isSale ? [
-                { label:'Chuyển phụ trách', action:bulkAssign, icon: <User size={14} /> },
-              ] : []),
-              ...(isAdmin ? [
-                { label:'Back lại thu hồi', action: () => openBulkRestoreReclaimed(), icon: <RotateCcw size={14} /> },
-              ] : []),
-              { label:'Email', action:bulkEmail },
-              { label:'Tag',   action:bulkTag   },
-              ...(!isSale ? [
-                { label:'Xuất Excel', action:bulkExport },
-              ] : [])
-            ].map((b: any)=>(
-              <button key={b.label} onClick={b.action}
-                style={{ padding:'0.375rem 0.75rem', background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'var(--radius-lg)', color:'white', fontWeight:600, fontSize:'0.8rem', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:'5px', whiteSpace:'nowrap' }}>
+      {/* Bulk Action Bar — Solid Light UI (Zero Frosted Glass) */}
+      {isMultiSelectMode && selected.size > 0 && (
+        <div
+          style={{
+            position: 'sticky',
+            top: 68,
+            zIndex: 100,
+            marginBottom: '0.75rem',
+            padding: '0.625rem 1rem',
+            background: '#ffffff',
+            border: '1.5px solid #e2e8f0',
+            borderRadius: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)'
+          }}
+        >
+          <span
+            style={{
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#b91c1c',
+              padding: '0.32rem 0.75rem',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {selected.size} đã chọn
+          </span>
+          <div style={{ flex: 1 }} />
+          {[
+            { label: 'Người chăm sóc', action: bulkCollaborators, icon: <UserPlus size={14} />, variant: 'primary' },
+            ...(!isSale
+              ? [{ label: 'Chuyển phụ trách', action: bulkAssign, icon: <User size={14} />, variant: 'primary' }]
+              : []),
+            ...(isAdmin
+              ? [{ label: 'Back lại thu hồi', action: () => openBulkRestoreReclaimed(), icon: <RotateCcw size={14} />, variant: 'restore' }]
+              : []),
+            { label: 'Email', action: bulkEmail, variant: 'default' },
+            { label: 'Tag', action: bulkTag, variant: 'default' },
+            ...(!isSale ? [{ label: 'Xuất Excel', action: bulkExport, variant: 'default' }] : [])
+          ].map((b: any) => {
+            const isRestore = b.variant === 'restore';
+            const isPrimary = b.variant === 'primary';
+            return (
+              <button
+                key={b.label}
+                type="button"
+                onClick={b.action}
+                style={{
+                  padding: '0.38rem 0.75rem',
+                  background: isRestore ? '#ecfdf5' : isPrimary ? '#f8fafc' : '#ffffff',
+                  border: isRestore ? '1px solid #a7f3d0' : isPrimary ? '1px solid #cbd5e1' : '1px solid #e2e8f0',
+                  borderRadius: '9px',
+                  color: isRestore ? '#047857' : '#0f172a',
+                  fontWeight: 600,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
                 {b.icon}
                 {b.label}
               </button>
-            ))}
-            {['admin', 'superadmin', 'super_admin'].includes(user?.role || '') && (
-              <button onClick={bulkDelete}
-                style={{ padding:'0.375rem 0.75rem', background:'rgba(239,68,68,0.8)', border:'none', borderRadius:'var(--radius-lg)', color:'white', fontWeight:700, fontSize:'0.8rem', cursor:'pointer' }}>
-                Xóa
-              </button>
-            )}
-            <button onClick={() => setSelected(new Set())} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.7)', cursor:'pointer' }}><X size={16}/></button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            );
+          })}
+          {['admin', 'superadmin', 'super_admin'].includes(user?.role || '') && (
+            <button
+              type="button"
+              onClick={bulkDelete}
+              style={{
+                padding: '0.38rem 0.75rem',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '9px',
+                color: '#dc2626',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              Xóa
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            title="Bỏ chọn"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: '8px',
+              background: '#f1f5f9',
+              border: '1px solid #e2e8f0',
+              color: '#475569',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       {loading ? (
@@ -4442,74 +4634,111 @@ export const ContactsPage: React.FC = () => {
           isOpen={showBulkCollabModal}
           onClose={() => !isSubmittingBulkCollab && setShowBulkCollabModal(false)}
           title={`Người chăm sóc hàng loạt (${selected.size} khách hàng)`}
+          disableAnimation={true}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
             <div>
-              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Chế độ thực hiện</label>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block', color: '#0f172a' }}>Chế độ thực hiện</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
                   { id: 'add', label: 'Thêm cộng dồn', desc: 'Giữ nguyên người cũ' },
                   { id: 'set', label: 'Thay thế toàn bộ', desc: 'Ghi đè danh sách mới' },
                   { id: 'remove', label: 'Gỡ bỏ', desc: 'Xóa người được chọn' }
-                ].map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setBulkCollabMode(m.id as any)}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: '10px',
-                      border: bulkCollabMode === m.id ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      background: bulkCollabMode === m.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                      color: bulkCollabMode === m.id ? 'var(--color-primary)' : 'var(--color-text)',
-                      textAlign: 'left',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{m.label}</div>
-                    <div style={{ fontSize: '0.68rem', opacity: 0.75, marginTop: '2px' }}>{m.desc}</div>
-                  </button>
-                ))}
+                ].map((m) => {
+                  const active = bulkCollabMode === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setBulkCollabMode(m.id as any);
+                        if (m.id === 'remove' && selectedContactsStats.activeCollabUserIds.length > 0 && bulkCollabUserIds.length === 0) {
+                          setBulkCollabUserIds(selectedContactsStats.activeCollabUserIds);
+                        }
+                      }}
+                      style={{
+                        padding: '9px 11px',
+                        borderRadius: '10px',
+                        border: active ? '1.5px solid #dc2626' : '1px solid #e2e8f0',
+                        background: active ? '#fef2f2' : '#ffffff',
+                        color: active ? '#b91c1c' : '#0f172a',
+                        textAlign: 'left',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{m.label}</div>
+                      <div style={{ fontSize: '0.68rem', color: active ? '#b91c1c' : '#64748b', marginTop: '2px' }}>{m.desc}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label className="form-label" style={{ fontWeight: 700, margin: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', gap: '8px', flexWrap: 'wrap' }}>
+                <label className="form-label" style={{ fontWeight: 700, margin: 0, color: '#0f172a' }}>
                   Chọn người chăm sóc ({bulkCollabUserIds.length} đã chọn)
                 </label>
-                {bulkCollabUserIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setBulkCollabUserIds([])}
-                    style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    Bỏ chọn hết
-                  </button>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {selectedContactsStats.activeCollabUserIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setBulkCollabUserIds(selectedContactsStats.activeCollabUserIds)}
+                      style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '2px 8px', color: '#0f172a', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Chọn người đang chăm ({selectedContactsStats.activeCollabUserIds.length})
+                    </button>
+                  )}
+                  {bulkCollabUserIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setBulkCollabUserIds([])}
+                      style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Bỏ chọn hết
+                    </button>
+                  )}
+                </div>
               </div>
               <input
                 type="text"
                 className="form-input"
-                placeholder="Tìm theo tên hoặc email nhân sự..."
+                placeholder="Tìm nhanh theo tên, email hoặc số điện thoại nhân sự..."
                 value={bulkCollabSearch}
                 onChange={e => setBulkCollabSearch(e.target.value)}
-                style={{ marginBottom: '8px' }}
+                style={{ marginBottom: '8px', background: '#ffffff', border: '1px solid #cbd5e1' }}
               />
-              <div className="custom-scrollbar" style={{ maxHeight: '240px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '6px' }}>
-                {users
-                  .filter(u => {
-                    if (!bulkCollabSearch.trim()) return true;
-                    const q = bulkCollabSearch.toLowerCase();
-                    return (u.full_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
-                  })
-                  .map(u => {
+              <div
+                className="custom-scrollbar"
+                style={{
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  border: '1px solid #e2e8f0',
+                  background: '#ffffff',
+                  borderRadius: '10px',
+                  padding: '6px'
+                }}
+              >
+                {filteredBulkCollabUsers.length === 0 ? (
+                  <div style={{ padding: '18px 12px', textAlign: 'center', color: '#64748b', fontSize: '0.82rem' }}>
+                    Không tìm thấy nhân sự phù hợp
+                  </div>
+                ) : (
+                  filteredBulkCollabUsers.map(u => {
                     const uid = Number(u.id);
                     const checked = bulkCollabUserIds.includes(uid);
+                    const ownerCnt = selectedContactsStats.ownerCountByUser[uid] || 0;
+                    const collabCnt = selectedContactsStats.collabCountByUser[uid] || 0;
+                    const isAllOwner = ownerCnt > 0 && ownerCnt === selected.size && bulkCollabMode !== 'remove';
+
                     return (
                       <div
                         key={u.id}
                         onClick={() => {
+                          if (isAllOwner) {
+                            addToast(`${u.full_name} đã là Sale phụ trách chính của khách hàng đang chọn`, 'info');
+                            return;
+                          }
                           setBulkCollabUserIds(prev =>
                             prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]
                           );
@@ -4520,22 +4749,79 @@ export const ContactsPage: React.FC = () => {
                           justifyContent: 'space-between',
                           padding: '8px 10px',
                           borderRadius: '8px',
-                          cursor: 'pointer',
-                          background: checked ? 'var(--color-primary-light)' : 'transparent',
-                          marginBottom: '2px'
+                          cursor: isAllOwner ? 'not-allowed' : 'pointer',
+                          background: checked ? '#fef2f2' : '#ffffff',
+                          border: checked ? '1px solid #fecaca' : '1px solid transparent',
+                          opacity: isAllOwner ? 0.6 : 1,
+                          marginBottom: '3px',
+                          userSelect: 'none'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Avatar name={u.full_name || u.email || 'U'} src={u.avatar_url || u.avatar} size={28} />
-                          <div>
-                            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text)' }}>{u.full_name}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{u.email || u.role}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                          <Avatar name={u.full_name || u.email || 'U'} src={u.avatar_url || u.avatar} size={30} />
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>{u.full_name}</span>
+                              {collabCnt > 0 && (
+                                <span
+                                  style={{
+                                    fontSize: '0.66rem',
+                                    fontWeight: 700,
+                                    padding: '1px 6px',
+                                    borderRadius: '5px',
+                                    background: '#ecfdf5',
+                                    color: '#047857',
+                                    border: '1px solid #a7f3d0'
+                                  }}
+                                >
+                                  Đang chăm sóc ({collabCnt}/{selected.size})
+                                </span>
+                              )}
+                              {ownerCnt > 0 && (
+                                <span
+                                  style={{
+                                    fontSize: '0.66rem',
+                                    fontWeight: 700,
+                                    padding: '1px 6px',
+                                    borderRadius: '5px',
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    border: '1px solid #bfdbfe'
+                                  }}
+                                >
+                                  Phụ trách chính ({ownerCnt}/{selected.size})
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {u.email || u.role}
+                            </div>
                           </div>
                         </div>
-                        <CustomCheckbox checked={checked} onChange={() => {}} />
+                        <div
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: '5px',
+                            border: checked ? '2px solid #dc2626' : '2px solid #cbd5e1',
+                            background: checked ? '#dc2626' : '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            pointerEvents: 'none'
+                          }}
+                        >
+                          {checked && (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </div>
                       </div>
                     );
-                  })}
+                  })
+                )}
               </div>
             </div>
 
@@ -4557,18 +4843,59 @@ export const ContactsPage: React.FC = () => {
           isOpen={showBulkAssignModal}
           onClose={() => !isSubmittingBulkAssign && setShowBulkAssignModal(false)}
           title={`Chuyển phụ trách hàng loạt (${selected.size} khách hàng)`}
+          disableAnimation={true}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
             <div>
-              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Chọn Sale phụ trách mới</label>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block', color: '#0f172a' }}>Chọn Sale phụ trách mới</label>
               <CustomSelect
                 value={bulkAssignOwnerId}
                 onChange={val => setBulkAssignOwnerId(String(val))}
                 options={[
                   { value: '', label: '-- Chọn nhân sự phụ trách --' },
-                  ...users.map(u => ({ value: String(u.id), label: `${u.full_name} (${u.role || 'Sale'})` }))
+                  ...users
+                    .filter(u => String(u.status || '').toLowerCase() !== 'inactive' && Number(u.is_active ?? 1) !== 0)
+                    .map(u => ({ value: String(u.id), label: `${u.full_name} (${u.role || 'Sale'})` }))
                 ]}
               />
+            </div>
+            <div
+              onClick={() => setBulkAssignKeepCollab(prev => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                background: bulkAssignKeepCollab ? '#fef2f2' : '#f8fafc',
+                border: bulkAssignKeepCollab ? '1px solid #fecaca' : '1px solid #e2e8f0',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+            >
+              <div
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: '5px',
+                  border: bulkAssignKeepCollab ? '2px solid #dc2626' : '2px solid #cbd5e1',
+                  background: bulkAssignKeepCollab ? '#dc2626' : '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  pointerEvents: 'none'
+                }}
+              >
+                {bulkAssignKeepCollab && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>
+                Giữ người phụ trách cũ làm Người cùng chăm sóc
+              </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
               <button className="btn outline" onClick={() => setShowBulkAssignModal(false)} disabled={isSubmittingBulkAssign}>
@@ -4588,19 +4915,22 @@ export const ContactsPage: React.FC = () => {
           isOpen={showBulkRestoreModal}
           onClose={() => !isSubmittingBulkRestore && setShowBulkRestoreModal(false)}
           title={`Khôi phục (Back lại) ${bulkRestoreTargetIds.length} khách đã thu hồi`}
+          disableAnimation={true}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
-            <div style={{ padding: '10px 12px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '0.82rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
+            <div style={{ padding: '10px 12px', borderRadius: '10px', background: '#ecfdf5', border: '1px solid #a7f3d0', fontSize: '0.82rem', color: '#065f46', lineHeight: 1.5, fontWeight: 500 }}>
               Hệ thống sẽ khôi phục các khách hàng đã bị thu hồi về lại danh sách đang chăm sóc của Sale và tự động cấp lại thời gian bảo mật theo cấu hình.
             </div>
             <div>
-              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Người nhận lại khách hàng</label>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block', color: '#0f172a' }}>Người nhận lại khách hàng</label>
               <CustomSelect
                 value={bulkRestoreOwnerId}
                 onChange={val => setBulkRestoreOwnerId(String(val))}
                 options={[
                   { value: '', label: '🔄 Khôi phục về đúng Sale phụ trách cũ trước khi bị thu hồi (Mặc định)' },
-                  ...users.map(u => ({ value: String(u.id), label: `Chuyển cho: ${u.full_name}` }))
+                  ...users
+                    .filter(u => String(u.status || '').toLowerCase() !== 'inactive' && Number(u.is_active ?? 1) !== 0)
+                    .map(u => ({ value: String(u.id), label: `Chuyển cho: ${u.full_name}` }))
                 ]}
               />
             </div>
@@ -4612,7 +4942,7 @@ export const ContactsPage: React.FC = () => {
                 className="btn primary"
                 onClick={handleSubmitBulkRestore}
                 disabled={isSubmittingBulkRestore}
-                style={{ background: '#10b981', borderColor: '#10b981' }}
+                style={{ background: '#059669', borderColor: '#059669', color: '#ffffff' }}
               >
                 {isSubmittingBulkRestore ? 'Đang khôi phục...' : `Back lại (${bulkRestoreTargetIds.length} khách)`}
               </button>
