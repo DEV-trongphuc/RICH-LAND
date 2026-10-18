@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, UserPlus, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers, MoreHorizontal, ChevronRight, Share2, DollarSign, SlidersHorizontal, RotateCcw, CheckCircle2 } from 'lucide-react';
@@ -907,19 +907,37 @@ export const ContactsPage: React.FC = () => {
     }
   }, [page, pageSize, debouncedSearch, sortBy, activeFilters, initialMetadataLoaded, quickPipelineStage]);
 
+  const needsRefreshRef = useRef(false);
   useEffect(() => {
     const handleRefresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        needsRefreshRef.current = true;
+        return;
+      }
       if (initialMetadataLoaded) {
+        needsRefreshRef.current = false;
+        fetchData();
+      }
+    };
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && !document.hidden && needsRefreshRef.current && initialMetadataLoaded) {
+        needsRefreshRef.current = false;
         fetchData();
       }
     };
     window.addEventListener('lead-claimed', handleRefresh);
     window.addEventListener('lead-added', handleRefresh);
     window.addEventListener('contact-updated', handleRefresh);
+    window.addEventListener('deposit-updated', handleRefresh);
+    window.addEventListener('coop-updated', handleRefresh);
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       window.removeEventListener('lead-claimed', handleRefresh);
       window.removeEventListener('lead-added', handleRefresh);
       window.removeEventListener('contact-updated', handleRefresh);
+      window.removeEventListener('deposit-updated', handleRefresh);
+      window.removeEventListener('coop-updated', handleRefresh);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [initialMetadataLoaded]);
 
@@ -1480,7 +1498,7 @@ export const ContactsPage: React.FC = () => {
   };
 
   const segmentCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: contacts.length, hot: 0, customer: 0, has_deal: 0, no_contact: 0, new_week: 0 };
+    const counts: Record<string, number> = { all: total || contacts.length, hot: 0, customer: 0, has_deal: 0, no_contact: 0, new_week: 0 };
     contacts.forEach(c => {
       if (!c) return;
       const days = AGO_DAYS(c.last_contact);
@@ -1491,7 +1509,7 @@ export const ContactsPage: React.FC = () => {
       if (days <= 7) counts.new_week++;
     });
     return counts;
-  }, [contacts]);
+  }, [contacts, total]);
 
   // Render Filter Content (Used for Desktop Left Sidebar and Mobile Slide Drawer)
   const renderFilterContent = (inDrawer: boolean) => {

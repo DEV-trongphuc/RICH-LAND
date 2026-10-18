@@ -473,20 +473,37 @@ export const DealsPage: React.FC = () => {
     if (stages.length > 0) fetchData();
   }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterProject, filterCampaign, filterSource, filterDateFrom, filterDateTo, viewMode, effectiveTeamId]);
 
+  const needsRefreshRef = useRef(false);
   useEffect(() => {
     const handleRefresh = () => {
-      if (typeof document !== 'undefined' && document.hidden) return;
+      if (typeof document !== 'undefined' && document.hidden) {
+        needsRefreshRef.current = true;
+        return;
+      }
       if (stages.length > 0) {
+        needsRefreshRef.current = false;
+        fetchData();
+      }
+    };
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && !document.hidden && needsRefreshRef.current && stages.length > 0) {
+        needsRefreshRef.current = false;
         fetchData();
       }
     };
     window.addEventListener('lead-claimed', handleRefresh);
     window.addEventListener('lead-added', handleRefresh);
     window.addEventListener('contact-updated', handleRefresh);
+    window.addEventListener('deposit-updated', handleRefresh);
+    window.addEventListener('coop-updated', handleRefresh);
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       window.removeEventListener('lead-claimed', handleRefresh);
       window.removeEventListener('lead-added', handleRefresh);
       window.removeEventListener('contact-updated', handleRefresh);
+      window.removeEventListener('deposit-updated', handleRefresh);
+      window.removeEventListener('coop-updated', handleRefresh);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [stages]);
 

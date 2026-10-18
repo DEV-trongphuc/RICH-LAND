@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { fetchAPI } from '../utils/api';
+import { emitCrmSync } from '../utils/crmEvents';
 import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
@@ -228,20 +229,52 @@ export default function DepositsPage() {
     String(selectedDepForManage.contact_owner_id) === String(user?.id)
   ));
 
+  const loadDataReqIdRef = useRef(0);
+  const needsRefreshRef = useRef(false);
+  const isActioningMilestoneRef = useRef(false);
+  const isConfirmingCancelRef = useRef(false);
+  const isSavingMilestonesRef = useRef(false);
+
   const loadData = async () => {
+    const reqId = ++loadDataReqIdRef.current;
     setLoading(true);
     try {
       const resDep = await fetchAPI('deposits');
+      if (reqId !== loadDataReqIdRef.current) return;
       if (resDep.success) setDeposits(resDep.data || []);
     } catch (e: any) {
-      addToast(e.message || 'Lỗi kết nối', 'error');
+      if (reqId === loadDataReqIdRef.current) {
+        addToast(e.message || 'Lỗi kết nối', 'error');
+      }
     } finally {
-      setLoading(false);
+      if (reqId === loadDataReqIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     loadData();
+    const handleCrmSync = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      } else {
+        needsRefreshRef.current = true;
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && needsRefreshRef.current) {
+        needsRefreshRef.current = false;
+        loadData();
+      }
+    };
+    const events = ['deposit-updated', 'coop-updated', 'contact-updated'];
+    events.forEach((evt) => window.addEventListener(evt, handleCrmSync));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, handleCrmSync));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -466,6 +499,7 @@ export default function DepositsPage() {
         setIsCooperation(false);
         setAllowedCollaborators([]);
         setCollaboratorShares({});
+        emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi tạo phiếu cọc', 'error');
@@ -501,6 +535,7 @@ export default function DepositsPage() {
       const res = await response.json();
       if (res.success) {
         addToast('Tải ảnh UNC thành công, vui lòng chờ Admin duyệt', 'success');
+        emitCrmSync(['deposit-updated', 'refresh-pending-counts']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi tải UNC', 'error');
@@ -511,20 +546,26 @@ export default function DepositsPage() {
   };
 
   const handleApproveMilestone = async (depositId: number, milestoneId: number) => {
+    if (isActioningMilestoneRef.current) return;
+    isActioningMilestoneRef.current = true;
     try {
       const res = await fetchAPI(`deposits/${depositId}/milestones/${milestoneId}/approve`, { method: 'POST' });
       if (res.success) {
         addToast('Phê duyệt đợt tiền thành công!', 'success');
+        emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi phê duyệt', 'error');
       }
     } catch (e: any) {
       addToast(e.message || 'Lỗi kết nối', 'error');
+    } finally {
+      isActioningMilestoneRef.current = false;
     }
   };
 
   const handleRejectMilestone = (depositId: number, milestoneId: number) => {
+    if (isActioningMilestoneRef.current) return;
     showConfirm({
       title: 'Từ chối UNC',
       message: 'Vui lòng nhập lý do từ chối bản xác nhận thanh toán này:',
@@ -534,6 +575,8 @@ export default function DepositsPage() {
       requirePromptInput: true,
       promptPlaceholder: 'Nhập lý do từ chối (bắt buộc)...',
       onConfirm: async (reason) => {
+        if (isActioningMilestoneRef.current) return;
+        isActioningMilestoneRef.current = true;
         try {
           const res = await fetchAPI(`deposits/${depositId}/milestones/${milestoneId}/reject`, {
             method: 'POST',
@@ -541,12 +584,15 @@ export default function DepositsPage() {
           });
           if (res.success) {
             addToast('Đã từ chối UNC thành công', 'success');
+            emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
             loadData();
           } else {
             addToast(res.message || 'Lỗi xử lý', 'error');
           }
         } catch (e: any) {
           addToast(e.message || 'Lỗi kết nối', 'error');
+        } finally {
+          isActioningMilestoneRef.current = false;
         }
       }
     });
@@ -559,7 +605,8 @@ export default function DepositsPage() {
   };
 
   const handleConfirmCancel = async () => {
-    if (!cancelDepositId || !cancelReason || isSaving) return;
+    if (!cancelDepositId || !cancelReason || isSaving || isConfirmingCancelRef.current) return;
+    isConfirmingCancelRef.current = true;
 
     try {
       setIsSaving(true);
@@ -571,6 +618,7 @@ export default function DepositsPage() {
       if (res.success) {
         addToast('Đã báo cáo bể cọc thành công', 'success');
         setIsCancelOpen(false);
+        emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi báo hủy', 'error');
@@ -578,6 +626,7 @@ export default function DepositsPage() {
     } catch (e: any) {
       addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
+      isConfirmingCancelRef.current = false;
       setIsSaving(false);
     }
   };
@@ -652,7 +701,8 @@ export default function DepositsPage() {
   const handleApproveFromModal = async (index: number) => {
     const m = tempMilestones[index];
     if (!selectedDepForManage || !m.id) return;
-    if (actioningMilestoneId !== null) return;
+    if (actioningMilestoneId !== null || isActioningMilestoneRef.current) return;
+    isActioningMilestoneRef.current = true;
     setActioningMilestoneId(m.id);
     setActioningType('approve');
     try {
@@ -662,6 +712,7 @@ export default function DepositsPage() {
         const updated = [...tempMilestones];
         updated[index] = { ...updated[index], status: 'approved' };
         setTempMilestones(updated);
+        emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi phê duyệt', 'error');
@@ -669,6 +720,7 @@ export default function DepositsPage() {
     } catch (e: any) {
       addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
+      isActioningMilestoneRef.current = false;
       setActioningMilestoneId(null);
       setActioningType(null);
     }
@@ -677,7 +729,7 @@ export default function DepositsPage() {
   const handleRejectFromModal = async (index: number) => {
     const m = tempMilestones[index];
     if (!selectedDepForManage || !m.id) return;
-    if (actioningMilestoneId !== null) return;
+    if (actioningMilestoneId !== null || isActioningMilestoneRef.current) return;
     showConfirm({
       title: 'Từ chối UNC',
       message: 'Vui lòng nhập lý do từ chối bản xác nhận thanh toán này:',
@@ -687,6 +739,8 @@ export default function DepositsPage() {
       requirePromptInput: true,
       promptPlaceholder: 'Nhập lý do từ chối (bắt buộc)...',
       onConfirm: async (reason) => {
+        if (isActioningMilestoneRef.current) return;
+        isActioningMilestoneRef.current = true;
         setActioningMilestoneId(m.id);
         setActioningType('reject');
         try {
@@ -699,6 +753,7 @@ export default function DepositsPage() {
             const updated = [...tempMilestones];
             updated[index] = { ...updated[index], status: 'failed' };
             setTempMilestones(updated);
+            emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
             loadData();
           } else {
             addToast(res.message || 'Lỗi xử lý', 'error');
@@ -706,6 +761,7 @@ export default function DepositsPage() {
         } catch (e: any) {
           addToast(e.message || 'Lỗi kết nối', 'error');
         } finally {
+          isActioningMilestoneRef.current = false;
           setActioningMilestoneId(null);
           setActioningType(null);
         }
@@ -714,7 +770,7 @@ export default function DepositsPage() {
   };
 
   const handleSaveMilestones = async () => {
-    if (!selectedDepForManage) return;
+    if (!selectedDepForManage || isSavingMilestonesRef.current) return;
     for (let m of tempMilestones) {
       if (!m.milestone_name.trim()) {
         addToast('Tên đợt không được để trống.', 'error');
@@ -748,6 +804,7 @@ export default function DepositsPage() {
       }
     }
 
+    isSavingMilestonesRef.current = true;
     try {
       setIsSavingMilestones(true);
       const payload: any = { milestones: tempMilestones };
@@ -765,6 +822,7 @@ export default function DepositsPage() {
       if (res.success) {
         addToast('Cập nhật lịch trình thanh toán thành công!', 'success');
         setShowManageModal(false);
+        emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi khi lưu lịch trình', 'error');
@@ -772,6 +830,7 @@ export default function DepositsPage() {
     } catch (e: any) {
       addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
+      isSavingMilestonesRef.current = false;
       setIsSavingMilestones(false);
     }
   };

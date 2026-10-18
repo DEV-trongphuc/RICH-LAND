@@ -437,37 +437,72 @@ class DashboardController {
             $companyParams[] = $uid;
         }
 
-        $sql = "
-            SELECT ps.id, ps.name, ps.color, ps.order_index, ps.is_won, ps.is_lost,
-                   (
-                     (SELECT COUNT(*) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = ?) AND d.deleted_at IS NULL AND d.tenant_id = ? $dealFilter) +
-                     (SELECT COUNT(*) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = ?) AND c.deleted_at IS NULL AND c.tenant_id = ? $contactFilter) +
-                     (SELECT COUNT(*) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = ?) AND cp.deleted_at IS NULL AND cp.tenant_id = ? $companyFilter)
-                   ) as deal_count,
-                   (
-                     (SELECT COALESCE(SUM(value),0) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = ?) AND d.deleted_at IS NULL AND d.tenant_id = ? $dealFilter) +
-                     (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = ?) AND c.deleted_at IS NULL AND c.tenant_id = ? $contactFilter) +
-                     (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = ?) AND cp.deleted_at IS NULL AND cp.tenant_id = ? $companyFilter)
-                   ) as total_value
-            FROM pipeline_stages ps
-            WHERE ps.tenant_id = ?
-            GROUP BY ps.id 
-            ORDER BY ps.order_index ASC
-        ";
+        $stmtStages = $this->db->prepare("SELECT id, name, color, order_index, is_won, is_lost FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index ASC");
+        $stmtStages->execute([$tid]);
+        $stages = $stmtStages->fetchAll();
 
-        $p = array_merge(
-            [$firstStageId, $tid], $dealParams,
-            [$firstStageId, $tid], $contactParams,
-            [$firstStageId, $tid], $companyParams,
-            [$firstStageId, $tid], $dealParams,
-            [$firstStageId, $tid], $contactParams,
-            [$firstStageId, $tid], $companyParams,
-            [$tid]
-        );
+        $stageAgg = [];
+        foreach ($stages as $st) {
+            $sid = (int)$st['id'];
+            $stageAgg[$sid] = ['deal_count' => 0, 'total_value' => 0.0];
+        }
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($p);
-        respond(200, $stmt->fetchAll());
+        $stmtD = $this->db->prepare("
+            SELECT CASE WHEN d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0' THEN ? ELSE d.stage_id END as eff_stage_id,
+                   COUNT(*) as cnt, COALESCE(SUM(d.value), 0) as val
+            FROM deals d
+            WHERE d.deleted_at IS NULL AND d.tenant_id = ? $dealFilter
+            GROUP BY eff_stage_id
+        ");
+        $stmtD->execute(array_merge([$firstStageId, $tid], $dealParams));
+        foreach ($stmtD->fetchAll() as $r) {
+            $sid = (int)$r['eff_stage_id'];
+            if (isset($stageAgg[$sid])) {
+                $stageAgg[$sid]['deal_count'] += (int)$r['cnt'];
+                $stageAgg[$sid]['total_value'] += (float)$r['val'];
+            }
+        }
+
+        $stmtC = $this->db->prepare("
+            SELECT CASE WHEN c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0' THEN ? ELSE c.stage_id END as eff_stage_id,
+                   COUNT(*) as cnt, COALESCE(SUM(c.expected_revenue), 0) as val
+            FROM contacts c
+            WHERE c.deleted_at IS NULL AND c.tenant_id = ? $contactFilter
+            GROUP BY eff_stage_id
+        ");
+        $stmtC->execute(array_merge([$firstStageId, $tid], $contactParams));
+        foreach ($stmtC->fetchAll() as $r) {
+            $sid = (int)$r['eff_stage_id'];
+            if (isset($stageAgg[$sid])) {
+                $stageAgg[$sid]['deal_count'] += (int)$r['cnt'];
+                $stageAgg[$sid]['total_value'] += (float)$r['val'];
+            }
+        }
+
+        $stmtCp = $this->db->prepare("
+            SELECT CASE WHEN cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0' THEN ? ELSE cp.stage_id END as eff_stage_id,
+                   COUNT(*) as cnt, COALESCE(SUM(cp.expected_revenue), 0) as val
+            FROM companies cp
+            WHERE cp.deleted_at IS NULL AND cp.tenant_id = ? $companyFilter
+            GROUP BY eff_stage_id
+        ");
+        $stmtCp->execute(array_merge([$firstStageId, $tid], $companyParams));
+        foreach ($stmtCp->fetchAll() as $r) {
+            $sid = (int)$r['eff_stage_id'];
+            if (isset($stageAgg[$sid])) {
+                $stageAgg[$sid]['deal_count'] += (int)$r['cnt'];
+                $stageAgg[$sid]['total_value'] += (float)$r['val'];
+            }
+        }
+
+        foreach ($stages as &$st) {
+            $sid = (int)$st['id'];
+            $st['deal_count'] = $stageAgg[$sid]['deal_count'] ?? 0;
+            $st['total_value'] = $stageAgg[$sid]['total_value'] ?? 0;
+        }
+        unset($st);
+
+        respond(200, $stages);
     }
 
     public function leadSources(array $auth): void {
@@ -598,7 +633,7 @@ class DashboardController {
                     NULLIF(COUNT(DISTINCT l.id), 0), 1
                 ) as conversion_rate
             FROM leads l
-            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.deleted_at IS NULL AND c.tenant_id = ?
+            LEFT JOIN contacts c ON c.person_id = l.person_id AND l.person_id IS NOT NULL AND c.deleted_at IS NULL AND c.tenant_id = ?
             LEFT JOIN deposits dp ON dp.contact_id = c.id AND dp.status = 'approved'
             WHERE l.created_at BETWEEN ? AND ?
             $filter
@@ -640,7 +675,7 @@ class DashboardController {
                 ) as deposit_conversion_rate
             FROM leads l
             LEFT JOIN marketing_campaigns mc ON l.campaign_id = mc.id
-            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.deleted_at IS NULL AND c.tenant_id = ?
+            LEFT JOIN contacts c ON c.person_id = l.person_id AND l.person_id IS NOT NULL AND c.deleted_at IS NULL AND c.tenant_id = ?
             LEFT JOIN deposits dp ON dp.contact_id = c.id AND dp.status = 'approved'
             WHERE l.created_at BETWEEN ? AND ?
             $filter
@@ -670,36 +705,25 @@ class DashboardController {
             $params = array_merge($params, $scope['userIds'], $scope['userIds']);
         }
 
-        // Funnel 5 standard milestones
-        $totalLeads = (int)$this->queryScalar("
-            SELECT COUNT(DISTINCT l.id) FROM leads l 
-            LEFT JOIN contacts c ON (c.person_id = l.person_id OR c.phone = l.phone) AND c.tenant_id = ?
+        // Single-pass Funnel query for 5 standard milestones (PERF-BE-05)
+        $funnelAgg = $this->queryOne("
+            SELECT 
+                COUNT(DISTINCT l.id) as total_leads,
+                COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.deleted_at IS NULL AND c.stage_id >= 2 THEN c.id END) as qualified,
+                COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.deleted_at IS NULL AND c.stage_id IN (3, 4, 5, 6) THEN c.id END) as meeting,
+                COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.deleted_at IS NULL AND c.stage_id >= 5 THEN c.id END) as booking,
+                COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.deleted_at IS NULL AND (c.stage_id = 6 OR dp.id IS NOT NULL) THEN c.id END) as deposited
+            FROM leads l
+            LEFT JOIN contacts c ON c.person_id = l.person_id AND l.person_id IS NOT NULL AND c.tenant_id = ?
+            LEFT JOIN deposits dp ON dp.contact_id = c.id AND dp.status = 'approved'
             WHERE l.created_at BETWEEN ? AND ? $filter
         ", $params);
 
-        $qualified = (int)$this->queryScalar("
-            SELECT COUNT(DISTINCT c.id) FROM contacts c 
-            JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
-            WHERE c.tenant_id = ? AND c.deleted_at IS NULL AND l.created_at BETWEEN ? AND ? AND c.stage_id >= 2 $filter
-        ", $params);
-
-        $meeting = (int)$this->queryScalar("
-            SELECT COUNT(DISTINCT c.id) FROM contacts c 
-            JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
-            WHERE c.tenant_id = ? AND c.deleted_at IS NULL AND l.created_at BETWEEN ? AND ? AND c.stage_id IN (3, 4, 5, 6) $filter
-        ", $params);
-
-        $booking = (int)$this->queryScalar("
-            SELECT COUNT(DISTINCT c.id) FROM contacts c 
-            JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
-            WHERE c.tenant_id = ? AND c.deleted_at IS NULL AND l.created_at BETWEEN ? AND ? AND c.stage_id >= 5 $filter
-        ", $params);
-
-        $deposited = (int)$this->queryScalar("
-            SELECT COUNT(DISTINCT c.id) FROM contacts c 
-            JOIN leads l ON (c.person_id = l.person_id OR c.phone = l.phone)
-            WHERE c.tenant_id = ? AND c.deleted_at IS NULL AND l.created_at BETWEEN ? AND ? AND (c.stage_id = 6 OR EXISTS(SELECT 1 FROM deposits dp WHERE dp.contact_id = c.id AND dp.status = 'approved')) $filter
-        ", $params);
+        $totalLeads = (int)($funnelAgg['total_leads'] ?? 0);
+        $qualified  = (int)($funnelAgg['qualified'] ?? 0);
+        $meeting    = (int)($funnelAgg['meeting'] ?? 0);
+        $booking    = (int)($funnelAgg['booking'] ?? 0);
+        $deposited  = (int)($funnelAgg['deposited'] ?? 0);
 
         $funnel = [
             [

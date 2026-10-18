@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import React, { useEffect, useState, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchAPI } from '../utils/api';
+import { emitCrmSync } from '../utils/crmEvents';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import api from '../api/axios';
@@ -771,38 +772,54 @@ export default function CooperationSlipsPage() {
     };
   }, [slips, debouncedSearch, filterSale, dateRange, user?.id, isManager, isApprover]);
 
+  const loadDataReqIdRef = useRef(0);
+  const needsRefreshRef = useRef(false);
+  const isSigningRef = useRef(false);
+  const isRejectingRef = useRef(false);
+  const isDeletingRef = useRef(false);
+
   const handleDeleteSlip = async (slipId: number) => {
+    if (isDeletingRef.current) return;
     setCustomConfirm({
       isOpen: true,
       title: 'Xác nhận xóa phiếu',
       message: 'Bạn có chắc chắn muốn xóa phiếu hợp tác này không? Thao tác này không thể hoàn tác.',
       onConfirm: async () => {
+        if (isDeletingRef.current) return;
+        isDeletingRef.current = true;
         try {
           const res = await fetchAPI(`cooperation-slips/${slipId}`, { method: 'DELETE' });
           if (res.success) {
             setSuccess('Đã xóa phiếu hợp tác thành công!');
+            emitCrmSync(['coop-updated', 'deposit-updated', 'contact-updated', 'refresh-pending-counts']);
             loadData();
           } else {
             setError(res.message || 'Lỗi khi xóa phiếu');
           }
         } catch (e: any) {
           setError(e.message || 'Lỗi kết nối');
+        } finally {
+          isDeletingRef.current = false;
         }
       }
     });
   };
 
   const loadData = async () => {
+    const reqId = ++loadDataReqIdRef.current;
     setLoading(true);
     setError('');
     try {
       const [resSlips, resUsers] = await Promise.all([
         fetchAPI('cooperation-slips'),
-        fetchAPI('users?all=1').catch((err) => {
-          console.warn('Failed to load users for configurations:', err);
-          return null;
-        })
+        salesAccounts.length === 0
+          ? fetchAPI('users?all=1').catch((err) => {
+              console.warn('Failed to load users for configurations:', err);
+              return null;
+            })
+          : Promise.resolve(null)
       ]);
+      if (reqId !== loadDataReqIdRef.current) return;
       if (resSlips.success) {
         setSlips(resSlips.data || []);
       } else {
@@ -814,9 +831,13 @@ export default function CooperationSlipsPage() {
         setSalesAccounts(staff.length > 0 ? staff : (resUsers.data || []));
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      if (reqId === loadDataReqIdRef.current) {
+        setError(e.message || 'Lỗi kết nối');
+      }
     } finally {
-      setLoading(false);
+      if (reqId === loadDataReqIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -837,6 +858,7 @@ export default function CooperationSlipsPage() {
       });
       if (res.success) {
         addToast('Đã tải lên tài liệu hợp tác thành công!', 'success');
+        emitCrmSync(['coop-updated', 'contact-updated']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi khi tải lên tài liệu', 'error');
@@ -861,6 +883,7 @@ export default function CooperationSlipsPage() {
           });
           if (res.success) {
             addToast('Đã xóa tài liệu hợp tác thành công!', 'success');
+            emitCrmSync(['coop-updated', 'contact-updated']);
             loadData();
           } else {
             addToast(res.message || 'Lỗi khi xóa tài liệu', 'error');
@@ -891,6 +914,7 @@ export default function CooperationSlipsPage() {
           });
           if (res.success) {
             addToast('Đã đổi tên tài liệu hợp tác thành công!', 'success');
+            emitCrmSync(['coop-updated', 'contact-updated']);
             loadData();
           } else {
             addToast(res.message || 'Lỗi khi đổi tên tài liệu', 'error');
@@ -904,6 +928,26 @@ export default function CooperationSlipsPage() {
 
   useEffect(() => {
     loadData();
+    const handleCrmSync = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      } else {
+        needsRefreshRef.current = true;
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && needsRefreshRef.current) {
+        needsRefreshRef.current = false;
+        loadData();
+      }
+    };
+    const events = ['coop-updated', 'deposit-updated', 'contact-updated'];
+    events.forEach((evt) => window.addEventListener(evt, handleCrmSync));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, handleCrmSync));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -1014,6 +1058,7 @@ export default function CooperationSlipsPage() {
         addToast('Đã gửi yêu cầu thay đổi tỷ lệ thành công!', 'success');
         setIsUpdateOpen(false);
         setChangeReason('');
+        emitCrmSync(['coop-updated', 'deposit-updated', 'contact-updated', 'refresh-pending-counts']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi cập nhật tỷ lệ', 'error');
@@ -1024,6 +1069,8 @@ export default function CooperationSlipsPage() {
   };
 
   const handleSignSlip = async (slipId: number, signatureImg: string) => {
+    if (isSigningRef.current) return;
+    isSigningRef.current = true;
     try {
       setIsSigning(true);
       const res = await fetchAPI(`cooperation-slips/${slipId}/sign`, { 
@@ -1035,6 +1082,7 @@ export default function CooperationSlipsPage() {
         setIsSignModalOpen(false);
         setSigningSlip(null);
         navigate(location.pathname, { replace: true });
+        emitCrmSync(['coop-updated', 'deposit-updated', 'contact-updated', 'refresh-pending-counts']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi ký xác nhận', 'error');
@@ -1042,6 +1090,7 @@ export default function CooperationSlipsPage() {
     } catch (e: any) {
       addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
+      isSigningRef.current = false;
       setIsSigning(false);
     }
   };
@@ -1082,16 +1131,19 @@ export default function CooperationSlipsPage() {
   };
 
   const handleRejectSlip = async (slipId: number) => {
+    if (isRejectingRef.current) return;
     setCustomPrompt({
       isOpen: true,
       title: 'Từ chối phiếu hợp tác',
       label: 'Nhập lý do bác bỏ phiếu hợp tác này:',
       value: '',
       onConfirm: async (reason: string) => {
+        if (isRejectingRef.current) return;
         if (!reason.trim()) {
           addToast('Lý do từ chối không được bỏ trống.', 'error');
           return;
         }
+        isRejectingRef.current = true;
         try {
           const res = await fetchAPI(`cooperation-slips/${slipId}/reject`, {
             method: 'POST',
@@ -1099,13 +1151,15 @@ export default function CooperationSlipsPage() {
           });
           if (res.success) {
             addToast('Đã từ chối phiếu hợp tác và yêu cầu ký lại', 'success');
+            emitCrmSync(['coop-updated', 'deposit-updated', 'contact-updated', 'refresh-pending-counts']);
             loadData();
-            window.dispatchEvent(new Event('refresh-pending-counts'));
           } else {
             addToast(res.message || 'Lỗi từ chối', 'error');
           }
         } catch (e: any) {
           addToast(e.message || 'Lỗi kết nối', 'error');
+        } finally {
+          isRejectingRef.current = false;
         }
       }
     });
@@ -1167,6 +1221,7 @@ export default function CooperationSlipsPage() {
       if (res.success) {
         addToast('Gửi yêu cầu chỉnh sửa tỷ lệ thành công!', 'success');
         setRequestAdjustmentSlip(null);
+        emitCrmSync(['coop-updated', 'deposit-updated', 'contact-updated', 'refresh-pending-counts']);
         loadData();
       } else {
         addToast(res.message || 'Lỗi gửi yêu cầu', 'error');
@@ -1195,8 +1250,8 @@ export default function CooperationSlipsPage() {
       if (res.success) {
         addToast(action === 'approve' ? 'Đã duyệt yêu cầu chỉnh sửa!' : 'Đã từ chối yêu cầu chỉnh sửa!', 'success');
         setShowHandleRequestModal(false);
+        emitCrmSync(['coop-updated', 'deposit-updated', 'contact-updated', 'refresh-pending-counts']);
         loadData();
-        window.dispatchEvent(new Event('refresh-pending-counts'));
       } else {
         addToast(res.message || 'Lỗi xử lý yêu cầu', 'error');
       }

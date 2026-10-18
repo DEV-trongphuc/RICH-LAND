@@ -773,8 +773,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
     setApproveModalOpen(true);
   };
 
+  const isActioningRef = useRef(false);
   const submitApprove = async (noComp: boolean) => {
-    if (!approvingId) return;
+    if (!approvingId || isActioningRef.current) return;
+    isActioningRef.current = true;
 
     setIsActioning(approvingId);
     setApproveModalOpen(false);
@@ -792,19 +794,25 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       if (res.success) {
         toast.success(noComp ? t('Đã duyệt không đền bù!') : t('Đã duyệt đền bù Data!'));
         window.dispatchEvent(new Event('ticket-resolved'));
+        window.dispatchEvent(new Event('refresh-pending-counts'));
+        window.dispatchEvent(new Event('contact-updated'));
         fetchReports();
       } else {
         toast.error(res.message || t('Có lỗi xảy ra'));
       }
     } catch (e: any) {
       toast.error(t('Lỗi: ') + e.message);
+    } finally {
+      isActioningRef.current = false;
+      setIsActioning(null);
     }
-    setIsActioning(null);
   };
 
   const [isCompensatingNoComp, setIsCompensatingNoComp] = useState(false);
+  const isCompensatingRef = useRef(false);
 
   const handleCompensateNoComp = (reportId: number) => {
+    if (isCompensatingRef.current) return;
     showConfirm({
       title: t('Đền bù lỗi cho Ticket'),
       message: t('Bạn có chắc chắn muốn thực hiện bù lỗi cho ticket này không? Hệ thống sẽ cộng 1 lượt đền bù cho Sale và chuyển trạng thái log phân bổ sang lỗi.'),
@@ -812,6 +820,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       cancelText: t('Hủy'),
       isDanger: true,
       onConfirm: async () => {
+        if (isCompensatingRef.current) return;
+        isCompensatingRef.current = true;
         setIsCompensatingNoComp(true);
         try {
           const res = await fetchAPI('compensate_approved_no_comp', {
@@ -820,6 +830,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           });
           if (res.success) {
             toast.success(t('Đã thực hiện bù lỗi thành công!'));
+            window.dispatchEvent(new Event('ticket-resolved'));
+            window.dispatchEvent(new Event('refresh-pending-counts'));
             setSelectedLead(null);
             fetchReports();
           } else {
@@ -828,6 +840,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         } catch (e: any) {
           toast.error(t('Lỗi: ') + e.message);
         } finally {
+          isCompensatingRef.current = false;
           setIsCompensatingNoComp(false);
         }
       }
@@ -842,7 +855,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
   const submitReject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rejectingId || !rejectReason.trim()) return;
+    if (!rejectingId || !rejectReason.trim() || isActioningRef.current) return;
+    isActioningRef.current = true;
 
     setIsActioning(rejectingId);
     setRejectModalOpen(false);
@@ -855,14 +869,18 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       if (res.success) {
         toast.success(t('Đã từ chối báo cáo!'));
         window.dispatchEvent(new Event('ticket-resolved'));
+        window.dispatchEvent(new Event('refresh-pending-counts'));
+        window.dispatchEvent(new Event('contact-updated'));
         fetchReports();
       } else {
         toast.error(res.message || t('Có lỗi xảy ra'));
       }
     } catch (e: any) {
       toast.error(t('Lỗi: ') + e.message);
+    } finally {
+      isActioningRef.current = false;
+      setIsActioning(null);
     }
-    setIsActioning(null);
   };
 
   const handleSendQuickMessage = async (e: React.FormEvent) => {

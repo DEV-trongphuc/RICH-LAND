@@ -1614,7 +1614,7 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
         $compStmt->close();
         if (isset($cStmt))
             $cStmt->close();
-        return ['id' => $nextId, 'is_compensation' => true];
+        return ['id' => $nextId, 'is_compensation' => true, 'turn_type' => 'compensation'];
     }
 
     // === PRIORITY 2: STARVATION PREVENTION — Bù lượt thiếu do nghỉ phép/ngoài giờ ===
@@ -1626,7 +1626,7 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
         $starvStmt->close();
         if (isset($cStmt))
             $cStmt->close();
-        return ['id' => $nextId, 'is_compensation' => true, 'is_starvation' => true];
+        return ['id' => $nextId, 'is_compensation' => true, 'is_starvation' => true, 'turn_type' => 'starvation'];
     }
 
     // === PRIORITY 3: MID-TURN — Đang trong lượt nhận nhiều data, tiếp tục giao cho họ ===
@@ -1639,7 +1639,7 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
         $midStmt->close();
         if (isset($cStmt))
             $cStmt->close();
-        return ['id' => $nextId, 'is_compensation' => false];
+        return ['id' => $nextId, 'is_compensation' => false, 'turn_type' => 'mid_turn'];
     }
 
     // === PRIORITY 4: ROUND-ROBIN — Find next consultant by receive_ratio ===
@@ -1755,7 +1755,73 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
     if (isset($cStmt))
         $cStmt->close();
 
-    return ['id' => $nextId, 'is_compensation' => false];
+    return [
+        'id' => $nextId,
+        'is_compensation' => false,
+        'turn_type' => 'round_robin',
+        'prev_last_assigned_id' => $lastAssignedId,
+        'data_per_turn' => $dataPerTurn,
+        'skipped_consultants' => $skippedConsultants
+    ];
+}
+
+function revertConsultantRoundTurn($conn, $roundId, $assignResult) {
+    if (!$roundId || !is_array($assignResult) || empty($assignResult['id'])) {
+        return;
+    }
+    $cId = (int)$assignResult['id'];
+    $turnType = $assignResult['turn_type'] ?? ($assignResult['is_compensation'] ? 'compensation' : 'round_robin');
+
+    if ($turnType === 'compensation') {
+        $stmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
+        if ($stmt) {
+            $stmt->bind_param("ii", $roundId, $cId);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } elseif ($turnType === 'starvation') {
+        $stmt = $conn->prepare("UPDATE round_consultants SET skipped_credit = skipped_credit + 1 WHERE round_id = ? AND consultant_id = ?");
+        if ($stmt) {
+            $stmt->bind_param("ii", $roundId, $cId);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } elseif ($turnType === 'mid_turn') {
+        $stmt = $conn->prepare("UPDATE round_consultants SET current_turn_remaining = current_turn_remaining + 1 WHERE round_id = ? AND consultant_id = ?");
+        if ($stmt) {
+            $stmt->bind_param("ii", $roundId, $cId);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } elseif ($turnType === 'round_robin') {
+        $prevLastId = $assignResult['prev_last_assigned_id'] ?? null;
+        $updR = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
+        if ($updR) {
+            $updR->bind_param("ii", $prevLastId, $roundId);
+            $updR->execute();
+            $updR->close();
+        }
+        if (!empty($assignResult['data_per_turn']) && (int)$assignResult['data_per_turn'] > 1) {
+            $updT = $conn->prepare("UPDATE round_consultants SET current_turn_remaining = 0 WHERE round_id = ? AND consultant_id = ?");
+            if ($updT) {
+                $updT->bind_param("ii", $roundId, $cId);
+                $updT->execute();
+                $updT->close();
+            }
+        }
+        $skipped = $assignResult['skipped_consultants'] ?? [];
+        if (!empty($skipped)) {
+            $placeholders = implode(',', array_fill(0, count($skipped), '?'));
+            $stmtSkip = $conn->prepare("UPDATE round_consultants SET skipped_credit = GREATEST(0, skipped_credit - 1) WHERE round_id = ? AND consultant_id IN ($placeholders)");
+            if ($stmtSkip) {
+                $bindParams = array_merge([(int)$roundId], array_map('intval', $skipped));
+                $types = 'i' . str_repeat('i', count($skipped));
+                $stmtSkip->bind_param($types, ...$bindParams);
+                $stmtSkip->execute();
+                $stmtSkip->close();
+            }
+        }
+    }
 }
 
 function isLeadBlocked($conn, $phone, $email) {
@@ -2462,17 +2528,74 @@ function sendGrabOfferNotification($conn, $leadId, $consultantId, $roundId, $cou
     }
 }
 
+function queueSaleLeadNotification($conn, $leadId, $assignedToId, $roundId = null) {
+    if (!$leadId || !$assignedToId) return;
+    $notifKey = (int)$leadId . ':' . (int)$assignedToId;
+    if (!empty($GLOBALS['__sent_sale_lead_notifs'][$notifKey]) || !empty($GLOBALS['__queued_sale_lead_notifs'][$notifKey])) {
+        return;
+    }
+    $GLOBALS['__queued_sale_lead_notifs'][$notifKey] = [
+        'lead_id' => (int)$leadId,
+        'assigned_to' => (int)$assignedToId,
+        'round_id' => $roundId ? (int)$roundId : null,
+    ];
+    if (empty($GLOBALS['__sale_lead_notif_shutdown_registered'])) {
+        $GLOBALS['__sale_lead_notif_shutdown_registered'] = true;
+        register_shutdown_function(function () use ($conn) {
+            flushQueuedSaleLeadNotifications($conn);
+        });
+    }
+}
+
+function flushQueuedSaleLeadNotifications($conn = null) {
+    if (empty($GLOBALS['__queued_sale_lead_notifs'])) {
+        return;
+    }
+    if (!$conn && isset($GLOBALS['conn'])) {
+        $conn = $GLOBALS['conn'];
+    }
+    $queue = $GLOBALS['__queued_sale_lead_notifs'];
+    $GLOBALS['__queued_sale_lead_notifs'] = [];
+    foreach ($queue as $item) {
+        sendDirectSaleLeadNotification($conn, $item['lead_id'], $item['assigned_to'], $item['round_id']);
+    }
+}
+
 function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId = null) {
     if (!$leadId || !$assignedToId) return;
 
+    $notifKey = (int)$leadId . ':' . (int)$assignedToId;
+    if (!empty($GLOBALS['__sent_sale_lead_notifs'][$notifKey])) {
+        return;
+    }
+    $GLOBALS['__sent_sale_lead_notifs'][$notifKey] = true;
+
     try {
-        // 1. Get Sale info (zalo_chat_id, email, telegram_chat_id, name)
-        $saleStmt = $conn->prepare("SELECT id, full_name AS name, email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ?");
-        if (!$saleStmt) return;
-        $saleStmt->bind_param("i", $assignedToId);
-        $saleStmt->execute();
-        $sale = $saleStmt->get_result()->fetch_assoc();
-        $saleStmt->close();
+        // 1. Get Sale info from consultants joined with users, fallback to users directly
+        $sale = null;
+        $cStmt = $conn->prepare("
+            SELECT c.id, c.name, c.email,
+                   COALESCE(NULLIF(c.zalo_chat_id, ''), u.zalo_chat_id) AS zalo_chat_id,
+                   u.telegram_chat_id
+            FROM consultants c
+            LEFT JOIN users u ON u.email = c.email AND u.deleted_at IS NULL
+            WHERE c.id = ?
+            LIMIT 1
+        ");
+        if ($cStmt) {
+            $cStmt->bind_param("i", $assignedToId);
+            $cStmt->execute();
+            $sale = $cStmt->get_result()->fetch_assoc();
+            $cStmt->close();
+        }
+        if (!$sale) {
+            $saleStmt = $conn->prepare("SELECT id, full_name AS name, email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ?");
+            if (!$saleStmt) return;
+            $saleStmt->bind_param("i", $assignedToId);
+            $saleStmt->execute();
+            $sale = $saleStmt->get_result()->fetch_assoc();
+            $saleStmt->close();
+        }
 
         if (!$sale) return;
 
@@ -2485,6 +2608,21 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
         $leadStmt->close();
 
         if (!$lead) return;
+
+        $ccEmails = '';
+        if ($roundId && (int)$roundId > 0) {
+            $rStmt = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ? LIMIT 1");
+            if ($rStmt) {
+                $rIdInt = (int)$roundId;
+                $rStmt->bind_param("i", $rIdInt);
+                $rStmt->execute();
+                $rRow = $rStmt->get_result()->fetch_assoc();
+                $rStmt->close();
+                if ($rRow && !empty($rRow['cc_emails'])) {
+                    $ccEmails = $rRow['cc_emails'];
+                }
+            }
+        }
 
         $botToken = get_system_setting($conn, 'zalo_bot_token');
 
@@ -2569,7 +2707,7 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
         // 6. Send Email
         if (!empty($sale['email'])) {
             require_once __DIR__ . '/mailer.php';
-            sendEmailNotification($sale['email'], $emailSubj, 'Phân bổ Lead mới', $emailBody, '');
+            sendEmailNotification($sale['email'], $emailSubj, 'Phân bổ Lead mới', $emailBody, $ccEmails);
         }
 
         // 7. Send Telegram if configured
@@ -2749,13 +2887,17 @@ function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $messag
     $stmt->execute();
     $stmt->close();
 
-    if (function_exists('pruneAdminLogs')) {
-        pruneAdminLogs($conn);
+    if (function_exists('pruneAdminLogs') && mt_rand(1, 200) === 1) {
+        register_shutdown_function(function () use ($conn) {
+            if ($conn instanceof mysqli) {
+                @pruneAdminLogs($conn);
+            }
+        });
     }
 
-    // Directly notify the assigned Sale via Zalo & Email
-    if (in_array($status, ['assigned', 'compensation']) && $assignedTo > 0) {
-        sendDirectSaleLeadNotification($conn, $leadId, $assignedTo, $roundId);
+    // Queue Sale notification (Zalo, Email, Telegram) to execute post-commit/shutdown so DB row locks are never held during network I/O
+    if (in_array($status, ['assigned', 'compensation'], true) && $assignedTo > 0) {
+        queueSaleLeadNotification($conn, $leadId, $assignedTo, $roundId);
     }
 
     // Live Two-Way Sync to Google Sheets

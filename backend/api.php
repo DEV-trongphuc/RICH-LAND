@@ -2203,71 +2203,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         }
                     }
 
-                    // Fire notification using Mailer and Zalo ONLY if within working hours
-                    if (!$isOutsideWorkHours) {
-                        try {
-                            require_once __DIR__ . '/mailer.php';
-                            require_once __DIR__ . '/zalo_bot.php';
-
-                            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-                            $stmtC->bind_param("i", $consultantId);
-                            $stmtC->execute();
-                            $cRes = $stmtC->get_result();
-                            if ($cRes->num_rows > 0) {
-                                $c = $cRes->fetch_assoc();
-                                $ccEmails = '';
-                                $stmtQ = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ?");
-                                $stmtQ->bind_param("i", $assignedRoundId);
-                                $stmtQ->execute();
-                                $qRound = $stmtQ->get_result();
-                                if ($qRound && $qRound->num_rows > 0) {
-                                    $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
-                                }
-                                $stmtQ->close();
-
-                                $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
-
-                                try {
-                                    sendLeadAssignedEmailToSale(
-                                        $c['email'],
-                                        $c['name'],
-                                        $fName,
-                                        $phone ?: '',
-                                        $note ?: '',
-                                        $source ?: '',
-                                        $ccEmails,
-                                        $roundName,
-                                        $leadId,
-                                        $consultantId,
-                                        $assignedRoundId
-                                    );
-                                } catch (Exception $eEx) {
-                                    error_log("Error sending manual insert assignment email: " . $eEx->getMessage());
-                                }
-
-                                try {
-                                    sendLeadAssignedZaloMessageToSale(
-                                        $consultantId,
-                                        $c['name'],
-                                        $fName,
-                                        $phone ?: '',
-                                        $note ?: '',
-                                        $source ?: '',
-                                        $roundName,
-                                        $leadId,
-                                        $assignedRoundId,
-                                        $email,
-                                        $type
-                                    );
-                                } catch (Exception $zEx) {
-                                    error_log("Error sending manual insert assignment Zalo: " . $zEx->getMessage());
-                                }
-                            }
-                            $stmtC->close();
-                        } catch (Exception $notifyEx) {
-                            error_log("Error preparing manual assignment notifications: " . $notifyEx->getMessage());
-                        }
-                    }
+                    // LOGIC-BE-02 & PERF-BE-06: Sale lead notifications (Email + Zalo + CC) are now queued inside logDistribution() and flushed after transaction commit
 
                     if ($override_consultant_id) {
                         $msg = ($decodedUser['role'] === 'sale') ? 'Thêm khách hàng thành công.' : 'Đã thêm và bàn giao khách hàng thành công.';
@@ -2552,6 +2488,12 @@ switch ($action) {
         $input = json_decode($rawInput, true);
         $lead_id = (int)($input['lead_id'] ?? 0);
         if ($lead_id > 0) {
+            if (!defined('CRON_SYNC_FUNCTIONS_ONLY')) {
+                define('CRON_SYNC_FUNCTIONS_ONLY', true);
+            }
+            if (!defined('CRON_SYNC_SILENT_LOG')) {
+                define('CRON_SYNC_SILENT_LOG', true);
+            }
             require_once __DIR__ . '/cron_sync.php';
             if (function_exists('recallInactiveLeads')) {
                 recallInactiveLeads($conn);
@@ -3138,6 +3080,9 @@ switch ($action) {
 
         $subAssignedCond = ($isSale || $saleFilterId !== null) ? (" AND assigned_to = " . (int)$saleId) : "";
         $subDrCond = ($isSale || $saleFilterId !== null) ? (" WHERE consultant_id = " . (int)$saleId) : "";
+        $globalRecallMins = (int) get_system_setting($conn, 'lead_recall_minutes');
+        $effectiveRecallSql = "CASE WHEN IFNULL(sc.lead_recall_minutes, 0) > 0 THEN sc.lead_recall_minutes ELSE $globalRecallMins END";
+        $unacceptedNotExpiredSql = "(l.last_interaction_date IS NULL OR ($effectiveRecallSql) <= 0 OR TIMESTAMPDIFF(SECOND, l.last_interaction_date, NOW()) < (($effectiveRecallSql) * 60))";
 
         // Count query for pagination support
         $sqlCount = "
@@ -3150,7 +3095,8 @@ switch ($action) {
                 GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
-            WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent')) OR (l.is_accepted = 1 AND $dateConditionDl) )
+            LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
+            WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent') AND $unacceptedNotExpiredSql) OR (l.is_accepted = 1 AND $dateConditionDl) )
         ";
         $totalCount = 0;
         $stmtCount = $conn->prepare($sqlCount);
@@ -3201,7 +3147,7 @@ switch ($action) {
                     GROUP BY lead_id, consultant_id
                 ) dr2 ON dr1.id = dr2.max_dr_id
             ) dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
-            WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent')) OR (l.is_accepted = 1 AND $dateConditionDl) )
+            WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent') AND $unacceptedNotExpiredSql) OR (l.is_accepted = 1 AND $dateConditionDl) )
             ORDER BY COALESCE(l.created_at, dl.received_at) DESC, l.id DESC
             $limitStr
         ";
@@ -4090,7 +4036,7 @@ switch ($action) {
                 p.is_public as is_public,
                 p.id as person_id,
                 p.is_blocked as is_blocked,
-                (SELECT MAX(received_at) FROM distribution_logs WHERE lead_id = dl.lead_id AND id < dl.id) as last_activity_at
+                NULL as last_activity_at
             FROM distribution_logs dl
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
@@ -4118,12 +4064,35 @@ switch ($action) {
         ");
         $data = [];
         $personIds = [];
+        $dlIdsForLastAct = [];
         while ($row = $res->fetch_assoc()) {
             $row['takers'] = [];
             $data[] = $row;
             $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
             if ($personId > 0) {
                 $personIds[] = $personId;
+            }
+            $dlId = isset($row['id']) ? (int)$row['id'] : 0;
+            if ($dlId > 0) {
+                $dlIdsForLastAct[] = $dlId;
+            }
+        }
+
+        // Batch-fetch last_activity_at for current page rows only (PERF-BE-04)
+        $lastActMap = [];
+        if (!empty($dlIdsForLastAct)) {
+            $dlIdsIn = implode(',', array_unique(array_map('intval', $dlIdsForLastAct)));
+            $prevRes = $conn->query("
+                SELECT dl_curr.id as curr_id, MAX(dl_prev.received_at) as last_activity_at
+                FROM distribution_logs dl_curr
+                JOIN distribution_logs dl_prev ON dl_prev.lead_id = dl_curr.lead_id AND dl_prev.id < dl_curr.id
+                WHERE dl_curr.id IN ($dlIdsIn)
+                GROUP BY dl_curr.id
+            ");
+            if ($prevRes) {
+                while ($pRow = $prevRes->fetch_assoc()) {
+                    $lastActMap[(int)$pRow['curr_id']] = $pRow['last_activity_at'];
+                }
             }
         }
 
@@ -4180,6 +4149,9 @@ switch ($action) {
         ];
 
         foreach ($data as &$row) {
+            $dlId = isset($row['id']) ? (int)$row['id'] : 0;
+            $row['last_activity_at'] = $lastActMap[$dlId] ?? null;
+
             $pid = isset($row['person_id']) ? (int)$row['person_id'] : 0;
             $rowTakers = $takersMap[$pid] ?? [];
             $row['takers'] = $rowTakers;
@@ -4215,22 +4187,42 @@ switch ($action) {
         }
         unset($row);
 
+        // Cache distinct donvi_chay and lead_phan_loai for 60s to avoid full-table scans on every poll (PERF-BE-04)
         $distinctDonvi = [];
-        $dvRes = $conn->query("SELECT DISTINCT donvi_chay FROM leads WHERE donvi_chay IS NOT NULL AND TRIM(donvi_chay) != '' ORDER BY donvi_chay ASC LIMIT 50");
-        if ($dvRes) {
-            while ($dvRow = $dvRes->fetch_assoc()) {
-                $val = trim($dvRow['donvi_chay']);
-                if ($val !== '') $distinctDonvi[] = $val;
+        $distinctPhanLoai = [];
+        $filterCacheFile = sys_get_temp_dir() . '/richland_lead_filter_options.json';
+        $cachedFilters = null;
+        if (file_exists($filterCacheFile) && (time() - @filemtime($filterCacheFile)) < 60) {
+            $rawCache = @file_get_contents($filterCacheFile);
+            if ($rawCache) {
+                $cachedFilters = json_decode($rawCache, true);
             }
         }
-
-        $distinctPhanLoai = [];
-        $plRes = $conn->query("SELECT DISTINCT lead_phan_loai FROM leads WHERE lead_phan_loai IS NOT NULL AND TRIM(lead_phan_loai) != '' ORDER BY lead_phan_loai ASC LIMIT 50");
-        if ($plRes) {
-            while ($plRow = $plRes->fetch_assoc()) {
-                $val = trim($plRow['lead_phan_loai']);
-                if ($val !== '') $distinctPhanLoai[] = $val;
+        if (is_array($cachedFilters) && isset($cachedFilters['donvi'], $cachedFilters['phan_loai'])) {
+            $distinctDonvi = $cachedFilters['donvi'];
+            $distinctPhanLoai = $cachedFilters['phan_loai'];
+        } else {
+            $dvRes = $conn->query("SELECT DISTINCT donvi_chay FROM leads WHERE donvi_chay IS NOT NULL AND TRIM(donvi_chay) != '' ORDER BY donvi_chay ASC LIMIT 50");
+            if ($dvRes) {
+                while ($dvRow = $dvRes->fetch_assoc()) {
+                    $val = trim($dvRow['donvi_chay']);
+                    if ($val !== '') $distinctDonvi[] = $val;
+                }
             }
+
+            $plRes = $conn->query("SELECT DISTINCT lead_phan_loai FROM leads WHERE lead_phan_loai IS NOT NULL AND TRIM(lead_phan_loai) != '' ORDER BY lead_phan_loai ASC LIMIT 50");
+            if ($plRes) {
+                while ($plRow = $plRes->fetch_assoc()) {
+                    $val = trim($plRow['lead_phan_loai']);
+                    if ($val !== '') $distinctPhanLoai[] = $val;
+                }
+            }
+            $distinctDonvi = array_values(array_unique($distinctDonvi));
+            $distinctPhanLoai = array_values(array_unique($distinctPhanLoai));
+            @file_put_contents($filterCacheFile, json_encode([
+                'donvi' => $distinctDonvi,
+                'phan_loai' => $distinctPhanLoai
+            ], JSON_UNESCAPED_UNICODE));
         }
 
         echo json_encode([
@@ -4240,8 +4232,8 @@ switch ($action) {
             'overall_total_count' => $overallTotalCount, 
             'status_counts' => $statusCounts, 
             'limit' => $responseLimit,
-            'available_donvi_chay' => array_values(array_unique($distinctDonvi)),
-            'available_lead_phan_loai' => array_values(array_unique($distinctPhanLoai))
+            'available_donvi_chay' => $distinctDonvi,
+            'available_lead_phan_loai' => $distinctPhanLoai
         ]);
         break;
 
@@ -7953,11 +7945,17 @@ switch ($action) {
             if ($leadRecallMins > 0 && !empty($lastInteraction)) {
                 $elapsedSeconds = time() - strtotime($lastInteraction);
                 if ($elapsedSeconds > ($leadRecallMins * 60 + 5)) {
+                    $conn->rollback();
+                    if (!defined('CRON_SYNC_FUNCTIONS_ONLY')) {
+                        define('CRON_SYNC_FUNCTIONS_ONLY', true);
+                    }
+                    if (!defined('CRON_SYNC_SILENT_LOG')) {
+                        define('CRON_SYNC_SILENT_LOG', true);
+                    }
                     require_once __DIR__ . '/cron_sync.php';
                     if (function_exists('recallInactiveLeads')) {
                         recallInactiveLeads($conn);
                     }
-                    $conn->rollback();
                     echo json_encode([
                         'success' => false, 
                         'message' => "Không thể tiếp nhận (Lead đã quá hạn ưu tiên {$leadRecallMins} phút và đã bị hệ thống thu hồi)"
@@ -11288,6 +11286,92 @@ switch ($action) {
         }
         $salesCoopStmt->close();
 
+        // 8. Pending Deposits count (PERF-BE-01)
+        $pendingDepositsCount = 0;
+        if ($isAdminOrManager) {
+            $sqlDepCnt = "
+                SELECT COUNT(DISTINCT d.id)
+                FROM deposits d
+                JOIN contacts c ON d.contact_id = c.id
+                JOIN deposit_milestones dm ON dm.deposit_id = d.id
+                WHERE c.tenant_id = ?
+                  AND d.status != 'cancelled'
+                  AND dm.status = 'paid'
+            ";
+            if ($role === 'manager') {
+                $sqlDepCnt .= " AND (d.created_by = ? OR c.owner_id = ? OR c.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $stmtDepCnt = $conn->prepare($sqlDepCnt);
+                if ($stmtDepCnt) {
+                    $stmtDepCnt->bind_param("iiii", $tenantId, $userId, $userId, $userId);
+                    $stmtDepCnt->execute();
+                    $pendingDepositsCount = (int)($stmtDepCnt->get_result()->fetch_row()[0] ?? 0);
+                    $stmtDepCnt->close();
+                }
+            } else {
+                $stmtDepCnt = $conn->prepare($sqlDepCnt);
+                if ($stmtDepCnt) {
+                    $stmtDepCnt->bind_param("i", $tenantId);
+                    $stmtDepCnt->execute();
+                    $pendingDepositsCount = (int)($stmtDepCnt->get_result()->fetch_row()[0] ?? 0);
+                    $stmtDepCnt->close();
+                }
+            }
+        } else {
+            $sqlDepCnt = "
+                SELECT COUNT(DISTINCT d.id)
+                FROM deposits d
+                JOIN contacts c ON d.contact_id = c.id
+                LEFT JOIN deposit_milestones dm ON dm.deposit_id = d.id
+                WHERE c.tenant_id = ?
+                  AND d.status != 'cancelled'
+                  AND (d.created_by = ? OR c.owner_id = ?)
+                  AND (dm.status IN ('pending', 'rejected') OR (d.status = 'pending' AND dm.id IS NULL))
+            ";
+            $stmtDepCnt = $conn->prepare($sqlDepCnt);
+            if ($stmtDepCnt) {
+                $stmtDepCnt->bind_param("iii", $tenantId, $userId, $userId);
+                $stmtDepCnt->execute();
+                $pendingDepositsCount = (int)($stmtDepCnt->get_result()->fetch_row()[0] ?? 0);
+                $stmtDepCnt->close();
+            }
+        }
+
+        // 9. Unaccepted Leads count for current consultant/user (PERF-BE-01)
+        $unacceptedLeadsCount = 0;
+        $targetConsId = (int)($currentSaleConsultantId ?? $userId);
+        if ($targetConsId > 0) {
+            $stmtUnacc = $conn->prepare("
+                SELECT COUNT(*)
+                FROM leads l
+                WHERE l.is_accepted = 0
+                  AND l.assigned_to = ?
+                  AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent')
+            ");
+            if ($stmtUnacc) {
+                $stmtUnacc->bind_param("i", $targetConsId);
+                $stmtUnacc->execute();
+                $unacceptedLeadsCount = (int)($stmtUnacc->get_result()->fetch_row()[0] ?? 0);
+                $stmtUnacc->close();
+            }
+        }
+
+        // 10. Planned Activities due today or overdue count (PERF-BE-01)
+        $plannedActivitiesTodayCount = 0;
+        $stmtActCnt = $conn->prepare("
+            SELECT COUNT(*)
+            FROM activities
+            WHERE tenant_id = ?
+              AND user_id = ?
+              AND status = 'planned'
+              AND due_date <= CONCAT(CURDATE(), ' 23:59:59')
+        ");
+        if ($stmtActCnt) {
+            $stmtActCnt->bind_param("ii", $tenantId, $userId);
+            $stmtActCnt->execute();
+            $plannedActivitiesTodayCount = (int)($stmtActCnt->get_result()->fetch_row()[0] ?? 0);
+            $stmtActCnt->close();
+        }
+
         echo json_encode([
             'success' => true,
             'data' => [
@@ -11297,7 +11381,10 @@ switch ($action) {
                 'coopsCount' => $coopsCount,
                 'supportCount' => $supportCount,
                 'expensesCount' => $expensesCount,
-                'salesPendingSignCount' => $salesPendingSignCount
+                'salesPendingSignCount' => $salesPendingSignCount,
+                'pendingDepositsCount' => $pendingDepositsCount,
+                'unacceptedLeadsCount' => $unacceptedLeadsCount,
+                'plannedActivitiesTodayCount' => $plannedActivitiesTodayCount
             ]
         ]);
         break;
@@ -19214,10 +19301,9 @@ switch ($action) {
                 // Round Robin / Rotation
                 $conn->query("UPDATE lead_offers SET status = 'expired' WHERE lead_id = $lead_id AND status = 'pending'");
 
-                $assignResult = getNextConsultantInRound($conn, $target_round_id, $leadRowData);
-
                 $conn->begin_transaction();
                 try {
+                    $assignResult = getNextConsultantInRound($conn, $target_round_id, $leadRowData);
                     if ($assignResult && !empty($assignResult['id'])) {
                         $assignedConsultantId = (int)$assignResult['id'];
                         
@@ -19234,6 +19320,11 @@ switch ($action) {
                         $currentTime = date('H:i');
 
                         if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
+                            // LOGIC-BE-03: Revert round turn/compensation so consultant does not lose turn when held for work hours
+                            if (function_exists('revertConsultantRoundTurn')) {
+                                revertConsultantRoundTurn($conn, $target_round_id, $assignResult);
+                            }
+
                             $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending_work_hours', target_round_id = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
                             $upLead->bind_param("ii", $target_round_id, $lead_id);
                             $upLead->execute();
@@ -21812,8 +21903,23 @@ switch ($action) {
 
 
 
-            $stmtLead = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
-            $stmtLead->bind_param("i", $personId);
+            $stmtLead = $conn->prepare("
+                SELECT l.id, l.assigned_to,
+                       EXISTS (
+                           SELECT 1 FROM contacts c_other
+                           LEFT JOIN users u_other ON c_other.owner_id = u_other.id
+                           LEFT JOIN consultants cons_other ON u_other.email = cons_other.email
+                           WHERE c_other.person_id = l.person_id
+                             AND c_other.deleted_at IS NULL
+                             AND c_other.owner_id != ?
+                             AND (c_other.owner_id = l.assigned_to OR cons_other.id = l.assigned_to)
+                       ) as has_active_other_owner
+                FROM leads l
+                WHERE l.person_id = ?
+                ORDER BY l.id DESC
+                LIMIT 1
+            ");
+            $stmtLead->bind_param("ii", $saleUserId, $personId);
             $stmtLead->execute();
             $lRow = $stmtLead->get_result()->fetch_assoc();
             $stmtLead->close();
@@ -21832,10 +21938,28 @@ switch ($action) {
                 $leadId = (int)$conn->insert_id;
                 $stmtLeadCreate->close();
             } else {
-                $stmtLeadClaim = $conn->prepare("UPDATE leads SET assigned_to = ?, last_assigned_at = NOW(), is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW() WHERE id = ?");
-                $stmtLeadClaim->bind_param("ii", $saleConsultantId, $leadId);
-                $stmtLeadClaim->execute();
-                $stmtLeadClaim->close();
+                // LOGIC-BE-04: Only overwrite leads.assigned_to if it is not currently owned by another active Sale in parallel mode
+                $hasActiveOtherOwner = !empty($lRow['has_active_other_owner']);
+                if (!$hasActiveOtherOwner) {
+                    $stmtLeadClaim = $conn->prepare("UPDATE leads SET assigned_to = ?, last_assigned_at = NOW(), is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW() WHERE id = ?");
+                    $stmtLeadClaim->bind_param("ii", $saleConsultantId, $leadId);
+                    $stmtLeadClaim->execute();
+                    $stmtLeadClaim->close();
+                } else {
+                    $stmtLeadTouch = $conn->prepare("UPDATE leads SET last_interaction_date = NOW() WHERE id = ?");
+                    $stmtLeadTouch->bind_param("i", $leadId);
+                    $stmtLeadTouch->execute();
+                    $stmtLeadTouch->close();
+                }
+            }
+
+            if (!empty($leadId) && !empty($newContactId)) {
+                $stmtLinkCt = $conn->prepare("UPDATE contacts SET lead_id = ? WHERE id = ? AND (lead_id IS NULL OR lead_id = 0)");
+                if ($stmtLinkCt) {
+                    $stmtLinkCt->bind_param("ii", $leadId, $newContactId);
+                    $stmtLinkCt->execute();
+                    $stmtLinkCt->close();
+                }
             }
 
             logDistribution($conn, $leadId, $saleConsultantId, null, 'databank_claim', 'Sale tự nhận từ Kho chung (Databank)', false);
@@ -21871,6 +21995,10 @@ switch ($action) {
             }
         }
 
+        // Pre-fetch system settings once in PHP (PERF-BE-02)
+        $dealWonStatus = get_system_setting($conn, 'deal_won_status') ?: 'dong_deal';
+        $dealWonEsc = $conn->real_escape_string($dealWonStatus);
+
         // Instant sync: release any leads whose security timer has expired back to Databank (is_public = 1)
         // Throttled to once every 30s via lock file to prevent table-wide lock contention when multiple Sales open Databank
         $dbkSyncLock = sys_get_temp_dir() . '/richland_databank_sync.lock';
@@ -21886,10 +22014,7 @@ switch ($action) {
                   AND p.is_public = 0
                   AND p.is_blocked = 0
                   AND p.deleted_from_databank = 0
-                  AND c.pipeline_status NOT IN (
-                      (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1),
-                      'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead'
-                  )
+                  AND c.pipeline_status NOT IN ('$dealWonEsc', 'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead')
                   AND NOT EXISTS (
                       SELECT 1 FROM contacts c_active 
                       WHERE c_active.person_id = p.id 
@@ -21923,31 +22048,7 @@ switch ($action) {
         ";
 
         if ($isStaffAdmin) {
-            $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at, p.deleted_from_databank, p.is_blocked,
-                           COALESCE(
-                               (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1),
-                               (SELECT project_id FROM leads WHERE person_id = p.id AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1)
-                           ) as project_id,
-                           COALESCE(
-                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1)),
-                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM leads WHERE person_id = p.id AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1))
-                           ) as project_name,
-                           COALESCE(
-                               (SELECT source FROM contacts WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' LIMIT 1),
-                               (SELECT source FROM leads WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' ORDER BY id DESC LIMIT 1),
-                               'databank'
-                           ) as original_source,
-                           (SELECT type FROM leads WHERE person_id = p.id AND type IS NOT NULL AND type != '' ORDER BY id DESC LIMIT 1) as customer_type,
-                           (SELECT lead_phan_loai FROM leads WHERE person_id = p.id AND lead_phan_loai IS NOT NULL AND lead_phan_loai != '' ORDER BY id DESC LIMIT 1) as lead_phan_loai,
-                           (SELECT facebook_link FROM leads WHERE person_id = p.id AND facebook_link IS NOT NULL AND facebook_link != '' ORDER BY id DESC LIMIT 1) as facebook_link,
-                           (SELECT link_video_ads FROM leads WHERE person_id = p.id AND link_video_ads IS NOT NULL AND link_video_ads != '' ORDER BY id DESC LIMIT 1) as link_video_ads,
-                           (SELECT note FROM leads WHERE person_id = p.id AND note IS NOT NULL AND note != '' ORDER BY id DESC LIMIT 1) as note,
-                           EXISTS (
-                               SELECT 1 FROM contacts 
-                               WHERE person_id = p.id 
-                                 AND pipeline_status = (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1) 
-                                 AND deleted_at IS NULL
-                           ) as is_won
+            $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at, p.deleted_from_databank, p.is_blocked
                     FROM persons p
                     WHERE p.released_to_kho_at IS NOT NULL
                       $deletedCond
@@ -21956,25 +22057,7 @@ switch ($action) {
                     LIMIT 1000";
         } else {
             $currentUserId = (int)($decodedUser['id'] ?? 0);
-            $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
-                           COALESCE(
-                               (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1),
-                               (SELECT project_id FROM leads WHERE person_id = p.id AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1)
-                           ) as project_id,
-                           COALESCE(
-                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id AND project_id IS NOT NULL LIMIT 1)),
-                               (SELECT name FROM projects WHERE id = (SELECT project_id FROM leads WHERE person_id = p.id AND project_id IS NOT NULL ORDER BY id DESC LIMIT 1))
-                           ) as project_name,
-                           COALESCE(
-                               (SELECT source FROM contacts WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' LIMIT 1),
-                               (SELECT source FROM leads WHERE person_id = p.id AND source IS NOT NULL AND source != '' AND source != 'databank' ORDER BY id DESC LIMIT 1),
-                               'databank'
-                           ) as original_source,
-                           (SELECT type FROM leads WHERE person_id = p.id AND type IS NOT NULL AND type != '' ORDER BY id DESC LIMIT 1) as customer_type,
-                           (SELECT lead_phan_loai FROM leads WHERE person_id = p.id AND lead_phan_loai IS NOT NULL AND lead_phan_loai != '' ORDER BY id DESC LIMIT 1) as lead_phan_loai,
-                           (SELECT facebook_link FROM leads WHERE person_id = p.id AND facebook_link IS NOT NULL AND facebook_link != '' ORDER BY id DESC LIMIT 1) as facebook_link,
-                           (SELECT link_video_ads FROM leads WHERE person_id = p.id AND link_video_ads IS NOT NULL AND link_video_ads != '' ORDER BY id DESC LIMIT 1) as link_video_ads,
-                           (SELECT note FROM leads WHERE person_id = p.id AND note IS NOT NULL AND note != '' ORDER BY id DESC LIMIT 1) as note
+            $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at
                     FROM persons p
                     WHERE p.is_public = 1
                       AND NOT EXISTS (
@@ -21998,16 +22081,109 @@ switch ($action) {
                 }
                 $personId = (int)$row['id'];
                 $personIds[] = $personId;
+                $row['project_id'] = null;
+                $row['project_name'] = null;
+                $row['original_source'] = 'databank';
+                $row['customer_type'] = null;
+                $row['lead_phan_loai'] = null;
+                $row['facebook_link'] = null;
+                $row['link_video_ads'] = null;
+                $row['note'] = null;
+                if ($isStaffAdmin) {
+                    $row['is_won'] = 0;
+                }
                 $row['takers'] = [];
                 $publicLeads[] = $row;
             }
         }
 
-        // Batch-fetch takers ONLY for the returned person_ids to avoid full-table scan on contacts
+        // Batch-hydrate metadata and takers ONLY for the returned person_ids (PERF-BE-02)
         if (!empty($personIds)) {
             $allTakers = [];
             $reclaimedMap = [];
-            $pidIn = implode(',', array_unique($personIds));
+            $leadMetaMap = [];
+            $contactMetaMap = [];
+            $pidIn = implode(',', array_unique(array_map('intval', $personIds)));
+
+            $lMetaRes = $conn->query("
+                SELECT l.person_id, l.project_id, pr.name as project_name, l.source, l.type, l.lead_phan_loai, l.facebook_link, l.link_video_ads, l.note
+                FROM leads l
+                LEFT JOIN projects pr ON l.project_id = pr.id
+                WHERE l.person_id IN ($pidIn)
+                ORDER BY l.id DESC
+            ");
+            if ($lMetaRes) {
+                while ($lm = $lMetaRes->fetch_assoc()) {
+                    $pid = (int)$lm['person_id'];
+                    if (!isset($leadMetaMap[$pid])) {
+                        $leadMetaMap[$pid] = [
+                            'project_id' => $lm['project_id'],
+                            'project_name' => $lm['project_name'],
+                            'source' => ($lm['source'] !== null && $lm['source'] !== '' && $lm['source'] !== 'databank') ? $lm['source'] : null,
+                            'customer_type' => ($lm['type'] !== null && $lm['type'] !== '') ? $lm['type'] : null,
+                            'lead_phan_loai' => ($lm['lead_phan_loai'] !== null && $lm['lead_phan_loai'] !== '') ? $lm['lead_phan_loai'] : null,
+                            'facebook_link' => ($lm['facebook_link'] !== null && $lm['facebook_link'] !== '') ? $lm['facebook_link'] : null,
+                            'link_video_ads' => ($lm['link_video_ads'] !== null && $lm['link_video_ads'] !== '') ? $lm['link_video_ads'] : null,
+                            'note' => ($lm['note'] !== null && $lm['note'] !== '') ? $lm['note'] : null
+                        ];
+                    } else {
+                        if ($leadMetaMap[$pid]['project_id'] === null && $lm['project_id'] !== null) {
+                            $leadMetaMap[$pid]['project_id'] = $lm['project_id'];
+                            $leadMetaMap[$pid]['project_name'] = $lm['project_name'];
+                        }
+                        if ($leadMetaMap[$pid]['source'] === null && $lm['source'] !== null && $lm['source'] !== '' && $lm['source'] !== 'databank') {
+                            $leadMetaMap[$pid]['source'] = $lm['source'];
+                        }
+                        if ($leadMetaMap[$pid]['customer_type'] === null && $lm['type'] !== null && $lm['type'] !== '') {
+                            $leadMetaMap[$pid]['customer_type'] = $lm['type'];
+                        }
+                        if ($leadMetaMap[$pid]['lead_phan_loai'] === null && $lm['lead_phan_loai'] !== null && $lm['lead_phan_loai'] !== '') {
+                            $leadMetaMap[$pid]['lead_phan_loai'] = $lm['lead_phan_loai'];
+                        }
+                        if ($leadMetaMap[$pid]['facebook_link'] === null && $lm['facebook_link'] !== null && $lm['facebook_link'] !== '') {
+                            $leadMetaMap[$pid]['facebook_link'] = $lm['facebook_link'];
+                        }
+                        if ($leadMetaMap[$pid]['link_video_ads'] === null && $lm['link_video_ads'] !== null && $lm['link_video_ads'] !== '') {
+                            $leadMetaMap[$pid]['link_video_ads'] = $lm['link_video_ads'];
+                        }
+                        if ($leadMetaMap[$pid]['note'] === null && $lm['note'] !== null && $lm['note'] !== '') {
+                            $leadMetaMap[$pid]['note'] = $lm['note'];
+                        }
+                    }
+                }
+            }
+
+            $cMetaRes = $conn->query("
+                SELECT c.person_id, c.project_id, pr.name as project_name, c.source, c.pipeline_status, c.deleted_at
+                FROM contacts c
+                LEFT JOIN projects pr ON c.project_id = pr.id
+                WHERE c.person_id IN ($pidIn)
+                ORDER BY c.id ASC
+            ");
+            if ($cMetaRes) {
+                while ($cm = $cMetaRes->fetch_assoc()) {
+                    $pid = (int)$cm['person_id'];
+                    if (!isset($contactMetaMap[$pid])) {
+                        $contactMetaMap[$pid] = [
+                            'project_id' => null,
+                            'project_name' => null,
+                            'source' => null,
+                            'is_won' => 0
+                        ];
+                    }
+                    if ($contactMetaMap[$pid]['project_id'] === null && $cm['project_id'] !== null) {
+                        $contactMetaMap[$pid]['project_id'] = $cm['project_id'];
+                        $contactMetaMap[$pid]['project_name'] = $cm['project_name'];
+                    }
+                    if ($contactMetaMap[$pid]['source'] === null && $cm['source'] !== null && $cm['source'] !== '' && $cm['source'] !== 'databank') {
+                        $contactMetaMap[$pid]['source'] = $cm['source'];
+                    }
+                    if ($cm['deleted_at'] === null && $cm['pipeline_status'] === $dealWonStatus) {
+                        $contactMetaMap[$pid]['is_won'] = 1;
+                    }
+                }
+            }
+
             $tRes = $conn->query("SELECT c.person_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
                                   FROM contacts c
                                   JOIN users u ON c.owner_id = u.id
@@ -22055,8 +22231,19 @@ switch ($action) {
 
             foreach ($publicLeads as &$pLead) {
                 $pid = (int)$pLead['id'];
+                $lm = $leadMetaMap[$pid] ?? null;
+                $cm = $contactMetaMap[$pid] ?? null;
+                $pLead['project_id'] = $cm['project_id'] ?? ($lm['project_id'] ?? null);
+                $pLead['project_name'] = $cm['project_name'] ?? ($lm['project_name'] ?? null);
+                $pLead['original_source'] = $cm['source'] ?? ($lm['source'] ?? 'databank');
+                $pLead['customer_type'] = $lm['customer_type'] ?? null;
+                $pLead['lead_phan_loai'] = $lm['lead_phan_loai'] ?? null;
+                $pLead['facebook_link'] = $lm['facebook_link'] ?? null;
+                $pLead['link_video_ads'] = $lm['link_video_ads'] ?? null;
+                $pLead['note'] = $lm['note'] ?? null;
                 $pLead['takers'] = $allTakers[$pid] ?? [];
                 if ($isStaffAdmin) {
+                    $pLead['is_won'] = $cm['is_won'] ?? 0;
                     $pLead['reclaimed_from'] = $reclaimedMap[$pid] ?? null;
                 }
             }

@@ -130,134 +130,78 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     return () => clearTimeout(timer);
   }, [location.pathname, location.search]);
 
-  // Poll pending counts every 60s
+  // Poll pending counts every 60s using lightweight aggregated SQL COUNT(*) endpoint
   useEffect(() => {
     if (!user) return;
     const fetchPending = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
       try {
-        const role = user.role as string;
-        const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager' || role === 'director';
-        setPendingLeadsCount(0);
+        const role = String(user.role || '').toLowerCase();
+        const isAdminOrManager =
+          role === 'admin' ||
+          role === 'superadmin' ||
+          role === 'super_admin' ||
+          role === 'manager' ||
+          role === 'director';
 
-        // Fetch undone tasks for all roles
-        const resTasks = await fetchAPI('activities&status=planned&limit=200');
-        if (resTasks && resTasks.success) {
-          const rawTasks = resTasks.data?.items || resTasks.data || [];
-          if (Array.isArray(rawTasks)) {
-            const count = rawTasks.filter((task: any) => task.type === 'task' || task.type === 'meeting').length;
-            setUndoneTasksCount(count);
-          }
-        }
+        const res = await fetchAPI('get_all_pending_counts');
+        if (!res || !res.success) return;
 
-        // Fetch deposits count for all roles
-        try {
-          const resDep = await fetchAPI('deposits');
-          if (resDep && resDep.success && Array.isArray(resDep.data)) {
-            const deposits = resDep.data;
-            if (isAdminOrManager) {
-              const countPaid = deposits.filter((d: any) => 
-                d.status !== 'cancelled' && 
-                d.milestones?.some((m: any) => m.status === 'paid')
-              ).length;
-              setPendingDepositsCount(countPaid);
-            } else {
-              const countAction = deposits.filter((d: any) => 
-                d.status === 'pending' && 
-                d.milestones?.some((m: any) => m.status === 'pending' || m.status === 'failed')
-              ).length;
-              setPendingDepositsCount(countAction);
-            }
-          }
-        } catch {
-          setPendingDepositsCount(0);
-        }
+        setUndoneTasksCount(Number(res.plannedActivitiesTodayCount ?? 0));
+        setPendingDepositsCount(Number(res.pendingDepositsCount ?? 0));
 
         if (isAdminOrManager) {
-          const [resReports, resHeld, resCoop, resSupport, resExpenses] = await Promise.all([
-            fetchAPI('get_reports&status=pending'),
-            fetchAPI('get_held_leads&pageSize=1&date=all'),
-            fetchAPI('cooperation-slips'),
-            fetchAPI('get_support_tickets_count').catch(() => null),
-            fetchAPI('expenses?status=pending&limit=1').catch(() => null)
-          ]);
-
-          let countReports = 0;
-          let countHeld = 0;
-          let countCoop = 0;
-          let countSupport = 0;
-          let countExpenses = 0;
-
-          if (resReports.success) {
-            countReports = resReports.stats?.pending ?? (resReports.data ? resReports.data.filter((r: any) => r.status === 'pending').length : 0);
-          }
-
-          if (resHeld.success) {
-            countHeld = resHeld.totalCount || resHeld.total || 0;
-          }
-
-          if (resCoop.success) {
-            countCoop = (resCoop.data || []).filter((s: any) => s.status === 'pending_manager_approval').length;
-          }
-
-          if (resSupport && resSupport.success) {
-            countSupport = resSupport.count || 0;
-          }
-
-          if (resExpenses && resExpenses.success) {
-            countExpenses = resExpenses.data?.total ?? 0;
-          }
-
-          setPendingTickets(countReports);
-          setHeldLeadsCount(countHeld);
-          setPendingCoopCount(countCoop);
-          setSupportTicketsCount(countSupport);
-          setPendingExpensesCount(countExpenses);
-        } else if (role === 'sale' || role === 'sales') {
-          const resCoop = await fetchAPI('cooperation-slips');
-          let countUnsigned = 0;
-          if (resCoop.success) {
-            const slips = resCoop.data || [];
-            countUnsigned = slips.filter((s: any) => {
-              const sh = s.shareholders?.find((x: any) => String(x.user_id) === String(user.id));
-              return s.status !== 'rejected' && sh && !sh.signed;
-            }).length;
-          }
-          setPendingCoopCount(countUnsigned);
-
-          // Fetch pending leads for Sales
-          try {
-            const resSalePortal = await fetchAPI('get_sale_portal_data');
-            if (resSalePortal && resSalePortal.success && Array.isArray(resSalePortal.leads)) {
-              const pendingAcceptLeads = resSalePortal.leads.filter((l: any) => {
-                if (Number(l.is_accepted)) return false;
-                const status = String(l.status || l.distribution_status || '').toLowerCase();
-                if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
-                  return false;
-                }
-                return true;
-              }).length;
-              setPendingLeadsCount(pendingAcceptLeads);
-            }
-          } catch {
-            setPendingLeadsCount(0);
-          }
+          setPendingTickets(Number(res.ticketsCount ?? 0));
+          setHeldLeadsCount(Number(res.heldCount ?? 0));
+          setPendingCoopCount(Number(res.coopsCount ?? 0));
+          setSupportTicketsCount(Number(res.supportCount ?? 0));
+          setPendingExpensesCount(Number(res.expensesCount ?? 0));
+          setPendingLeadsCount(0);
+        } else if (role === 'sale' || role === 'sales' || role === 'telesale') {
+          setPendingCoopCount(Number(res.salesPendingSignCount ?? 0));
+          setPendingLeadsCount(Number(res.unacceptedLeadsCount ?? 0));
+        } else {
+          setPendingLeadsCount(0);
         }
-      } catch { /* silent */ }
+      } catch {
+        /* silent */
+      }
     };
+
     fetchPending();
-    const interval = setInterval(fetchPending, 60000);
-    window.addEventListener('ticket-resolved', fetchPending);
-    window.addEventListener('task-updated', fetchPending);
-    window.addEventListener('lead-accepted', fetchPending);
-    window.addEventListener('uncontacted-count-changed', fetchPending);
-    window.addEventListener('realtime-update-received', fetchPending);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchPending();
+      }
+    }, 60000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchPending();
+      }
+    };
+
+    const syncEvents = [
+      'ticket-resolved',
+      'task-updated',
+      'lead-accepted',
+      'lead-added',
+      'contact-updated',
+      'deposit-updated',
+      'coop-updated',
+      'refresh-pending-counts',
+      'uncontacted-count-changed',
+      'realtime-update-received',
+    ];
+    syncEvents.forEach((evt) => window.addEventListener(evt, fetchPending));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       clearInterval(interval);
-      window.removeEventListener('ticket-resolved', fetchPending);
-      window.removeEventListener('task-updated', fetchPending);
-      window.removeEventListener('lead-accepted', fetchPending);
-      window.removeEventListener('uncontacted-count-changed', fetchPending);
-      window.removeEventListener('realtime-update-received', fetchPending);
+      syncEvents.forEach((evt) => window.removeEventListener(evt, fetchPending));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user]);
 

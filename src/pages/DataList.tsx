@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, Fragment, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../api/axios';
+import { emitCrmSync } from '../utils/crmEvents';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Users, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban, UserPlus, Send, Home, Building2, BedDouble, DollarSign, Layers, Globe, Target, FileText, PhoneCall, MessageSquare, Share2, MapPin, Briefcase, Zap, Loader2, Video, StickyNote, ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw, Archive, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -780,14 +781,45 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     ]);
   }, [isActive]);
 
+  const needsRefreshRef = useRef(false);
+
   useEffect(() => {
-    const handleLeadAdded = () => {
-      if (isActive) {
+    if (isActive && needsRefreshRef.current && document.visibilityState === 'visible') {
+      needsRefreshRef.current = false;
+      fetchLeads();
+      if (searchParams.get('view') === 'databank') {
+        fetchPublicLeads();
+      }
+    }
+  }, [isActive, searchParams]);
+
+  useEffect(() => {
+    const handleCrmSync = () => {
+      if (isActive && document.visibilityState === 'visible') {
         fetchLeads();
+        if (searchParams.get('view') === 'databank') {
+          fetchPublicLeads();
+        }
+      } else {
+        needsRefreshRef.current = true;
       }
     };
-    window.addEventListener('lead-added', handleLeadAdded);
-    return () => window.removeEventListener('lead-added', handleLeadAdded);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isActive && needsRefreshRef.current) {
+        needsRefreshRef.current = false;
+        fetchLeads();
+        if (searchParams.get('view') === 'databank') {
+          fetchPublicLeads();
+        }
+      }
+    };
+    const events = ['lead-added', 'contact-updated', 'deposit-updated', 'coop-updated'];
+    events.forEach((evt) => window.addEventListener(evt, handleCrmSync));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, handleCrmSync));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [searchParams, dateFilter, isActive]);
 
   useEffect(() => {
@@ -1292,10 +1324,15 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     }));
   };
 
+  const latestPublicLeadsReqRef = useRef(0);
+  const isClaimingPublicLeadRef = useRef(false);
+
   const fetchPublicLeads = async () => {
+    const reqId = ++latestPublicLeadsReqRef.current;
     setPublicLoading(true);
     try {
       const json = await fetchAPI(`get_public_leads&page=${publicPage}&pageSize=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchTerm)}`);
+      if (reqId !== latestPublicLeadsReqRef.current) return;
       if (json.success) {
         setPublicLeads(json.data || []);
         setPublicTotalCount(json.total_count || (json.data ? json.data.length : 0));
@@ -1306,12 +1343,17 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         toast.error(json.message || t('Lỗi tải dữ liệu kho data chung'));
       }
     } catch (e: any) {
-      toast.error(t('Lỗi tải dữ liệu kho data chung: ') + e.message);
+      if (reqId === latestPublicLeadsReqRef.current) {
+        toast.error(t('Lỗi tải dữ liệu kho data chung: ') + e.message);
+      }
     }
-    setPublicLoading(false);
+    if (reqId === latestPublicLeadsReqRef.current) {
+      setPublicLoading(false);
+    }
   };
 
   const handleClaimLead = (personId: number, personName?: string, onSuccess?: () => void) => {
+    if (isClaimingPublicLeadRef.current) return;
     const displayName = personName || t('Khách hàng này');
     showConfirm({
       title: t('Nhận Khách hàng'),
@@ -1319,6 +1361,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       confirmText: t('Nhận Khách'),
       cancelText: t('Hủy'),
       onConfirm: async () => {
+        if (isClaimingPublicLeadRef.current) return;
+        isClaimingPublicLeadRef.current = true;
         setIsClaimingLeadId(personId);
         try {
           const json = await fetchAPI('claim_public_lead', {
@@ -1329,14 +1373,17 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
             toast.success(json.message || t('Nhận data thành công!'));
             fetchPublicLeads();
             window.dispatchEvent(new CustomEvent('lead-claimed'));
+            emitCrmSync(['contact-updated', 'lead-added', 'refresh-pending-counts']);
             if (onSuccess) onSuccess();
           } else {
             toast.error(json.message || t('Nhận data thất bại'));
           }
         } catch (e: any) {
           toast.error(t('Lỗi: ') + e.message);
+        } finally {
+          isClaimingPublicLeadRef.current = false;
+          setIsClaimingLeadId(null);
         }
-        setIsClaimingLeadId(null);
       }
     });
   };

@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { MapPin, ChevronRight, Check, Search, Globe, ArrowLeft, X } from 'lucide-react';
 import { motion } from 'framer-motion';
-import cityData from '../../assets/ctiy.json';
 
 // ─── Types ────────────────────────────────────────────────────
 interface City { code: string | number; name: string; }
 interface Ward { city: string; wnew: string; wold: string; }
+
+let cachedCityData: { cities: City[]; wards: Ward[] } | null = null;
 
 interface AddressSelectProps {
   value: string;
@@ -41,13 +42,28 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [selectedWard, setSelectedWard] = useState<Ward | null>(null);
   const [street, setStreet] = useState('');
+  const [cityDataState, setCityDataState] = useState<{ cities: City[]; wards: Ward[] } | null>(cachedCityData);
 
-  const cities = (cityData as any).cities as City[];
-  const allWards = (cityData as any).wards as Ward[];
+  useEffect(() => {
+    if (!cityDataState && (open || Boolean(value))) {
+      import('../../assets/ctiy.json').then((m) => {
+        const raw = (m.default || m) as any;
+        const parsed = {
+          cities: (raw?.cities || []) as City[],
+          wards: (raw?.wards || []) as Ward[],
+        };
+        cachedCityData = parsed;
+        setCityDataState(parsed);
+      });
+    }
+  }, [open, value, cityDataState]);
+
+  const cities = cityDataState?.cities || [];
+  const allWards = cityDataState?.wards || [];
 
   const filteredCities = useMemo(() =>
     cities.filter(c => c.name.toLowerCase().includes(search.toLowerCase())),
-    [search]
+    [cities, search]
   );
 
   const filteredWards = useMemo(() => {
@@ -58,7 +74,7 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
       w.wnew.toLowerCase().includes(search.toLowerCase()) ||
       w.wold.toLowerCase().includes(search.toLowerCase())
     ) : wards;
-  }, [selectedCity, search]);
+  }, [allWards, selectedCity, search]);
 
   const handleOpen = () => {
     setStep(1); setSearch(''); setIsForeign(false);

@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import dbSchemaJson from '../assets/db_schema.json';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
@@ -499,28 +498,36 @@ const SettingsInner = () => {
   const [dbActionRunning, setDbActionRunning] = useState(false);
   const [dbLogs, setDbLogs] = useState<string[]>([]);
 
-  // Database ERD State & Fetching
-  const [dbSchema, setDbSchema] = useState<Record<string, any>>(dbSchemaJson.schema || {});
+  // Database ERD State & Fetching (Lazy-loaded via dynamic import)
+  const [dbSchema, setDbSchema] = useState<Record<string, any>>({});
   const [selectedErdTable, setSelectedErdTable] = useState<string>('');
   const [erdSearchQuery, setErdSearchQuery] = useState<string>('');
   const [loadingSchema, setLoadingSchema] = useState(false);
 
   const fetchDbSchema = async () => {
     setLoadingSchema(true);
-    setTimeout(() => {
-      setDbSchema(dbSchemaJson.schema || {});
+    try {
+      const m = await import('../assets/db_schema.json');
+      const raw = (m.default || m) as any;
+      setDbSchema(raw?.schema || {});
       toast.success('Đã làm mới dữ liệu từ file cấu trúc tĩnh');
+    } catch {
+      toast.error('Không thể tải dữ liệu cấu trúc ERD');
+    } finally {
       setLoadingSchema(false);
-    }, 300);
+    }
   };
 
   useEffect(() => {
     if (activeTab === 'database_erd') {
-      const schemaData = dbSchemaJson.schema || {};
-      setDbSchema(schemaData);
-      if (Object.keys(schemaData).length > 0 && !selectedErdTable) {
-        setSelectedErdTable(schemaData['users'] ? 'users' : Object.keys(schemaData)[0]);
-      }
+      import('../assets/db_schema.json').then((m) => {
+        const raw = (m.default || m) as any;
+        const schemaData = raw?.schema || {};
+        setDbSchema(schemaData);
+        if (Object.keys(schemaData).length > 0 && !selectedErdTable) {
+          setSelectedErdTable(schemaData['users'] ? 'users' : Object.keys(schemaData)[0]);
+        }
+      });
     }
   }, [activeTab]);
 

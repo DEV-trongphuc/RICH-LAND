@@ -370,10 +370,6 @@ class ContactController {
                        WHEN c.source = 'databank' 
                             OR c.lead_phan_loai = 'databank' 
                             OR dl.status = 'databank_claim'
-                            OR EXISTS (
-                                SELECT 1 FROM distribution_logs dl_dbk 
-                                WHERE dl_dbk.lead_id = l.id AND dl_dbk.assigned_to = c.owner_id AND dl_dbk.status = 'databank_claim'
-                            )
                        THEN 1 
                        ELSE 0 
                    END as from_databank,
@@ -405,9 +401,9 @@ class ContactController {
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
-            LEFT JOIN leads l ON l.id = (
+            LEFT JOIN leads l ON l.id = COALESCE(c.lead_id, (
                 SELECT MAX(id) FROM leads WHERE person_id = c.person_id
-            )
+            ))
             LEFT JOIN distribution_logs dl ON dl.id = (
                 SELECT MAX(id) FROM distribution_logs 
                 WHERE lead_id = l.id AND assigned_to = c.owner_id
@@ -1230,30 +1226,58 @@ class ContactController {
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
 
-            // Sync campaign_id to linked leads record if any, ensuring dashboard analytics consistency
-            if (array_key_exists('campaign_id', $b)) {
-                $newCampVal = !empty($b['campaign_id']) ? (string)$b['campaign_id'] : null;
+            // Sync campaign_id, owner_id (assigned_to), and project_id to linked leads record for cross-table consistency
+            if (array_key_exists('campaign_id', $b) || array_key_exists('owner_id', $b) || array_key_exists('project_id', $b)) {
                 $personId = $currentContact['person_id'] ?? null;
+                $linkedLeadId = !empty($currentContact['lead_id']) ? (int)$currentContact['lead_id'] : null;
                 $cPhone = !empty($currentContact['phone']) ? $currentContact['phone'] : ($currentContact['mobile'] ?? null);
-                if ($personId || $cPhone) {
-                    try {
-                        $syncParams = [$newCampVal];
-                        $whereSync = [];
-                        if ($personId) {
-                            $whereSync[] = "person_id = ?";
-                            $syncParams[] = $personId;
+                try {
+                    $leadSyncSets = [];
+                    $syncParams = [];
+                    if (array_key_exists('campaign_id', $b)) {
+                        $leadSyncSets[] = "campaign_id = ?";
+                        $syncParams[] = !empty($b['campaign_id']) ? (string)$b['campaign_id'] : null;
+                    }
+                    if (array_key_exists('owner_id', $b)) {
+                        $newOwnerUid = !empty($b['owner_id']) ? (int)$b['owner_id'] : null;
+                        $newAssignedCid = $newOwnerUid;
+                        if ($newOwnerUid) {
+                            $stmtCid = $this->db->prepare("SELECT c.id FROM consultants c JOIN users u ON u.email = c.email WHERE u.id = ? LIMIT 1");
+                            $stmtCid->execute([$newOwnerUid]);
+                            $resolvedCid = $stmtCid->fetchColumn();
+                            if ($resolvedCid) {
+                                $newAssignedCid = (int)$resolvedCid;
+                            }
                         }
-                        if ($cPhone) {
-                            $whereSync[] = "phone = ?";
-                            $syncParams[] = $cPhone;
-                        }
-                        if (!empty($whereSync)) {
-                            $leadSyncSql = "UPDATE leads SET campaign_id = ? WHERE " . implode(' OR ', $whereSync);
+                        $leadSyncSets[] = "assigned_to = ?";
+                        $syncParams[] = $newAssignedCid;
+                    }
+                    if (array_key_exists('project_id', $b)) {
+                        $leadSyncSets[] = "project_id = ?";
+                        $syncParams[] = !empty($b['project_id']) ? (int)$b['project_id'] : null;
+                    }
+
+                    if (!empty($leadSyncSets)) {
+                        if ($linkedLeadId) {
+                            $syncParams[] = $linkedLeadId;
+                            $stmtSyncLead = $this->db->prepare("UPDATE leads SET " . implode(', ', $leadSyncSets) . " WHERE id = ?");
+                            $stmtSyncLead->execute($syncParams);
+                        } elseif ($personId || $cPhone) {
+                            $whereSync = [];
+                            if ($personId) {
+                                $whereSync[] = "person_id = ?";
+                                $syncParams[] = $personId;
+                            }
+                            if ($cPhone) {
+                                $whereSync[] = "phone = ?";
+                                $syncParams[] = $cPhone;
+                            }
+                            $leadSyncSql = "UPDATE leads SET " . implode(', ', $leadSyncSets) . " WHERE (" . implode(' OR ', $whereSync) . ") ORDER BY id DESC LIMIT 1";
                             $stmtSyncLead = $this->db->prepare($leadSyncSql);
                             $stmtSyncLead->execute($syncParams);
                         }
-                    } catch (\Throwable $e) {}
-                }
+                    }
+                } catch (\Throwable $e) {}
             }
 
             // SEND SYSTEM NOTIFICATION TO NEWLY ADDED CO-CARE SALES
@@ -1872,83 +1896,93 @@ class ContactController {
         $stmtCount->execute([$personId, $tid]);
         $activeCount = (int)$stmtCount->fetchColumn();
 
-        if ($activeCount <= 1) {
-            // Only this sale owns this Person. Release to Databank (keep owner_id on soft-deleted record for Admin rollback history)!
-            $defaultStageId = $this->getStageIdFromSlug('chua_xac_dinh', $tid);
-            
-            $stmtRelease = $this->db->prepare("
-                UPDATE contacts 
-                SET pipeline_status = 'chua_xac_dinh', 
-                    stage_id = ?, 
-                    status = 'lead',
-                    security_expires_at = NULL,
-                    parallel_assigned = 0,
-                    deleted_at = NOW()
-                WHERE id = ? AND tenant_id = ?
-            ");
-            $stmtRelease->execute([$defaultStageId, $id, $tid]);
+        $this->db->beginTransaction();
+        try {
+            if ($activeCount <= 1) {
+                // Only this sale owns this Person. Release to Databank (keep owner_id on soft-deleted record for Admin rollback history)!
+                $defaultStageId = $this->getStageIdFromSlug('chua_xac_dinh', $tid);
+                
+                $stmtRelease = $this->db->prepare("
+                    UPDATE contacts 
+                    SET pipeline_status = 'chua_xac_dinh', 
+                        stage_id = ?, 
+                        status = 'lead',
+                        security_expires_at = NULL,
+                        parallel_assigned = 0,
+                        deleted_at = NOW()
+                    WHERE id = ? AND tenant_id = ?
+                ");
+                $stmtRelease->execute([$defaultStageId, $id, $tid]);
 
-            // Also update persons to be public (preserve first released timestamp)
-            $stmtPerson = $this->db->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = IFNULL(released_to_kho_at, NOW()), deleted_from_databank = 0 WHERE id = ?");
-            $stmtPerson->execute([$personId]);
+                // Also update persons to be public (preserve first released timestamp)
+                $stmtPerson = $this->db->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = IFNULL(released_to_kho_at, NOW()), deleted_from_databank = 0 WHERE id = ?");
+                $stmtPerson->execute([$personId]);
 
-            // Record active returner to hide it from this user in Databank
-            $stmtRecordReturn = $this->db->prepare("INSERT IGNORE INTO returned_databank_leads (person_id, user_id) VALUES (?, ?)");
-            $stmtRecordReturn->execute([$personId, $auth['user_id']]);
+                // Record active returner to hide it from this user in Databank
+                $stmtRecordReturn = $this->db->prepare("INSERT IGNORE INTO returned_databank_leads (person_id, user_id) VALUES (?, ?)");
+                $stmtRecordReturn->execute([$personId, $auth['user_id']]);
 
-            // Also update leads to set assigned_to = NULL
-            if ($personId) {
-                $stmtLeadUpdate = $this->db->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
-                $stmtLeadUpdate->execute([$personId]);
+                // Also update leads to set assigned_to = NULL
+                if ($personId) {
+                    $stmtLeadUpdate = $this->db->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
+                    $stmtLeadUpdate->execute([$personId]);
 
-                // Xóa toàn bộ thông tin công việc (activities) và ghi chú (notes) khi trả về Databank
-                $stmtDelNotes = $this->db->prepare("DELETE FROM notes WHERE entity_type = 'contact' AND entity_id IN (SELECT id FROM contacts WHERE person_id = ?)");
-                $stmtDelNotes->execute([$personId]);
+                    // Xóa toàn bộ thông tin công việc (activities) và ghi chú (notes) khi trả về Databank
+                    $stmtDelNotes = $this->db->prepare("DELETE FROM notes WHERE entity_type = 'contact' AND entity_id IN (SELECT id FROM contacts WHERE person_id = ?)");
+                    $stmtDelNotes->execute([$personId]);
 
-                $stmtDelActs = $this->db->prepare("DELETE FROM activities WHERE related_type = 'contact' AND related_id IN (SELECT id FROM contacts WHERE person_id = ?)");
-                $stmtDelActs->execute([$personId]);
+                    $stmtDelActs = $this->db->prepare("DELETE FROM activities WHERE related_type = 'contact' AND related_id IN (SELECT id FROM contacts WHERE person_id = ?)");
+                    $stmtDelActs->execute([$personId]);
 
-                $stmtClearNotes = $this->db->prepare("UPDATE contacts SET notes = NULL WHERE person_id = ?");
-                $stmtClearNotes->execute([$personId]);
+                    $stmtClearNotes = $this->db->prepare("UPDATE contacts SET notes = NULL WHERE person_id = ?");
+                    $stmtClearNotes->execute([$personId]);
 
-                // Log distribution log for releasing to databank
-                $stmtLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
-                $stmtLog->execute([$leadId, null, null, 'released_to_kho', 'Tư vấn viên chủ động trả về Databank chung (do chỉ có 1 Sale chăm sóc)']);
+                    // Log distribution log for releasing to databank
+                    $stmtLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
+                    $stmtLog->execute([$leadId, null, null, 'released_to_kho', 'Tư vấn viên chủ động trả về Databank chung (do chỉ có 1 Sale chăm sóc)']);
+                }
+
+                // Log activity & interaction
+                logActivity($this->db, $tid, $auth['user_id'], 'RELEASE_TO_DATABANK', 'contact', $id, "Trả khách hàng về Databank chung (do chỉ có 1 Sale chăm sóc)");
+                logInteraction($this->db, $tid, $auth['user_id'], 'system', 'Đã trả khách hàng về Databank chung', null, 'contact', $id);
+
+                $this->db->commit();
+                respond(200, ['action' => 'released'], 'Đã trả khách hàng về Databank chung thành công!');
+            } else {
+                // 2 or more sales own this Person in parallel.
+                $stmtDelete = $this->db->prepare("UPDATE contacts SET deleted_at = NOW(), notes = NULL WHERE id = ? AND tenant_id = ?");
+                $stmtDelete->execute([$id, $tid]);
+                
+                $this->restorePersonPublicStatus($id, $tid);
+
+                // Record active returner to hide it from this user in Databank
+                $stmtRecordReturn = $this->db->prepare("INSERT IGNORE INTO returned_databank_leads (person_id, user_id) VALUES (?, ?)");
+                $stmtRecordReturn->execute([$personId, $auth['user_id']]);
+
+                // Xóa thông tin công việc (activities) và ghi chú (notes) liên quan đến contact bị xóa này
+                $stmtDelNotes = $this->db->prepare("DELETE FROM notes WHERE entity_type = 'contact' AND entity_id = ?");
+                $stmtDelNotes->execute([$id]);
+
+                $stmtDelActs = $this->db->prepare("DELETE FROM activities WHERE related_type = 'contact' AND related_id = ?");
+                $stmtDelActs->execute([$id]);
+
+                // Log distribution log for removing parallel contact
+                if ($leadId && $consultantId) {
+                    $stmtLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
+                    $stmtLog->execute([$leadId, $consultantId, null, 'released_to_kho', 'Tư vấn viên xóa khỏi danh sách cá nhân (trả về Databank song song)']);
+                }
+
+                // Log activity & interaction
+                logActivity($this->db, $tid, $auth['user_id'], 'REMOVE_PARALLEL_CONTACT', 'contact', $id, "Xóa liên hệ khỏi danh sách cá nhân (do trả về Databank song song)");
+                
+                $this->db->commit();
+                respond(200, ['action' => 'deleted'], 'Đã xóa khách hàng khỏi danh sách chăm sóc của bạn thành công!');
             }
-
-            // Log activity & interaction
-            logActivity($this->db, $tid, $auth['user_id'], 'RELEASE_TO_DATABANK', 'contact', $id, "Trả khách hàng về Databank chung (do chỉ có 1 Sale chăm sóc)");
-            logInteraction($this->db, $tid, $auth['user_id'], 'system', 'Đã trả khách hàng về Databank chung', null, 'contact', $id);
-
-            respond(200, ['action' => 'released'], 'Đã trả khách hàng về Databank chung thành công!');
-        } else {
-            // 2 or more sales own this Person in parallel.
-            $stmtDelete = $this->db->prepare("UPDATE contacts SET deleted_at = NOW(), notes = NULL WHERE id = ? AND tenant_id = ?");
-            $stmtDelete->execute([$id, $tid]);
-            
-            $this->restorePersonPublicStatus($id, $tid);
-
-            // Record active returner to hide it from this user in Databank
-            $stmtRecordReturn = $this->db->prepare("INSERT IGNORE INTO returned_databank_leads (person_id, user_id) VALUES (?, ?)");
-            $stmtRecordReturn->execute([$personId, $auth['user_id']]);
-
-            // Xóa thông tin công việc (activities) và ghi chú (notes) liên quan đến contact bị xóa này
-            $stmtDelNotes = $this->db->prepare("DELETE FROM notes WHERE entity_type = 'contact' AND entity_id = ?");
-            $stmtDelNotes->execute([$id]);
-
-            $stmtDelActs = $this->db->prepare("DELETE FROM activities WHERE related_type = 'contact' AND related_id = ?");
-            $stmtDelActs->execute([$id]);
-
-            // Log distribution log for removing parallel contact
-            if ($leadId && $consultantId) {
-                $stmtLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
-                $stmtLog->execute([$leadId, $consultantId, null, 'released_to_kho', 'Tư vấn viên xóa khỏi danh sách cá nhân (trả về Databank song song)']);
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
             }
-
-            // Log activity & interaction
-            logActivity($this->db, $tid, $auth['user_id'], 'REMOVE_PARALLEL_CONTACT', 'contact', $id, "Xóa liên hệ khỏi danh sách cá nhân (do trả về Databank song song)");
-            
-            respond(200, ['action' => 'deleted'], 'Đã xóa khách hàng khỏi danh sách chăm sóc của bạn thành công!');
+            respond(500, null, 'Lỗi trả khách hàng về Databank: ' . $e->getMessage(), false);
         }
     }
 
@@ -2496,7 +2530,7 @@ class ContactController {
         }
 
         $inClause = implode(',', array_fill(0, count($contactIds), '?'));
-        $stmtContacts = $this->db->prepare("SELECT id, owner_id, collaborator_ids, pipeline_status FROM contacts WHERE tenant_id = ? AND id IN ($inClause)");
+        $stmtContacts = $this->db->prepare("SELECT id, owner_id, collaborator_ids, pipeline_status, lead_id, person_id FROM contacts WHERE tenant_id = ? AND id IN ($inClause)");
         $stmtContacts->execute(array_merge([$tid], $contactIds));
         $rows = $stmtContacts->fetchAll(PDO::FETCH_ASSOC);
 
@@ -2504,9 +2538,19 @@ class ContactController {
             respond(404, null, 'Không tìm thấy khách hàng để chuyển phụ trách', false);
         }
 
+        $targetConsultantId = $targetOwnerId;
+        $stmtCid = $this->db->prepare("SELECT c.id FROM consultants c JOIN users u ON u.email = c.email WHERE u.id = ? LIMIT 1");
+        $stmtCid->execute([$targetOwnerId]);
+        $resolvedCid = $stmtCid->fetchColumn();
+        if ($resolvedCid) {
+            $targetConsultantId = (int)$resolvedCid;
+        }
+
         $updatedIds = [];
         $updatedContactsMap = [];
         $batchAccessInserts = [];
+        $leadIdsToSync = [];
+        $personIdsToSync = [];
 
         $this->db->beginTransaction();
         try {
@@ -2514,6 +2558,11 @@ class ContactController {
             foreach ($rows as $row) {
                 $cid = (int)$row['id'];
                 $oldOwner = (int)($row['owner_id'] ?? 0);
+                if (!empty($row['lead_id'])) {
+                    $leadIdsToSync[] = (int)$row['lead_id'];
+                } elseif (!empty($row['person_id'])) {
+                    $personIdsToSync[] = (int)$row['person_id'];
+                }
                 $collabs = array_values(array_unique(array_filter(array_map('intval', explode(',', $row['collaborator_ids'] ?? '')))));
                 if ($keepOldAsCollab && $oldOwner > 0 && $oldOwner !== $targetOwnerId) {
                     $collabs[] = $oldOwner;
@@ -2531,6 +2580,19 @@ class ContactController {
                     'owner_avatar' => $targetUser['avatar_url'] ?? null,
                     'collaborator_ids' => $collabStr ?? ''
                 ];
+            }
+
+            $leadIdsToSync = array_values(array_unique(array_filter($leadIdsToSync)));
+            if (!empty($leadIdsToSync)) {
+                $inLeads = implode(',', array_fill(0, count($leadIdsToSync), '?'));
+                $stmtSyncL = $this->db->prepare("UPDATE leads SET assigned_to = ? WHERE id IN ($inLeads)");
+                $stmtSyncL->execute(array_merge([$targetConsultantId], $leadIdsToSync));
+            }
+            $personIdsToSync = array_values(array_unique(array_filter($personIdsToSync)));
+            if (!empty($personIdsToSync)) {
+                $inPersons = implode(',', array_fill(0, count($personIdsToSync), '?'));
+                $stmtSyncP = $this->db->prepare("UPDATE leads SET assigned_to = ? WHERE person_id IN ($inPersons)");
+                $stmtSyncP->execute(array_merge([$targetConsultantId], $personIdsToSync));
             }
 
             if (!empty($batchAccessInserts)) {

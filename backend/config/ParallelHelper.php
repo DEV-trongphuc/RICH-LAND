@@ -44,9 +44,13 @@ class ParallelHelper {
                 $stmtDelActs = $db->prepare("DELETE FROM activities WHERE related_type = 'contact' AND related_id = ?");
                 $stmtDelActs->execute([$otherId]);
 
-                // Find the lead associated with this person
-                $stmtCheckLead = $db->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
-                $stmtCheckLead->execute([$personId]);
+                // Find the lead associated with this person assigned to the losing Sale (do NOT terminate the winning Sale's lead)
+                $cStmt = $db->prepare("SELECT c.id FROM consultants c JOIN users u ON u.email = c.email WHERE u.id = ? LIMIT 1");
+                $cStmt->execute([$otherOwnerId]);
+                $otherConsultantId = (int)($cStmt->fetchColumn() ?: $otherOwnerId);
+
+                $stmtCheckLead = $db->prepare("SELECT id FROM leads WHERE person_id = ? AND assigned_to IN (?, ?) ORDER BY id DESC LIMIT 1");
+                $stmtCheckLead->execute([$personId, $otherOwnerId, $otherConsultantId]);
                 $leadId = $stmtCheckLead->fetchColumn();
                 if ($leadId) {
                     $stmtDelLead = $db->prepare("UPDATE leads SET assigned_to = NULL, status = 'parallel_terminated' WHERE id = ?");

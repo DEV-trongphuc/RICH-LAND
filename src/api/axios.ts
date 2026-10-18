@@ -97,17 +97,79 @@ export function clearApiGetCache() {
 }
 
 if (typeof window !== 'undefined') {
-  ['refresh-page', 'lead-added', 'task-updated', 'system_settings_updated'].forEach((evt) => {
+  [
+    'refresh-page',
+    'lead-added',
+    'contact-updated',
+    'deposit-updated',
+    'coop-updated',
+    'refresh-pending-counts',
+    'task-updated',
+    'system_settings_updated',
+  ].forEach((evt) => {
     window.addEventListener(evt, () => {
       getResponseCache.clear();
     });
   });
 }
 
-function getCacheTtlMs(url: string, params: Record<string, any> | undefined): number {
-  const fullTarget = `${url}?${JSON.stringify(params || {})}`.toLowerCase();
+const MUTATION_ACTION_PREFIXES = [
+  'save_',
+  'update_',
+  'delete_',
+  'create_',
+  'approve_',
+  'reject_',
+  'cancel_',
+  'claim_',
+  'accept_',
+  'release_',
+  'assign_',
+  'move_',
+  'toggle_',
+];
+
+function isMutationAction(action: string): boolean {
+  if (!action || action === 'claim_lead_check' || action === 'mark_read') return false;
+  return MUTATION_ACTION_PREFIXES.some((prefix) => action.startsWith(prefix));
+}
+
+function extractActionAndCanonicalKey(config: any): { key: string; action: string; fullTarget: string } {
+  const rawUrl = String(config.url || '');
+  const [basePath, queryString] = rawUrl.split('?');
+  const mergedParams: Record<string, string> = {};
+
+  if (queryString) {
+    const sp = new URLSearchParams(queryString);
+    sp.forEach((v, k) => {
+      mergedParams[k] = v;
+    });
+  }
+  if (config.params && typeof config.params === 'object') {
+    Object.keys(config.params).forEach((k) => {
+      const val = config.params[k];
+      if (val !== undefined && val !== null) {
+        mergedParams[k] = typeof val === 'object' ? JSON.stringify(val) : String(val);
+      }
+    });
+  }
+
+  const sortedPairs = Object.keys(mergedParams)
+    .sort()
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(mergedParams[k])}`);
+  const canonicalQuery = sortedPairs.join('&');
+  const key = `${basePath}?${canonicalQuery}`;
+  const action = String(mergedParams.action || '').toLowerCase();
+  return { key, action, fullTarget: key.toLowerCase() };
+}
+
+function getCacheTtlMs(fullTarget: string, action: string): number {
   // Real-time endpoints: coalesce in-flight only (0ms post-completion cache)
   if (
+    action === 'get_active_offers' ||
+    action === 'notifications' ||
+    action === 'check_version' ||
+    action === 'get_round_cooldowns' ||
     fullTarget.includes('get_active_offers') ||
     fullTarget.includes('notifications') ||
     fullTarget.includes('check_version') ||
@@ -118,19 +180,25 @@ function getCacheTtlMs(url: string, params: Record<string, any> | undefined): nu
   }
   // Reference dropdowns & shared metadata: 15s TTL (wiped immediately on any mutation)
   if (
+    action === 'get_settings' ||
+    action === 'projects' ||
+    action === 'users' ||
+    action === 'pipeline-stages' ||
+    action === 'teams' ||
+    action === 'custom-fields' ||
+    action === 'get_consultants' ||
+    action === 'get_rounds' ||
+    action === 'get_rules' ||
     fullTarget.includes('minimal=1') ||
-    fullTarget.includes('"minimal":1') ||
-    fullTarget.includes('"minimal":"1"') ||
     fullTarget.includes('get_consultants') ||
     fullTarget.includes('get_rounds') ||
     fullTarget.includes('get_rules') ||
     fullTarget.includes('get_settings') ||
-    fullTarget.includes('/users') ||
     fullTarget.includes('action=users') ||
-    fullTarget.includes('"action":"users"') ||
-    fullTarget.includes('/projects') ||
     fullTarget.includes('action=projects') ||
-    fullTarget.includes('"action":"projects"')
+    fullTarget.includes('action=pipeline-stages') ||
+    fullTarget.includes('action=teams') ||
+    fullTarget.includes('action=custom-fields')
   ) {
     return 15000;
   }
@@ -138,64 +206,120 @@ function getCacheTtlMs(url: string, params: Record<string, any> | undefined): nu
   return 2500;
 }
 
-// Wrap api.request to coalesce identical concurrent GET requests and serve short-TTL cached responses
-const originalRequest = api.request.bind(api);
-api.request = function coalescedRequest(configOrUrl: any, config?: any): Promise<any> {
-  const resolvedConfig = typeof configOrUrl === 'string'
-    ? { ...(config || {}), url: configOrUrl }
-    : { ...(configOrUrl || {}) };
+function createCanceledError(config: any): any {
+  const err: any = new axios.CanceledError('canceled', undefined, config);
+  err.name = 'CanceledError';
+  err.code = 'ERR_CANCELED';
+  return err;
+}
 
-  const method = (resolvedConfig.method || 'get').toLowerCase();
-  const hasSignal = Boolean(resolvedConfig.signal);
-  const headers = resolvedConfig.headers || {};
-  const isNoCache = headers['Cache-Control']?.includes('no-store') || headers['Cache-Control']?.includes('no-cache');
+function attachCallerSignal<T>(promise: Promise<T>, signal?: AbortSignal | any, config?: any): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) {
+    return Promise.reject(createCanceledError(config));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(createCanceledError(config));
+    };
+    if (typeof signal.addEventListener === 'function') {
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+    promise.then(
+      (val) => {
+        if (typeof signal.removeEventListener === 'function') {
+          signal.removeEventListener('abort', onAbort);
+        }
+        if (signal.aborted) {
+          reject(createCanceledError(config));
+        } else {
+          resolve(val);
+        }
+      },
+      (err) => {
+        if (typeof signal.removeEventListener === 'function') {
+          signal.removeEventListener('abort', onAbort);
+        }
+        reject(err);
+      }
+    );
+  });
+}
+
+// Custom Axios Adapter to coalesce ALL concurrent GET calls (api(config), api.get(), fetchAPI() with AbortSignal)
+const defaultAdapter = axios.getAdapter(axios.defaults.adapter);
+
+api.defaults.adapter = async function coalescedAdapter(config: any): Promise<any> {
+  const method = String(config.method || 'get').toLowerCase();
+  const headers = config.headers || {};
+  const cacheControl = String(headers['Cache-Control'] || headers['cache-control'] || '');
+  const isNoCache = cacheControl.includes('no-store') || cacheControl.includes('no-cache');
+  const { key, action, fullTarget } = extractActionAndCanonicalKey(config);
 
   // Any write/mutation immediately invalidates the GET cache so subsequent reads are 100% fresh
   if (method !== 'get' && method !== 'head') {
-    const urlStr = String(resolvedConfig.url || '');
-    if (!urlStr.includes('claim_lead_check') && !urlStr.includes('mark_read')) {
+    if (action !== 'claim_lead_check' && action !== 'mark_read' && !fullTarget.includes('claim_lead_check') && !fullTarget.includes('mark_read')) {
       getResponseCache.clear();
     }
-    return originalRequest(resolvedConfig);
+    return defaultAdapter(config);
+  }
+
+  if (isMutationAction(action)) {
+    getResponseCache.clear();
+    return defaultAdapter(config);
   }
 
   if (method === 'get' && !isNoCache) {
-    const key = `${resolvedConfig.url || ''}?${JSON.stringify(resolvedConfig.params || {})}`;
-    const ttlMs = getCacheTtlMs(resolvedConfig.url || '', resolvedConfig.params);
+    if (config.signal?.aborted) {
+      return Promise.reject(createCanceledError(config));
+    }
+
+    const ttlMs = getCacheTtlMs(fullTarget, action);
 
     if (ttlMs > 0) {
       const cached = getResponseCache.get(key);
       if (cached && cached.expiresAt > Date.now()) {
-        return Promise.resolve(cached.response);
+        return Promise.resolve({ ...cached.response, config });
       }
     }
 
-    if (!hasSignal) {
-      const existing = inFlightGetRequests.get(key);
-      if (existing) {
-        return existing;
-      }
-      const promise = originalRequest(resolvedConfig)
-        .then((res) => {
-          if (ttlMs > 0 && res && res.status >= 200 && res.status < 300) {
-            if (getResponseCache.size > 150) {
-              const oldestKey = getResponseCache.keys().next().value;
-              if (oldestKey) getResponseCache.delete(oldestKey);
-            }
-            getResponseCache.set(key, { expiresAt: Date.now() + ttlMs, response: res });
-          }
-          return res;
-        })
-        .finally(() => {
-          inFlightGetRequests.delete(key);
-        });
-      inFlightGetRequests.set(key, promise);
-      return promise;
+    const existing = inFlightGetRequests.get(key);
+    if (existing) {
+      return attachCallerSignal(
+        existing.then((res) => ({ ...res, config })),
+        config.signal,
+        config
+      );
     }
+
+    // Run underlying network call without single-caller abort signal so one unmounting component
+    // does not abort the shared in-flight request for other active subscribers
+    const sharedConfig = config.signal ? { ...config, signal: undefined } : config;
+    const networkPromise = defaultAdapter(sharedConfig)
+      .then((res: any) => {
+        if (ttlMs > 0 && res && res.status >= 200 && res.status < 300) {
+          if (getResponseCache.size > 150) {
+            const oldestKey = getResponseCache.keys().next().value;
+            if (oldestKey) getResponseCache.delete(oldestKey);
+          }
+          getResponseCache.set(key, { expiresAt: Date.now() + ttlMs, response: res });
+        }
+        return res;
+      })
+      .finally(() => {
+        inFlightGetRequests.delete(key);
+      });
+
+    inFlightGetRequests.set(key, networkPromise);
+    return attachCallerSignal(
+      networkPromise.then((res) => ({ ...res, config })),
+      config.signal,
+      config
+    );
   }
 
-  return originalRequest(resolvedConfig);
-} as any;
+  return defaultAdapter(config);
+};
 
 // Auto-refresh on 401
 api.interceptors.response.use(

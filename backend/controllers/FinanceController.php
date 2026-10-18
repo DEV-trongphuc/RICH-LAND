@@ -18,17 +18,9 @@ class FinanceController
         $sInv->execute([$contactId]);
         $inv = $sInv->fetch();
 
-        $sExp = $this->db->prepare("SELECT COALESCE(SUM(ee.amount),0) as total, COUNT(*) as count, MAX(e.approved_at) as last_at FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = ? AND e.status = 'approved' AND e.deleted_at IS NULL");
-        $sExp->execute([$contactId]);
-        $exp = $sExp->fetch();
-
-        $totalSpent = (float)$inv['total'] + (float)$exp['total'];
-        $orderCount = (int)$inv['count'] + (int)$exp['count'];
-        
-        $lastOrderAt = null;
-        if ($inv['last_at'] || $exp['last_at']) {
-            $lastOrderAt = ($inv['last_at'] && (!$exp['last_at'] || $inv['last_at'] > $exp['last_at'])) ? $inv['last_at'] : $exp['last_at'];
-        }
+        $totalSpent = (float)($inv['total'] ?? 0);
+        $orderCount = (int)($inv['count'] ?? 0);
+        $lastOrderAt = $inv['last_at'] ?: null;
 
         $stmt = $this->db->prepare("
             UPDATE contacts 
@@ -1259,7 +1251,6 @@ class FinanceController
             $stmtUser->execute([$creatorId]);
             $creatorRow = $stmtUser->fetch();
             if ($creatorRow && !empty($creatorRow['email'])) {
-                require_once __DIR__ . '/../mailer.php';
                 $emailSubject = "[RICH LAND] Chi phí của bạn đã được " . ($status === 'approved' ? 'duyệt' : 'từ chối');
                 $emailTitle = "PHẢN HỒI YÊU CẦU CHI PHÍ";
                 $emailContent = "Chào <strong>" . htmlspecialchars($creatorRow['full_name']) . "</strong>,<br/><br/>" .
@@ -1267,7 +1258,11 @@ class FinanceController
                                 "Số tiền: <strong>" . number_format($expenseRow['amount'] ?? 0, 0, ',', '.') . "đ</strong>.<br/>" .
                                 "Trạng thái mới: <strong style='color: " . ($status === 'approved' ? '#22c55e' : '#ef4444') . ";'>" . ($status === 'approved' ? 'Đã duyệt' : 'Từ chối') . "</strong> bởi quản trị viên.<br/>" .
                                 "Vui lòng đăng nhập hệ thống RICH LAND CRM để xem chi tiết.";
-                sendEmailNotification($creatorRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                $toEmail = $creatorRow['email'];
+                register_shutdown_function(function () use ($toEmail, $emailSubject, $emailTitle, $emailContent) {
+                    require_once __DIR__ . '/../mailer.php';
+                    sendEmailNotification($toEmail, $emailSubject, $emailTitle, $emailContent, '', false);
+                });
             }
         }
 

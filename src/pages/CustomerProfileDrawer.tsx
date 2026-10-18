@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video, UserX, ArrowLeft, MoreVertical, Info } from 'lucide-react';
 import { triggerFullConfetti } from '../utils/confettiHelper';
+import { emitCrmSync } from '../utils/crmEvents';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -1714,47 +1715,42 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [baseData, setBaseData] = useState<any>(contact || {});
   const [baseTags, setBaseTags] = useState<string[]>(contact?.tags || []);
 
+  const editableFieldsList = useMemo(() => [
+    'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
+    'mobile', 'job_title', 'department', 'source', 'status', 'notes',
+    'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget', 'budget_range',
+    'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data', 'collaborator_ids', 'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'nguoi_gioi_thieu_id',
+    'phone2', 'dob', 'citizen_id', 'district', 'company', 'tax_code', 'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
+    'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai', 'facebook_link', 'link_fb', 'created_at', 'avatar_url'
+  ], []);
+
+  const serializeContactSnapshot = useCallback((obj: any, tagList: string[]) => {
+    const clean: any = {};
+    editableFieldsList.forEach(key => {
+      const val = obj ? obj[key] : undefined;
+      clean[key] = (val === null || val === undefined) ? '' : val;
+    });
+    const fields = obj?.custom_fields;
+    const serializedCustom = Array.isArray(fields)
+      ? fields.map(f => `${f.id}:${f.value === null || f.value === undefined ? '' : f.value}`).sort().join('|')
+      : '';
+    return JSON.stringify({
+      formData: clean,
+      tags: tagList || [],
+      customFields: serializedCustom
+    });
+  }, [editableFieldsList]);
+
+  const baseSnapshotHash = useMemo(() => {
+    if (!contact) return '';
+    return serializeContactSnapshot(baseData, baseTags);
+  }, [baseData, baseTags, contact, serializeContactSnapshot]);
+
   const hasChanges = useMemo(() => {
     if (!contact || !formData || !formData.id) return false;
-    
-    // Allowed fields that are editable in the form
-    const editableFields = [
-      'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
-      'mobile', 'job_title', 'department', 'source', 'status', 'notes',
-      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget', 'budget_range',
-      'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data', 'collaborator_ids', 'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'nguoi_gioi_thieu_id',
-      'phone2', 'dob', 'citizen_id', 'district', 'company', 'tax_code', 'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
-      'ad_name', 'link_video_ads', 'loai_lead', 'lead_phan_loai', 'facebook_link', 'link_fb', 'created_at', 'avatar_url'
-    ];
-
-    const cleanObject = (obj: any) => {
-      const clean: any = {};
-      editableFields.forEach(key => {
-        const val = obj ? obj[key] : undefined;
-        clean[key] = (val === null || val === undefined) ? '' : val;
-      });
-      return clean;
-    };
-
-    const serializeCustomFields = (fields: any) => {
-      if (!Array.isArray(fields)) return '';
-      return fields.map(f => `${f.id}:${f.value === null || f.value === undefined ? '' : f.value}`).sort().join('|');
-    };
-
-    const hash1 = JSON.stringify({
-      formData: cleanObject(formData),
-      tags: tags || [],
-      customFields: serializeCustomFields(formData.custom_fields)
-    });
-
-    const hash2 = JSON.stringify({
-      formData: cleanObject(baseData),
-      tags: baseTags || [],
-      customFields: serializeCustomFields(baseData.custom_fields)
-    });
-
-    return hash1 !== hash2;
-  }, [formData, baseData, tags, baseTags, contact]);
+    const currentHash = serializeContactSnapshot(formData, tags);
+    return currentHash !== baseSnapshotHash;
+  }, [formData, tags, contact, baseSnapshotHash, serializeContactSnapshot]);
 
   const handleSave = useCallback(async () => {
     // Only send fields that ContactController accepts
@@ -1803,7 +1799,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setBaseData(updated);
       setBaseTags(updated.tags || []);
       onUpdate?.(updated);
-      window.dispatchEvent(new CustomEvent('contact-updated'));
+      emitCrmSync(['contact-updated', 'refresh-pending-counts']);
       addToast(`Đã lưu thông tin hồ sơ của khách hàng ${fullName || ''} thành công!`, 'success');
     } catch (e: any) {
       addToast(e?.response?.data?.message || 'Không thể lưu hồ sơ khách hàng. Vui lòng kiểm tra lại dữ liệu đầu vào.', 'error');
@@ -2581,13 +2577,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
+  const fetchCoopSlipReqIdRef = useRef(0);
+
   const fetchCoopSlip = async (refreshDocsAndDeals = true) => {
     if (!contact?.id) return;
+    const reqId = ++fetchCoopSlipReqIdRef.current;
     setCoopLoading(true);
     setCoopError('');
     try {
       const usersEndpoint = 'users?all=1';
-      const shouldFetchUsers = salesUsers.length === 0;
+      const shouldFetchUsers = salesUsers.length === 0 && users.length === 0;
       const [resSlips, resUsers, resDocs, resDeposits] = await Promise.all([
         fetchAPI(`cooperation-slips?contact_id=${contact.id}`),
         shouldFetchUsers ? fetchAPI(usersEndpoint) : Promise.resolve(null),
@@ -2598,6 +2597,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           ? api.get(`/deposits?contact_id=${contact.id}`).catch(() => ({ data: { data: [] } }))
           : Promise.resolve(null)
       ]);
+      if (reqId !== fetchCoopSlipReqIdRef.current) return;
       
       let mappedDocs: any[] = [];
       if (refreshDocsAndDeals && resDocs && resDeposits) {
@@ -2705,11 +2705,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           role: u.role || 'sale'
         }));
         setSalesUsers(mapped);
+      } else if (salesUsers.length === 0 && users.length > 0) {
+        const mapped = users.map((u: any) => ({
+          ...u,
+          value: String(u.id),
+          label: u.full_name || u.name,
+          full_name: u.full_name || u.name,
+          role: u.role || 'sale'
+        }));
+        setSalesUsers(mapped);
       }
     } catch (e: any) {
-      setCoopError(e.message || 'Lỗi tải dữ liệu hợp tác');
+      if (reqId === fetchCoopSlipReqIdRef.current) {
+        setCoopError(e.message || 'Lỗi tải dữ liệu hợp tác');
+      }
     }
-    setCoopLoading(false);
+    if (reqId === fetchCoopSlipReqIdRef.current) {
+      setCoopLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -2982,8 +2995,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setCoopLoading(false);
   };
 
+  const isSigningCoopRef = useRef(false);
+
   const handleSignCoopSlip = async (signatureImg: string) => {
-    if (!coopSlip) return;
+    if (!coopSlip || isSigningCoopRef.current) return;
 
     // Check for expected revenue
     if (!formData.expected_revenue || Number(formData.expected_revenue) === 0) {
@@ -3007,6 +3022,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     }
 
+    isSigningCoopRef.current = true;
     setCoopLoading(true);
     try {
       const res = await fetchAPI(`cooperation-slips/${coopSlip.id}/sign`, {
@@ -3016,14 +3032,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (res.success) {
         addToast('Đã ký xác nhận phân chia hoa hồng thành công!', 'success');
         setIsSignModalOpen(false);
+        emitCrmSync(['coop-updated', 'contact-updated', 'refresh-pending-counts']);
         await fetchCoopSlip();
       } else {
         addToast(res.message || 'Lỗi ký xác nhận', 'error');
       }
     } catch (e: any) {
       addToast(e.message, 'error');
+    } finally {
+      isSigningCoopRef.current = false;
+      setCoopLoading(false);
     }
-    setCoopLoading(false);
   };
 
 
@@ -3427,8 +3446,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     );
   };
 
+  const fetchDataReqIdRef = useRef(0);
+
   const fetchData = useCallback(async (targetTab?: string, forceFreshContact = false) => {
     if (!contact?.id) return;
+    const reqId = ++fetchDataReqIdRef.current;
     const tabToLoad = targetTab || activeTab;
 
     setLoadingRelated(true);
@@ -3438,6 +3460,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (shouldFetchContact) {
         try {
           const contactRes = await api.get(`/contacts/${contact.id}`);
+          if (reqId !== fetchDataReqIdRef.current) return;
           const freshContact = contactRes.data.data || contactRes.data;
           if (freshContact && freshContact.id) {
             setFormData(prev => ({ ...prev, ...freshContact }));
@@ -3476,7 +3499,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             } catch {}
           }
         } catch (err) {} finally {
-          setLoadingContactDetails(false);
+          if (reqId === fetchDataReqIdRef.current) {
+            setLoadingContactDetails(false);
+          }
         }
       } else {
         setLoadingContactDetails(false);
@@ -3486,6 +3511,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       try {
         if (stages.length === 0) {
           const stagesRes = await api.get('/pipeline-stages');
+          if (reqId !== fetchDataReqIdRef.current) return;
           setStages(stagesRes.data.data?.items || stagesRes.data.data || []);
         }
       } catch (err) {}
@@ -3493,16 +3519,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (tabToLoad === 'info') {
         try {
           if (projectsList.length === 0) {
-            const role = currentUser?.role;
-            const bypassProj = role === 'sale' ? '' : '?bypass_roster=1';
-            const projectsRes = await api.get(`/projects${bypassProj}`);
-            setProjectsList(projectsRes.data.data || projectsRes.data || []);
+            if (allowedProjects.length > 0) {
+              setProjectsList(allowedProjects);
+            } else {
+              const role = currentUser?.role;
+              const bypassProj = role === 'sale' ? '' : '?bypass_roster=1';
+              const projectsRes = await api.get(`/projects${bypassProj}`);
+              if (reqId !== fetchDataReqIdRef.current) return;
+              setProjectsList(projectsRes.data.data || projectsRes.data || []);
+            }
           }
         } catch (err) {}
 
         try {
           if (companiesList.length === 0) {
             const companiesRes = await api.get('/companies?limit=500');
+            if (reqId !== fetchDataReqIdRef.current) return;
             setCompaniesList(companiesRes.data.data?.items || companiesRes.data.data || []);
           }
         } catch (err) {}
@@ -3511,6 +3543,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       // 3. Tab-specific lazy data fetching
       if (tabToLoad === 'timeline' || tabToLoad === 'tags') {
         const notesRes = await api.get(`/notes?entity_type=contact&entity_id=${contact.id}`);
+        if (reqId !== fetchDataReqIdRef.current) return;
         setNotes((notesRes.data.data || []).map((n: any) => ({
           id: n.id,
           text: n.body,
@@ -3533,8 +3566,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (tabToLoad === 'tasks' || tabToLoad === 'timeline') {
         const [tasksRes, allTasksRes] = await Promise.all([
           api.get(`/activities?related_type=contact&related_id=${contact.id}`),
-          api.get(`/activities?type=task&limit=200`)
+          api.get(`/activities?type=task&limit=200&contact_id=${contact.id}`)
         ]);
+        if (reqId !== fetchDataReqIdRef.current) return;
         const rawActivities = tasksRes.data.data?.items || tasksRes.data.data || [];
         const allTasks = allTasksRes.data.data?.items || allTasksRes.data.data || [];
 
@@ -3710,51 +3744,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           return [...mappedDocs, ...coopAttachments];
         });
         setDeals(depositsList);
-
-        // Auto-sync contact expected_revenue & win_probability based on current deposits
-        if (depositsList.length > 0) {
-          const totalRev = depositsList.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
-          const avgProb = Math.round(depositsList.reduce((total, d) => total + (Number(d.prob) || 0), 0) / depositsList.length);
-          if (totalRev !== Number(formData.expected_revenue || 0) || avgProb !== Number(formData.win_probability || 0)) {
-            api.put(`/contacts/${contact.id}`, {
-              expected_revenue: totalRev,
-              win_probability: avgProb
-            }).then(() => {
-              setFormData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
-              setBaseData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
-              onUpdate?.({ ...formData, expected_revenue: totalRev, win_probability: avgProb });
-              window.dispatchEvent(new CustomEvent('contact-updated'));
-            }).catch(err => console.error("Error syncing contact metrics:", err));
-          }
-        }
       }
 
       if (tabToLoad === 'invoices') {
         const invoicesRes = await api.get(`/invoices?contact_id=${contact.id}`);
+        if (reqId !== fetchDataReqIdRef.current) return;
         const invData = invoicesRes.data.data;
         setDrawerInvoices(Array.isArray(invData) ? invData : (invData?.items || []));
       }
 
       if (tabToLoad === 'quotes') {
         const quotesRes = await api.get(`/quotes?contact_id=${contact.id}`);
+        if (reqId !== fetchDataReqIdRef.current) return;
         const qData = quotesRes.data.data;
         setDrawerQuotes(Array.isArray(qData) ? qData : (qData?.items || []));
       }
 
       if (tabToLoad === 'expenses') {
         const expensesRes = await api.get(`/expenses/entity/contact/${contact.id}`);
+        if (reqId !== fetchDataReqIdRef.current) return;
         const expData = expensesRes.data.data;
         setDrawerExpenses(Array.isArray(expData) ? expData : (expData?.items || []));
       }
 
       if (tabToLoad === 'tickets') {
         const ticketsRes = await api.get(`/tickets?contact_id=${contact.id}`);
+        if (reqId !== fetchDataReqIdRef.current) return;
         const tData = ticketsRes.data.data;
         setDrawerTickets(Array.isArray(tData) ? tData : (tData?.items || []));
       }
 
       if (tabToLoad === 'docs') {
         const docsRes = await api.get(`/cloud-files?contact_id=${contact.id}&limit=200`);
+        if (reqId !== fetchDataReqIdRef.current) return;
         const docsData = docsRes.data.data?.items || [];
         const mappedDocs = docsData.map((d: any) => ({
           id: d.id,
@@ -3778,6 +3800,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         if (!activeCoopSlip) {
           try {
             const resSlips = await fetchAPI(`cooperation-slips?contact_id=${contact.id}`);
+            if (reqId !== fetchDataReqIdRef.current) return;
             if (resSlips.success) {
               activeCoopSlip = (resSlips.data || []).find((s: any) => Number(s.contact_id) === Number(contact.id)) || null;
             }
@@ -3806,6 +3829,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         // Fetch and include deposit milestone payment proofs (UNC) dynamically
         try {
           const resDep = await api.get(`/deposits?contact_id=${contact.id}`);
+          if (reqId !== fetchDataReqIdRef.current) return;
           const customerDeposits = resDep.data?.data || [];
           (Array.isArray(customerDeposits) ? customerDeposits : []).forEach((dep: any) => {
             const milestones = dep.milestones || [];
@@ -3843,9 +3867,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     } catch (e: any) {
       console.error("Error fetching tab data:", e);
     } finally {
-      setLoadingRelated(false);
+      if (reqId === fetchDataReqIdRef.current) {
+        setLoadingRelated(false);
+      }
     }
-  }, [contact?.id, activeTab, stages.length, projectsList.length, companiesList.length]);
+  }, [contact?.id, activeTab, stages.length, projectsList.length, companiesList.length, allowedProjects]);
 
   // Sync data whenever active tab, contact, or open status changes
   useEffect(() => {
@@ -5512,7 +5538,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       const updatedContactObj = { ...formData, ...contact, pipeline_status: 'dat_coc', status: 'customer' };
       onUpdate?.(updatedContactObj);
-      window.dispatchEvent(new CustomEvent('contact-updated'));
+      emitCrmSync(['contact-updated', 'deposit-updated', 'coop-updated', 'refresh-pending-counts']);
 
       if (hasCoopSalesCheck && createCoopSlipChoice) {
         addToast('Tạo phiếu cọc và tự động khởi tạo Phiếu hợp tác phân chia hoa hồng thành công!', 'success');
@@ -5531,7 +5557,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
       setDepositUncFile(null);
       
-      await fetchData();
+      await fetchData(undefined, true);
       await fetchCoopSlip();
 
       if (hasCoopSalesCheck && createCoopSlipChoice) {
@@ -5545,7 +5571,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
+  const isCancellingDepositRef = useRef(false);
+  const isActioningMilestoneRef = useRef(false);
+  const isSavingMilestonesRef = useRef(false);
+  const isReturningDatabankRef = useRef(false);
+  const isActioningNotLeadRef = useRef(false);
+
   const handleCancelDeposit = (depositId: number) => {
+    if (isCancellingDepositRef.current) return;
     showConfirm({
       title: 'Báo cáo bể cọc / Hủy đặt cọc',
       message: 'Vui lòng nhập lý do hủy đặt cọc / bể cọc của khách hàng:',
@@ -5555,18 +5588,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       requirePromptInput: true,
       promptPlaceholder: 'Nhập lý do chi tiết (bắt buộc)...',
       onConfirm: async (reason) => {
+        if (isCancellingDepositRef.current) return;
         if (!reason || !reason.trim()) {
           addToast("Vui lòng nhập lý do hủy", "error");
           return;
         }
+        isCancellingDepositRef.current = true;
         try {
           const res = await api.post(`/deposits/${depositId}/cancel`, { reason });
           if (res.data.success || res.data) {
             addToast("Đã hủy đặt cọc thành công", "success");
-            fetchData();
+            emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
+            fetchData(undefined, true);
+            fetchCoopSlip();
           }
         } catch (e: any) {
           addToast(e?.response?.data?.message || "Không thể hủy đặt cọc", "error");
+        } finally {
+          isCancellingDepositRef.current = false;
         }
       }
     });
@@ -5639,7 +5678,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const handleApproveFromModal = async (index: number) => {
+    if (isActioningMilestoneRef.current) return;
     const m = tempMilestones[index];
+    isActioningMilestoneRef.current = true;
     setActioningMilestoneId(m.id);
     setActioningType('approve');
     try {
@@ -5651,20 +5692,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         updated[index].status = 'approved';
         setTempMilestones(updated);
         
-        fetchData();
+        emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
+        fetchData(undefined, true);
       } else {
         addToast(res.data?.message || 'Lỗi phê duyệt', 'error');
       }
     } catch (err: any) {
       addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
     } finally {
+      isActioningMilestoneRef.current = false;
       setActioningMilestoneId(null);
       setActioningType(null);
     }
   };
 
   const handleRejectFromModal = async (index: number) => {
+    if (isActioningMilestoneRef.current) return;
     const m = tempMilestones[index];
+    isActioningMilestoneRef.current = true;
     setActioningMilestoneId(m.id);
     setActioningType('reject');
     try {
@@ -5676,19 +5721,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         updated[index].status = 'failed';
         setTempMilestones(updated);
         
-        fetchData();
+        emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
+        fetchData(undefined, true);
       } else {
         addToast(res.data?.message || 'Lỗi bác bỏ', 'error');
       }
     } catch (err: any) {
       addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
     } finally {
+      isActioningMilestoneRef.current = false;
       setActioningMilestoneId(null);
       setActioningType(null);
     }
   };
 
   const handleSaveMilestones = async () => {
+    if (isSavingMilestonesRef.current) return;
     if (!tempMilestones || tempMilestones.length === 0) {
       addToast('Lịch trình thanh toán phải có ít nhất 1 đợt tiền.', 'error');
       return;
@@ -5728,6 +5776,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     }
 
+    isSavingMilestonesRef.current = true;
     try {
       setIsSavingMilestones(true);
       const payload: any = {
@@ -5750,13 +5799,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (res.data?.success || res.data) {
         addToast(`Lịch trình thanh toán và phân chia hoa hồng cho căn ${selectedDepForManage?.unit_code || ''} đã được lưu thành công!`, 'success');
         setShowManageModal(false);
-        fetchData();
+        emitCrmSync(['deposit-updated', 'coop-updated', 'contact-updated', 'refresh-pending-counts']);
+        fetchData(undefined, true);
       } else {
         addToast(res.data?.message || 'Lỗi lưu lịch trình thanh toán.', 'error');
       }
     } catch (err: any) {
       addToast(err?.response?.data?.message || err.message || 'Không thể kết nối đến máy chủ để lưu lịch trình thanh toán.', 'error');
     } finally {
+      isSavingMilestonesRef.current = false;
       setIsSavingMilestones(false);
     }
   };
@@ -5768,7 +5819,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   })();
 
   const handleReturnToDatabank = () => {
-    if (isReleaseBlocked) return;
+    if (isReleaseBlocked || isReturningDatabankRef.current) return;
     showConfirm({
       title: 'Trả khách hàng về Databank',
       message: 'Bạn có chắc chắn muốn trả khách hàng này về Databank chung không? Lưu ý:\n\n• Nếu bạn là người duy nhất chăm sóc khách hàng này, khách hàng sẽ được nhả về Databank chung (không còn thuộc sở hữu của bạn).\n• Nếu có từ 2 Sale chăm sóc song song trở lên, hệ thống sẽ chỉ xóa khách hàng khỏi danh sách cá nhân của bạn, không ảnh hưởng đến Sale khác.',
@@ -5776,15 +5827,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       cancelText: 'Hủy',
       isDanger: true,
       onConfirm: async () => {
+        if (isReturningDatabankRef.current) return;
+        isReturningDatabankRef.current = true;
         try {
           const res = await api.post(`/contacts/${contact.id}/release-databank`);
           if (res.data.success || res.data) {
             addToast(res.data.message || 'Thao tác thành công', 'success');
+            emitCrmSync(['contact-updated', 'lead-added', 'refresh-pending-counts']);
             onUpdate?.(null);
             onClose();
           }
         } catch (e: any) {
           addToast(e?.response?.data?.message || 'Không thể trả khách hàng về Databank', 'error');
+        } finally {
+          isReturningDatabankRef.current = false;
         }
       }
     });
@@ -6677,15 +6733,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             className="btn success sm"
                             style={{ padding: '4px 10px', fontSize: '0.75rem', height: '28px', color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
                             onClick={async () => {
+                              if (isActioningNotLeadRef.current) return;
+                              isActioningNotLeadRef.current = true;
                               try {
                                 const res = await api.put(`/contacts/${contact.id}`, { pipeline_status: 'not_lead' });
                                 if (res.data.success) {
                                   setFormData((prev: any) => ({ ...prev, pipeline_status: 'not_lead', not_lead_proposed: 0 }));
                                   addToast('Đã phê duyệt Not Lead thành công!', 'success');
                                   onUpdate?.({ ...formData, pipeline_status: 'not_lead', not_lead_proposed: 0 });
+                                  emitCrmSync(['contact-updated', 'refresh-pending-counts']);
                                 }
                               } catch (err: any) {
                                 addToast(err.response?.data?.message || 'Lỗi khi phê duyệt', 'error');
+                              } finally {
+                                isActioningNotLeadRef.current = false;
                               }
                             }}
                           >
@@ -6696,15 +6757,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             className="btn outline sm"
                             style={{ padding: '4px 10px', fontSize: '0.75rem', height: '28px' }}
                             onClick={async () => {
+                              if (isActioningNotLeadRef.current) return;
+                              isActioningNotLeadRef.current = true;
                               try {
                                 const res = await api.put(`/contacts/${contact.id}`, { not_lead_proposed: 0 });
                                 if (res.data.success) {
                                   setFormData((prev: any) => ({ ...prev, not_lead_proposed: 0 }));
                                   addToast('Đã từ chối đề xuất Not Lead!', 'success');
                                   onUpdate?.({ ...formData, not_lead_proposed: 0 });
+                                  emitCrmSync(['contact-updated', 'refresh-pending-counts']);
                                 }
                               } catch (err: any) {
                                 addToast(err.response?.data?.message || 'Lỗi khi từ chối', 'error');
+                              } finally {
+                                isActioningNotLeadRef.current = false;
                               }
                             }}
                           >

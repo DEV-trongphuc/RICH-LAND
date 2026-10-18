@@ -89,10 +89,10 @@ export const AIChatbot: React.FC = () => {
   };
 
   useEffect(() => {
-    if (chatMode === 'project_campaign' && projectsList.length === 0 && campaignsList.length === 0) {
+    if (isOpen && chatMode === 'project_campaign' && projectsList.length === 0 && campaignsList.length === 0) {
       loadEntities();
     }
-  }, [chatMode]);
+  }, [isOpen, chatMode]);
 
   const formatProjectContext = (proj: any, docs: any[]) => {
     if (!proj) return '';

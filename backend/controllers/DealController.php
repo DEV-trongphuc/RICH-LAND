@@ -538,8 +538,14 @@ class DealController {
             // 1b. If an active deposit exists, ensure no milestone has already been approved/collected
             $oldDep = null;
             if ($oldDeal['contact_id']) {
-                $stmtDep = $this->db->prepare("SELECT id, project_id FROM deposits WHERE contact_id = ? AND status != 'cancelled' ORDER BY id DESC LIMIT 1 FOR UPDATE");
-                $stmtDep->execute([$oldDeal['contact_id']]);
+                $oldUnitHint = '';
+                if (preg_match('/căn\s+([a-zA-Z0-9_-]+)/iu', (string)($oldDeal['title'] ?? ''), $mUnit)) {
+                    $oldUnitHint = trim($mUnit[1]);
+                } elseif (preg_match('/-\s*([^\-]+)$/', (string)($oldDeal['title'] ?? ''), $mUnit2)) {
+                    $oldUnitHint = trim($mUnit2[1]);
+                }
+                $stmtDep = $this->db->prepare("SELECT id, project_id, unit_code FROM deposits WHERE contact_id = ? AND status != 'cancelled' ORDER BY CASE WHEN (? != '' AND unit_code = ?) THEN 0 ELSE 1 END, id DESC LIMIT 1 FOR UPDATE");
+                $stmtDep->execute([$oldDeal['contact_id'], $oldUnitHint, $oldUnitHint]);
                 $oldDep = $stmtDep->fetch();
                 if ($oldDep) {
                     $stmtApprovedM = $this->db->prepare("SELECT COUNT(*) FROM deposit_milestones WHERE deposit_id = ? AND status = 'approved'");
@@ -638,6 +644,9 @@ class DealController {
                 ");
                 // standard commission is loaded dynamically from settings (default: 3%)
                 $commRate = (float)$this->getSetting('standard_commission_rate', '0.03');
+                if ($commRate > 1) {
+                    $commRate = $commRate / 100.0;
+                }
                 $comm = $newPrice * $commRate;
                 $stmtNewDep->execute([
                     $oldDeal['contact_id'],

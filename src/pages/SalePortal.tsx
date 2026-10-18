@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { triggerFullConfetti } from '../utils/confettiHelper';
+import { emitCrmSync } from '../utils/crmEvents';
 import {
   DndContext,
   closestCenter,
@@ -1348,6 +1349,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         toast.success(t('Chúc mừng! Bạn đã tranh nhận khách hàng thành công!'));
         // Immediately remove offers of this round (or all offers claimed) from state to prevent fast double grab
         setActiveOffers(prev => prev.filter(o => Number(o.lead_id) !== Number(leadId) && (!targetRoundId || Number(o.round_id) !== Number(targetRoundId))));
+        emitCrmSync(['contact-updated', 'lead-added', 'refresh-pending-counts']);
         loadPortalData();
         fetchActiveOffers();
       } else {
@@ -3104,7 +3106,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     });
   }, [data.leads, effectiveRole, dismissedLeadIds, sysSettings, now]);
 
+  const hasPendingCountdowns = Boolean(activeIncomingOffer) || pendingLeadsToAccept.length > 0;
+
   useEffect(() => {
+    if (!hasPendingCountdowns) return;
     const intervalMs = activeIncomingOffer ? 1000 : 10000;
     const timer = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
@@ -3113,7 +3118,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       setNow(Date.now());
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [activeIncomingOffer]);
+  }, [activeIncomingOffer, hasPendingCountdowns]);
 
   useEffect(() => {
     if (activeIncomingOffer) {
@@ -3148,8 +3153,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   }, [loc.search, activeTab]);
 
+  const loadTicketsReqIdRef = useRef(0);
+
   const loadTicketsData = async () => {
     if (!token) return;
+    const reqId = ++loadTicketsReqIdRef.current;
     setTicketsLoading(true);
     try {
       const queryParams = new URLSearchParams();
@@ -3166,6 +3174,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }
 
       const res = await fetchAPI(`get_reports&${queryParams.toString()}`);
+      if (reqId !== loadTicketsReqIdRef.current) return;
       if (res.success) {
         setTickets(res.data || []);
         setTicketTotalCount(res.total_count ?? 0);
@@ -3173,11 +3182,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         toast.error(res.message || t('Không thể tải danh sách ticket'));
       }
     } catch (err: any) {
-      if (err.message !== 'Unauthorized') {
+      if (reqId === loadTicketsReqIdRef.current && err.message !== 'Unauthorized') {
         toast.error(t('Lỗi tải ticket: ') + err.message);
       }
     }
-    setTicketsLoading(false);
+    if (reqId === loadTicketsReqIdRef.current) {
+      setTicketsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -3508,8 +3519,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setCallsModalPage(1);
   }, [callsSearch]);
 
+  const fetchWsTasksReqIdRef = useRef(0);
+
   const fetchWorkspaceTasks = async () => {
     if (!token) return;
+    const reqId = ++fetchWsTasksReqIdRef.current;
     setLoadingWsTasks(true);
     try {
       let url = '/activities?limit=300';
@@ -3550,6 +3564,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         api.get(callsUrl),
         fetchTaskGroups()
       ]);
+      if (reqId !== fetchWsTasksReqIdRef.current) return;
 
       if (res.data && res.data.data) {
         let rawTasks = res.data.data.items || res.data.data || [];
@@ -3566,7 +3581,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     } catch (e) {
       console.error(e);
     } finally {
-      setLoadingWsTasks(false);
+      if (reqId === fetchWsTasksReqIdRef.current) {
+        setLoadingWsTasks(false);
+      }
     }
   };
 
@@ -4470,7 +4487,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
 
+  const isReleasingLeadRef = useRef(false);
+  const loadPortalReqIdRef = useRef(0);
+
   const handleReleaseToDatabank = (leadId: number, contactId?: number) => {
+    if (isReleasingLeadRef.current) return;
     showConfirm({
       title: t('Nhả khách về Kho chung'),
       message: t('Bạn có chắc chắn muốn nhả khách hàng này về Kho chung (Databank)? Việc này sẽ thu hồi quyền sở hữu của các tư vấn viên hiện tại.'),
@@ -4478,6 +4499,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       cancelText: t('Hủy'),
       isDanger: true,
       onConfirm: async () => {
+        if (isReleasingLeadRef.current) return;
+        isReleasingLeadRef.current = true;
         setIsReleasingLead(true);
         try {
           let res;
@@ -4498,6 +4521,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             toast.success(res.message || t('Đã nhả về Kho chung thành công!'));
             setDetailModalOpen(false);
             setActiveDetailLead(null);
+            emitCrmSync(['contact-updated', 'lead-added', 'refresh-pending-counts']);
             loadPortalData();
           } else {
             toast.error(res.message || t('Lỗi khi nhả về Kho chung.'));
@@ -4505,6 +4529,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         } catch (e: any) {
           toast.error(t('Lỗi kết nối') + ': ' + e.message);
         } finally {
+          isReleasingLeadRef.current = false;
           setIsReleasingLead(false);
         }
       }
@@ -4516,6 +4541,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token || !ALLOWED_PORTAL_ROLES.includes(user?.role || '')) return;
     const activePaths = ['/', '/workspace', '/portal', '/account', '/calendar', '/databank', '/fair-share'];
     if (!activePaths.includes(loc.pathname)) return;
+    const reqId = ++loadPortalReqIdRef.current;
     if (!isSilent && !data?.consultant_profile && loc.pathname !== '/account') setLoading(true);
     fetchPortalTasks();
     fetchPortalCoops();
@@ -4529,6 +4555,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         query += `&start_date=${startDate}&end_date=${endDate}`;
       }
       const json = await fetchAPI(query);
+      if (reqId !== loadPortalReqIdRef.current) return;
       if (json.success) {
         setData(json);
         if (json.vacation_mode !== undefined) {
@@ -4558,11 +4585,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         if (!isSilent) toast.error(json.message || t('Không thể tải dữ liệu'));
       }
     } catch (err: any) {
-      if (!isSilent && err.message !== 'Unauthorized') {
+      if (reqId === loadPortalReqIdRef.current && !isSilent && err.message !== 'Unauthorized') {
         toast.error(t('Lỗi tải dữ liệu: ') + err.message);
       }
     }
-    if (!isSilent) setLoading(false);
+    if (reqId === loadPortalReqIdRef.current && !isSilent) {
+      setLoading(false);
+    }
   };
 
   const [togglingVacation, setTogglingVacation] = useState(false);
@@ -4966,12 +4995,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
   const isLate = checkIsLate();
 
+  const fetchPublicLeadsReqIdRef = useRef(0);
+
   const fetchPublicLeads = async () => {
+    const reqId = ++fetchPublicLeadsReqIdRef.current;
     setPublicLoading(true);
     setDatabankPage(1);
     setSelectedPublicLeads([]);
     try {
       const res = await fetchAPI(`get_public_leads&show_deleted=${showDeletedFilter}`);
+      if (reqId !== fetchPublicLeadsReqIdRef.current) return;
       if (res.success) {
         setPublicLeads(res.data || []);
         if (res.quota) {
@@ -4992,7 +5025,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     } catch (e) {
       console.error(e);
     } finally {
-      setPublicLoading(false);
+      if (reqId === fetchPublicLeadsReqIdRef.current) {
+        setPublicLoading(false);
+      }
     }
   };
 
@@ -5117,8 +5152,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setClaimLeadConfirmOpen(true);
   };
 
+  const isClaimingPublicLeadRef = useRef(false);
+
   const handleExecuteClaimLead = async () => {
-    if (!claimLeadPerson) return;
+    if (!claimLeadPerson || isClaimingPublicLeadRef.current) return;
+    isClaimingPublicLeadRef.current = true;
     const personId = claimLeadPerson.id;
     setIsClaimingLeadId(personId);
     try {
@@ -5129,6 +5167,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (json.success) {
         toast.success(json.message || t('Nhận data thành công!'));
         setClaimLeadConfirmOpen(false);
+        emitCrmSync(['contact-updated', 'lead-added', 'refresh-pending-counts']);
         fetchPublicLeads();
         loadPortalData();
         if (json.contact_id) {
@@ -5142,6 +5181,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       toast.error(t('Lỗi: ') + e.message);
       setClaimLeadConfirmOpen(false);
     } finally {
+      isClaimingPublicLeadRef.current = false;
       setIsClaimingLeadId(null);
     }
   };
@@ -5373,7 +5413,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
+  const isAcceptingLeadRef = useRef(false);
+
   const handleAcceptLead = async (leadId: number) => {
+    if (isAcceptingLeadRef.current) return;
+    isAcceptingLeadRef.current = true;
     try {
       const json = await fetchAPI('accept_lead', {
         method: 'POST',
@@ -5382,6 +5426,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (json.success) {
         toast.success(t('Tiếp nhận lead thành công!'));
         window.dispatchEvent(new CustomEvent('lead-accepted', { detail: { leadId } }));
+        emitCrmSync(['contact-updated', 'lead-added', 'refresh-pending-counts']);
         loadPortalData();
       } else {
         toast.error(json.message || t('Lỗi tiếp nhận lead'));
@@ -5389,6 +5434,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }
     } catch (err: any) {
       toast.error(t('Lỗi kết nối: ') + err.message);
+    } finally {
+      isAcceptingLeadRef.current = false;
     }
   };
 
@@ -6356,35 +6403,40 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
-  const filteredLeads = data.leads.filter((lead: any) => {
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'assigned') {
-        if (!['assigned', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim'].includes(lead.status) || lead.report_status) return false;
-      } else if (statusFilter === 'databank_claim') {
-        if (lead.status !== 'databank_claim' || lead.report_status) return false;
-      } else if (statusFilter === 'compensation') {
-        if (lead.status !== 'compensation' || lead.report_status) return false;
-      } else if (statusFilter === 'reminder') {
-        if (lead.status !== 'reminder') return false;
-      } else if (statusFilter === 'pending_ticket') {
-        if (lead.report_status !== 'pending') return false;
-      } else if (statusFilter === 'approved_ticket') {
-        if (lead.report_status !== 'approved') return false;
-      } else if (statusFilter === 'approved_no_comp_ticket') {
-        if (lead.report_status !== 'approved_no_comp') return false;
-      } else if (statusFilter === 'not_contacted') {
-        if (lead.contact_last_contact) return false;
-      } else if (statusFilter === 'rejected_ticket') {
-        if (lead.report_status !== 'rejected') return false;
+  const filteredLeads = useMemo(() => {
+    return (data.leads || []).filter((lead: any) => {
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'assigned') {
+          if (!['assigned', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim'].includes(lead.status) || lead.report_status) return false;
+        } else if (statusFilter === 'databank_claim') {
+          if (lead.status !== 'databank_claim' || lead.report_status) return false;
+        } else if (statusFilter === 'compensation') {
+          if (lead.status !== 'compensation' || lead.report_status) return false;
+        } else if (statusFilter === 'reminder') {
+          if (lead.status !== 'reminder') return false;
+        } else if (statusFilter === 'pending_ticket') {
+          if (lead.report_status !== 'pending') return false;
+        } else if (statusFilter === 'approved_ticket') {
+          if (lead.report_status !== 'approved') return false;
+        } else if (statusFilter === 'approved_no_comp_ticket') {
+          if (lead.report_status !== 'approved_no_comp') return false;
+        } else if (statusFilter === 'not_contacted') {
+          if (lead.contact_last_contact) return false;
+        } else if (statusFilter === 'rejected_ticket') {
+          if (lead.report_status !== 'rejected') return false;
+        }
       }
-    }
-    return true;
-  });
+      return true;
+    });
+  }, [data.leads, statusFilter]);
 
   const ITEMS_PER_PAGE = 10;
   const totalCount = filteredLeads.length;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-  const paginatedLeads = filteredLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const paginatedLeads = useMemo(
+    () => filteredLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [filteredLeads, currentPage]
+  );
 
   // Render Login Layout if not authorized
   if (!token || !ALLOWED_PORTAL_ROLES.includes(user?.role || '')) {

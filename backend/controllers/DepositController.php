@@ -263,7 +263,7 @@ class DepositController {
             $stmtStage->execute([$dealWonStatus, $auth['tenant_id']]);
             $wonStageId = $stmtStage->fetchColumn() ?: 6;
 
-            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = ?, stage_id = ?, status = 'customer', temperature = 'hot', suggested_temperature = 'hot', expected_revenue = ? WHERE id = ? AND tenant_id = ?");
+            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = ?, stage_id = ?, status = 'customer', temperature = 'hot', suggested_temperature = 'hot', expected_revenue = ?, win_probability = 90 WHERE id = ? AND tenant_id = ?");
             $stmtUpC->execute([$dealWonStatus, $wonStageId, $price, $contactId, $auth['tenant_id']]);
 
             // Withdraw from databank and terminate other parallel contacts
@@ -422,9 +422,14 @@ class DepositController {
                 $coopCtrl->dispatchAutoSlipNotifications((int)$deferredAutoSlip['slip_id'], $deferredAutoSlip['shares'] ?? []);
             }
             
-            // Trigger Meta CAPI Purchase event (Pending state)
-            require_once __DIR__ . '/../config/CapiHelper.php';
-            CapiHelper::sendEvent($this->db, $contactId, 'Purchase', $price);
+            // Trigger Meta CAPI Purchase event asynchronously on shutdown so deposit creation response is instant
+            $dbRef = $this->db;
+            $cIdForCapi = (int)$contactId;
+            $priceForCapi = (float)$price;
+            register_shutdown_function(function () use ($dbRef, $cIdForCapi, $priceForCapi) {
+                require_once __DIR__ . '/../config/CapiHelper.php';
+                CapiHelper::sendEvent($dbRef, $cIdForCapi, 'Purchase', $priceForCapi);
+            });
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_DEPOSIT', 'deposit', $depositId, "Tạo cọc căn $unitCode cho khách hàng " . $contact['first_name'] . " " . $contact['last_name']);
             respond(200, [
@@ -710,12 +715,33 @@ class DepositController {
         $b = getBody();
         $reason = trim($b['reason'] ?? 'Không rõ lý do');
 
-        $stmt = $this->db->prepare("
-            UPDATE deposit_milestones 
-            SET status = 'failed', unc_file_path = NULL 
-            WHERE id = ? AND deposit_id = ?
-        ");
-        $stmt->execute([$milestoneId, $id]);
+        $this->db->beginTransaction();
+        try {
+            $stmtLock = $this->db->prepare("SELECT status, milestone_name, expected_amount FROM deposit_milestones WHERE id = ? AND deposit_id = ? FOR UPDATE");
+            $stmtLock->execute([$milestoneId, $id]);
+            $mileData = $stmtLock->fetch(PDO::FETCH_ASSOC);
+            if (!$mileData) {
+                $this->db->rollBack();
+                respond(404, null, 'Đợt thanh toán không tồn tại', false);
+            }
+            if (($mileData['status'] ?? '') === 'approved') {
+                $this->db->rollBack();
+                respond(409, null, 'Đợt thanh toán này đã được phê duyệt doanh thu, không thể từ chối', false);
+            }
+
+            $stmt = $this->db->prepare("
+                UPDATE deposit_milestones 
+                SET status = 'failed', unc_file_path = NULL 
+                WHERE id = ? AND deposit_id = ?
+            ");
+            $stmt->execute([$milestoneId, $id]);
+            $this->db->commit();
+        } catch (\Throwable $txEx) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $txEx;
+        }
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'REJECT_DEPOSIT_MILESTONE', 'deposit_milestone', $milestoneId, "Từ chối đóng tiền đợt ID: $milestoneId. Lý do: $reason");
 
@@ -730,10 +756,6 @@ class DepositController {
         ");
         $stmtDep->execute([$id]);
         $depositData = $stmtDep->fetch();
-
-        $stmtMile = $this->db->prepare("SELECT milestone_name, expected_amount FROM deposit_milestones WHERE id = ?");
-        $stmtMile->execute([$milestoneId]);
-        $mileData = $stmtMile->fetch();
 
         if ($depositData && $mileData) {
             $uIdsToNotify = [];
@@ -765,20 +787,18 @@ class DepositController {
                 $stmtUsers->execute($uIdsToNotify);
                 $usersList = $stmtUsers->fetchAll();
 
-                    require_once __DIR__ . '/../NotificationService.php';
+                require_once __DIR__ . '/../NotificationService.php';
 
-                    foreach ($usersList as $u) {
-                        NotificationService::send($this->db, $auth['tenant_id'], 'MY_DEPOSIT_UPDATE', [
-                            'user_id' => (int)$u['id'],
-                            'deposit_id' => $id,
-                            'customer_name' => trim($depositData['first_name'] . ' ' . ($depositData['last_name'] ?? '')),
-                            'status_text' => 'bị từ chối đợt thanh toán ' . ($mileData['milestone_name'] ?? ''),
-                            'reason' => $reason
-                        ]);
-                    }
+                foreach ($usersList as $u) {
+                    NotificationService::send($this->db, $auth['tenant_id'], 'MY_DEPOSIT_UPDATE', [
+                        'user_id' => (int)$u['id'],
+                        'deposit_id' => $id,
+                        'customer_name' => trim($depositData['first_name'] . ' ' . ($depositData['last_name'] ?? '')),
+                        'status_text' => 'bị từ chối đợt thanh toán ' . ($mileData['milestone_name'] ?? ''),
+                        'reason' => $reason
+                    ]);
+                }
             }
-
-
         }
 
         respond(200, null, 'Đã từ chối và yêu cầu tải lại UNC');
@@ -793,7 +813,7 @@ class DepositController {
         try {
             // Fetch deposit info and lock row to prevent double-cancellation race condition
             $stmtDep = $this->db->prepare("
-                SELECT d.contact_id, d.status, d.created_by, c.owner_id, c.tenant_id 
+                SELECT d.contact_id, d.status, d.created_by, d.unit_code, d.project_id, c.owner_id, c.tenant_id 
                 FROM deposits d 
                 JOIN contacts c ON d.contact_id = c.id
                 WHERE d.id = ? AND c.tenant_id = ?
@@ -920,6 +940,18 @@ class DepositController {
             $stmtCancel = $this->db->prepare("UPDATE deposits SET status = 'cancelled', cancelled_reason = ? WHERE id = ?");
             $stmtCancel->execute([$reason, $id]);
 
+            // Cancel linked cooperation_slips so cancelled deposits do not leave active/pending cooperation slips
+            $stmtCancelCoop = $this->db->prepare("UPDATE cooperation_slips SET status = 'cancelled', rejection_reason = ? WHERE deposit_slip_id = ? AND status != 'cancelled'");
+            $stmtCancelCoop->execute(["Tự động hủy do phiếu cọc #$id bị hủy: $reason", $id]);
+
+            // Release locked product unit if unit_code and project_id exist
+            if (!empty($dep['unit_code']) && !empty($dep['project_id'])) {
+                try {
+                    $stmtRelProd = $this->db->prepare("UPDATE products SET status = 'available' WHERE (code = ? OR name = ?) AND project_id = ? AND status IN ('locked', 'sold', 'reserved')");
+                    $stmtRelProd->execute([$dep['unit_code'], $dep['unit_code'], $dep['project_id']]);
+                } catch (\Throwable $prodEx) {}
+            }
+
             // Fetch owner info for post-commit notifications
             $stmtOwner = $this->db->prepare("
                 SELECT u.email, u.full_name, CONCAT(c.first_name, ' ', COALESCE(c.last_name, '')) as contact_name 
@@ -933,9 +965,9 @@ class DepositController {
             $this->db->commit();
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CANCEL_DEPOSIT', 'deposit', $id, "Hủy cọc/Bể cọc. Lý do: $reason");
 
-            // Email & Multi-channel notifications AFTER commit
-            require_once __DIR__ . '/../mailer.php';
+            // Defer Email notification to shutdown AFTER commit
             if ($ownerRow && !empty($ownerRow['email'])) {
+                $toEmail = $ownerRow['email'];
                 $emailSubject = "[RICH LAND] Báo cáo hủy cọc / Bể cọc khách hàng: " . $ownerRow['contact_name'];
                 $emailTitle = "BÁO CÁO HỦY CỌC / BỂ CỌC";
                 $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
@@ -943,7 +975,10 @@ class DepositController {
                                 "Lý do: <em>" . htmlspecialchars($reason) . "</em>.<br/>" .
                                 "Trạng thái khách hàng đã được " . ($approvedCount === 0 ? "hạ về <strong>Đặt chỗ (Booking / Đã gặp)</strong>" : "giữ nguyên <strong>Đặt cọc (Customer)</strong> do đã phát sinh doanh thu thực tế") . ".<br/>" .
                                 "Vui lòng kiểm tra trên RICH LAND CRM.";
-                sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                register_shutdown_function(function () use ($toEmail, $emailSubject, $emailTitle, $emailContent) {
+                    require_once __DIR__ . '/../mailer.php';
+                    sendEmailNotification($toEmail, $emailSubject, $emailTitle, $emailContent, '', false);
+                });
             }
 
             // Unified multi-channel notification (In-app bell, Telegram, Zalo) via NotificationService

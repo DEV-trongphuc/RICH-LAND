@@ -11,10 +11,15 @@ class CheckInController {
     public function index(array $auth): void {
         // Option to check only today's check-in for the logged-in user (useful for dashboard/buttons)
         // Option to check only today's check-in for the logged-in user (useful for dashboard/buttons)
+        $globalSettingsRes = $this->db->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('global_work_start_time', 'global_work_schedule')");
+        $globalSettingsMap = $globalSettingsRes ? ($globalSettingsRes->fetchAll(PDO::FETCH_KEY_PAIR) ?: []) : [];
+        $globalWorkStart = $globalSettingsMap['global_work_start_time'] ?? '08:00';
+        $globalSched = !empty($globalSettingsMap['global_work_schedule']) ? json_decode($globalSettingsMap['global_work_schedule'], true) : null;
+
         if (isset($_GET['today_only']) && $_GET['today_only'] == '1') {
             try {
                 $stmt = $this->db->prepare("
-                    SELECT c.*, IF(COALESCE(u.use_custom_work_hours, 0) = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time, u.work_schedule as user_work_schedule, u.use_custom_work_hours, u.full_name as user_name
+                    SELECT c.*, u.work_start_time as user_work_start_time, u.work_schedule as user_work_schedule, u.use_custom_work_hours, u.full_name as user_name
                     FROM check_ins c
                     JOIN users u ON c.user_id = u.id
                     WHERE c.user_id = ? AND c.check_in_date = ?
@@ -22,9 +27,7 @@ class CheckInController {
                 $stmt->execute([$auth['user_id'], date('Y-m-d')]);
                 $row = $stmt->fetch();
                 if ($row) {
-                    $globalSchedRes = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
-                    $globalSchedRow = $globalSchedRes ? $globalSchedRes->fetch() : null;
-                    $globalSched = $globalSchedRow && !empty($globalSchedRow['setting_value']) ? json_decode($globalSchedRow['setting_value'], true) : null;
+                    $row['work_start_time'] = ((int)($row['use_custom_work_hours'] ?? 0) === 1 && !empty($row['user_work_start_time'])) ? $row['user_work_start_time'] : $globalWorkStart;
                     $sched = ((int)($row['use_custom_work_hours'] ?? 0) === 1 && !empty($row['user_work_schedule'])) ? json_decode($row['user_work_schedule'], true) : $globalSched;
                     $dayN = (string)date('N');
                     if (is_array($sched) && !empty($sched[$dayN]['start'])) {
@@ -34,30 +37,26 @@ class CheckInController {
                 respond(200, $row ?: null, 'Lấy thông tin check-in hôm nay thành công');
             } catch (\Throwable $e) {
                 $stmt = $this->db->prepare("
-                    SELECT c.*, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1) AS work_start_time, u.full_name as user_name
+                    SELECT c.*, u.full_name as user_name
                     FROM check_ins c
                     JOIN users u ON c.user_id = u.id
                     WHERE c.user_id = ? AND c.check_in_date = ?
                 ");
                 $stmt->execute([$auth['user_id'], date('Y-m-d')]);
                 $row = $stmt->fetch();
+                if ($row) {
+                    $row['work_start_time'] = $globalWorkStart;
+                }
                 respond(200, $row ?: null, 'Lấy thông tin check-in hôm nay thành công');
             }
         }
 
         $isManager = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'], true);
         
-        try {
-            $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, u.work_schedule as user_work_schedule, u.use_custom_work_hours, IF(COALESCE(u.use_custom_work_hours, 0) = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
-                    FROM check_ins c
-                    JOIN users u ON c.user_id = u.id
-                    WHERE u.tenant_id = ?";
-        } catch (\Throwable $e) {
-            $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1) AS work_start_time
-                    FROM check_ins c
-                    JOIN users u ON c.user_id = u.id
-                    WHERE u.tenant_id = ?";
-        }
+        $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, u.work_schedule as user_work_schedule, u.use_custom_work_hours, u.work_start_time as user_work_start_time
+                FROM check_ins c
+                JOIN users u ON c.user_id = u.id
+                WHERE u.tenant_id = ?";
         
         $params = [$auth['tenant_id']];
 
@@ -114,11 +113,8 @@ class CheckInController {
         $stmt->execute($params);
         $rows = $stmt->fetchAll() ?: [];
 
-        $globalSchedRes = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
-        $globalSchedRow = $globalSchedRes ? $globalSchedRes->fetch() : null;
-        $globalSched = $globalSchedRow && !empty($globalSchedRow['setting_value']) ? json_decode($globalSchedRow['setting_value'], true) : null;
-
         foreach ($rows as &$r) {
+            $r['work_start_time'] = ((int)($r['use_custom_work_hours'] ?? 0) === 1 && !empty($r['user_work_start_time'])) ? $r['user_work_start_time'] : $globalWorkStart;
             $sched = null;
             if ((int)($r['use_custom_work_hours'] ?? 0) === 1 && !empty($r['user_work_schedule'])) {
                 $sched = json_decode($r['user_work_schedule'], true);
@@ -149,117 +145,50 @@ class CheckInController {
                 $userIdFilter = $uRow ? (int)$uRow['id'] : $cIdVal;
             }
 
+            $rangeStart = '';
+            $rangeEnd = '';
             if (isset($_GET['month']) && !empty($_GET['month'])) {
                 $year = (int)($_GET['year'] ?? date('Y'));
                 $month = max(1, min(12, (int)$_GET['month']));
-                $startDate = sprintf('%04d-%02d-01', $year, $month);
-                $endDate = date('Y-m-t', strtotime($startDate));
-
-                // 1. Night shifts
-                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                    u.full_name as user_name, '' as holiday_name, 
-                                    u.avatar_url as user_avatar, 
-                                    u.email as user_email 
-                             FROM night_shift_registrations r 
-                             LEFT JOIN users u ON r.user_id = u.id 
-                             WHERE r.shift_date BETWEEN ? AND ?";
-                $nightParams = [$startDate, $endDate];
-                if ($userIdFilter !== null) {
-                    $nightSql .= " AND r.user_id = ?";
-                    $nightParams[] = $userIdFilter;
-                }
-                $stmtNight = $this->db->prepare($nightSql);
-                $stmtNight->execute($nightParams);
-                $shifts = array_merge($shifts, $stmtNight->fetchAll(PDO::FETCH_ASSOC) ?: []);
-
-                // 2. Weekend shifts
-                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                      u.full_name as user_name, '' as holiday_name, 
-                                      u.avatar_url as user_avatar, 
-                                      u.email as user_email 
-                               FROM weekend_shift_registrations r 
-                               LEFT JOIN users u ON r.user_id = u.id 
-                               WHERE r.shift_date BETWEEN ? AND ?";
-                $weekendParams = [$startDate, $endDate];
-                if ($userIdFilter !== null) {
-                    $weekendSql .= " AND r.user_id = ?";
-                    $weekendParams[] = $userIdFilter;
-                }
-                $stmtWeekend = $this->db->prepare($weekendSql);
-                $stmtWeekend->execute($weekendParams);
-                $shifts = array_merge($shifts, $stmtWeekend->fetchAll(PDO::FETCH_ASSOC) ?: []);
-
-                // 3. Holiday shifts
-                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                      u.full_name as user_name, r.holiday_name, 
-                                      u.avatar_url as user_avatar, 
-                                      u.email as user_email 
-                               FROM holiday_shift_registrations r 
-                               LEFT JOIN users u ON r.user_id = u.id 
-                               WHERE r.shift_date BETWEEN ? AND ?";
-                $holidayParams = [$startDate, $endDate];
-                if ($userIdFilter !== null) {
-                    $holidaySql .= " AND r.user_id = ?";
-                    $holidayParams[] = $userIdFilter;
-                }
-                $stmtHoliday = $this->db->prepare($holidaySql);
-                $stmtHoliday->execute($holidayParams);
-                $shifts = array_merge($shifts, $stmtHoliday->fetchAll(PDO::FETCH_ASSOC) ?: []);
-
+                $rangeStart = sprintf('%04d-%02d-01', $year, $month);
+                $rangeEnd = date('Y-m-t', strtotime($rangeStart));
             } else if (!empty($fromDateParam) && !empty($toDateParam)) {
-                $from = $fromDateParam;
-                $to = $toDateParam;
+                $rangeStart = $fromDateParam;
+                $rangeEnd = $toDateParam;
+            }
 
-                // 1. Night shifts
-                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                    u.full_name as user_name, '' as holiday_name, 
-                                    u.avatar_url as user_avatar, 
-                                    u.email as user_email 
-                             FROM night_shift_registrations r 
-                             LEFT JOIN users u ON r.user_id = u.id 
-                             WHERE r.shift_date BETWEEN ? AND ?";
-                $nightParams = [$from, $to];
-                if ($userIdFilter !== null) {
-                    $nightSql .= " AND r.user_id = ?";
-                    $nightParams[] = $userIdFilter;
+            if ($rangeStart !== '' && $rangeEnd !== '') {
+                $userCond = $userIdFilter !== null ? " AND r.user_id = ?" : "";
+                $unionSql = "
+                    SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at,
+                           u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email
+                    FROM night_shift_registrations r
+                    LEFT JOIN users u ON r.user_id = u.id
+                    WHERE r.shift_date BETWEEN ? AND ? $userCond
+                    UNION ALL
+                    SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at,
+                           u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email
+                    FROM weekend_shift_registrations r
+                    LEFT JOIN users u ON r.user_id = u.id
+                    WHERE r.shift_date BETWEEN ? AND ? $userCond
+                    UNION ALL
+                    SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at,
+                           u.full_name as user_name, r.holiday_name, u.avatar_url as user_avatar, u.email as user_email
+                    FROM holiday_shift_registrations r
+                    LEFT JOIN users u ON r.user_id = u.id
+                    WHERE r.shift_date BETWEEN ? AND ? $userCond
+                ";
+                $unionParams = [];
+                for ($i = 0; $i < 3; $i++) {
+                    $unionParams[] = $rangeStart;
+                    $unionParams[] = $rangeEnd;
+                    if ($userIdFilter !== null) {
+                        $unionParams[] = $userIdFilter;
+                    }
                 }
-                $stmtNight = $this->db->prepare($nightSql);
-                $stmtNight->execute($nightParams);
-                $shifts = array_merge($shifts, $stmtNight->fetchAll(PDO::FETCH_ASSOC) ?: []);
-
-                // 2. Weekend shifts
-                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                      u.full_name as user_name, '' as holiday_name, 
-                                      u.avatar_url as user_avatar, 
-                                      u.email as user_email 
-                               FROM weekend_shift_registrations r 
-                               LEFT JOIN users u ON r.user_id = u.id 
-                               WHERE r.shift_date BETWEEN ? AND ?";
-                $weekendParams = [$from, $to];
-                if ($userIdFilter !== null) {
-                    $weekendSql .= " AND r.user_id = ?";
-                    $weekendParams[] = $userIdFilter;
-                }
-                $stmtWeekend = $this->db->prepare($weekendSql);
-                $stmtWeekend->execute($weekendParams);
-                $shifts = array_merge($shifts, $stmtWeekend->fetchAll(PDO::FETCH_ASSOC) ?: []);
-
-                // 3. Holiday shifts
-                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, 
-                                      u.full_name as user_name, r.holiday_name, 
-                                      u.avatar_url as user_avatar, 
-                                      u.email as user_email 
-                               FROM holiday_shift_registrations r 
-                               LEFT JOIN users u ON r.user_id = u.id 
-                               WHERE r.shift_date BETWEEN ? AND ?";
-                $holidayParams = [$from, $to];
-                if ($userIdFilter !== null) {
-                    $holidaySql .= " AND r.user_id = ?";
-                    $holidayParams[] = $userIdFilter;
-                }
-                $stmtHoliday = $this->db->prepare($holidaySql);
-                $stmtHoliday->execute($holidayParams);
-                $shifts = array_merge($shifts, $stmtHoliday->fetchAll(PDO::FETCH_ASSOC) ?: []);
+                $stmtShifts = $this->db->prepare($unionSql);
+                $stmtShifts->execute($unionParams);
+                $shifts = $stmtShifts->fetchAll(PDO::FETCH_ASSOC) ?: [];
             }
 
             respond(200, [
@@ -517,13 +446,25 @@ class CheckInController {
             $uDetails = $stmtUserDetails->fetch(PDO::FETCH_ASSOC);
 
             $eventType = $isSupplementary ? 'ATTENDANCE_UPDATE' : 'CHECKIN_LATE';
-            NotificationService::send($this->db, $auth['tenant_id'], $eventType, [
+            $dbRef = $this->db;
+            $tidRef = $auth['tenant_id'];
+            $notifPayload = [
                 'user_name' => $uDetails ? $uDetails['full_name'] : 'Nhân viên',
                 'team_id' => $uDetails ? $uDetails['team_id'] : null,
                 'date' => $today,
                 'time' => $currentTime,
                 'reason' => $reason
-            ]);
+            ];
+            register_shutdown_function(function () use ($dbRef, $tidRef, $eventType, $notifPayload) {
+                try {
+                    if (function_exists('fastcgi_finish_request')) {
+                        @fastcgi_finish_request();
+                    }
+                    NotificationService::send($dbRef, $tidRef, $eventType, $notifPayload);
+                } catch (\Throwable $e) {
+                    error_log("Deferred CheckIn store notification error: " . $e->getMessage());
+                }
+            });
         }
 
         $msgText = 'Check-in thành công!';
@@ -619,17 +560,29 @@ class CheckInController {
             'sale_name' => $row['full_name']
         ]));
 
-        // Send approval result notification to employee via NotificationService (In-App Bell, Email, Zalo, Telegram)
+        // Defer approval result notification to employee via NotificationService (PERF-BE-06)
         require_once __DIR__ . '/../NotificationService.php';
         $isSupplementary = !empty($row['reason']) && (mb_stripos($row['reason'], 'bổ sung') !== false || $row['check_in_date'] !== date('Y-m-d'));
-        NotificationService::send($this->db, $auth['tenant_id'], 'ATTENDANCE_APPROVAL_RESULT', [
+        $dbRef = $this->db;
+        $tidRef = $auth['tenant_id'];
+        $notifPayload = [
             'user_id' => (int)$row['user_id'],
             'user_name' => $row['full_name'] ?? 'Nhân viên',
             'date' => $row['check_in_date'],
             'status' => $status,
             'reason' => $adminNote ?: ($row['reason'] ?? ''),
             'is_supplementary' => $isSupplementary
-        ]);
+        ];
+        register_shutdown_function(function () use ($dbRef, $tidRef, $notifPayload) {
+            try {
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
+                NotificationService::send($dbRef, $tidRef, 'ATTENDANCE_APPROVAL_RESULT', $notifPayload);
+            } catch (\Throwable $e) {
+                error_log("Deferred CheckIn update notification error: " . $e->getMessage());
+            }
+        });
 
         respond(200, null, 'Cập nhật trạng thái check-in thành công');
     }

@@ -7,8 +7,14 @@ require_once __DIR__ . '/db_connect.php';
 // Đặt thời gian thực thi không giới hạn để tránh timeout khi xử lý file lớn hoặc gửi nhiều Email/Zalo
 set_time_limit(0);
 
+$isDirectCronRun = !defined('CRON_SYNC_FUNCTIONS_ONLY') && (
+    php_sapi_name() === 'cli' ||
+    isset($argv[1]) ||
+    realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === realpath(__FILE__)
+);
+
 // --- PREVENT CONCURRENT EXECUTION (CHỐNG XUNG ĐỘT) ---
-if (!defined('BYPASS_CRON_LOCK')) {
+if ($isDirectCronRun && !defined('BYPASS_CRON_LOCK')) {
     $lockFile = sys_get_temp_dir() . '/cron_sync_' . md5(__DIR__) . '.lock';
     $lockFp = @fopen($lockFile, 'w');
     if (!$lockFp) {
@@ -33,11 +39,11 @@ if (!defined('BYPASS_CRON_LOCK')) {
 }
 // --- END PREVENT CONCURRENT EXECUTION ---
 
-if (!defined('DIAG_TOKEN')) {
+if ($isDirectCronRun && !defined('DIAG_TOKEN')) {
     // Auto-recover any sheet connections stuck in 'syncing' status from a previous crashed run (older than 10 minutes)
     $conn->query("UPDATE sheet_connections SET sync_status = 'idle' WHERE sync_status = 'syncing' AND (last_sync_at IS NULL OR last_sync_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE))");
 
-    // Ensure sheet_sync_records table exists
+    // Ensure sheet_sync_records table exists (only on direct cron run to avoid MySQL implicit commit when included)
     $conn->query("CREATE TABLE IF NOT EXISTS sheet_sync_records (
         connection_id INT,
         row_hash VARCHAR(64),
@@ -55,7 +61,12 @@ require_once __DIR__ . '/zalo_bot.php';
 
 if (!function_exists('logSync')) {
     function logSync($msg) {
-        echo "[" . date('Y-m-d H:i:s') . "] " . $msg . "\n";
+        if (defined('CRON_SYNC_SILENT_LOG')) {
+            return;
+        }
+        if (php_sapi_name() === 'cli' || realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === realpath(__FILE__) || defined('BYPASS_CRON_LOCK') || isset($GLOBALS['argv'][1])) {
+            echo "[" . date('Y-m-d H:i:s') . "] " . $msg . "\n";
+        }
     }
 }
 
@@ -801,97 +812,98 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     }
                 }
 
-                $assignedConsultantId = null;
-                $assignResult = null;
-                if ($row['round_id'] > 0) {
-                    $maxAttempts = (int) get_system_setting($conn, 'lead_max_recall_attempts');
-                    $cooldownMins = (int) get_system_setting($conn, 'lead_recall_cooldown_minutes');
-                    $excludeIds = [];
-
-                    if ($maxAttempts > 0) {
-                        $attStmt = $conn->prepare("
-                            SELECT assigned_to, COUNT(*) as cnt 
-                            FROM distribution_logs 
-                            WHERE lead_id = ? AND status = 'recalled' AND received_at >= CURDATE() 
-                            GROUP BY assigned_to
-                        ");
-                        if ($attStmt) {
-                            $attStmt->bind_param("i", $row['lead_id']);
-                            $attStmt->execute();
-                            $attRes = $attStmt->get_result();
-                            while ($attRow = $attRes->fetch_assoc()) {
-                                if ((int)$attRow['cnt'] >= $maxAttempts) {
-                                    $excludeIds[] = (int)$attRow['assigned_to'];
-                                }
-                            }
-                            $attStmt->close();
-                        }
-                    }
-
-                    if ($cooldownMins > 0) {
-                        $coolStmt = $conn->prepare("
-                            SELECT DISTINCT assigned_to 
-                            FROM distribution_logs 
-                            WHERE lead_id = ? AND status = 'recalled' 
-                              AND received_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
-                        ");
-                        if ($coolStmt) {
-                            $coolStmt->bind_param("ii", $row['lead_id'], $cooldownMins);
-                            $coolStmt->execute();
-                            $coolRes = $coolStmt->get_result();
-                            while ($coolRow = $coolRes->fetch_assoc()) {
-                                $excludeIds[] = (int)$coolRow['assigned_to'];
-                            }
-                            $coolStmt->close();
-                        }
-                    }
-
-                    $assignResult = getNextConsultantInRound($conn, $row['round_id'], null, array_values(array_unique($excludeIds)));
-                    if ($assignResult) {
-                        $assignedConsultantId = $assignResult['id'];
-                    }
-                }
-                
-                $isFallbackAdmin = false;
-                $fallbackAdminData = null;
-                $fallbackCcEmails = '';
-                if (!$assignedConsultantId) {
-                    $fbSettings = [];
-                    $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
-                    if ($fbRes) {
-                        while ($fbRow = $fbRes->fetch_assoc()) {
-                            $fbSettings[$fbRow['setting_key']] = $fbRow['setting_value'];
-                        }
-                    }
-                    $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
-                    $fbCc = $fbSettings['fallback_cc_email'] ?? '';
-                    
-                    if ($fbAdminId > 0) {
-                        $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin') LIMIT 1");
-                        if ($admStmt) {
-                            $admStmt->bind_param("i", $fbAdminId);
-                            $admStmt->execute();
-                            $admRes = $admStmt->get_result();
-                            if ($admRes->num_rows > 0) {
-                                $fallbackAdminData = $admRes->fetch_assoc();
-                                $isFallbackAdmin = true;
-                                $fallbackCcEmails = $fbCc;
-                            }
-                            $admStmt->close();
-                        }
-                    }
-                }
-
-                $oldAssignedTo = $row['assigned_to'] !== null ? (int)$row['assigned_to'] : null;
-                $newAssignedTo = $assignedConsultantId !== null ? (int)$assignedConsultantId : ($isFallbackAdmin ? (int)$fallbackAdminData['id'] : null);
-                
-                if ($newAssignedTo === $oldAssignedTo && $row['log_status'] === 'pending') {
-                    // Nothing changed, skip to avoid spam
-                    continue;
-                }
-                
                 $conn->begin_transaction();
                 try {
+                    $assignedConsultantId = null;
+                    $assignResult = null;
+                    if ($row['round_id'] > 0) {
+                        $maxAttempts = (int) get_system_setting($conn, 'lead_max_recall_attempts');
+                        $cooldownMins = (int) get_system_setting($conn, 'lead_recall_cooldown_minutes');
+                        $excludeIds = [];
+
+                        if ($maxAttempts > 0) {
+                            $attStmt = $conn->prepare("
+                                SELECT assigned_to, COUNT(*) as cnt 
+                                FROM distribution_logs 
+                                WHERE lead_id = ? AND status = 'recalled' AND received_at >= CURDATE() 
+                                GROUP BY assigned_to
+                            ");
+                            if ($attStmt) {
+                                $attStmt->bind_param("i", $row['lead_id']);
+                                $attStmt->execute();
+                                $attRes = $attStmt->get_result();
+                                while ($attRow = $attRes->fetch_assoc()) {
+                                    if ((int)$attRow['cnt'] >= $maxAttempts) {
+                                        $excludeIds[] = (int)$attRow['assigned_to'];
+                                    }
+                                }
+                                $attStmt->close();
+                            }
+                        }
+
+                        if ($cooldownMins > 0) {
+                            $coolStmt = $conn->prepare("
+                                SELECT DISTINCT assigned_to 
+                                FROM distribution_logs 
+                                WHERE lead_id = ? AND status = 'recalled' 
+                                  AND received_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                            ");
+                            if ($coolStmt) {
+                                $coolStmt->bind_param("ii", $row['lead_id'], $cooldownMins);
+                                $coolStmt->execute();
+                                $coolRes = $coolStmt->get_result();
+                                while ($coolRow = $coolRes->fetch_assoc()) {
+                                    $excludeIds[] = (int)$coolRow['assigned_to'];
+                                }
+                                $coolStmt->close();
+                            }
+                        }
+
+                        $assignResult = getNextConsultantInRound($conn, $row['round_id'], null, array_values(array_unique($excludeIds)));
+                        if ($assignResult) {
+                            $assignedConsultantId = $assignResult['id'];
+                        }
+                    }
+                    
+                    $isFallbackAdmin = false;
+                    $fallbackAdminData = null;
+                    $fallbackCcEmails = '';
+                    if (!$assignedConsultantId) {
+                        $fbSettings = [];
+                        $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
+                        if ($fbRes) {
+                            while ($fbRow = $fbRes->fetch_assoc()) {
+                                $fbSettings[$fbRow['setting_key']] = $fbRow['setting_value'];
+                            }
+                        }
+                        $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
+                        $fbCc = $fbSettings['fallback_cc_email'] ?? '';
+                        
+                        if ($fbAdminId > 0) {
+                            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin') LIMIT 1");
+                            if ($admStmt) {
+                                $admStmt->bind_param("i", $fbAdminId);
+                                $admStmt->execute();
+                                $admRes = $admStmt->get_result();
+                                if ($admRes->num_rows > 0) {
+                                    $fallbackAdminData = $admRes->fetch_assoc();
+                                    $isFallbackAdmin = true;
+                                    $fallbackCcEmails = $fbCc;
+                                }
+                                $admStmt->close();
+                            }
+                        }
+                    }
+
+                    $oldAssignedTo = $row['assigned_to'] !== null ? (int)$row['assigned_to'] : null;
+                    $newAssignedTo = $assignedConsultantId !== null ? (int)$assignedConsultantId : ($isFallbackAdmin ? (int)$fallbackAdminData['id'] : null);
+                    
+                    if ($newAssignedTo === $oldAssignedTo && $row['log_status'] === 'pending') {
+                        // Nothing changed, rollback round cursor if touched and skip to avoid spam
+                        $conn->rollback();
+                        continue;
+                    }
+
                     $newStatus = 'assigned';
                     $logMsg = !empty($row['consultant_name']) ? "Thu hồi từ Sale nghỉ phép/không hoạt động ({$row['consultant_name']}). " : "Phân bổ lại lead đang chờ xử lý. ";
                     $newConsultantName = '';
@@ -962,6 +974,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                         }
                     }
                     
+                    // logDistribution queues sendDirectSaleLeadNotification (Email + Zalo) when $assignedConsultantId > 0 and $newStatus in ('assigned', 'compensation')
                     logDistribution($conn, $row['lead_id'], $assignedConsultantId, $row['round_id'], $newStatus, $logMsg, false);
                     
                     $conn->commit();
@@ -969,44 +982,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     // Post-commit: trigger live write-back
                     triggerTwoWaySync($conn, $row['lead_id']);
                     
-                    // Trigger notifications out-of-transaction to avoid locking DB during API/SMTP delay
-                    if ($assignedConsultantId && $newStatus !== 'pending_work_hours') {
-                        try {
-                            sendLeadAssignedEmailToSale(
-                                $newConsultantEmail,
-                                $newConsultantName,
-                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                                $row['lead_phone'] ?: '',
-                                $row['lead_note'] ?: '',
-                                $row['lead_source'] ?: '',
-                                $row['cc_emails'] ?? '',
-                                $row['round_name'] ?? '',
-                                $row['lead_id'],
-                                $assignedConsultantId,
-                                $row['round_id'] ?? 0
-                            );
-                        } catch (Exception $mailEx) {
-                            logSync("Error sending email to new consultant: " . $mailEx->getMessage());
-                        }
-                        
-                        try {
-                            sendLeadAssignedZaloMessageToSale(
-                                $assignedConsultantId,
-                                $newConsultantName,
-                                $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                                $row['lead_phone'] ?: '',
-                                $row['lead_note'] ?: '',
-                                $row['lead_source'] ?: '',
-                                $row['round_name'] ?? '',
-                                $row['lead_id'],
-                                $row['round_id'] ?? 0,
-                                $row['lead_email'] ?: '',
-                                $row['lead_type'] ?: ''
-                            );
-                        } catch (Exception $zaloEx) {
-                            logSync("Error sending Zalo to new consultant: " . $zaloEx->getMessage());
-                        }
-                    } else if ($isFallbackAdmin && $fallbackAdminData) {
+                    if (!$assignedConsultantId && $isFallbackAdmin && $fallbackAdminData) {
                         try {
                             sendLeadAssignedEmailToSale(
                                 $fallbackAdminData['email'],
@@ -1858,11 +1834,17 @@ if (!function_exists('recallUnprocessedDatabankClaimedLeads')) {
 
             $conn->begin_transaction();
             try {
-                // Soft delete contact for this sale (keep owner_id intact for Admin rollback history)
-                $stmtDel = $conn->prepare("UPDATE contacts SET deleted_at = NOW() WHERE id = ?");
+                // Soft delete contact for this sale atomically only if still unprocessed (keep owner_id intact for Admin rollback history)
+                $stmtDel = $conn->prepare("UPDATE contacts SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL AND pipeline_status IN ('chua_xac_dinh', 'not_lead_pending')");
                 $stmtDel->bind_param("i", $contactId);
                 $stmtDel->execute();
+                $affectedDel = $stmtDel->affected_rows;
                 $stmtDel->close();
+
+                if ($affectedDel <= 0) {
+                    $conn->rollback();
+                    continue;
+                }
 
                 if ($personId > 0) {
                     $stmtPub = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = IFNULL(released_to_kho_at, NOW()) WHERE id = ? AND COALESCE(deleted_from_databank, 0) = 0");
@@ -1899,6 +1881,7 @@ if (!function_exists('recallUnprocessedDatabankClaimedLeads')) {
 }
 
 
+if ($isDirectCronRun) {
 logSync("Starting Google Sheets Sync Cronjob...");
 if (!isset($argv[1])) {
     deescalateFailedConnections($conn);
@@ -2866,32 +2849,7 @@ foreach ($connections as $connItem) {
                     }
                     $syncedCount++;
                 } else if (($cronStatus === 'assigned' || $cronStatus === 'compensation') && !empty($leadId) && $assignedConsultantId) {
-                    // Notify Sale (mailer.php already loaded above)
-                    static $assignedConsultantCache = [];
-                    if (!isset($assignedConsultantCache[$assignedConsultantId])) {
-                        $stmtC2 = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ?");
-                        $stmtC2->bind_param("i", $assignedConsultantId);
-                        $stmtC2->execute();
-                        $assignedConsultantCache[$assignedConsultantId] = $stmtC2->get_result()->fetch_assoc();
-                        $stmtC2->close();
-                    }
-                    $c = $assignedConsultantCache[$assignedConsultantId];
-                    
-                    if ($c) {
-                        // Gửi Email
-                        try {
-                            sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId ?? 0, $assignedConsultantId ?? 0, $targetRoundId ?? 0);
-                        } catch (Exception $mailEx) {
-                            logSync("Error sending assigned sale email: " . $mailEx->getMessage());
-                        }
-                        
-                        // Gửi Zalo Message (Đồng bộ Đa Kênh)
-                        try {
-                            sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId ?? 0, $targetRoundId ?? 0, $email, $type);
-                        } catch (Exception $zaloEx) {
-                            logSync("Error sending assigned sale Zalo: " . $zaloEx->getMessage());
-                        }
-                    }
+                    // logDistribution already queued sendDirectSaleLeadNotification (Email + Zalo)
                     $syncedCount++;
                 }
             } finally {
@@ -2962,6 +2920,7 @@ foreach ($connections as $connItem) {
             sendSheetSyncErrorAlert($conn, $connItem, $alertErrorMessage);
         }
     }
+}
 }
 
 function releaseExpiredLeadsToKho($conn) {
@@ -3322,59 +3281,11 @@ function assignParallelLeads($conn) {
             
             $logMsg = "Gán song song tự động ($statusText > $timerHours giờ)";
             $distLeadId = $newParallelLeadId > 0 ? $newParallelLeadId : $secondContactId;
+            // logDistribution queues sendDirectSaleLeadNotification (Email + Zalo) for $secondSaleId
             logDistribution($conn, $distLeadId, $secondSaleId, $roundId, 'assigned', $logMsg, false);
             
             $conn->commit();
             logSync("Parallel assigned Person ID $personId (Contact ID $contactId) to Sale ID $secondSaleId.");
-            
-            $detailStmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-            $detailStmt->bind_param("i", $secondSaleId);
-            $detailStmt->execute();
-            $cDetail = $detailStmt->get_result()->fetch_assoc();
-            $detailStmt->close();
-            
-            if ($cDetail) {
-                $rNameRes = $conn->query("SELECT round_name FROM distribution_rounds WHERE id = $roundId");
-                $rNameRow = $rNameRes ? $rNameRes->fetch_assoc() : null;
-                $roundName = $rNameRow ? $rNameRow['round_name'] : 'Vòng xoay';
-                
-                $fullName = trim($row['first_name'] . ' ' . $row['last_name']) ?: 'Khách hàng ẩn danh';
-                try {
-                    sendLeadAssignedEmailToSale(
-                        $cDetail['email'],
-                        $cDetail['name'],
-                        $fullName,
-                        $row['phone'],
-                        "Gán song song tự động do lead $statusText quá $timerHours giờ",
-                        $row['source'],
-                        '',
-                        $roundName,
-                        $secondContactId,
-                        $secondSaleId,
-                        $roundId
-                    );
-                } catch (Exception $mailEx) {
-                    logSync("Error sending parallel assigned email: " . $mailEx->getMessage());
-                }
-                
-                try {
-                    sendLeadAssignedZaloMessageToSale(
-                        $secondSaleId,
-                        $cDetail['name'],
-                        $fullName,
-                        $row['phone'],
-                        'Gán song song tự động do lead Chưa Xác Định quá 3 giờ',
-                        $row['source'],
-                        $roundName,
-                        $secondContactId,
-                        $roundId,
-                        $row['email'],
-                        ''
-                    );
-                } catch (Exception $zaloEx) {
-                    logSync("Error sending parallel assigned Zalo: " . $zaloEx->getMessage());
-                }
-            }
             
             triggerTwoWaySync($conn, $secondContactId);
             
@@ -4326,9 +4237,11 @@ function sendScheduledAttendanceReports($conn) {
     }
 }
 
-logSync("Cronjob finished.");
+if ($isDirectCronRun) {
+    logSync("Cronjob finished.");
+}
 
-if (!defined('DIAG_TOKEN')) {
+if ($isDirectCronRun && !defined('DIAG_TOKEN')) {
     // --- 1. Chạy phân bổ song song ở trạng thái Chưa Xác Định quá 3 giờ ---
     try {
         assignParallelLeads($conn);
@@ -4482,6 +4395,10 @@ if (!defined('DIAG_TOKEN')) {
         }
     } catch (Exception $decayEx) {
         logSync("Error running temperature decay cron: " . $decayEx->getMessage());
+    }
+
+    if (function_exists('flushQueuedSaleLeadNotifications')) {
+        flushQueuedSaleLeadNotifications($conn);
     }
 
     if (php_sapi_name() === 'cli') {

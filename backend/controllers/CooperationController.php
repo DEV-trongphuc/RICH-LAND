@@ -45,18 +45,8 @@ class CooperationController {
 
         require_once __DIR__ . '/../NotificationService.php';
 
-        $inUids = implode(',', array_fill(0, count($uids), '?'));
-        $stmtUsers = $this->db->prepare("SELECT id, email FROM users WHERE id IN ($inUids)");
-        $stmtUsers->execute(array_values($uids));
-        $userEmailsMap = $stmtUsers->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
-
         foreach ($uids as $uid) {
-            // Notify individual shareholder via targeted email & in-app event
-            $uEmail = $userEmailsMap[(int)$uid] ?? '';
-            if (!empty($uEmail) && function_exists('sendEmailNotification')) {
-                sendEmailNotification($uEmail, $enrichedSubject, $title, $enrichedContent);
-            }
-
+            // Notify individual shareholder via multi-channel NotificationService (Email, Zalo, Telegram, In-App)
             NotificationService::send($this->db, $tenantId, 'COOP_INVITATION', [
                 'user_id' => $uid,
                 'slip_id' => $slipId,
@@ -677,7 +667,6 @@ class CooperationController {
             }
         }
 
-        $signatures = json_decode($slip['signatures_json'], true) ?: [];
         $body = getBody();
         
         $sigImg = $body['signature_img'] ?? null;
@@ -699,39 +688,59 @@ class CooperationController {
             }
         }
 
-        // Add signature
-        $signatures[$userId] = [
-            'time' => date('Y-m-d H:i:s'),
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-            'role' => $auth['role'],
-            'signature_img' => $sigImg
-        ];
-
-        $signaturesJson = json_encode($signatures);
-        
-        // If all shareholders signed, move to pending_manager_approval or approved (if pre-approved by admin/manager)
-        $status = 'pending_signatures';
-        if ($slip['status'] === 'approved_pending_signatures') {
-            $status = 'approved_pending_signatures';
-        }
-        $allSigned = true;
-        foreach ($shares as $uid => $percent) {
-            if (!isset($signatures[$uid])) {
-                $allSigned = false;
-                break;
+        $this->db->beginTransaction();
+        try {
+            $stmtLock = $this->db->prepare("SELECT status, shares_json, signatures_json FROM cooperation_slips WHERE id = ? FOR UPDATE");
+            $stmtLock->execute([$id]);
+            $lockedSlip = $stmtLock->fetch(PDO::FETCH_ASSOC);
+            if (!$lockedSlip || !in_array($lockedSlip['status'], $allowedSignStatuses, true)) {
+                $this->db->rollBack();
+                respond(409, null, 'Trạng thái phiếu hợp tác đã thay đổi, không thể ký lúc này', false);
             }
-        }
 
-        if ($allSigned) {
-            if ($slip['status'] === 'approved_pending_signatures') {
-                $status = 'approved';
-            } else {
-                $status = 'pending_manager_approval';
+            $shares = json_decode($lockedSlip['shares_json'] ?? '[]', true) ?: $shares;
+            $signatures = json_decode($lockedSlip['signatures_json'] ?? '[]', true) ?: [];
+
+            // Add signature
+            $signatures[$userId] = [
+                'time' => date('Y-m-d H:i:s'),
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+                'role' => $auth['role'],
+                'signature_img' => $sigImg
+            ];
+
+            $signaturesJson = json_encode($signatures);
+            
+            // If all shareholders signed, move to pending_manager_approval or approved (if pre-approved by admin/manager)
+            $status = 'pending_signatures';
+            if ($lockedSlip['status'] === 'approved_pending_signatures') {
+                $status = 'approved_pending_signatures';
             }
-        }
+            $allSigned = true;
+            foreach ($shares as $uid => $percent) {
+                if (!isset($signatures[$uid])) {
+                    $allSigned = false;
+                    break;
+                }
+            }
 
-        $stmt = $this->db->prepare("UPDATE cooperation_slips SET signatures_json = ?, status = ? WHERE id = ?");
-        $stmt->execute([$signaturesJson, $status, $id]);
+            if ($allSigned) {
+                if ($lockedSlip['status'] === 'approved_pending_signatures') {
+                    $status = 'approved';
+                } else {
+                    $status = 'pending_manager_approval';
+                }
+            }
+
+            $stmt = $this->db->prepare("UPDATE cooperation_slips SET signatures_json = ?, status = ? WHERE id = ?");
+            $stmt->execute([$signaturesJson, $status, $id]);
+            $this->db->commit();
+        } catch (\Throwable $txEx) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $txEx;
+        }
 
         // Email notifications based on signature status
         if ($allSigned) {
