@@ -408,7 +408,7 @@ class CheckInController {
                         if (!is_dir($checkInDir)) {
                             mkdir($checkInDir, 0755, true);
                         }
-                        $fileName = 'checkin_' . $uid . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $imgExt;
+                        $fileName = 'checkin_' . (int)($auth['user_id'] ?? 0) . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $imgExt;
                         $fullPath = $checkInDir . '/' . $fileName;
                         if (file_put_contents($fullPath, $decoded) !== false) {
                             $selfieUrl = 'uploads/checkins/' . $fileName;

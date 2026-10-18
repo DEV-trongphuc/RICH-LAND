@@ -223,8 +223,8 @@ export const AIChatbot: React.FC = () => {
         const docsList = Array.isArray(docsRes) ? docsRes : (docsRes?.data || []);
 
         // 2. Fetch project folder files
-        const folderFilesRes = await fetchAPI(`projects/${entity.id}/folder-files`).catch(() => null);
-        const folderFiles = Array.isArray(folderFilesRes) ? folderFilesRes : (folderFilesRes?.data || []);
+        const folderFilesRes = await fetchAPI(`cloud-files?project_id=${entity.id}`).catch(() => null);
+        const folderFiles = Array.isArray(folderFilesRes) ? folderFilesRes : (folderFilesRes?.data?.items || folderFilesRes?.data || []);
         
         // 3. Fetch linked documents (from document_ids)
         let linkedDocs: any[] = [];
@@ -281,8 +281,8 @@ export const AIChatbot: React.FC = () => {
           const pDocs = Array.isArray(parentDocsRes) ? parentDocsRes : (parentDocsRes?.data || []);
 
           // 2. Fetch parent project folder files
-          const folderFilesRes = await fetchAPI(`projects/${details.project_id}/folder-files`).catch(() => null);
-          const folderFiles = Array.isArray(folderFilesRes) ? folderFilesRes : (folderFilesRes?.data || []);
+          const folderFilesRes = await fetchAPI(`cloud-files?project_id=${details.project_id}`).catch(() => null);
+          const folderFiles = Array.isArray(folderFilesRes) ? folderFilesRes : (folderFilesRes?.data?.items || folderFilesRes?.data || []);
           
           // 3. Fetch parent project linked documents
           let linkedDocs: any[] = [];

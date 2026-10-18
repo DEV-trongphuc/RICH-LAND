@@ -53,7 +53,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // ── Helper functions ──────────────────────────────────────────
+if (!function_exists('sanitize_ErrorMessageForClient')) {
+    function sanitize_ErrorMessageForClient($msg, $fallback = 'Hệ thống đang bận hoặc gặp sự cố dữ liệu tạm thời. Vui lòng thử lại sau.') {
+        if (!is_string($msg) || $msg === '') {
+            return (string)$msg;
+        }
+        $techPatterns = [
+            'SQLSTATE',
+            'Unknown column',
+            'Table ',
+            "doesn't exist",
+            'Syntax error',
+            'You have an error in your SQL syntax',
+            'Duplicate entry',
+            'foreign key constraint',
+            'Cannot add or update a child row',
+            'Cannot delete or update a parent row',
+            'Deadlock found',
+            'Lock wait timeout',
+            'Data truncated',
+            'Incorrect integer value',
+            'Incorrect datetime value',
+            "Column count doesn't match",
+            'Access denied for user',
+            'MySQL server has gone away',
+            'PDOException',
+            'mysqli_',
+            'ArgumentCountError',
+            'Uncaught ',
+            'FATAL ERROR:',
+            '.php on line',
+            'Stack trace:'
+        ];
+        $isTechError = false;
+        foreach ($techPatterns as $pat) {
+            if (stripos($msg, $pat) !== false) {
+                $isTechError = true;
+                break;
+            }
+        }
+        if (!$isTechError && preg_match('/\bin\s+(?:\/|[A-Za-z]:\\\\)[^\s]+\.php\b/i', $msg)) {
+            $isTechError = true;
+        }
+        if ($isTechError) {
+            error_log("[RichLand SQL/Tech Error Masked] " . $msg);
+            if (stripos($msg, 'Duplicate entry') !== false) {
+                return 'Dữ liệu bị trùng lặp trong hệ thống. Vui lòng kiểm tra lại.';
+            }
+            if (stripos($msg, 'Deadlock') !== false || stripos($msg, 'Lock wait timeout') !== false) {
+                return 'Hệ thống đang xử lý giao dịch đồng thời, vui lòng thử lại sau giây lát.';
+            }
+            if (stripos($msg, 'foreign key constraint') !== false || stripos($msg, 'Cannot add or update a child row') !== false || stripos($msg, 'Cannot delete or update a parent row') !== false) {
+                return 'Dữ liệu đang có ràng buộc liên kết trong hệ thống, không thể thực hiện thao tác này.';
+            }
+            return $fallback;
+        }
+        return $msg;
+    }
+}
+
 function respond(int $code, $data = null, string $message = '', bool $success = true): void {
+    if ($code >= 400 || !$success || $message !== '') {
+        $message = sanitize_ErrorMessageForClient($message);
+    }
     if (class_exists('Database')) {
         Database::close();
     }
@@ -76,7 +138,7 @@ function respond(int $code, $data = null, string $message = '', bool $success = 
 // ── Global Exception Handler ──────────────────────────────────
 set_exception_handler(function (Throwable $e) {
     error_log("GLOBAL EXCEPTION: " . $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine());
-    respond(500, null, 'Lỗi hệ thống nội bộ. Vui lòng thử lại sau.', false);
+    respond(500, null, sanitize_ErrorMessageForClient($e->getMessage(), 'Lỗi hệ thống nội bộ. Vui lòng thử lại sau.'), false);
 });
 
 function getBody(): array {
@@ -183,10 +245,10 @@ function logInteraction(PDO $db, $tid, $uid, string $type, string $subject, ?str
     }
 
     $stmt = $db->prepare("
-        INSERT INTO activities (tenant_id, user_id, created_by, type, subject, body, status, priority, due_date, done_at, related_type, related_id)
-        VALUES (?, ?, ?, ?, ?, ?, 'done', 'medium', NOW(), NOW(), ?, ?)
+        INSERT INTO activities (tenant_id, user_id, created_by, type, subject, body, status, priority, due_date, done_at, related_type, related_id, contact_id)
+        VALUES (?, ?, ?, ?, ?, ?, 'done', 'medium', NOW(), NOW(), ?, ?, ?)
     ");
-    $stmt->execute([$tid, $uid, $uid, $type, $subject, $body, $relType, $relId]);
+    $stmt->execute([$tid, $uid, $uid, $type, $subject, $body, $relType, $relId, $cid]);
 }
 
 function getCustomFields(PDO $db, int $tenant_id, int $entity_id, string $entity_type): array {
@@ -1024,6 +1086,7 @@ switch ($resource) {
             $ctrl->updateMilestones($auth, (int)$resourceId);
         }
         elseif ($resourceId && $subResource === 'cancel' && $method === 'POST') $ctrl->cancelDeposit($auth, (int)$resourceId);
+        elseif ($resourceId && !$subResource && ($method === 'PUT' || $method === 'PATCH')) $ctrl->update($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         else respond(404, null, 'Route không tồn tại', false);

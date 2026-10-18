@@ -646,7 +646,7 @@ class CooperationController {
                 $uPath = strtolower($m['unc_file_path'] ?? '');
                 $mName = strtolower($m['milestone_name'] ?? '');
                 if ($cleanKeyword === 'unc' || $cleanKeyword === 'uy nhiem chi' || $cleanKeyword === 'ủy nhiệm chi') {
-                    if (!empty($uPath) || strpos($mName, 'cọc') !== false || strpos($mName, 'unc') !== false) {
+                    if (!empty($uPath)) {
                         return true;
                     }
                 } else {
@@ -1686,28 +1686,41 @@ class CooperationController {
                     respond(400, null, 'Đang có một phiếu hợp tác hoặc phiếu điều chỉnh khác chờ ký duyệt cho khách hàng này', false);
                 }
 
-                // 2. Clone the slip (similar to createAdjustmentSlip)
-                $sharesJson = $slip['shares_json'];
+                // 2. Clone the slip using requested shares (or fallback to current shares_json)
+                $sharesJson = !empty($slip['adjustment_request_shares_json']) ? $slip['adjustment_request_shares_json'] : $slip['shares_json'];
+                $newVersion = ((int)($slip['version'] ?? 1)) + 1;
+
+                if (!empty($slip['adjustment_request_commission']) && !empty($slip['deposit_slip_id'])) {
+                    $stmtUpdDep = $this->db->prepare("UPDATE deposits SET expected_commission = ? WHERE id = ?");
+                    $stmtUpdDep->execute([(int)$slip['adjustment_request_commission'], (int)$slip['deposit_slip_id']]);
+                }
                 
                 $stmtIns = $this->db->prepare("
                     INSERT INTO cooperation_slips (contact_id, deposit_slip_id, version, total_percentage, shares_json, signatures_json, status, created_by, dieu_chinh_tu_id)
-                    VALUES (?, ?, 1, 100, ?, '{}', 'pending_signatures', ?, ?)
+                    VALUES (?, ?, ?, 100, ?, '{}', 'pending_signatures', ?, ?)
                 ");
                 $stmtIns->execute([
                     $slip['contact_id'],
                     $slip['deposit_slip_id'],
+                    $newVersion,
                     $sharesJson,
                     $auth['user_id'],
                     $id
                 ]);
                 $newSlipId = (int)$this->db->lastInsertId();
 
-                // 3. Clear/resolve the request on the old slip
+                // Sync collaborators to contacts table
+                $this->syncCollaboratorsToContact((int)$slip['contact_id'], $sharesJson);
+
+                // 3. Supersede the old slip and clear adjustment request fields
                 $stmtUpdate = $this->db->prepare("
                     UPDATE cooperation_slips 
-                    SET adjustment_request_user_id = NULL, 
+                    SET status = 'rejected',
+                        adjustment_request_user_id = NULL, 
                         adjustment_request_reason = NULL, 
-                        adjustment_request_at = NULL 
+                        adjustment_request_at = NULL,
+                        adjustment_request_shares_json = NULL,
+                        adjustment_request_commission = NULL
                     WHERE id = ?
                 ");
                 $stmtUpdate->execute([$id]);
@@ -1736,7 +1749,9 @@ class CooperationController {
                     UPDATE cooperation_slips 
                     SET adjustment_request_user_id = NULL, 
                         adjustment_request_reason = NULL, 
-                        adjustment_request_at = NULL 
+                        adjustment_request_at = NULL,
+                        adjustment_request_shares_json = NULL,
+                        adjustment_request_commission = NULL
                     WHERE id = ?
                 ");
                 $stmtUpdate->execute([$id]);

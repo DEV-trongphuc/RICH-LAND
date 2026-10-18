@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE } from '../config/env';
+import { sanitizeUserMessage } from '../utils/toastEnhancer';
 
 // Auto-detect: local dev uses Vite proxy, production uses real URL
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -198,10 +199,28 @@ api.request = function coalescedRequest(configOrUrl: any, config?: any): Promise
 
 // Auto-refresh on 401
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    if (r?.data && typeof r.data === 'object' && r.data.success === false && typeof r.data.message === 'string') {
+      r.data.message = sanitizeUserMessage(r.data.message);
+    }
+    return r;
+  },
   async (error) => {
+    const isCanceled =
+      error?.name === 'AbortError' ||
+      error?.name === 'CanceledError' ||
+      error?.code === 'ERR_CANCELED';
+
     const original = error?.config;
     if (!original) {
+      if (!isCanceled && error) {
+        if (error.response?.data && typeof error.response.data === 'object' && typeof error.response.data.message === 'string') {
+          error.response.data.message = sanitizeUserMessage(error.response.data.message);
+        }
+        if (typeof error.message === 'string') {
+          error.message = sanitizeUserMessage(error.response?.data?.message || error.message);
+        }
+      }
       return Promise.reject(error);
     }
 
@@ -256,6 +275,14 @@ api.interceptors.response.use(
     }
     if (error.response?.status === 500) {
       console.error('SERVER ERROR:', error.response.data);
+    }
+    if (!isCanceled && error) {
+      if (error.response?.data && typeof error.response.data === 'object' && typeof error.response.data.message === 'string') {
+        error.response.data.message = sanitizeUserMessage(error.response.data.message);
+      }
+      if (typeof error.message === 'string') {
+        error.message = sanitizeUserMessage(error.response?.data?.message || error.message);
+      }
     }
     return Promise.reject(error);
   }

@@ -223,8 +223,11 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
       const res = await api.get(`/deals/${dealId}`);
       if (res.data.success && res.data.data) {
         const d = res.data.data;
+        const probVal = d.probability ?? d.prob ?? 50;
         setFormData({
           ...d,
+          probability: probVal,
+          prob: probVal,
           tags: Array.isArray(d.tags) ? d.tags : (typeof d.tags === 'string' ? JSON.parse(d.tags) : [])
         });
       }
@@ -242,8 +245,11 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   useEffect(() => {
     if (!isOpen) return;
     if (deal) {
+      const probVal = deal.probability ?? deal.prob ?? 50;
       setFormData({
         ...deal,
+        probability: probVal,
+        prob: probVal,
         tags: Array.isArray(deal.tags) ? deal.tags : (typeof deal.tags === 'string' ? JSON.parse(deal.tags) : [])
       });
       setPrevDealId(deal.id);
@@ -375,11 +381,11 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                 <div>
                   <h2 className={styles.title}>{formData?.title || 'Tên cơ hội...'}</h2>
                   <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <strong>{formData?.company || 'Chưa chọn công ty'}</strong> - Liên hệ: {formData?.contact || 'N/A'}
+                    <strong>{formData?.company_name || formData?.company || formData?.contact_name || formData?.contact || 'Chưa gắn liên hệ'}</strong> - Liên hệ: {formData?.contact_name || formData?.contact || 'Chưa gắn liên hệ'}
                   </p>
                   <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontWeight: 600, color: 'var(--color-primary)' }}>
                     <span>{formData?.value ? (formData.value || 0).toLocaleString() : '0'} đ</span>
-                    <span style={{ color: 'var(--color-text-muted)' }}>| Xác suất: {formData?.prob || 0}%</span>
+                    <span style={{ color: 'var(--color-text-muted)' }}>| Xác suất: {formData?.probability ?? formData?.prob ?? 50}%</span>
                   </div>
                 </div>
               </div>
@@ -431,7 +437,9 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                               try {
                                 const res = await api.get(`/deals/${linkedId}`);
                                 if (res.data.success && res.data.data) {
-                                  setFormData(res.data.data);
+                                  const ld = res.data.data;
+                                  const pVal = ld.probability ?? ld.prob ?? 50;
+                                  setFormData({ ...ld, probability: pVal, prob: pVal });
                                   const rNotes = await api.get(`/notes?entity_type=deal&entity_id=${linkedId}`);
                                   setNotes(rNotes.data.data || []);
                                   addToast(`Đã chuyển sang Deal liên kết #${linkedId}`, 'success');
@@ -466,7 +474,15 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                         </div>
                         <div className="form-group">
                           <label className="form-label">Xác suất thành công (%)</label>
-                          <input className="form-input" type="number" value={formData?.prob || ''} onChange={e => setFormData({...formData, prob: Number(e.target.value)})} />
+                          <input
+                            className="form-input"
+                            type="number"
+                            value={formData?.probability ?? formData?.prob ?? 50}
+                            onChange={e => {
+                              const val = Number(e.target.value);
+                              setFormData({ ...formData, probability: val, prob: val });
+                            }}
+                          />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Giai đoạn (Pipeline Stage)</label>
@@ -583,8 +599,8 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                                         <input type="checkbox" checked={isChecked} disabled={isViewer} onChange={e => {
                                           const newFields = [...formData.custom_fields];
                                           const newSelected = e.target.checked ? [...selected, o] : selected.filter((s: string) => s !== o);
-                                          newFields[index].value = newSelected;
-                                          setFormData({ ...formData, custom_fields: newSelected });
+                                          newFields[index] = { ...newFields[index], value: newSelected };
+                                          setFormData({ ...formData, custom_fields: newFields });
                                         }} style={{ display: 'none' }} />
                                         <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: isChecked ? 'white' : 'var(--color-text)' }}>{o}</span>
                                       </label>
@@ -974,7 +990,8 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
               <button className="btn ghost" onClick={onClose}>{isViewer ? 'Đóng' : 'Hủy bỏ'}</button>
               {!isViewer && (
                 <button className="btn primary" onClick={() => {
-                  const payload = { ...formData };
+                  const probVal = formData.probability ?? formData.prob ?? 50;
+                  const payload = { ...formData, probability: probVal, prob: probVal };
                   if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
                     for (const f of formData.custom_fields) {
                       const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);

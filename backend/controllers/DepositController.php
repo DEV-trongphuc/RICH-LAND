@@ -12,7 +12,9 @@ class DepositController {
         $tid = $auth['tenant_id'];
 
         $sql = "
-            SELECT d.*, c.first_name, c.last_name, c.phone, c.avatar_url, p.name as project_name, u.full_name as creator_name,
+            SELECT d.*, c.first_name, c.last_name,
+                   TRIM(CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, ''))) as full_name,
+                   c.phone, c.email, c.notes, c.avatar_url, p.name as project_name, u.full_name as creator_name,
                    c.owner_id as contact_owner_id
             FROM deposits d
             JOIN contacts c ON d.contact_id = c.id
@@ -300,9 +302,15 @@ class DepositController {
             // Extract custom shares and request collaborators passed from frontend
             $customShares = [];
             if (!empty($b['shares']) && (is_array($b['shares']) || is_object($b['shares']))) {
-                foreach ($b['shares'] as $uid => $pct) {
-                    $uInt = (int)$uid;
-                    $pInt = (int)$pct;
+                foreach ($b['shares'] as $k => $v) {
+                    if (is_array($v) || is_object($v)) {
+                        $vArr = (array)$v;
+                        $uInt = (int)($vArr['user_id'] ?? $vArr['id'] ?? 0);
+                        $pInt = (int)($vArr['percentage'] ?? $vArr['percent'] ?? 0);
+                    } else {
+                        $uInt = (int)$k;
+                        $pInt = (int)$v;
+                    }
                     if ($uInt > 0 && $pInt >= 0) {
                         $customShares[$uInt] = $pInt;
                         $validHelpers[] = $uInt;
@@ -311,17 +319,41 @@ class DepositController {
             }
 
             if (!empty($b['collaborators']) && is_array($b['collaborators'])) {
-                foreach ($b['collaborators'] as $cid) {
-                    $validHelpers[] = (int)$cid;
+                foreach ($b['collaborators'] as $collabItem) {
+                    if (is_array($collabItem) || is_object($collabItem)) {
+                        $cArr = (array)$collabItem;
+                        $uInt = (int)($cArr['user_id'] ?? $cArr['id'] ?? 0);
+                        if ($uInt > 0) {
+                            $validHelpers[] = $uInt;
+                            if (isset($cArr['percentage']) || isset($cArr['percent'])) {
+                                $pInt = (int)($cArr['percentage'] ?? $cArr['percent'] ?? 0);
+                                if ($pInt >= 0) {
+                                    $customShares[$uInt] = $pInt;
+                                }
+                            }
+                        }
+                    } else {
+                        $uInt = (int)$collabItem;
+                        if ($uInt > 0) {
+                            $validHelpers[] = $uInt;
+                        }
+                    }
                 }
             }
 
             $ownerUid = (int)($contact['owner_id'] ?: $auth['user_id']);
+            if (!empty($customShares) && !isset($customShares[$ownerUid])) {
+                $allocatedPct = array_sum($customShares);
+                if ($allocatedPct < 100 && $ownerUid > 0) {
+                    $customShares = [$ownerUid => (100 - $allocatedPct)] + $customShares;
+                }
+            }
+
             $coopSales = array_values(array_unique(array_filter($validHelpers, function($uid) use ($ownerUid) {
                 return $uid > 0 && $uid !== $ownerUid;
             })));
 
-            $createCoopSlip = isset($b['create_coop_slip']) ? (bool)$b['create_coop_slip'] : false;
+            $createCoopSlip = !empty($b['create_coop_slip']) || !empty($b['is_cooperation']);
 
             // Trigger cooperation slip creation if createCoopSlip is true OR customShares has multiple shareholders OR coopSales is not empty!
             $shouldCreateCoop = ($createCoopSlip || !empty($coopSales) || count($customShares) > 1);
@@ -341,8 +373,8 @@ class DepositController {
                     }
                 }
 
-                // Check if there is an existing cooperation slip for this contact
-                $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? ORDER BY id DESC LIMIT 1");
+                // Check if there is an existing UNLINKED cooperation slip for this contact
+                $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND (deposit_slip_id IS NULL OR deposit_slip_id = 0) ORDER BY id DESC LIMIT 1");
                 $stmtCheckCoop->execute([$contactId]);
                 $existingCoop = $stmtCheckCoop->fetch();
 
@@ -350,7 +382,7 @@ class DepositController {
                 $coopCtrl = new CooperationController($this->db);
 
                 if ($existingCoop) {
-                    // Link pre-existing cooperation slip and update its shares
+                    // Link pre-existing unlinked cooperation slip and update its shares
                     $sharesJson = json_encode($customShares);
                     $stmtLink = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ?, shares_json = ? WHERE id = ?");
                     $stmtLink->execute([$depositId, $sharesJson, (int)$existingCoop['id']]);
@@ -369,7 +401,7 @@ class DepositController {
                 // Solo sale (làm 1 mình) or user opted out of creating a coop slip.
                 // Absolutely NO new cooperation slip is created!
                 // If an unlinked existing coop slip was already in DB, just link it to deposit if present.
-                $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND deposit_slip_id IS NULL ORDER BY created_at DESC LIMIT 1");
+                $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND (deposit_slip_id IS NULL OR deposit_slip_id = 0) ORDER BY created_at DESC LIMIT 1");
                 $stmtCheckCoop->execute([$contactId]);
                 $existingCoop = $stmtCheckCoop->fetch();
                 if ($existingCoop) {
@@ -587,8 +619,8 @@ class DepositController {
                     $tid = (int)$auth['tenant_id'];
                     $stmtSyncC = $this->db->prepare("
                         UPDATE contacts SET
-                            total_spent = COALESCE((SELECT SUM(total) FROM invoices WHERE contact_id = ? AND tenant_id = ? AND status = 'paid'), 0),
-                            order_count = COALESCE((SELECT COUNT(*) FROM invoices WHERE contact_id = ? AND tenant_id = ? AND status != 'cancelled'), 0)
+                            total_spent = COALESCE((SELECT SUM(total) FROM invoices WHERE contact_id = ? AND tenant_id = ? AND status = 'paid' AND deleted_at IS NULL), 0),
+                            order_count = COALESCE((SELECT COUNT(*) FROM invoices WHERE contact_id = ? AND tenant_id = ? AND status != 'cancelled' AND deleted_at IS NULL), 0)
                         WHERE id = ? AND tenant_id = ?
                     ");
                     $stmtSyncC->execute([$cid, $tid, $cid, $tid, $cid, $tid]);
@@ -1148,18 +1180,18 @@ class DepositController {
         $stmt->execute([$auth['tenant_id'], $id, $auth['user_id'], $body, $attachments, $parentId]);
         $newId = $this->db->lastInsertId();
 
-        // Parse mentions in comment body
+        // Parse mentions in comment body (batch query to avoid N+1)
         $mentions = [];
         if (preg_match_all('/data-user-id=(?:&quot;|["\']|\\\\+["\'])?(\d+)/i', (string)$body, $matches)) {
-            $uids = array_filter(array_map('intval', $matches[1]));
-            foreach ($uids as $uid) {
-                if ($uid !== (int)$auth['user_id']) {
-                    $stmtUser = $this->db->prepare("SELECT id, email, full_name, role FROM users WHERE id=?");
-                    $stmtUser->execute([$uid]);
-                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
-                    if ($userRow) {
-                        $mentions[$uid] = $userRow;
-                    }
+            $uids = array_values(array_unique(array_filter(array_map('intval', $matches[1]), function($u) use ($auth) {
+                return $u > 0 && $u !== (int)$auth['user_id'];
+            })));
+            if (!empty($uids)) {
+                $placeholders = implode(',', array_fill(0, count($uids), '?'));
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name, role FROM users WHERE id IN ($placeholders)");
+                $stmtUser->execute($uids);
+                while ($userRow = $stmtUser->fetch(PDO::FETCH_ASSOC)) {
+                    $mentions[(int)$userRow['id']] = $userRow;
                 }
             }
         }
@@ -1202,6 +1234,135 @@ class DepositController {
             ->execute([$commentId, $commentId, $auth['tenant_id']]);
 
         respond(200, null, 'Đã xóa bình luận');
+    }
+
+    public function update(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') {
+            respond(403, null, 'Bạn không có quyền chỉnh sửa phiếu đặt cọc', false);
+        }
+
+        $b = getBody();
+        $tid = (int)$auth['tenant_id'];
+
+        $stmtDep = $this->db->prepare("
+            SELECT d.*, c.tenant_id, c.owner_id, c.first_name, c.last_name, c.phone, c.email, c.notes
+            FROM deposits d
+            JOIN contacts c ON d.contact_id = c.id
+            WHERE d.id = ? AND c.tenant_id = ?
+        ");
+        $stmtDep->execute([$id, $tid]);
+        $dep = $stmtDep->fetch(PDO::FETCH_ASSOC);
+
+        if (!$dep) {
+            respond(404, null, 'Không tìm thấy phiếu đặt cọc', false);
+        }
+
+        $isAdminOrMgr = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true);
+        $isOwnerOrCreator = ((int)$dep['created_by'] === (int)$auth['user_id'] || (int)$dep['owner_id'] === (int)$auth['user_id']);
+        if (!$isAdminOrMgr && !$isOwnerOrCreator) {
+            respond(403, null, 'Bạn không có quyền chỉnh sửa phiếu đặt cọc này', false);
+        }
+
+        if ($dep['status'] === 'cancelled') {
+            respond(400, null, 'Không thể chỉnh sửa phiếu đặt cọc đã hủy', false);
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $contactId = (int)$dep['contact_id'];
+
+            // 1. Update contact fields if provided
+            $contactUpdates = [];
+            $contactParams = [];
+
+            $rawName = trim((string)($b['contact_name'] ?? $b['customer_name'] ?? ''));
+            if ($rawName !== '') {
+                $parts = preg_split('/\s+/', $rawName);
+                $firstName = array_pop($parts);
+                $lastName = implode(' ', $parts);
+                $contactUpdates[] = "first_name = ?";
+                $contactParams[] = $firstName;
+                $contactUpdates[] = "last_name = ?";
+                $contactParams[] = $lastName;
+            }
+            $rawPhone = trim((string)($b['phone'] ?? $b['customer_phone'] ?? ''));
+            if ($rawPhone !== '') {
+                $contactUpdates[] = "phone = ?";
+                $contactParams[] = $rawPhone;
+            }
+            if (array_key_exists('email', $b)) {
+                $contactUpdates[] = "email = ?";
+                $contactParams[] = trim((string)$b['email']);
+            }
+            if (array_key_exists('notes', $b)) {
+                $contactUpdates[] = "notes = ?";
+                $contactParams[] = trim((string)$b['notes']);
+            }
+
+            if (!empty($contactUpdates)) {
+                $contactParams[] = $contactId;
+                $contactParams[] = $tid;
+                $stmtUpdC = $this->db->prepare("UPDATE contacts SET " . implode(', ', $contactUpdates) . " WHERE id = ? AND tenant_id = ?");
+                $stmtUpdC->execute($contactParams);
+            }
+
+            // 2. Resolve project_id if project_id or project_name is passed
+            $projectId = (int)$dep['project_id'];
+            if (!empty($b['project_id'])) {
+                $projectId = (int)$b['project_id'];
+            } elseif (!empty($b['project_name'])) {
+                $pName = trim((string)$b['project_name']);
+                $stmtP = $this->db->prepare("SELECT id FROM projects WHERE name = ? AND tenant_id = ? LIMIT 1");
+                $stmtP->execute([$pName, $tid]);
+                $foundPid = $stmtP->fetchColumn();
+                if ($foundPid) {
+                    $projectId = (int)$foundPid;
+                }
+            }
+
+            // 3. Resolve deposit fields
+            $unitCode = isset($b['unit_code']) ? trim((string)$b['unit_code']) : $dep['unit_code'];
+            $price = isset($b['price']) ? (float)$b['price'] : (isset($b['deposit_Value']) ? (float)$b['deposit_Value'] : (isset($b['amount']) ? (float)$b['amount'] : (float)$dep['price']));
+            if ($price <= 0) {
+                $this->db->rollBack();
+                respond(422, null, 'Giá trị đặt cọc phải lớn hơn 0', false);
+            }
+
+            $expectedComm = (float)$dep['expected_commission'];
+            if (isset($b['expected_commission'])) {
+                $expectedComm = (float)$b['expected_commission'];
+            } elseif (isset($b['commission_rate'])) {
+                $rate = (float)$b['commission_rate'];
+                $expectedComm = ($rate <= 100 && $price > 0) ? round($price * ($rate / 100), 2) : $rate;
+            }
+
+            $createdBy = ($isAdminOrMgr && !empty($b['created_by'])) ? (int)$b['created_by'] : (int)$dep['created_by'];
+
+            $stmtUpdD = $this->db->prepare("
+                UPDATE deposits
+                SET project_id = ?, unit_code = ?, price = ?, expected_commission = ?, created_by = ?, updated_at = NOW()
+                WHERE id = ?
+            ");
+            $stmtUpdD->execute([$projectId, $unitCode, $price, $expectedComm, $createdBy, $id]);
+
+            // Update first pending milestone expected_amount / due_date if applicable
+            if (isset($b['expected_date']) && trim((string)$b['expected_date']) !== '') {
+                $dueDate = trim((string)$b['expected_date']);
+                $stmtMs = $this->db->prepare("UPDATE deposit_milestones SET due_date = ? WHERE deposit_id = ? ORDER BY id ASC LIMIT 1");
+                $stmtMs->execute([$dueDate, $id]);
+            }
+
+            $this->db->commit();
+            logActivity($this->db, $tid, $auth['user_id'], 'UPDATE_DEPOSIT', 'deposit', $id, "Cập nhật phiếu đặt cọc #$id (Mã căn: $unitCode)");
+
+            respond(200, ['id' => $id], 'Cập nhật phiếu đặt cọc thành công');
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("DepositController::update error: " . $e->getMessage());
+            respond(500, null, 'Lỗi hệ thống khi cập nhật phiếu đặt cọc', false);
+        }
     }
 
     private function getSetting(string $key, string $default): string {

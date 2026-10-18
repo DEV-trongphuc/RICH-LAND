@@ -298,12 +298,9 @@ export const DealsPage: React.FC = () => {
 
   const fetchUsers = async () => {
     const currentUser = useAuthStore.getState().user;
-    if (currentUser && (currentUser.role === 'sale' || currentUser.role === 'sales')) {
-      return;
-    }
     try {
-      const r = await api.get('/users');
-      let list = r.data.data || [];
+      const r: any = await api.get('/users?all=1').catch(() => ({ data: [] }));
+      let list = r.data?.data || (Array.isArray(r.data) ? r.data : []);
       const teamId = getEffectiveTeamId();
       if (currentUser?.role === 'manager' && teamId) {
         list = list.filter((u: any) => String(u.team_id) === String(teamId));
@@ -387,21 +384,7 @@ export const DealsPage: React.FC = () => {
 
       const r = await api.get(endpoint, { params });
       if (reqId !== dealReqIdRef.current) return;
-      let dataItems = r.data.data?.items || [];
-
-      const currentUser = useAuthStore.getState().user;
-      if (currentUser?.role === 'sale') {
-        dataItems = dataItems.filter((c: any) => Number(c.owner_id) === Number(currentUser.id));
-      } else if (currentUser?.role === 'manager') {
-        const activeTeamId = getEffectiveTeamId();
-        if (activeTeamId && allUsers.length > 0) {
-          const teamMemberIds = allUsers.map((u: any) => u.id);
-          if (!teamMemberIds.includes(currentUser.id)) {
-            teamMemberIds.push(currentUser.id);
-          }
-          dataItems = dataItems.filter((c: any) => teamMemberIds.includes(Number(c.owner_id)));
-        }
-      }
+      const dataItems = r.data.data?.items || [];
 
       const grouped: Record<number, any[]> = {};
       dataItems.forEach((d: any) => {
@@ -488,10 +471,11 @@ export const DealsPage: React.FC = () => {
 
   useEffect(() => {
     if (stages.length > 0) fetchData();
-  }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterProject, filterCampaign, filterSource, filterDateFrom, filterDateTo, viewMode, allUsers.length, effectiveTeamId]);
+  }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterProject, filterCampaign, filterSource, filterDateFrom, filterDateTo, viewMode, effectiveTeamId]);
 
   useEffect(() => {
     const handleRefresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       if (stages.length > 0) {
         fetchData();
       }

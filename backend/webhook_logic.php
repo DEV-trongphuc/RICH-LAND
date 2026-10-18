@@ -1535,7 +1535,7 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
         $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
         $gateResult = checkConsultantGates($conn, $cId, $lead);
         $isGatePassed = ($gateResult === true);
-        $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule']);
+        $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'] ?? '00:00', $c['work_end_time'] ?? '23:59', $c['work_schedule'] ?? null, $cId, $conn);
         $cNightShift = checkNightShiftAvailability($conn, $cId, $currentTime);
         $isCool = isConsultantOnNormalCooldown($conn, $cId, $roundId, $normalCooldownSec);
 
@@ -2891,11 +2891,12 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
     // Calculate active count of available consultants (who pass all 5 gates and are currently on shift)
     $activeCount = 0;
     foreach ($consultants as $c) {
+        $cId = (int)$c['id'];
         $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
-        $isGatePassed = (checkConsultantGates($conn, (int)$c['id'], $lead) === true);
-        $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule']);
-        $cNightShift = checkNightShiftAvailability($conn, (int)$c['id'], $currentTime);
-        $isCool = isConsultantOnNormalCooldown($conn, (int)$c['id'], $roundId, $normalCooldownSec);
+        $isGatePassed = (checkConsultantGates($conn, $cId, $lead) === true);
+        $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'] ?? '00:00', $c['work_end_time'] ?? '23:59', $c['work_schedule'] ?? null, $cId, $conn);
+        $cNightShift = checkNightShiftAvailability($conn, $cId, $currentTime);
+        $isCool = isConsultantOnNormalCooldown($conn, $cId, $roundId, $normalCooldownSec);
         $isOnDuty = $isNightShiftNow ? $cNightShift : ($cInWorkHours || $isGoldenHoursTime);
         if (!$isOnVacation && $isGatePassed && $isOnDuty && !$isCool) {
             $activeCount++;
@@ -2903,12 +2904,13 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
     }
 
     foreach ($consultants as $row) {
+        $rId = (int)$row['id'];
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
-        $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
-        $isNightShiftActive = checkNightShiftAvailability($conn, (int)$row['id'], $currentTime);
-        $isCool = isConsultantOnNormalCooldown($conn, (int)$row['id'], $roundId, $normalCooldownSec);
+        $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'] ?? '00:00', $row['work_end_time'] ?? '23:59', $row['work_schedule'] ?? null, $rId, $conn);
+        $isNightShiftActive = checkNightShiftAvailability($conn, $rId, $currentTime);
+        $isCool = isConsultantOnNormalCooldown($conn, $rId, $roundId, $normalCooldownSec);
         
-        $gateResult = checkConsultantGates($conn, (int)$row['id'], $lead);
+        $gateResult = checkConsultantGates($conn, $rId, $lead);
         $isGatePassed = ($gateResult === true);
         if ($gateResult !== true) {
             error_log("RICH LAND INFO (Sim): Consultant ID " . $row['id'] . " failed gate check: " . $gateResult);
@@ -2927,7 +2929,7 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
 
         // Priority 2: Starvation (only if on shift)
         // TỐI ƯU CÔNG BẰNG: Chọn người có skipped_credit cao nhất (ưu tiên ID thấp nếu hòa)
-        if ($starvationEnabled === 1 && $isAvailable && $isInWorkHours && intval($row['skipped_credit']) > 0) {
+        if ($starvationEnabled === 1 && $isAvailable && $isOnDuty && intval($row['skipped_credit']) > 0) {
             if (empty($starvationConsultant) || intval($row['skipped_credit']) > intval($starvationConsultant['skipped_credit'])) {
                 $hourlyCount = $starvationCounts[(int) $row['id']] ?? 0;
                 if ($hourlyCount < $starvationMaxPerHour) {
@@ -2977,11 +2979,15 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
 
     do {
         $candidate = $simulatedConsultants[$nextIdx];
+        $candId = (int)$candidate['id'];
 
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
-        $isGatePassed = (checkConsultantGates($conn, (int)$candidate['id'], $lead) === true);
-        $isCool = isConsultantOnNormalCooldown($conn, (int)$candidate['id'], $roundId, $normalCooldownSec);
-        $isAvailable = !$isOnVacation && $isGatePassed && !$isCool;
+        $isGatePassed = (checkConsultantGates($conn, $candId, $lead) === true);
+        $candInWorkHours = isConsultantInWorkHours($currentTime, $candidate['work_start_time'] ?? '00:00', $candidate['work_end_time'] ?? '23:59', $candidate['work_schedule'] ?? null, $candId, $conn);
+        $candNightShift = checkNightShiftAvailability($conn, $candId, $currentTime);
+        $isCool = isConsultantOnNormalCooldown($conn, $candId, $roundId, $normalCooldownSec);
+        $isOnDuty = $isNightShiftNow ? $candNightShift : ($candInWorkHours || $isGoldenHoursTime);
+        $isAvailable = !$isOnVacation && $isGatePassed && $isOnDuty && !$isCool;
 
         if ($isAvailable) {
             $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
@@ -5313,15 +5319,8 @@ if (!function_exists('redistributePendingLeads')) {
                     // Post-commit: trigger live write-back
                     triggerTwoWaySync($conn, $leadId);
                     
-                    // Trigger notifications
-                    if ($newConsultantId && $newStatus !== 'pending_work_hours') {
-                        try {
-                            sendLeadAssignedEmailToSale($newConsultantEmail, $newConsultantName, $lead['name'] ?: 'Khách hàng ẩn danh', $lead['phone'] ?: '', $lead['note'] ?: '', $lead['source'] ?: '', $ccEmails, $roundName, $leadId, $newConsultantId, $roundId);
-                        } catch (Exception $mailEx) {}
-                        try {
-                            sendLeadAssignedZaloMessageToSale($newConsultantId, $newConsultantName, $lead['name'] ?: 'Khách hàng ẩn danh', $lead['phone'] ?: '', $lead['note'] ?: '', $lead['source'] ?: '', $roundName, $leadId, $roundId, $lead['email'] ?: '', $lead['type'] ?: '');
-                        } catch (Exception $zaloEx) {}
-                    } else if ($isFallbackAdmin && $fallbackAdminData) {
+                    // Trigger notifications only for fallback admin (normal sale notifications are already dispatched by logDistribution above)
+                    if (!$newConsultantId && $isFallbackAdmin && $fallbackAdminData) {
                         try {
                             sendLeadAssignedEmailToSale($fallbackAdminData['email'], $fallbackAdminData['name'], $lead['name'] ?: 'Khách hàng ẩn danh', $lead['phone'] ?: '', $lead['note'] ?: '', $lead['source'] ?: '', $fallbackCcEmails, 'Fallback Admin', $leadId, 0, 0);
                         } catch (Exception $mailEx) {}

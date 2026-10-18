@@ -403,6 +403,22 @@ export default function DepositsPage() {
 
     try {
       setIsSaving(true);
+      const validCollabs = isCooperation
+        ? Object.entries(collaboratorShares)
+            .filter(([, pct]) => Number(pct) > 0)
+            .map(([uid, pct]) => {
+              const matchedCollab = allowedCollaborators.find(ac => String(ac.id) === String(uid));
+              const matchedUser = usersList.find((u: any) => String(u.id) === String(uid));
+              const cleanName = (matchedUser?.full_name || matchedUser?.name || matchedCollab?.name || matchedUser?.username || `ID: ${uid}`).replace(/\s*\(Chủ sở hữu\)\s*$/i, '');
+              return {
+                user_id: uid,
+                name: cleanName,
+                role: matchedUser?.role || 'Sales',
+                percentage: Number(pct)
+              };
+            })
+        : [];
+
       const res = await fetchAPI('deposits', {
         method: 'POST',
         body: JSON.stringify({
@@ -413,12 +429,17 @@ export default function DepositsPage() {
           expected_commission: parseFloat(expectedCommission) || 0,
           milestones: milestonesInput,
           is_cooperation: isCooperation,
-          collaborators: isCooperation
-            ? Object.entries(collaboratorShares).map(([uid, pct]) => ({
-                user_id: uid,
-                percentage: pct
-              }))
-            : []
+          create_coop_slip: validCollabs.length > 0,
+          collaborators: validCollabs.map(c => ({
+            user_id: c.user_id,
+            percentage: c.percentage
+          })),
+          shares: validCollabs.map(c => ({
+            id: Number(c.user_id),
+            name: c.name,
+            role: c.role || 'Sales',
+            percent: Number(c.percentage)
+          }))
         })
       });
 

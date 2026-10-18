@@ -1637,10 +1637,7 @@ if (!function_exists('recallInactiveLeads')) {
                     sendSaleLeadRecalledNotification($conn, $leadId, $oldConsultantId, (int)$row['lead_recall_minutes'], $roundName);
                 }
 
-                // Gửi thông báo phân bổ cho Sale mới nếu đã nhận lead thành công
-                if ($newConsultantId > 0 && function_exists('sendDirectSaleLeadNotification')) {
-                    sendDirectSaleLeadNotification($conn, $leadId, $newConsultantId, $roundId);
-                }
+                // Lưu ý: Thông báo phân bổ cho Sale mới đã được gửi tự động trong logDistribution() khi $newStatus thuộc ('assigned', 'compensation').
 
                 logSync("Recalled lead ID $leadId from sale $oldConsultantName successfully. Sent recall notification.");
 
@@ -1733,7 +1730,7 @@ if (!function_exists('recallExpiredGrabLeads')) {
                     // We trigger redistribution
                     $eligible = [];
                     $cRes = $conn->query("
-                        SELECT c.id, c.name, c.email,
+                        SELECT c.id, c.name, c.email, c.work_start_time, c.work_end_time, c.work_schedule,
                                COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id
                         FROM round_consultants rc 
                         JOIN consultants c ON rc.consultant_id = c.id 
@@ -3140,7 +3137,7 @@ function assignParallelLeads($conn) {
     }
 
     $sql = "SELECT c.id as contact_id, c.person_id, c.lead_id, c.owner_id, c.project_id, c.email, c.phone, c.first_name, c.last_name, c.source, c.notes, c.customer_type, c.tenant_id,
-                   (SELECT round_id FROM distribution_logs WHERE lead_id = c.id AND status = 'assigned' ORDER BY id DESC LIMIT 1) as original_round_id
+                   (SELECT dr.round_id FROM distribution_logs dr WHERE (dr.lead_id = c.lead_id OR dr.lead_id = c.id) AND dr.status = 'assigned' ORDER BY dr.id DESC LIMIT 1) as original_round_id
             FROM contacts c
             JOIN persons p ON c.person_id = p.id
             WHERE c.pipeline_status = ?
@@ -3290,12 +3287,24 @@ function assignParallelLeads($conn) {
             $secondContactId = $stmtIns->insert_id;
             $stmtIns->close();
 
-            // Insert matching lead record with assigned_to set to second sale
-            $stmtLead = $conn->prepare("INSERT INTO leads (id, person_id, phone, email, name, source, status, assigned_to, is_accepted, last_assigned_at, last_interaction_date) VALUES (?, ?, ?, ?, ?, ?, 'assigned', ?, 0, NOW(), NOW()) ON DUPLICATE KEY UPDATE assigned_to = VALUES(assigned_to), last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0");
+            // Insert a clean new lead record for the parallel assignment (never force leads.id = $secondContactId)
+            $stmtLead = $conn->prepare("
+                INSERT INTO leads (person_id, name, phone, email, project_id, source, assigned_to, last_assigned_at, last_interaction_date, status, is_accepted, target_round_id, note, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'assigned', 0, ?, ?, NOW())
+            ");
             $leadName = trim($row['first_name'] . ' ' . $row['last_name']);
-            $stmtLead->bind_param("iissssi", $secondContactId, $personId, $row['phone'], $row['email'], $leadName, $row['source'], $secondSaleId);
+            $leadNote = $row['notes'] ?? '';
+            $stmtLead->bind_param("isssisiss", $personId, $leadName, $row['phone'], $row['email'], $projectId, $row['source'], $secondSaleId, $roundId, $leadNote);
             $stmtLead->execute();
+            $newParallelLeadId = (int)$stmtLead->insert_id;
             $stmtLead->close();
+
+            if ($newParallelLeadId > 0) {
+                $updContactLead = $conn->prepare("UPDATE contacts SET lead_id = ? WHERE id = ?");
+                $updContactLead->bind_param("ii", $newParallelLeadId, $secondContactId);
+                $updContactLead->execute();
+                $updContactLead->close();
+            }
             
             $updRound = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
             $updRound->bind_param("ii", $secondSaleId, $roundId);
@@ -3312,7 +3321,8 @@ function assignParallelLeads($conn) {
             }
             
             $logMsg = "Gán song song tự động ($statusText > $timerHours giờ)";
-            logDistribution($conn, $secondContactId, $secondSaleId, $roundId, 'assigned', $logMsg, false);
+            $distLeadId = $newParallelLeadId > 0 ? $newParallelLeadId : $secondContactId;
+            logDistribution($conn, $distLeadId, $secondSaleId, $roundId, 'assigned', $logMsg, false);
             
             $conn->commit();
             logSync("Parallel assigned Person ID $personId (Contact ID $contactId) to Sale ID $secondSaleId.");
@@ -3533,7 +3543,7 @@ function checkCapiStuckAlert($conn) {
             if ($admRes) {
                 $notifStmt = $conn->prepare("
                     INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
-                    VALUES (?, ?, ?, ?, 'system', '/capi')
+                    VALUES (?, ?, ?, ?, ?, ?)
                 ");
                 if ($notifStmt) {
                     $title = "CẢNH BÁO CAPI: Tắc nghẽn hàng đợi";
@@ -4444,7 +4454,8 @@ if (!defined('DIAG_TOKEN')) {
                     END,
                     c.updated_at = NOW()
                     WHERE c.deleted_at IS NULL
-                      AND c.is_databank = 0
+                      AND COALESCE(c.source, '') != 'databank'
+                      AND COALESCE(c.lead_phan_loai, '') != 'databank'
                       AND c.temperature IN ('hot', 'warm')
                       AND COALESCE(c.updated_at, c.created_at) <= DATE_SUB(NOW(), INTERVAL {$decayDays} DAY)
                       AND NOT EXISTS (

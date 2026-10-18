@@ -2,8 +2,25 @@
 // backend/permission_matrix_helper.php
 
 if (!function_exists('getModulePermissionScope')) {
-    function getModulePermissionScope($decodedUser, $module, $action) {
-        if (!isset($decodedUser) || !$decodedUser) {
+    function getModulePermissionScope($arg1, $arg2, $arg3, $arg4 = 'own') {
+        $conn = null;
+        $defaultScope = 'own';
+        if (is_object($arg1) || (is_array($arg2) && is_string($arg3) && is_string($arg4))) {
+            $conn = is_object($arg1) ? $arg1 : ($GLOBALS['conn'] ?? null);
+            $decodedUser = $arg2;
+            $module = $arg3;
+            $action = $arg4;
+        } else {
+            $conn = $GLOBALS['conn'] ?? null;
+            $decodedUser = $arg1;
+            $module = $arg2;
+            $action = $arg3;
+            if (is_string($arg4) && $arg4 !== '') {
+                $defaultScope = $arg4;
+            }
+        }
+
+        if (!isset($decodedUser) || !$decodedUser || !is_array($decodedUser)) {
             return 'none';
         }
         
@@ -18,6 +35,21 @@ if (!function_exists('getModulePermissionScope')) {
         
         // Check if the user has custom permissions in their decoded context or fetched live
         $permissions = $decodedUser['permissions'] ?? null;
+        if ($permissions === null && $conn instanceof mysqli) {
+            $uid = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            if ($uid > 0) {
+                $stmt = $conn->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+                if ($stmt) {
+                    $stmt->bind_param("i", $uid);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+                    if ($res && !empty($res['permissions_json'])) {
+                        $permissions = json_decode($res['permissions_json'], true);
+                    }
+                }
+            }
+        }
         if (isset($permissions) && is_array($permissions)) {
             $val = $permissions[$module][$action] ?? null;
             if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
@@ -42,7 +74,7 @@ if (!function_exists('getModulePermissionScope')) {
         }
         if ($role === 'sale' || $role === 'sales') {
             if ($module === 'projects') return $action === 'read' ? 'all' : 'none';
-            return $action === 'delete' ? 'none' : 'own';
+            return $action === 'delete' ? 'none' : $defaultScope;
         }
         if ($role === 'viewer') {
             return $action === 'read' ? 'all' : 'none';

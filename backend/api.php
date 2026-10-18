@@ -9,13 +9,18 @@ header("X-XSS-Protection: 1; mode=block");
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        error_log('FATAL ERROR: ' . $error['message'] . ' in ' . $error['file'] . ' on line ' . $error['line']);
         if (!headers_sent()) {
             http_response_code(500);
             header('Content-Type: application/json; charset=UTF-8');
         }
+        $safeMsg = function_exists('sanitize_ErrorMessageForClient')
+            ? sanitize_ErrorMessageForClient('FATAL ERROR: ' . $error['message'], 'Lỗi hệ thống nội bộ. Vui lòng thử lại sau.')
+            : 'Lỗi hệ thống nội bộ. Vui lòng thử lại sau.';
         echo json_encode([
             'success' => false,
-            'message' => 'FATAL ERROR: ' . $error['message'] . ' in ' . $error['file'] . ' on line ' . $error['line']
+            'status' => 'error',
+            'message' => $safeMsg
         ], JSON_UNESCAPED_UNICODE);
     }
 });
@@ -64,6 +69,48 @@ require_once 'permission_matrix_helper.php';
 require_once __DIR__ . '/utils/rag_helpers.php';
 require_once __DIR__ . '/webhook_logic.php';
 
+set_exception_handler(function (Throwable $e) {
+    error_log("API UNCAUGHT EXCEPTION: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=UTF-8');
+    }
+    $safeMsg = function_exists('sanitize_ErrorMessageForClient')
+        ? sanitize_ErrorMessageForClient($e->getMessage(), 'Lỗi hệ thống nội bộ. Vui lòng thử lại sau.')
+        : 'Lỗi hệ thống nội bộ. Vui lòng thử lại sau.';
+    echo json_encode([
+        'success' => false,
+        'status' => 'error',
+        'message' => $safeMsg
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+});
+
+ob_start(function ($buffer) {
+    if (!is_string($buffer) || $buffer === '') {
+        return $buffer;
+    }
+    if (!function_exists('sanitize_ErrorMessageForClient')) {
+        return $buffer;
+    }
+    if (preg_match('/(SQLSTATE|Unknown column|doesn\'t exist|Syntax error|You have an error in your SQL syntax|Duplicate entry|foreign key constraint|Cannot add or update a child row|Cannot delete or update a parent row|Deadlock found|Lock wait timeout|Data truncated|Incorrect integer value|Column count doesn\'t match|Access denied for user|PDOException|mysqli_|ArgumentCountError|Uncaught |FATAL ERROR:|\.php on line|Stack trace:)/i', $buffer)) {
+        $trimmed = trim($buffer);
+        if (isset($trimmed[0]) && $trimmed[0] === '{') {
+            $decoded = json_decode($trimmed, true);
+            if (is_array($decoded)) {
+                if (isset($decoded['message']) && is_string($decoded['message'])) {
+                    $decoded['message'] = sanitize_ErrorMessageForClient($decoded['message']);
+                }
+                if (isset($decoded['error']) && is_string($decoded['error'])) {
+                    $decoded['error'] = sanitize_ErrorMessageForClient($decoded['error']);
+                }
+                return json_encode($decoded, JSON_UNESCAPED_UNICODE);
+            }
+        }
+    }
+    return $buffer;
+});
+
 // Safe CORS origin matching
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = [
@@ -100,6 +147,9 @@ $JWT_SECRET = $_ENV['JWT_SECRET'] ?? "RICH LAND_SECRET_KEY_2026";
 
 if (!function_exists('respond')) {
     function respond(int $code, $data = null, string $message = '', bool $success = true): void {
+        if (($code >= 400 || !$success || $message !== '') && function_exists('sanitize_ErrorMessageForClient')) {
+            $message = sanitize_ErrorMessageForClient($message);
+        }
         if (!headers_sent()) {
             http_response_code($code);
             header('Content-Type: application/json; charset=UTF-8');
@@ -111,11 +161,16 @@ if (!function_exists('respond')) {
 
 function getSafeErrorMsg($e)
 {
-    if ($e instanceof mysqli_sql_exception) {
-        error_log("DB Error: " . $e->getMessage());
-        return "Lỗi cơ sở dữ liệu hệ thống. Vui lòng thử lại sau.";
+    $raw = ($e instanceof Throwable) ? $e->getMessage() : (string)$e;
+    if ($e instanceof mysqli_sql_exception || $e instanceof PDOException) {
+        error_log("DB Error: " . $raw);
+        return function_exists('sanitize_ErrorMessageForClient')
+            ? sanitize_ErrorMessageForClient($raw, "Lỗi cơ sở dữ liệu hệ thống. Vui lòng thử lại sau.")
+            : "Lỗi cơ sở dữ liệu hệ thống. Vui lòng thử lại sau.";
     }
-    return $e->getMessage();
+    return function_exists('sanitize_ErrorMessageForClient')
+        ? sanitize_ErrorMessageForClient($raw)
+        : $raw;
 }
 
 function getSystemFallbackRoundIds($conn)
@@ -208,64 +263,92 @@ function verify_jwt($jwt, $secret)
     return false;
 }
 
-function getModulePermissionScope($conn, $auth, $module, $action)
-{
-    // Admin / Superadmin always have 'all' permissions
-    if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
-        return 'all';
-    }
-
-    // Force sales role to have only 'own' (or 'none' for delete) on deals module
-    if (in_array($auth['role'], ['sale', 'sales'], true) && $module === 'deals') {
-        return $action === 'delete' ? 'none' : 'own';
-    }
-
-    $permissionsJson = $auth['permissions'] ?? null;
-    if ($permissionsJson === null) {
-        $stmt = $conn->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param("i", $auth['user_id']);
-            $stmt->execute();
-            $res = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            if ($res && !empty($res['permissions_json'])) {
-                $permissionsJson = json_decode($res['permissions_json'], true);
+if (!function_exists('getModulePermissionScope')) {
+    function getModulePermissionScope($arg1, $arg2, $arg3, $arg4 = 'own')
+    {
+        $conn = null;
+        $defaultScope = 'own';
+        if (is_object($arg1) || (is_array($arg2) && is_string($arg3) && is_string($arg4))) {
+            $conn = is_object($arg1) ? $arg1 : ($GLOBALS['conn'] ?? null);
+            $auth = $arg2;
+            $module = $arg3;
+            $action = $arg4;
+        } else {
+            $conn = $GLOBALS['conn'] ?? null;
+            $auth = $arg1;
+            $module = $arg2;
+            $action = $arg3;
+            if (is_string($arg4) && $arg4 !== '') {
+                $defaultScope = $arg4;
             }
         }
-    }
 
-    if ($permissionsJson && isset($permissionsJson[$module][$action])) {
-        $val = $permissionsJson[$module][$action];
-        if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
-            return $val;
-        }
-    }
-
-    // Default fallbacks based on role
-    $role = $auth['role'];
-    if ($role === 'director') {
-        if ($module === 'settings') {
+        if (!isset($auth) || !$auth || !is_array($auth)) {
             return 'none';
         }
-        return 'all';
-    }
-    if ($role === 'manager') {
-        return $action === 'delete' ? 'none' : 'team';
-    }
-    if ($role === 'assistant') {
-        return $action === 'delete' ? 'none' : 'all';
-    }
-    if (in_array($role, ['sale', 'sales'], true)) {
-        if ($module === 'projects') {
+
+        // Admin / Superadmin always have 'all' permissions
+        if (in_array($auth['role'] ?? '', ['admin', 'superadmin', 'super_admin'], true)) {
+            return 'all';
+        }
+
+        // Force sales role to have only 'own' (or 'none' for delete) on deals module
+        if (in_array($auth['role'] ?? '', ['sale', 'sales'], true) && in_array($module, ['deals', 'leads', 'contacts', 'customers'], true)) {
+            return $action === 'delete' ? 'none' : 'own';
+        }
+
+        $permissionsJson = $auth['permissions'] ?? null;
+        if ($permissionsJson === null && $conn instanceof mysqli) {
+            $uid = (int)($auth['user_id'] ?? $auth['id'] ?? 0);
+            if ($uid > 0) {
+                $stmt = $conn->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+                if ($stmt) {
+                    $stmt->bind_param("i", $uid);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+                    if ($res && !empty($res['permissions_json'])) {
+                        $permissionsJson = json_decode($res['permissions_json'], true);
+                    }
+                }
+            }
+        }
+
+        if ($permissionsJson && isset($permissionsJson[$module][$action])) {
+            $val = $permissionsJson[$module][$action];
+            if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
+                return $val;
+            }
+        }
+
+        // Default fallbacks based on role
+        $role = $auth['role'] ?? 'viewer';
+        if ($role === 'director') {
+            if ($module === 'settings') {
+                return 'none';
+            }
+            return 'all';
+        }
+        if ($role === 'manager') {
+            return $action === 'delete' ? 'none' : 'team';
+        }
+        if ($role === 'assistant') {
+            if ($module === 'leads') return $action === 'delete' ? 'none' : 'all';
+            if ($module === 'deals') return 'all';
+            return $action === 'delete' ? 'none' : 'all';
+        }
+        if (in_array($role, ['sale', 'sales'], true)) {
+            if ($module === 'projects') {
+                return $action === 'read' ? 'all' : 'none';
+            }
+            return $action === 'delete' ? 'none' : $defaultScope;
+        }
+        if ($role === 'viewer') {
             return $action === 'read' ? 'all' : 'none';
         }
-        return $action === 'delete' ? 'none' : 'own';
-    }
-    if ($role === 'viewer') {
-        return $action === 'read' ? 'all' : 'none';
-    }
 
-    return 'none';
+        return 'none';
+    }
 }
 
 function validateWorkSchedule($schedule)
@@ -11713,75 +11796,140 @@ switch ($action) {
                 'new_consultant_id' => $new_consultant_id
             ]);
 
-            // Sync contacts table - set pipeline_status to not_lead, unassign owner, clear proposal flag
-            $updContact = $conn->prepare("UPDATE contacts SET pipeline_status = 'not_lead', owner_id = NULL, not_lead_proposed = 0 WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ?) AND phone IS NOT NULL AND phone != '')");
-            if ($updContact) {
-                $updContact->bind_param("ii", $report['lead_id'], $report['lead_id']);
-                $updContact->execute();
-                $updContact->close();
-            }
-
-            // BAN from Databank and blacklist person completely on all fronts
-            $updPerson = $conn->prepare("UPDATE persons SET is_blocked = 1, deleted_from_databank = 1, is_public = 0, released_to_kho_at = NULL WHERE (id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')");
-            if ($updPerson) {
-                $updPerson->bind_param("ii", $report['lead_id'], $report['lead_id']);
-                $updPerson->execute();
-                $updPerson->close();
-            }
-
-            // Permanently insert into blocked_leads table so lead mới trùng số cũng không được chia
-            $bPhone = null;
-            $bEmail = null;
-            $qLeadInfo = $conn->prepare("SELECT phone, email FROM leads WHERE id = ? LIMIT 1");
-            if ($qLeadInfo) {
-                $qLeadInfo->bind_param("i", $report['lead_id']);
-                $qLeadInfo->execute();
-                $lInfo = $qLeadInfo->get_result()->fetch_assoc();
-                $bPhone = $lInfo['phone'] ?? null;
-                $bEmail = $lInfo['email'] ?? null;
-                $qLeadInfo->close();
-            }
-            if (!empty($bPhone) || !empty($bEmail)) {
-                $bReason = "Banned via Approved Not Lead: " . ($report['reason'] ?? 'Not Lead');
-                $adminUserId = (int)($decodedUser['id'] ?? 1);
-                $insBlock = $conn->prepare("INSERT INTO blocked_leads (phone, email, reason, created_by, created_at) VALUES (?, ?, ?, ?, NOW())");
-                if ($insBlock) {
-                    $insBlock->bind_param("sssi", $bPhone, $bEmail, $bReason, $adminUserId);
-                    $insBlock->execute();
-                    $insBlock->close();
+            $reportUserId = (int)($report['consultant_id'] ?? 0);
+            if ($new_consultant_id > 0) {
+                // Nhánh 1: Duyệt báo trùng & chuyển trả khách trùng về cho Sale cũ ($new_consultant_id)
+                // Chỉ thu hồi/xóa mềm bản ghi trùng của Sale báo cáo, KHÔNG đưa khách vào blocked_leads, KHÔNG đánh dấu is_blocked = 1, KHÔNG xóa owner_id của Sale cũ!
+                $updDupContact = $conn->prepare("
+                    UPDATE contacts 
+                    SET deleted_at = NOW(), not_lead_proposed = 0 
+                    WHERE owner_id = ? 
+                      AND owner_id != ?
+                      AND deleted_at IS NULL
+                      AND (
+                          lead_id = ?
+                          OR (person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND person_id > 0)
+                          OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')
+                      )
+                ");
+                if ($updDupContact) {
+                    $updDupContact->bind_param("iiiii", $reportUserId, $new_consultant_id, $report['lead_id'], $report['lead_id'], $report['lead_id']);
+                    $updDupContact->execute();
+                    $updDupContact->close();
                 }
-            }
 
-            // Mark lead status as not_lead
-            $updLead = $conn->prepare("UPDATE leads SET status = 'not_lead', assigned_to = NULL, is_accepted = 0 WHERE id = ?");
-            if ($updLead) {
-                $updLead->bind_param("i", $report['lead_id']);
-                $updLead->execute();
-                $updLead->close();
-            }
+                // Đảm bảo contact của Sale cũ ($new_consultant_id) không bị gắn cờ not_lead_proposed
+                $clearOldProp = $conn->prepare("
+                    UPDATE contacts 
+                    SET not_lead_proposed = 0 
+                    WHERE owner_id = ? 
+                      AND deleted_at IS NULL
+                      AND (
+                          lead_id = ?
+                          OR (person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND person_id > 0)
+                          OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')
+                      )
+                ");
+                if ($clearOldProp) {
+                    $clearOldProp->bind_param("iiii", $new_consultant_id, $report['lead_id'], $report['lead_id'], $report['lead_id']);
+                    $clearOldProp->execute();
+                    $clearOldProp->close();
+                }
 
-            $conn->commit();
-            // Trigger Live Two-Way Sync to Google Sheets
-            triggerTwoWaySync($conn, $report['lead_id']);
+                $conn->commit();
+                triggerTwoWaySync($conn, $report['lead_id']);
+            } elseif ($no_compensation) {
+                // Nhánh 2: Duyệt không đền bù ("Bạn vẫn sở hữu lead này")
+                // Chỉ reset not_lead_proposed = 0, KHÔNG xóa owner_id, KHÔNG khóa khách!
+                $updKeepContact = $conn->prepare("
+                    UPDATE contacts 
+                    SET not_lead_proposed = 0 
+                    WHERE (
+                        lead_id = ?
+                        OR (person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND person_id > 0)
+                        OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')
+                    )
+                ");
+                if ($updKeepContact) {
+                    $updKeepContact->bind_param("iii", $report['lead_id'], $report['lead_id'], $report['lead_id']);
+                    $updKeepContact->execute();
+                    $updKeepContact->close();
+                }
 
-            // Fire async Meta CAPI event 'BAD' with lead_id to train AI advertising models
-            try {
-                require_once __DIR__ . '/config/CapiHelper.php';
-                $approvedLeadId = (int)$report['lead_id'];
-                $stmtCId = $conn->prepare("SELECT id FROM contacts WHERE person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) LIMIT 1");
-                $fContactId = null;
-                if ($stmtCId) {
-                    $stmtCId->bind_param("i", $approvedLeadId);
-                    $stmtCId->execute();
-                    $cRes = $stmtCId->get_result()->fetch_assoc();
-                    $stmtCId->close();
-                    if ($cRes) {
-                        $fContactId = (int)$cRes['id'];
+                $conn->commit();
+                triggerTwoWaySync($conn, $report['lead_id']);
+            } else {
+                // Nhánh 3: Duyệt loại bỏ Lead rác thực sự ($new_consultant_id <= 0 && !$no_compensation)
+                // Sync contacts table - set pipeline_status to not_lead, unassign owner, clear proposal flag
+                $updContact = $conn->prepare("UPDATE contacts SET pipeline_status = 'not_lead', owner_id = NULL, not_lead_proposed = 0 WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ?) AND phone IS NOT NULL AND phone != '')");
+                if ($updContact) {
+                    $updContact->bind_param("ii", $report['lead_id'], $report['lead_id']);
+                    $updContact->execute();
+                    $updContact->close();
+                }
+
+                // BAN from Databank and blacklist person completely on all fronts
+                $updPerson = $conn->prepare("UPDATE persons SET is_blocked = 1, deleted_from_databank = 1, is_public = 0, released_to_kho_at = NULL WHERE (id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')");
+                if ($updPerson) {
+                    $updPerson->bind_param("ii", $report['lead_id'], $report['lead_id']);
+                    $updPerson->execute();
+                    $updPerson->close();
+                }
+
+                // Permanently insert into blocked_leads table so lead mới trùng số cũng không được chia
+                $bPhone = null;
+                $bEmail = null;
+                $qLeadInfo = $conn->prepare("SELECT phone, email FROM leads WHERE id = ? LIMIT 1");
+                if ($qLeadInfo) {
+                    $qLeadInfo->bind_param("i", $report['lead_id']);
+                    $qLeadInfo->execute();
+                    $lInfo = $qLeadInfo->get_result()->fetch_assoc();
+                    $bPhone = $lInfo['phone'] ?? null;
+                    $bEmail = $lInfo['email'] ?? null;
+                    $qLeadInfo->close();
+                }
+                if (!empty($bPhone) || !empty($bEmail)) {
+                    $bReason = "Banned via Approved Not Lead: " . ($report['reason'] ?? 'Not Lead');
+                    $adminUserId = (int)($decodedUser['id'] ?? 1);
+                    $insBlock = $conn->prepare("INSERT INTO blocked_leads (phone, email, reason, created_by, created_at) VALUES (?, ?, ?, ?, NOW())");
+                    if ($insBlock) {
+                        $insBlock->bind_param("sssi", $bPhone, $bEmail, $bReason, $adminUserId);
+                        $insBlock->execute();
+                        $insBlock->close();
                     }
                 }
-                CapiHelper::sendEvent(null, $fContactId, 'BAD', 0.0, 'VND', $approvedLeadId);
-            } catch (\Throwable $capiEx) {
-                error_log("Meta CAPI BAD event dispatch error: " . $capiEx->getMessage());
+
+                // Mark lead status as not_lead
+                $updLead = $conn->prepare("UPDATE leads SET status = 'not_lead', assigned_to = NULL, is_accepted = 0 WHERE id = ?");
+                if ($updLead) {
+                    $updLead->bind_param("i", $report['lead_id']);
+                    $updLead->execute();
+                    $updLead->close();
+                }
+
+                $conn->commit();
+                // Trigger Live Two-Way Sync to Google Sheets
+                triggerTwoWaySync($conn, $report['lead_id']);
+
+                // Fire async Meta CAPI event 'BAD' with lead_id to train AI advertising models
+                try {
+                    require_once __DIR__ . '/config/CapiHelper.php';
+                    $approvedLeadId = (int)$report['lead_id'];
+                    $stmtCId = $conn->prepare("SELECT id FROM contacts WHERE person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) LIMIT 1");
+                    $fContactId = null;
+                    if ($stmtCId) {
+                        $stmtCId->bind_param("i", $approvedLeadId);
+                        $stmtCId->execute();
+                        $cRes = $stmtCId->get_result()->fetch_assoc();
+                        $stmtCId->close();
+                        if ($cRes) {
+                            $fContactId = (int)$cRes['id'];
+                        }
+                    }
+                    CapiHelper::sendEvent(null, $fContactId, 'BAD', 0.0, 'VND', $approvedLeadId);
+                } catch (\Throwable $capiEx) {
+                    error_log("Meta CAPI BAD event dispatch error: " . $capiEx->getMessage());
+                }
             }
         } catch (Exception $e) {
             $conn->rollback();
@@ -21419,8 +21567,8 @@ switch ($action) {
         $limitDay = (int) get_system_setting($conn, 'databank_limit_per_day');
         $limitHour = (int) get_system_setting($conn, 'databank_limit_per_hour');
         $limitMonth = (int) get_system_setting($conn, 'databank_limit_per_month');
-        if ($limitDay <= 0) $limitDay = 2;
-        if ($limitHour <= 0) $limitHour = 3;
+        if ($limitDay <= 0) $limitDay = 20;
+        if ($limitHour <= 0) $limitHour = 5;
         if ($limitMonth <= 0) $limitMonth = 300;
 
         $input = json_decode(file_get_contents('php://input'), true);

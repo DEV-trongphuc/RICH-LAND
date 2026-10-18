@@ -14,6 +14,7 @@ function getTranslatedError(key: string, replacements?: Record<string, string | 
 
 
 import api from '../api/axios';
+import { sanitizeUserMessage } from './toastEnhancer';
 
 let settingsCachePromise: Promise<any> | null = null;
 let cachedToken: string | null = null;
@@ -55,11 +56,20 @@ export async function fetchAPI(action: string, options: RequestInit = {}) {
             'Pragma': 'no-cache'
           },
         });
+        if (response.data && typeof response.data === 'object' && response.data.success === false && typeof response.data.message === 'string') {
+          response.data.message = sanitizeUserMessage(response.data.message);
+        }
         return response.data;
       } catch (err: any) {
         settingsCachePromise = null; // Clear on error to allow retries
+        if (err?.name === 'AbortError' || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+          throw err;
+        }
         if (err.response) {
-          throw new Error(err.response.data?.message || err.message, { cause: err });
+          throw new Error(sanitizeUserMessage(err.response.data?.message || err.message), { cause: err });
+        }
+        if (err && typeof err.message === 'string') {
+          err.message = sanitizeUserMessage(err.message);
         }
         throw err;
       }
@@ -100,10 +110,19 @@ export async function fetchAPI(action: string, options: RequestInit = {}) {
       headers,
       signal: options.signal as any,
     });
+    if (response.data && typeof response.data === 'object' && response.data.success === false && typeof response.data.message === 'string') {
+      response.data.message = sanitizeUserMessage(response.data.message);
+    }
     return response.data;
   } catch (err: any) {
+    if (err?.name === 'AbortError' || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+      throw err;
+    }
     if (err.response) {
-      throw new Error(err.response.data?.message || err.message, { cause: err });
+      throw new Error(sanitizeUserMessage(err.response.data?.message || err.message), { cause: err });
+    }
+    if (err && typeof err.message === 'string') {
+      err.message = sanitizeUserMessage(err.message);
     }
     throw err;
   }
@@ -148,12 +167,16 @@ export async function fetchPublicAPI(action: string, options: RequestInit = {}) 
   try {
     json = await response.json();
   } catch {
-    throw new Error(getTranslatedError('Lỗi kết nối máy chủ (không phải JSON)'));
+    throw new Error(sanitizeUserMessage(getTranslatedError('Lỗi kết nối máy chủ (không phải JSON)')));
   }
 
   // Never redirect — just throw with server message
   if (!response.ok) {
-    throw new Error(json?.message || getTranslatedError('Lỗi máy chủ ({status})', { status: response.status }));
+    throw new Error(sanitizeUserMessage(json?.message || getTranslatedError('Lỗi máy chủ ({status})', { status: response.status })));
+  }
+
+  if (json && typeof json === 'object' && json.success === false && typeof json.message === 'string') {
+    json.message = sanitizeUserMessage(json.message);
   }
 
   return json;

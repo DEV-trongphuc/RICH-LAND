@@ -371,4 +371,64 @@ if (!function_exists('getTicketNotifyAdmins')) {
         return $admins;
     }
 }
+
+if (!function_exists('sanitize_ErrorMessageForClient')) {
+    function sanitize_ErrorMessageForClient($msg, $fallback = 'Hệ thống đang bận hoặc gặp sự cố dữ liệu tạm thời. Vui lòng thử lại sau.') {
+        if (!is_string($msg) || $msg === '') {
+            return (string)$msg;
+        }
+        $techPatterns = [
+            'SQLSTATE',
+            'Unknown column',
+            'Table ',
+            "doesn't exist",
+            'Syntax error',
+            'You have an error in your SQL syntax',
+            'Duplicate entry',
+            'foreign key constraint',
+            'Cannot add or update a child row',
+            'Cannot delete or update a parent row',
+            'Deadlock found',
+            'Lock wait timeout',
+            'Data truncated',
+            'Incorrect integer value',
+            'Incorrect datetime value',
+            "Column count doesn't match",
+            'Access denied for user',
+            'MySQL server has gone away',
+            'PDOException',
+            'mysqli_',
+            'ArgumentCountError',
+            'Uncaught ',
+            'FATAL ERROR:',
+            '.php on line',
+            'Stack trace:'
+        ];
+        $isTechError = false;
+        foreach ($techPatterns as $pat) {
+            if (stripos($msg, $pat) !== false) {
+                $isTechError = true;
+                break;
+            }
+        }
+        if (!$isTechError && preg_match('/\bin\s+(?:\/|[A-Za-z]:\\\\)[^\s]+\.php\b/i', $msg)) {
+            $isTechError = true;
+        }
+        if ($isTechError) {
+            error_log("[RichLand SQL/Tech Error Masked] " . $msg);
+            if (stripos($msg, 'Duplicate entry') !== false) {
+                return 'Dữ liệu bị trùng lặp trong hệ thống. Vui lòng kiểm tra lại.';
+            }
+            if (stripos($msg, 'Deadlock') !== false || stripos($msg, 'Lock wait timeout') !== false) {
+                return 'Hệ thống đang xử lý giao dịch đồng thời, vui lòng thử lại sau giây lát.';
+            }
+            if (stripos($msg, 'foreign key constraint') !== false || stripos($msg, 'Cannot add or update a child row') !== false || stripos($msg, 'Cannot delete or update a parent row') !== false) {
+                return 'Dữ liệu đang có ràng buộc liên kết trong hệ thống, không thể thực hiện thao tác này.';
+            }
+            return $fallback;
+        }
+        return $msg;
+    }
+}
 ?>
+

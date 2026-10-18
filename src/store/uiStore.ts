@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import toast from 'react-hot-toast';
 import React from 'react';
-import { playToastSound } from '../utils/soundHelper';
+import { sanitizeUserMessage, enhanceToast } from '../utils/toastEnhancer';
+
+const recentToastTimestamps = new Map<string, number>();
+const TOAST_DEDUP_WINDOW_MS = 2500;
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -97,15 +100,30 @@ export const useUIStore = create<UIStore>((set) => ({
   closeCall: () => set((state) => ({ callModal: { ...state.callModal, isOpen: false } })),
 
   addToast: (message, type = 'info', action, playSound = true) => {
-    // Trigger synthesized audio sound effect
-    if (playSound) {
-      playToastSound(type);
+    const safeMessage = typeof message === 'string' ? sanitizeUserMessage(message) : message;
+
+    // Deduplicate identical toasts within 2.5s window
+    const dedupKey = typeof safeMessage === 'string' ? `${type}:${safeMessage.trim()}` : undefined;
+    if (dedupKey) {
+      const now = Date.now();
+      const lastTimestamp = recentToastTimestamps.get(dedupKey);
+      if (lastTimestamp && now - lastTimestamp < TOAST_DEDUP_WINDOW_MS) {
+        return;
+      }
+      recentToastTimestamps.set(dedupKey, now);
+      if (recentToastTimestamps.size > 100) {
+        for (const [k, ts] of recentToastTimestamps.entries()) {
+          if (now - ts >= TOAST_DEDUP_WINDOW_MS) recentToastTimestamps.delete(k);
+        }
+      }
     }
+
+    const enhancedMessage = enhanceToast(safeMessage, type, playSound);
 
     if (action) {
       toast((t) => (
         React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
-          React.createElement('span', null, message),
+          React.createElement('span', null, enhancedMessage),
           React.createElement('button', {
             onClick: () => {
               action.onClick();
@@ -124,16 +142,16 @@ export const useUIStore = create<UIStore>((set) => ({
             }
           }, action.label)
         )
-      ), { id: Math.random().toString(), duration: 4000 });
+      ), { id: dedupKey || Math.random().toString(), duration: 4000 });
     } else {
       if (type === 'success') {
-        toast.success(message as any);
+        toast.success(enhancedMessage as any, dedupKey ? { id: dedupKey } : undefined);
       } else if (type === 'error') {
-        toast.error(message as any);
+        toast.error(enhancedMessage as any, dedupKey ? { id: dedupKey } : undefined);
       } else if (type === 'warning') {
-        toast(message as any, { icon: '⚠️', duration: 3500 });
+        toast(enhancedMessage as any, { icon: '⚠️', duration: 3500, ...(dedupKey ? { id: dedupKey } : {}) });
       } else {
-        toast(message as any, { duration: 3000 });
+        toast(enhancedMessage as any, { duration: 3000, ...(dedupKey ? { id: dedupKey } : {}) });
       }
     }
   },

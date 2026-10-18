@@ -343,7 +343,7 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
         if ($cmdArg === 'pending') {
             $resTick = $conn->query("
                 SELECT t.id, t.created_at, c.name as sale_name, l.name as lead_name, t.reason as error_reason
-                FROM duplicate_log t
+                FROM data_reports t
                 LEFT JOIN consultants c ON t.consultant_id = c.id
                 LEFT JOIN leads l ON t.lead_id = l.id
                 WHERE t.status = 'pending'

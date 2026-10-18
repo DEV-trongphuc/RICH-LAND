@@ -714,11 +714,12 @@ const IntegrationsInner = () => {
         fetchAPI('get_connections'),
         fetchAPI('get_mappings'),
         fetchAPI('get_settings'),
-        fetchAPI('custom_fields').catch(() => null)
+        fetchAPI('custom-fields').catch(() => null)
       ]);
 
       if (customRes) {
-        const cFields = Array.isArray(customRes) ? customRes : (customRes.data || []);
+        const rawCF = customRes?.data?.items || customRes?.data || customRes;
+        const cFields = Array.isArray(rawCF) ? rawCF : [];
         if (cFields.length > 0) {
           const formattedCF = cFields.map((cf: any) => ({
             value: `cf_${cf.id}`,

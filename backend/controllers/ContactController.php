@@ -806,13 +806,10 @@ class ContactController {
                     (SELECT COUNT(*) FROM invoices WHERE contact_id=c.id AND status='paid' AND deleted_at IS NULL) as paid_invoice_count,
                     (SELECT COALESCE(SUM(ee.amount),0) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL) as total_spent,
                     (SELECT COUNT(*) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL) as expense_count,
-                    (
-                        SELECT MAX(dt) FROM (
-                            SELECT contact_id as cid, paid_at as dt FROM invoices WHERE status='paid' AND deleted_at IS NULL
-                            UNION ALL
-                            SELECT ee.entity_id as cid, e.approved_at as dt FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND e.status = 'approved' AND e.deleted_at IS NULL
-                        ) as t WHERE t.cid = c.id
-                    ) as last_order_at,
+                    NULLIF(GREATEST(
+                        COALESCE((SELECT MAX(paid_at) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL), '1970-01-01 00:00:00'),
+                        COALESCE((SELECT MAX(e.approved_at) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL), '1970-01-01 00:00:00')
+                    ), '1970-01-01 00:00:00') as last_order_at,
                     l.id as lead_id,
                     l.note as lead_note,
                     l.type as lead_type,
@@ -907,7 +904,7 @@ class ContactController {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật', false);
         $b = getBody();
         // 1. Pre-fetch current contact state for lifecycle validation
-        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name, person_id, email, phone, mobile, collaborator_ids, source, ttl1_data, address, job_title, notes, budget, budget_range FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name, person_id, lead_id, lead_phan_loai, email, phone, mobile, collaborator_ids, source, ttl1_data, address, job_title, notes, budget, budget_range FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtCurr->execute([$id, $auth['tenant_id']]);
         $currentContact = $stmtCurr->fetch();
         if (!$currentContact) respond(404, null, 'Không tìm thấy liên hệ', false);
@@ -959,15 +956,23 @@ class ContactController {
         $newStatus = $b['pipeline_status'] ?? null;
 
         if ($newStatus === 'not_lead') {
+            $isFromDatabank = (strtolower(trim((string)($currentContact['source'] ?? ''))) === 'databank' || strtolower(trim((string)($currentContact['lead_phan_loai'] ?? ''))) === 'databank');
+            if ($isFromDatabank) {
+                respond(400, null, 'Khách hàng nhận từ Kho Databank không được phép chuyển sang Not Lead. Vui lòng sử dụng tính năng "Trả về Databank"!', false);
+            }
             if (in_array($auth['role'], ['sale', 'sales'], true)) {
+                $reasonText = trim((string)($b['not_lead_reason'] ?? 'Đề xuất chuyển trạng thái Not Lead'));
                 $stmtProp = $this->db->prepare("
                     UPDATE contacts 
                     SET not_lead_proposed = 1, 
                         not_lead_proposed_by = ?, 
-                        not_lead_proposed_at = NOW() 
+                        not_lead_proposed_at = NOW(),
+                        not_lead_reason = ?
                     WHERE id = ? AND tenant_id = ?
                 ");
-                $stmtProp->execute([$auth['user_id'], $id, $auth['tenant_id']]);
+                $stmtProp->execute([$auth['user_id'], $reasonText, $id, $auth['tenant_id']]);
+
+                $this->ensurePendingNotLeadTicket($id, $currentContact, (int)$auth['user_id'], $reasonText);
                 
                 $reasonMsg = !empty($b['not_lead_reason']) ? (" Lý do: " . trim($b['not_lead_reason'])) : '';
                 logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'PROPOSE_NOT_LEAD', 'contact', $id, "Báo cáo Not Lead cho khách hàng ID: $id.$reasonMsg");
@@ -1393,13 +1398,10 @@ class ContactController {
                     (SELECT COUNT(*) FROM invoices WHERE contact_id=c.id AND status='paid' AND deleted_at IS NULL) as paid_invoice_count,
                     (SELECT COALESCE(SUM(ee.amount),0) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL) as total_spent,
                     (SELECT COUNT(*) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL) as expense_count,
-                    (
-                        SELECT MAX(dt) FROM (
-                            SELECT contact_id as cid, paid_at as dt FROM invoices WHERE status='paid' AND deleted_at IS NULL
-                            UNION ALL
-                            SELECT ee.entity_id as cid, e.approved_at as dt FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND e.status = 'approved' AND e.deleted_at IS NULL
-                        ) as t WHERE t.cid = c.id
-                    ) as last_order_at
+                    NULLIF(GREATEST(
+                        COALESCE((SELECT MAX(paid_at) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL), '1970-01-01 00:00:00'),
+                        COALESCE((SELECT MAX(e.approved_at) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL), '1970-01-01 00:00:00')
+                    ), '1970-01-01 00:00:00') as last_order_at
             FROM contacts c
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
@@ -1430,11 +1432,36 @@ class ContactController {
         $newStatus = $this->getSlugFromStageId($stageId, $auth['tenant_id']);
 
         // Check current status for CAPI/Timer trigger
-        $stmtC = $this->db->prepare("SELECT pipeline_status, owner_id, first_name, last_name, ttl1_completed, source FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtC = $this->db->prepare("SELECT pipeline_status, owner_id, first_name, last_name, person_id, lead_id, lead_phan_loai, phone, email, ttl1_completed, source FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtC->execute([$id, $auth['tenant_id']]);
         $currentContact = $stmtC->fetch();
+        if (!$currentContact) respond(404, null, 'Không tìm thấy liên hệ', false);
         $currStatus = $currentContact['pipeline_status'] ?? 'chua_xac_dinh';
         $currTtl1 = (int)($currentContact['ttl1_completed'] ?? 0);
+
+        if ($newStatus === 'not_lead') {
+            $isFromDatabank = (strtolower(trim((string)($currentContact['source'] ?? ''))) === 'databank' || strtolower(trim((string)($currentContact['lead_phan_loai'] ?? ''))) === 'databank');
+            if ($isFromDatabank) {
+                respond(400, null, 'Khách hàng nhận từ Kho Databank không được phép chuyển sang Not Lead. Vui lòng sử dụng tính năng "Trả về Databank"!', false);
+            }
+            if (in_array($auth['role'], ['sale', 'sales'], true)) {
+                $reasonText = trim((string)($b['not_lead_reason'] ?? 'Đề xuất chuyển trạng thái Not Lead'));
+                $stmtProp = $this->db->prepare("
+                    UPDATE contacts 
+                    SET not_lead_proposed = 1, 
+                        not_lead_proposed_by = ?, 
+                        not_lead_proposed_at = NOW(),
+                        not_lead_reason = ?
+                    WHERE id = ? AND tenant_id = ?
+                ");
+                $stmtProp->execute([$auth['user_id'], $reasonText, $id, $auth['tenant_id']]);
+
+                $this->ensurePendingNotLeadTicket($id, $currentContact, (int)$auth['user_id'], $reasonText);
+
+                logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'PROPOSE_NOT_LEAD', 'contact', $id, "Báo cáo Not Lead cho khách hàng ID: $id.");
+                respond(200, null, 'Báo cáo Not Lead đã được gửi đến Quản lý để phê duyệt.');
+            }
+        }
 
         // Fetch pipeline status hierarchy dynamically from system_settings
         $stmtHierarchy = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
@@ -1977,40 +2004,8 @@ class ContactController {
             respond(400, null, 'Không thể báo Not Lead đối với khách hàng đã phát sinh đặt cọc hoặc đóng deal!', false);
         }
 
-        // Find associated lead_id and round_id
-        $leadId = null;
-        $roundId = null;
-        if ($personId) {
-            $stL = $this->db->prepare("SELECT id, target_round_id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
-            $stL->execute([$personId]);
-            $lRow = $stL->fetch(PDO::FETCH_ASSOC);
-            if ($lRow) {
-                $leadId = (int)$lRow['id'];
-                $roundId = $lRow['target_round_id'] ? (int)$lRow['target_round_id'] : null;
-            }
-        }
-        if (!$roundId && $leadId) {
-            $stDl = $this->db->prepare("SELECT round_id FROM distribution_logs WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
-            $stDl->execute([$leadId]);
-            $dlRow = $stDl->fetch(PDO::FETCH_ASSOC);
-            if ($dlRow && !empty($dlRow['round_id'])) {
-                $roundId = (int)$dlRow['round_id'];
-            }
-        }
-        if (!$leadId) {
-            $leadName = trim(($contact['last_name'] ?? '') . ' ' . ($contact['first_name'] ?? ''));
-            if (empty($leadName)) $leadName = 'Khách hàng #' . $id;
-            $stInsLead = $this->db->prepare("INSERT INTO leads (person_id, name, phone, email, source, status, assigned_to, created_at) VALUES (?, ?, ?, ?, ?, 'lead', ?, NOW())");
-            $stInsLead->execute([$personId, $leadName, $contact['phone'] ?? null, $contact['email'] ?? null, $contact['source'] ?? 'crm', $auth['user_id']]);
-            $leadId = (int)$this->db->lastInsertId();
-        }
-
-        // 2. Insert into data_reports as pending ticket for Admin / Manager review
-        $stmtInsReport = $this->db->prepare("
-            INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, created_at)
-            VALUES (?, ?, ?, ?, 'pending', NOW())
-        ");
-        $stmtInsReport->execute([$leadId, $auth['user_id'], $roundId, $reason]);
+        // 2. Ensure a single pending ticket exists in data_reports for Admin / Manager review
+        $this->ensurePendingNotLeadTicket($id, $contact, (int)$auth['user_id'], $reason);
 
         // 3. Update contact: mark not_lead_proposed = 1 for admin review (hidden from sales, kept in ownership until approved)
         $stmtUpContact = $this->db->prepare("
@@ -2026,6 +2021,66 @@ class ContactController {
         logActivity($this->db, $tid, $auth['user_id'], 'REPORT_NOT_LEAD', 'contact', $id, "Đã gửi đề xuất báo Not Lead lên ban quản trị. Lý do: $reason");
 
         respond(200, ['success' => true], 'Đã gửi đề xuất Not Lead thành công. Yêu cầu đang chờ Ban quản trị duyệt.');
+    }
+
+    private function ensurePendingNotLeadTicket(int $contactId, array $contact, int $userId, string $reason): void {
+        $personId = !empty($contact['person_id']) ? (int)$contact['person_id'] : null;
+        $leadId = !empty($contact['lead_id']) ? (int)$contact['lead_id'] : null;
+        $roundId = null;
+
+        if ($personId) {
+            $stL = $this->db->prepare("SELECT id, target_round_id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $stL->execute([$personId]);
+            $lRow = $stL->fetch(PDO::FETCH_ASSOC);
+            if ($lRow) {
+                $leadId = (int)$lRow['id'];
+                $roundId = !empty($lRow['target_round_id']) ? (int)$lRow['target_round_id'] : null;
+            }
+        }
+        if (!$roundId && $leadId) {
+            $stDl = $this->db->prepare("SELECT round_id FROM distribution_logs WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+            $stDl->execute([$leadId]);
+            $dlRow = $stDl->fetch(PDO::FETCH_ASSOC);
+            if ($dlRow && !empty($dlRow['round_id'])) {
+                $roundId = (int)$dlRow['round_id'];
+            }
+        }
+
+        // Resolve consultant_id from user_id (fallback to userId)
+        $consultantId = $userId;
+        $stCons = $this->db->prepare("SELECT c.id FROM consultants c JOIN users u ON c.email = u.email WHERE u.id = ? LIMIT 1");
+        $stCons->execute([$userId]);
+        $cIdRow = $stCons->fetchColumn();
+        if ($cIdRow) {
+            $consultantId = (int)$cIdRow;
+        }
+
+        if (!$leadId) {
+            $leadName = trim(($contact['last_name'] ?? '') . ' ' . ($contact['first_name'] ?? ''));
+            if (empty($leadName)) $leadName = 'Khách hàng #' . $contactId;
+            $stInsLead = $this->db->prepare("INSERT INTO leads (person_id, name, phone, email, source, status, assigned_to, created_at) VALUES (?, ?, ?, ?, ?, 'lead', ?, NOW())");
+            $stInsLead->execute([$personId, $leadName, $contact['phone'] ?? null, $contact['email'] ?? null, $contact['source'] ?? 'crm', $consultantId]);
+            $leadId = (int)$this->db->lastInsertId();
+            if ($leadId > 0) {
+                $this->db->prepare("UPDATE contacts SET lead_id = ? WHERE id = ?")->execute([$leadId, $contactId]);
+            }
+        }
+
+        // Prevent duplicate pending tickets in data_reports for the same lead_id
+        $stmtChkPending = $this->db->prepare("SELECT id FROM data_reports WHERE lead_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1");
+        $stmtChkPending->execute([$leadId]);
+        $existingPendingId = $stmtChkPending->fetchColumn();
+
+        if ($existingPendingId) {
+            $stmtUpdRep = $this->db->prepare("UPDATE data_reports SET reason = ?, consultant_id = ?, round_id = COALESCE(?, round_id) WHERE id = ?");
+            $stmtUpdRep->execute([$reason, $consultantId, $roundId, (int)$existingPendingId]);
+        } else {
+            $stmtInsReport = $this->db->prepare("
+                INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, created_at)
+                VALUES (?, ?, ?, ?, 'pending', NOW())
+            ");
+            $stmtInsReport->execute([$leadId, $consultantId, $roundId, $reason]);
+        }
     }
 
     private function getScope(array $auth, string $module, string $action): string {

@@ -650,8 +650,8 @@ class DealController {
                 $newDepId = (int)$this->db->lastInsertId();
 
                 // Re-link any existing cooperation slips from the old deposit to the new deposit
-                $stmtRelinkCoop = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ?, apartment_code = ? WHERE deposit_slip_id = ?");
-                $stmtRelinkCoop->execute([$newDepId, $newUnitCode, $oldDep['id']]);
+                $stmtRelinkCoop = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ? WHERE deposit_slip_id = ?");
+                $stmtRelinkCoop->execute([$newDepId, $oldDep['id']]);
 
                 // Create first milestone for the new deposit
                 $this->db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1 - Cọc giữ chỗ (Đổi căn)', ?, 'pending')")

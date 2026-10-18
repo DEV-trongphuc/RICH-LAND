@@ -134,7 +134,7 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
 
   const handleOpenEditSO = async () => {
     if (!selectedDepForManage) return;
-    setEditFullName(selectedDepForManage.full_name || selectedDepForManage.client_name || selectedDepForManage.contact_name || '');
+    setEditFullName(selectedDepForManage.full_name || selectedDepForManage.client_name || selectedDepForManage.contact_name || selectedDepForManage.name || '');
     setEditPhone(selectedDepForManage.phone || '');
     setEditEmail(selectedDepForManage.email || '');
     setEditProjectId(String(selectedDepForManage.project_id || ''));
@@ -155,7 +155,7 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
     }
     if (availableUsers.length === 0) {
       try {
-        const uRes = await fetchAPI('users');
+        const uRes = await fetchAPI('users?all=1');
         if (uRes?.data && Array.isArray(uRes.data)) setAvailableUsers(uRes.data);
         else if (Array.isArray(uRes)) setAvailableUsers(uRes);
       } catch (e) {}
@@ -196,7 +196,8 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
       if (res.success) {
         addToast('Cập nhật thông tin phiếu cọc thành công!', 'success');
         const projName = availableProjects.find(p => String(p.id) === String(editProjectId))?.name || selectedDepForManage.project_name;
-        const creatorName = availableUsers.find(u => String(u.id) === String(editCreatedBy))?.name || selectedDepForManage.creator_name;
+        const matchedCreator = availableUsers.find(u => String(u.id) === String(editCreatedBy));
+        const creatorName = (matchedCreator ? (matchedCreator.name || matchedCreator.full_name || matchedCreator.username || 'User') : '') || selectedDepForManage.creator_name;
         
         setSelectedDepForManage((prev: any) => ({
           ...prev,
@@ -231,7 +232,10 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
   useEffect(() => {
     if (deposit) {
       setSelectedDepForManage(deposit);
-      setTempMilestones((deposit.milestones || []).map((m: any) => ({ ...m })));
+      setTempMilestones((deposit.milestones || []).map((m: any) => ({
+        ...m,
+        expected_pay_date: m.expected_pay_date || m.due_date || ''
+      })));
       setSharesData([]);
       setTempExpectedCommission(Number(deposit.expected_commission) || 0);
       setTempSharesData([]);
@@ -260,8 +264,12 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
           if (slips.length > 0) {
             const matchedSlip = slips.find((s: any) => Number(s.deposit_slip_id) === Number(deposit.id));
             if (matchedSlip && matchedSlip.shareholders) {
-              setSharesData(matchedSlip.shareholders);
-              setTempSharesData(matchedSlip.shareholders.map((sh: any) => ({ ...sh })));
+              const normalizedShareholders = matchedSlip.shareholders.map((sh: any) => ({
+                ...sh,
+                name: sh.name || sh.full_name || sh.username || 'User'
+              }));
+              setSharesData(normalizedShareholders);
+              setTempSharesData(normalizedShareholders.map((sh: any) => ({ ...sh })));
             }
           }
         })
@@ -548,7 +556,7 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
     if (!selectedDepForManage) return;
     for (let i = 0; i < tempMilestones.length; i++) {
       const m = tempMilestones[i];
-      if (!m.milestone_name.trim()) {
+      if (!(m.milestone_name || '').trim()) {
         addToast('Tên đợt không được để trống.', 'error');
         return;
       }
@@ -557,13 +565,14 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
         addToast(`Vui lòng nhập số tiền hợp lệ cho đợt "${m.milestone_name}".`, 'error');
         return;
       }
-      if (!m.expected_pay_date) {
-        addToast(`Vui lòng chọn ngày thanh toán dự kiến cho đợt "${m.milestone_name}".`, 'error');
-        return;
-      }
     }
 
-    const totalM = tempMilestones.reduce((acc, m) => acc + (parseFloat(String(m.expected_amount)) || 0), 0);
+    const normalizedMilestones = tempMilestones.map(m => ({
+      ...m,
+      expected_pay_date: m.expected_pay_date || m.due_date || null
+    }));
+
+    const totalM = normalizedMilestones.reduce((acc, m) => acc + (parseFloat(String(m.expected_amount)) || 0), 0);
     const syncPrice = Math.max(parseFloat(String(selectedDepForManage.price)) || 0, totalM);
 
     if (isAdmin && tempSharesData && tempSharesData.length > 0) {
@@ -577,7 +586,7 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
     try {
       setIsSavingMilestones(true);
       const payload: any = {
-        milestones: tempMilestones,
+        milestones: normalizedMilestones,
         price: syncPrice,
         auto_remind: autoRemindManage ? 1 : 0,
         remind_days_before: remindDaysBeforeManage,
@@ -646,15 +655,6 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
     return val.toLocaleString('vi-VN') + ' ₫';
   };
 
-  if (!isOpen || !selectedDepForManage) return null;
-
-  const totalApprovedMilestones = tempMilestones
-    .filter(m => m.status === 'approved')
-    .reduce((sum, m) => {
-      const amt = m.actual_amount !== null && m.actual_amount !== undefined ? m.actual_amount : m.expected_amount;
-      return sum + (parseFloat(amt) || 0);
-    }, 0);
-
   const [isClosing, setIsClosing] = useState(false);
 
   const handleClose = () => {
@@ -675,6 +675,15 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, isClosing]);
+
+  if (!isOpen || !selectedDepForManage) return null;
+
+  const totalApprovedMilestones = tempMilestones
+    .filter(m => m.status === 'approved')
+    .reduce((sum, m) => {
+      const amt = m.actual_amount !== null && m.actual_amount !== undefined ? m.actual_amount : m.expected_amount;
+      return sum + (parseFloat(amt) || 0);
+    }, 0);
 
   const baseZIndex = Math.min(zIndex || 2000000, 2147483630);
 
@@ -948,13 +957,13 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <Avatar
                           src={selectedDepForManage.avatar_url}
-                          name={selectedDepForManage.full_name || ''}
+                          name={selectedDepForManage.full_name || selectedDepForManage.client_name || selectedDepForManage.contact_name || selectedDepForManage.name || 'Khách hàng'}
                           size="lg"
                           style={{ width: '52px', height: '52px', fontSize: '1.2rem' }}
                         />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                            {selectedDepForManage.full_name}
+                            {selectedDepForManage.full_name || selectedDepForManage.client_name || selectedDepForManage.contact_name || selectedDepForManage.name || 'Khách hàng'}
                           </h4>
                           <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                             SĐT: <strong style={{ color: 'var(--color-text)' }}>{selectedDepForManage.phone || '—'}</strong>
@@ -989,7 +998,9 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
                         </span>
                         {isAdmin && tempSharesData && tempSharesData.length > 0 ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {tempSharesData.map((sh, sIdx) => (
+                            {tempSharesData.map((sh, sIdx) => {
+                              const shName = sh.name || sh.full_name || sh.username || 'User';
+                              return (
                               <div
                                 key={sIdx}
                                 style={{
@@ -1004,8 +1015,8 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Avatar src={sh.avatar} name={sh.name} size="md" style={{ width: '28px', height: '28px' }} />
-                                  <span style={{ fontSize: '0.775rem', fontWeight: 600, color: 'var(--color-text)' }}>{sh.name}</span>
+                                  <Avatar src={sh.avatar} name={shName} size="md" style={{ width: '28px', height: '28px' }} />
+                                  <span style={{ fontSize: '0.775rem', fontWeight: 600, color: 'var(--color-text)' }}>{shName}</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <input
@@ -1020,11 +1031,14 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
                                   <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>%</span>
                                 </div>
                               </div>
-                            ))}
+                            );
+                            })}
                           </div>
                         ) : sharesData && sharesData.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                            {sharesData.map((sh, sIdx) => (
+                            {sharesData.map((sh, sIdx) => {
+                              const shName = sh.name || sh.full_name || sh.username || 'User';
+                              return (
                               <div
                                 key={sIdx}
                                 style={{
@@ -1033,9 +1047,9 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
                                   gap: '8px'
                                 }}
                               >
-                                <Avatar src={sh.avatar} name={sh.name} size="md" style={{ width: '28px', height: '28px' }} />
+                                <Avatar src={sh.avatar} name={shName} size="md" style={{ width: '28px', height: '28px' }} />
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                                  <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--color-text)' }}>{sh.name}</span>
+                                  <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--color-text)' }}>{shName}</span>
                                   <span style={{
                                     fontSize: '0.675rem',
                                     fontWeight: 700,
@@ -1045,7 +1059,8 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
                                   </span>
                                 </div>
                               </div>
-                            ))}
+                            );
+                            })}
                           </div>
                         ) : (
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
