@@ -151,7 +151,7 @@ if (!function_exists('isRestDayForUser')) {
 }
 
 if (!function_exists('get_lead_recall_minutes')) {
-    function get_lead_recall_minutes($conn, $lastInteractionDate, $connectionRecallMins = 0) {
+    function get_lead_recall_minutes($conn, $lastInteractionDate = null, $connectionRecallMins = 0) {
         $connectionRecallMins = (int)$connectionRecallMins;
         if ($connectionRecallMins > 0) {
             // If the connection has a custom recall minutes, we still apply Golden Hours shortening to it!
@@ -163,7 +163,8 @@ if (!function_exists('get_lead_recall_minutes')) {
             $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '18:00';
             $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
 
-            $lastTime = date('H:i', strtotime($lastInteractionDate));
+            $ts = !empty($lastInteractionDate) ? strtotime((string)$lastInteractionDate) : false;
+            $lastTime = $ts !== false ? date('H:i', $ts) : date('H:i');
             $isOvertime = false;
             if ($nightShiftStart < $nightShiftEnd) {
                 $isOvertime = ($lastTime >= $nightShiftStart && $lastTime <= $nightShiftEnd);

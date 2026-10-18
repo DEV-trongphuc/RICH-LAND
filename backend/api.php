@@ -3540,7 +3540,7 @@ switch ($action) {
             $uncontactedCount = (int) ($resUncontacted->fetch_assoc()['cnt'] ?? 0);
         }
         $leadRecallMinutes = function_exists('get_lead_recall_minutes')
-            ? (int) get_lead_recall_minutes($conn)
+            ? (int) get_lead_recall_minutes($conn, date('Y-m-d H:i:s'))
             : (int) (get_system_setting($conn, 'lead_response_timeout_minutes') ?: 2);
 
         echo json_encode([
