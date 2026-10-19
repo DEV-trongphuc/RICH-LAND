@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Search, Check } from 'lucide-react';
 import styles from './CustomSelect.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,11 +60,40 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>(direction);
+  const [portalCoords, setPortalCoords] = useState<{
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+    width: number;
+  }>({ top: 0, bottom: 0, left: 0, right: 0, width: 220 });
+
+  const updateDropdownPosition = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const resolvedDir = spaceBelow < 260 && spaceAbove > spaceBelow ? 'up' : direction;
+    setDropdownDirection(resolvedDir);
+    setPortalCoords({
+      top: rect.bottom + 6,
+      bottom: window.innerHeight - rect.top + 6,
+      left: rect.left,
+      right: window.innerWidth - rect.right,
+      width: rect.width
+    });
+  }, [direction]);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        (!dropdownRef.current || !dropdownRef.current.contains(target))
+      ) {
         setIsOpen(false);
       }
     };
@@ -72,17 +102,21 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      if (spaceBelow < 260 && spaceAbove > spaceBelow) {
-        setDropdownDirection('up');
-      } else {
-        setDropdownDirection(direction);
+    if (!isOpen) return;
+    updateDropdownPosition();
+    const handleScrollOrResize = (e: Event) => {
+      if (dropdownRef.current && e.target instanceof Node && dropdownRef.current.contains(e.target)) {
+        return;
       }
-    }
-  }, [isOpen, direction]);
+      updateDropdownPosition();
+    };
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [isOpen, updateDropdownPosition]);
 
   const selectedOption = React.useMemo(() => {
     if (multiple) return null;
@@ -378,88 +412,96 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         <ChevronDown size={size === 'sm' ? 14 : 16} className={`${styles.icon} ${isOpen ? styles.iconOpen : ''}`} />
       </div>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: dropdownDirection === 'down' ? -18 : 18, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: dropdownDirection === 'down' ? -18 : 18, scale: 0.96 }}
-            transition={{ type: "spring", duration: 0.32, bounce: 0.05 }}
-            className={styles.dropdown}
-            style={{
-              top: dropdownDirection === 'down' ? 'calc(100% + 0.5rem)' : 'auto',
-              bottom: dropdownDirection === 'up' ? 'calc(100% + 0.5rem)' : 'auto',
-              left: align === 'right' ? 'auto' : 0,
-              right: align === 'right' ? 0 : 'auto',
-              transformOrigin: dropdownDirection === 'down' ? 'top' : 'bottom'
-            }}
-          >
-            {searchable && (
-              <div className={styles.searchBox}>
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder={t("Tìm kiếm...")}
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  onClick={e => e.stopPropagation()}
-                  className={styles.searchInput}
-                />
-                <Search size={14} className={styles.searchIcon} />
-              </div>
-            )}
-            <div className={`${styles.list} custom-scrollbar`}>
-              {filtered.length > 0 ? filtered.map((option) => (
-                <div
-                  key={option.value}
-                  className={`${styles.option} ${isSelected(option.value) ? styles.optionSelected : ''} ${option.disabled ? styles.optionDisabled : ''}`}
-                  style={{ opacity: option.faded ? 0.45 : 1 }}
-                  onClick={(e) => handleSelect(option, e)}
-                >
-                  <div className={styles.optionLabel}>
-                    {showAvatars ? (
-                      option.value === '' ? (
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>?</div>
-                      ) : option.icon ? (
-                        <span style={{ display: 'flex', flexShrink: 0 }}>{option.icon}</span>
-                      ) : (
-                        <Avatar src={option.avatar} name={t(option.label)} size="sm" />
-                      )
-                    ) : (
-                      option.icon && <span style={{ display: 'flex', flexShrink: 0 }}>{option.icon}</span>
-                    )}
-                    <div className={styles.optionText} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between', flex: 1 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className={styles.optionMainLabel}>{t(option.label)}</span>
-                        {option.sublabel && <span className={styles.optionSublabel}>{t(option.sublabel)}</span>}
-                      </div>
-                      {option.badge && option.badge.count > 0 && (
-                        <span style={{
-                          background: option.badge.color || 'var(--color-danger)',
-                          color: 'white',
-                          borderRadius: '10px',
-                          padding: '2px 6px',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          minWidth: '18px',
-                          textAlign: 'center',
-                          lineHeight: 1,
-                          marginLeft: 'auto'
-                        }}>
-                          {option.badge.count}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {isSelected(option.value) && <Check size={14} className={styles.checkIcon} />}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              ref={dropdownRef}
+              initial={{ opacity: 0, y: dropdownDirection === 'down' ? -12 : 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: dropdownDirection === 'down' ? -12 : 12, scale: 0.98 }}
+              transition={{ type: "spring", duration: 0.28, bounce: 0.05 }}
+              className={styles.dropdown}
+              style={{
+                position: 'fixed',
+                top: dropdownDirection === 'down' ? `${portalCoords.top}px` : 'auto',
+                bottom: dropdownDirection === 'up' ? `${portalCoords.bottom}px` : 'auto',
+                left: align === 'right' ? 'auto' : `${portalCoords.left}px`,
+                right: align === 'right' ? `${portalCoords.right}px` : 'auto',
+                minWidth: `${Math.max(180, portalCoords.width)}px`,
+                maxWidth: 'min(380px, 92vw)',
+                zIndex: 2147483646,
+                transformOrigin: dropdownDirection === 'down' ? 'top' : 'bottom'
+              }}
+            >
+              {searchable && (
+                <div className={styles.searchBox}>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder={t("Tìm kiếm...")}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                    className={styles.searchInput}
+                  />
+                  <Search size={14} className={styles.searchIcon} />
                 </div>
-              )) : (
-                <div className={styles.empty}>{t("Không tìm thấy")}</div>
               )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <div className={`${styles.list} custom-scrollbar`}>
+                {filtered.length > 0 ? filtered.map((option) => (
+                  <div
+                    key={option.value}
+                    className={`${styles.option} ${isSelected(option.value) ? styles.optionSelected : ''} ${option.disabled ? styles.optionDisabled : ''}`}
+                    style={{ opacity: option.faded ? 0.45 : 1 }}
+                    onClick={(e) => handleSelect(option, e)}
+                  >
+                    <div className={styles.optionLabel}>
+                      {showAvatars ? (
+                        option.value === '' ? (
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>?</div>
+                        ) : option.icon ? (
+                          <span style={{ display: 'flex', flexShrink: 0 }}>{option.icon}</span>
+                        ) : (
+                          <Avatar src={option.avatar} name={t(option.label)} size="sm" />
+                        )
+                      ) : (
+                        option.icon && <span style={{ display: 'flex', flexShrink: 0 }}>{option.icon}</span>
+                      )}
+                      <div className={styles.optionText} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between', flex: 1 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span className={styles.optionMainLabel}>{t(option.label)}</span>
+                          {option.sublabel && <span className={styles.optionSublabel}>{t(option.sublabel)}</span>}
+                        </div>
+                        {option.badge && option.badge.count > 0 && (
+                          <span style={{
+                            background: option.badge.color || 'var(--color-danger)',
+                            color: 'white',
+                            borderRadius: '10px',
+                            padding: '2px 6px',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            minWidth: '18px',
+                            textAlign: 'center',
+                            lineHeight: 1,
+                            marginLeft: 'auto'
+                          }}>
+                            {option.badge.count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {isSelected(option.value) && <Check size={14} className={styles.checkIcon} />}
+                  </div>
+                )) : (
+                  <div className={styles.empty}>{t("Không tìm thấy")}</div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };

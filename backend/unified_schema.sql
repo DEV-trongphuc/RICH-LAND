@@ -1930,3 +1930,48 @@ CREATE TABLE IF NOT EXISTS `webhook_logs` (
   KEY `idx_lead_id` (`lead_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 83. Table: logs_daily_level_ad (Synced Marketing Ad Spend & Insights from INSIGHT_ADS.LOGS_DAILY_LEVEL_AD)
+CREATE TABLE IF NOT EXISTS `logs_daily_level_ad` (
+  `ad_key` varchar(64) NOT NULL,
+  `source` varchar(30) DEFAULT 'FBAds',
+  `account_id` varchar(35) DEFAULT NULL,
+  `account_name` varchar(100) DEFAULT NULL,
+  `fanpage_id` varchar(35) DEFAULT NULL,
+  `fanpage_name` varchar(255) DEFAULT NULL,
+  `duan_id` varchar(35) DEFAULT NULL,
+  `du_an` varchar(150) DEFAULT NULL,
+  `project_id` int(11) DEFAULT NULL,
+  `appsheet_campaign_id` varchar(50) DEFAULT NULL,
+  `donvi_chay` varchar(100) DEFAULT NULL,
+  `lead_phan_loai` varchar(50) DEFAULT 'R3_Fb',
+  `date_start` date DEFAULT NULL,
+  `date_stop` date DEFAULT NULL,
+  `ad_id` varchar(40) DEFAULT NULL,
+  `ad_name` text DEFAULT NULL,
+  `adset_id` varchar(40) DEFAULT NULL,
+  `adset_name` varchar(255) DEFAULT NULL,
+  `campaign_id` varchar(40) DEFAULT NULL,
+  `campaign_name` varchar(255) DEFAULT NULL,
+  `reach` int(11) DEFAULT 0,
+  `impressions` int(11) DEFAULT 0,
+  `frequency` decimal(12,4) DEFAULT 0.0000,
+  `leads` int(11) DEFAULT 0,
+  `spend` decimal(18,2) DEFAULT 0.00,
+  `clicks` int(11) DEFAULT 0,
+  `inline_link_clicks` int(11) DEFAULT 0,
+  `cpm` decimal(18,2) DEFAULT 0.00,
+  `ctr` decimal(10,4) DEFAULT 0.0000,
+  `cpc` decimal(18,2) DEFAULT 0.00,
+  `cost_per_leads` decimal(18,2) DEFAULT 0.00,
+  `synced_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`ad_key`),
+  KEY `idx_date_proj` (`date_start`, `project_id`),
+  KEY `idx_duan_id` (`duan_id`),
+  KEY `idx_ad_id` (`ad_id`),
+  KEY `idx_campaign_id` (`campaign_id`),
+  KEY `idx_appsheet_camp` (`appsheet_campaign_id`),
+  KEY `idx_donvi` (`donvi_chay`),
+  KEY `idx_phan_loai` (`lead_phan_loai`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+

@@ -22910,6 +22910,180 @@ switch ($action) {
                 'phan_loai_list' => $phanLoaiList
             ];
 
+            // Background / On-Demand Delta Sync of INSIGHT_ADS.LOGS_DAILY_LEVEL_AD from 103.15.50.12
+            $forceSyncAds = isset($_GET['sync_ads']) && $_GET['sync_ads'] == '1';
+            $adsSyncLockFile = sys_get_temp_dir() . '/richland_insight_ads_sync_v2.lock';
+            $shouldSyncAds = $forceSyncAds || !file_exists($adsSyncLockFile) || (time() - @filemtime($adsSyncLockFile)) > 600;
+            if ($shouldSyncAds) {
+                @touch($adsSyncLockFile);
+                $runDeltaAdsSync = function() use ($projectsList) {
+                    try {
+                        $ext = mysqli_init();
+                        if (!$ext) return;
+                        $ext->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
+                        if (!@$ext->real_connect('103.15.50.12', 'appsheet', '@AppsheetRLVN', 'INSIGHT_ADS', 3306)) {
+                            return;
+                        }
+                        $ext->set_charset('utf8mb4');
+
+                        // Re-open or use global $conn if alive
+                        global $servername, $username, $password, $dbname;
+                        $localConn = @new mysqli($servername ?? 'localhost', $username ?? 'zccqvhhh_crm-rlvn', $password ?? '$1;RKuCwX)VD;k~#', $dbname ?? 'zccqvhhh_crm-rlvn');
+                        if (!$localConn || $localConn->connect_error) {
+                            @$ext->close();
+                            return;
+                        }
+                        $localConn->set_charset('utf8mb4');
+
+                        $projCodeMap = [];
+                        foreach ($projectsList as $pItem) {
+                            if (!empty($pItem['code'])) {
+                                $projCodeMap[trim((string)$pItem['code'])] = (int)$pItem['id'];
+                            }
+                        }
+
+                        $adLeadMap = [];
+                        $resLM = $localConn->query("
+                            SELECT ad_id,
+                                   MAX(NULLIF(TRIM(campaign_id), '')) AS campaign_id,
+                                   MAX(NULLIF(TRIM(donvi_chay), '')) AS donvi_chay,
+                                   MAX(NULLIF(TRIM(lead_phan_loai), '')) AS lead_phan_loai,
+                                   MAX(project_id) AS project_id
+                            FROM leads
+                            WHERE ad_id IS NOT NULL AND ad_id != ''
+                            GROUP BY ad_id
+                        ");
+                        if ($resLM) {
+                            while ($lm = $resLM->fetch_assoc()) {
+                                $adLeadMap[trim((string)$lm['ad_id'])] = $lm;
+                            }
+                        }
+
+                        $resExt = $ext->query("SELECT * FROM LOGS_DAILY_LEVEL_AD WHERE date_start >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)");
+                        if ($resExt) {
+                            $escLocal = function($v) use ($localConn) {
+                                if ($v === null) return "NULL";
+                                return "'" . $localConn->real_escape_string((string)$v) . "'";
+                            };
+                            $batchRows = [];
+                            while ($r = $resExt->fetch_assoc()) {
+                                $adKey = trim((string)($r['KEY'] ?? ''));
+                                if ($adKey === '') continue;
+                                $adId = trim((string)($r['ad_id'] ?? ''));
+                                $duanId = trim((string)($r['duan_id'] ?? ''));
+                                $accId = trim((string)($r['account_id'] ?? ''));
+                                $lInfo = ($adId !== '' && isset($adLeadMap[$adId])) ? $adLeadMap[$adId] : null;
+                                $pId = $projCodeMap[$duanId] ?? (!empty($lInfo['project_id']) ? (int)$lInfo['project_id'] : null);
+                                $appCampId = !empty($lInfo['campaign_id']) ? $lInfo['campaign_id'] : null;
+                                $dv = !empty($lInfo['donvi_chay']) ? $lInfo['donvi_chay'] : ($accId === '828145568855497' ? 'Tân_Outsource' : 'Rich Land VN');
+                                $pl = !empty($lInfo['lead_phan_loai']) ? $lInfo['lead_phan_loai'] : 'R3_Fb';
+                                $dStart = preg_match('/^\d{4}-\d{2}-\d{2}$/', trim((string)$r['date_start'])) ? trim((string)$r['date_start']) : null;
+                                $dStop = preg_match('/^\d{4}-\d{2}-\d{2}$/', trim((string)$r['date_stop'])) ? trim((string)$r['date_stop']) : $dStart;
+
+                                $batchRows[] = "(" . implode(",", [
+                                    $escLocal($adKey),
+                                    $escLocal($r['source'] ?? 'FBAds'),
+                                    $escLocal($accId),
+                                    $escLocal($r['account_name'] ?? ''),
+                                    $escLocal($r['fanpage_id'] ?? ''),
+                                    $escLocal($r['fanpage_name'] ?? ''),
+                                    $escLocal($duanId),
+                                    $escLocal($r['du_an'] ?? ''),
+                                    $pId !== null ? $pId : "NULL",
+                                    $escLocal($appCampId),
+                                    $escLocal($dv),
+                                    $escLocal($pl),
+                                    $escLocal($dStart),
+                                    $escLocal($dStop),
+                                    $escLocal($adId),
+                                    $escLocal($r['ad_name'] ?? ''),
+                                    $escLocal($r['adset_id'] ?? ''),
+                                    $escLocal($r['adset_name'] ?? ''),
+                                    $escLocal($r['campaign_id'] ?? ''),
+                                    $escLocal($r['campaign_name'] ?? ''),
+                                    (int)($r['reach'] ?? 0),
+                                    (int)($r['impressions'] ?? 0),
+                                    round((float)($r['frequency'] ?? 0), 4),
+                                    (int)($r['leads'] ?? 0),
+                                    round((float)($r['spend'] ?? 0), 2),
+                                    (int)($r['clicks'] ?? 0),
+                                    (int)($r['inline_link_clicks'] ?? 0),
+                                    round((float)($r['cpm'] ?? 0), 2),
+                                    round((float)($r['ctr'] ?? 0), 4),
+                                    round((float)($r['cpc'] ?? 0), 2),
+                                    round((float)($r['cost_per_leads'] ?? 0), 2)
+                                ]) . ")";
+                                if (count($batchRows) >= 300) {
+                                    $localConn->query("INSERT INTO `logs_daily_level_ad` (
+                                        `ad_key`, `source`, `account_id`, `account_name`, `fanpage_id`, `fanpage_name`,
+                                        `duan_id`, `du_an`, `project_id`, `appsheet_campaign_id`, `donvi_chay`, `lead_phan_loai`,
+                                        `date_start`, `date_stop`, `ad_id`, `ad_name`, `adset_id`, `adset_name`,
+                                        `campaign_id`, `campaign_name`, `reach`, `impressions`, `frequency`, `leads`,
+                                        `spend`, `clicks`, `inline_link_clicks`, `cpm`, `ctr`, `cpc`, `cost_per_leads`
+                                    ) VALUES " . implode(",", $batchRows) . "
+                                    ON DUPLICATE KEY UPDATE
+                                        `spend` = GREATEST(`spend`, VALUES(`spend`)),
+                                        `leads` = GREATEST(`leads`, VALUES(`leads`)),
+                                        `reach` = GREATEST(`reach`, VALUES(`reach`)),
+                                        `impressions` = GREATEST(`impressions`, VALUES(`impressions`)),
+                                        `clicks` = GREATEST(`clicks`, VALUES(`clicks`))");
+                                    $batchRows = [];
+                                }
+                            }
+                            if (!empty($batchRows)) {
+                                $localConn->query("INSERT INTO `logs_daily_level_ad` (
+                                    `ad_key`, `source`, `account_id`, `account_name`, `fanpage_id`, `fanpage_name`,
+                                    `duan_id`, `du_an`, `project_id`, `appsheet_campaign_id`, `donvi_chay`, `lead_phan_loai`,
+                                    `date_start`, `date_stop`, `ad_id`, `ad_name`, `adset_id`, `adset_name`,
+                                    `campaign_id`, `campaign_name`, `reach`, `impressions`, `frequency`, `leads`,
+                                    `spend`, `clicks`, `inline_link_clicks`, `cpm`, `ctr`, `cpc`, `cost_per_leads`
+                                ) VALUES " . implode(",", $batchRows) . "
+                                ON DUPLICATE KEY UPDATE
+                                    `spend` = GREATEST(`spend`, VALUES(`spend`)),
+                                    `leads` = GREATEST(`leads`, VALUES(`leads`)),
+                                    `reach` = GREATEST(`reach`, VALUES(`reach`)),
+                                    `impressions` = GREATEST(`impressions`, VALUES(`impressions`)),
+                                    `clicks` = GREATEST(`clicks`, VALUES(`clicks`))");
+                            }
+                        }
+                        @$ext->close();
+                        @$localConn->close();
+                    } catch (\Throwable $ignore) {}
+                };
+                if ($forceSyncAds) {
+                    $runDeltaAdsSync();
+                } else {
+                    register_shutdown_function($runDeltaAdsSync);
+                }
+            }
+
+            // Build common Ad Spend filter clause on `logs_daily_level_ad ad`
+            $whereAd = ["1=1"];
+            if ($startDate !== '') {
+                $sdDate = $conn->real_escape_string($startDate);
+                $whereAd[] = "ad.date_start >= '$sdDate'";
+            }
+            if ($endDate !== '') {
+                $edDate = $conn->real_escape_string($endDate);
+                $whereAd[] = "ad.date_start <= '$edDate'";
+            }
+            if ($projectId > 0) {
+                $whereAd[] = "ad.project_id = " . (int)$projectId;
+            }
+            if ($campaignId !== '') {
+                $cidEsc = $conn->real_escape_string($campaignId);
+                $whereAd[] = "(ad.appsheet_campaign_id = '$cidEsc' OR ad.campaign_id = '$cidEsc' OR ad.campaign_name = '$cidEsc')";
+            }
+            if ($leadPhanLoai !== '') {
+                $plEsc = $conn->real_escape_string($leadPhanLoai);
+                $whereAd[] = "ad.lead_phan_loai = '$plEsc'";
+            }
+            if ($donviChay !== '') {
+                $dvEsc = $conn->real_escape_string($donviChay);
+                $whereAd[] = "ad.donvi_chay = '$dvEsc'";
+            }
+            $whereAdStr = implode(' AND ', $whereAd);
+
             // Helper closure to compute conversion rates safely
             $calcRates = function(int $total, int $ql, int $mQl, int $sQl, int $giaoDich): array {
                 return [
@@ -23242,7 +23416,7 @@ switch ($action) {
             }
 
             // =========================================================================
-            // TAB 2: HIỆU QUẢ MKT (Measured 100% on `leads`: leads.project_id & leads.campaign_id)
+            // TAB 2: HIỆU QUẢ MKT (Measured 100% on `leads` & `logs_daily_level_ad`)
             // =========================================================================
             if ($tab === 'mkt_perf') {
                 $whereL = ["1=1"];
@@ -23328,12 +23502,59 @@ switch ($action) {
                 $mGd = (int)($mSum['giao_dich_count'] ?? 0);
                 $mktRates = $calcRates($mTotal, $mQl, $mMQl, $mSQl, $mGd);
 
-                // 2.2 MKT Timeline Chart
+                // 2.1.b Ad Spend & Impressions Aggregation from `logs_daily_level_ad`
+                $resAdSum = $conn->query("
+                    SELECT
+                        COALESCE(SUM(ad.spend), 0) AS total_spend,
+                        COALESCE(SUM(ad.impressions), 0) AS total_impressions,
+                        COALESCE(SUM(ad.reach), 0) AS total_reach,
+                        COALESCE(SUM(ad.clicks), 0) AS total_clicks,
+                        COALESCE(SUM(ad.inline_link_clicks), 0) AS total_link_clicks,
+                        COALESCE(SUM(ad.leads), 0) AS fb_leads
+                    FROM logs_daily_level_ad ad
+                    WHERE $whereAdStr
+                ");
+                $adSumRow = ($resAdSum && $resAdSum->num_rows > 0) ? $resAdSum->fetch_assoc() : [];
+                $totalSpend = round((float)($adSumRow['total_spend'] ?? 0), 0);
+                $totalImpressions = (int)($adSumRow['total_impressions'] ?? 0);
+                $totalReach = (int)($adSumRow['total_reach'] ?? 0);
+                $totalClicks = (int)($adSumRow['total_clicks'] ?? 0);
+                $fbLeadsCount = (int)($adSumRow['fb_leads'] ?? 0);
+
+                $cpl   = $mTotal > 0 ? round($totalSpend / $mTotal) : 0;
+                $cpql  = $mQl > 0 ? round($totalSpend / $mQl) : 0;
+                $cpmql = $mMQl > 0 ? round($totalSpend / $mMQl) : 0;
+                $cpdyg = $mDyg > 0 ? round($totalSpend / $mDyg) : 0;
+                $cpsql = $mSQl > 0 ? round($totalSpend / $mSQl) : 0;
+                $costPerDeal = $mGd > 0 ? round($totalSpend / $mGd) : 0;
+
+                // 2.2 MKT Timeline Chart (merged with Ad Spend by date/month)
                 $useDaily = ($startDate !== '' && $endDate !== '' && (strtotime($endDate) - strtotime($startDate)) <= 60 * 86400);
                 $dateGroupExpr = $useDaily ? "DATE_FORMAT(l.created_at, '%d/%m')" : "DATE_FORMAT(l.created_at, '%m/%Y')";
                 $dateOrderExpr = $useDaily ? "DATE(l.created_at)" : "DATE_FORMAT(l.created_at, '%Y-%m')";
+                $adDateGroupExpr = $useDaily ? "DATE_FORMAT(ad.date_start, '%d/%m')" : "DATE_FORMAT(ad.date_start, '%m/%Y')";
+                $adDateOrderExpr = $useDaily ? "ad.date_start" : "DATE_FORMAT(ad.date_start, '%Y-%m')";
 
-                $timelineChart = [];
+                $adSpendByTime = [];
+                $resAdTl = $conn->query("
+                    SELECT
+                        $adDateGroupExpr AS label,
+                        $adDateOrderExpr AS sort_key,
+                        SUM(ad.spend) AS spend
+                    FROM logs_daily_level_ad ad
+                    WHERE $whereAdStr AND ad.date_start IS NOT NULL
+                    GROUP BY sort_key, label
+                ");
+                if ($resAdTl) {
+                    while ($atl = $resAdTl->fetch_assoc()) {
+                        $adSpendByTime[$atl['sort_key']] = [
+                            'label' => $atl['label'],
+                            'spend' => round((float)$atl['spend'], 0)
+                        ];
+                    }
+                }
+
+                $timelineMap = [];
                 $sqlMktTl = "
                     SELECT
                         $dateGroupExpr AS label,
@@ -23354,9 +23575,12 @@ switch ($action) {
                 $resMktTl = $conn->query($sqlMktTl);
                 if ($resMktTl) {
                     while ($tl = $resMktTl->fetch_assoc()) {
+                        $sk = $tl['sort_key'];
                         $tTotal = (int)$tl['total_leads'];
                         $tQl = (int)$tl['ql'];
-                        $timelineChart[] = [
+                        $tSpend = $adSpendByTime[$sk]['spend'] ?? 0;
+                        $timelineMap[$sk] = [
+                            'sort_key' => $sk,
                             'label' => $tl['label'],
                             'total_leads' => $tTotal,
                             'not_lead' => (int)$tl['not_lead'],
@@ -23364,7 +23588,100 @@ switch ($action) {
                             'ql_rate' => $tTotal > 0 ? round(($tQl / $tTotal) * 100, 1) : 0,
                             'm_ql' => (int)$tl['m_ql'],
                             's_ql' => (int)$tl['s_ql'],
-                            'giao_dich' => (int)$tl['giao_dich']
+                            'giao_dich' => (int)$tl['giao_dich'],
+                            'spend' => $tSpend,
+                            'spend_millions' => round($tSpend / 1000000, 2),
+                            'cpl' => $tTotal > 0 ? round($tSpend / $tTotal) : 0,
+                            'cpql' => $tQl > 0 ? round($tSpend / $tQl) : 0
+                        ];
+                    }
+                }
+                foreach ($adSpendByTime as $sk => $ast) {
+                    if (!isset($timelineMap[$sk]) && $ast['spend'] > 0) {
+                        $timelineMap[$sk] = [
+                            'sort_key' => $sk,
+                            'label' => $ast['label'],
+                            'total_leads' => 0,
+                            'not_lead' => 0,
+                            'ql' => 0,
+                            'ql_rate' => 0,
+                            'm_ql' => 0,
+                            's_ql' => 0,
+                            'giao_dich' => 0,
+                            'spend' => $ast['spend'],
+                            'spend_millions' => round($ast['spend'] / 1000000, 2),
+                            'cpl' => 0,
+                            'cpql' => 0
+                        ];
+                    }
+                }
+                ksort($timelineMap);
+                $timelineChart = array_values(array_slice($timelineMap, -60));
+
+                // Pre-load Spend by Project, Spend by Donvi, Spend by PhanLoai, Spend by Campaign
+                $spendByProjMap = [];
+                $spendByProjPhanLoaiMap = [];
+                $resAdProj = $conn->query("
+                    SELECT
+                        COALESCE(p.name, NULLIF(TRIM(ad.du_an), ''), 'Chưa gắn dự án') AS proj_label,
+                        COALESCE(NULLIF(TRIM(ad.lead_phan_loai), ''), 'R3_Fb') AS phan_loai_label,
+                        SUM(ad.spend) AS spend,
+                        SUM(ad.impressions) AS impressions,
+                        SUM(ad.clicks) AS clicks
+                    FROM logs_daily_level_ad ad
+                    LEFT JOIN projects p ON p.id = ad.project_id
+                    WHERE $whereAdStr
+                    GROUP BY proj_label, phan_loai_label
+                ");
+                if ($resAdProj) {
+                    while ($ap = $resAdProj->fetch_assoc()) {
+                        $pLbl = $ap['proj_label'];
+                        $plLbl = $ap['phan_loai_label'];
+                        $sp = round((float)$ap['spend'], 0);
+                        $spendByProjMap[$pLbl] = ($spendByProjMap[$pLbl] ?? 0) + $sp;
+                        $spendByProjPhanLoaiMap[$pLbl . '||' . $plLbl] = [
+                            'spend' => $sp,
+                            'impressions' => (int)$ap['impressions'],
+                            'clicks' => (int)$ap['clicks']
+                        ];
+                    }
+                }
+
+                $spendByDonviMap = [];
+                $resAdDv = $conn->query("
+                    SELECT COALESCE(NULLIF(TRIM(ad.donvi_chay), ''), 'Rich Land VN') AS dv_label, SUM(ad.spend) AS spend
+                    FROM logs_daily_level_ad ad
+                    WHERE $whereAdStr
+                    GROUP BY dv_label
+                    ORDER BY spend DESC
+                ");
+                $bySpendDonviChart = [];
+                if ($resAdDv) {
+                    while ($adv = $resAdDv->fetch_assoc()) {
+                        $sp = round((float)$adv['spend'], 0);
+                        $spendByDonviMap[$adv['dv_label']] = $sp;
+                        if ($sp > 0) {
+                            $bySpendDonviChart[] = ['name' => $adv['dv_label'], 'value' => $sp];
+                        }
+                    }
+                }
+
+                $spendByCampMap = [];
+                $resAdCamp = $conn->query("
+                    SELECT COALESCE(NULLIF(TRIM(ad.appsheet_campaign_id), ''), 'Chưa gắn chiến dịch') AS camp_id,
+                           SUM(ad.spend) AS spend,
+                           SUM(ad.impressions) AS impressions,
+                           SUM(ad.clicks) AS clicks
+                    FROM logs_daily_level_ad ad
+                    WHERE $whereAdStr
+                    GROUP BY camp_id
+                ");
+                if ($resAdCamp) {
+                    while ($ac = $resAdCamp->fetch_assoc()) {
+                        $spendByCampMap[$ac['camp_id']] = [
+                            'spend' => round((float)$ac['spend'], 0),
+                            'impressions' => (int)$ac['impressions'],
+                            'clicks' => (int)$ac['clicks']
                         ];
                     }
                 }
@@ -23379,11 +23696,27 @@ switch ($action) {
                     WHERE $whereLStr
                     GROUP BY l.project_id, p.name
                     ORDER BY val DESC
-                    LIMIT 10
+                    LIMIT 12
                 ");
                 if ($resMProj) {
                     while ($r = $resMProj->fetch_assoc()) {
-                        $byProjectChart[] = ['name' => $r['proj_label'], 'value' => (int)$r['val']];
+                        $pName = $r['proj_label'];
+                        $lCnt = (int)$r['val'];
+                        $pSpend = $spendByProjMap[$pName] ?? 0;
+                        $byProjectChart[] = [
+                            'name' => $pName,
+                            'value' => $lCnt,
+                            'spend' => $pSpend,
+                            'cpl' => $lCnt > 0 ? round($pSpend / $lCnt) : 0
+                        ];
+                    }
+                }
+
+                $bySpendProjectChart = [];
+                arsort($spendByProjMap);
+                foreach (array_slice($spendByProjMap, 0, 10, true) as $pName => $pSpend) {
+                    if ($pSpend > 0) {
+                        $bySpendProjectChart[] = ['name' => $pName, 'value' => $pSpend];
                     }
                 }
 
@@ -23436,11 +23769,16 @@ switch ($action) {
                 ");
                 if ($resMDv) {
                     while ($r = $resMDv->fetch_assoc()) {
-                        $byDonviChart[] = ['name' => $r['donvi_label'], 'value' => (int)$r['val']];
+                        $dvLbl = $r['donvi_label'];
+                        $byDonviChart[] = [
+                            'name' => $dvLbl,
+                            'value' => (int)$r['val'],
+                            'spend' => $spendByDonviMap[$dvLbl] ?? 0
+                        ];
                     }
                 }
 
-                // 2.4 Table 1: By Original Project & Lead Classification
+                // 2.4 Table 1: By Original Project & Lead Classification (with Spend, CPL, CPQL, CPMQL, CPSQL)
                 $byProjectTable = [];
                 $sqlProjTbl = "
                     SELECT
@@ -23473,6 +23811,9 @@ switch ($action) {
                         $rMQl = (int)$row['m_ql_count'];
                         $rSQl = (int)$row['s_ql_count'];
                         $rGd = (int)$row['giao_dich_count'];
+                        $pKey = $row['project_name'] . '||' . $row['lead_phan_loai'];
+                        $spInfo = $spendByProjPhanLoaiMap[$pKey] ?? null;
+                        $rSpend = (float)($spInfo['spend'] ?? 0);
                         $byProjectTable[] = [
                             'project_name' => $row['project_name'],
                             'lead_phan_loai' => $row['lead_phan_loai'],
@@ -23487,12 +23828,18 @@ switch ($action) {
                             'temp_hot' => (int)$row['temp_hot'],
                             'temp_warm' => (int)$row['temp_warm'],
                             'temp_cold' => (int)$row['temp_cold'],
+                            'spend' => $rSpend,
+                            'cpl' => $rTot > 0 ? round($rSpend / $rTot) : 0,
+                            'cpql' => $rQl > 0 ? round($rSpend / $rQl) : 0,
+                            'cpmql' => $rMQl > 0 ? round($rSpend / $rMQl) : 0,
+                            'cpsql' => $rSQl > 0 ? round($rSpend / $rSQl) : 0,
+                            'cost_per_deal' => $rGd > 0 ? round($rSpend / $rGd) : 0,
                             'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd)
                         ];
                     }
                 }
 
-                // 2.5 Table 2: By Original Campaign (`leads.campaign_id` / `leads.campaign_name`)
+                // 2.5 Table 2: By Original Campaign (`leads.campaign_id` / `leads.campaign_name`) with Spend & CPL/CPQL
                 $byCampaignTable = [];
                 $sqlCampTbl = "
                     SELECT
@@ -23529,6 +23876,8 @@ switch ($action) {
                         $rGd = (int)$row['giao_dich_count'];
                         $cIdRaw = $row['campaign_id'];
                         $cResolvedName = $campaignNameMap[$cIdRaw] ?? $row['campaign_name'];
+                        $cSpInfo = $spendByCampMap[$cIdRaw] ?? null;
+                        $rSpend = (float)($cSpInfo['spend'] ?? 0);
                         $byCampaignTable[] = [
                             'campaign_id' => $cIdRaw,
                             'campaign_name' => $cResolvedName,
@@ -23545,6 +23894,106 @@ switch ($action) {
                             'temp_hot' => (int)$row['temp_hot'],
                             'temp_warm' => (int)$row['temp_warm'],
                             'temp_cold' => (int)$row['temp_cold'],
+                            'spend' => $rSpend,
+                            'impressions' => (int)($cSpInfo['impressions'] ?? 0),
+                            'clicks' => (int)($cSpInfo['clicks'] ?? 0),
+                            'cpl' => $rTot > 0 ? round($rSpend / $rTot) : 0,
+                            'cpql' => $rQl > 0 ? round($rSpend / $rQl) : 0,
+                            'cpmql' => $rMQl > 0 ? round($rSpend / $rMQl) : 0,
+                            'cpsql' => $rSQl > 0 ? round($rSpend / $rSQl) : 0,
+                            'cost_per_deal' => $rGd > 0 ? round($rSpend / $rGd) : 0,
+                            'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd)
+                        ];
+                    }
+                }
+
+                // 2.6 Table 3: Detailed Facebook Ads Campaigns from `logs_daily_level_ad` joined with CRM Leads by `ad_id`
+                $byFbCampaignTable = [];
+                $sqlFbCamp = "
+                    SELECT
+                        ad.campaign_id,
+                        MAX(COALESCE(NULLIF(TRIM(ad.campaign_name), ''), ad.campaign_id)) AS campaign_name,
+                        MAX(COALESCE(p.name, NULLIF(TRIM(ad.du_an), ''), 'Chưa gắn dự án')) AS project_name,
+                        MAX(COALESCE(NULLIF(TRIM(ad.donvi_chay), ''), 'Rich Land VN')) AS donvi_chay,
+                        MAX(COALESCE(NULLIF(TRIM(ad.account_name), ''), '—')) AS account_name,
+                        SUM(ad.spend) AS spend,
+                        SUM(ad.impressions) AS impressions,
+                        SUM(ad.reach) AS reach,
+                        SUM(ad.clicks) AS clicks,
+                        SUM(ad.leads) AS fb_leads
+                    FROM logs_daily_level_ad ad
+                    LEFT JOIN projects p ON p.id = ad.project_id
+                    WHERE $whereAdStr AND ad.campaign_id IS NOT NULL AND ad.campaign_id != ''
+                    GROUP BY ad.campaign_id
+                    ORDER BY spend DESC
+                    LIMIT 100
+                ";
+                $resFbC = $conn->query($sqlFbCamp);
+                if ($resFbC) {
+                    // Map CRM lead conversion metrics by FB ad.campaign_id via ad_id
+                    $crmLeadByFbCamp = [];
+                    $resLeadByAdCamp = $conn->query("
+                        SELECT
+                            ad_map.fb_campaign_id,
+                            COUNT(*) AS total_leads,
+                            SUM(CASE WHEN $mktNotLeadExpr THEN 1 ELSE 0 END) AS not_lead_count,
+                            SUM(CASE WHEN $mktQlExpr THEN 1 ELSE 0 END) AS ql_count,
+                            SUM(CASE WHEN $mktMQlExpr THEN 1 ELSE 0 END) AS m_ql_count,
+                            SUM(CASE WHEN $mktDygExpr THEN 1 ELSE 0 END) AS dong_y_gap_count,
+                            SUM(CASE WHEN $mktSQlExpr THEN 1 ELSE 0 END) AS s_ql_count,
+                            SUM(CASE WHEN $mktGdExpr THEN 1 ELSE 0 END) AS giao_dich_count
+                        FROM leads l
+                        INNER JOIN (
+                            SELECT DISTINCT ad_id, campaign_id AS fb_campaign_id
+                            FROM logs_daily_level_ad
+                            WHERE ad_id IS NOT NULL AND ad_id != ''
+                        ) ad_map ON ad_map.ad_id = l.ad_id
+                        $contactJoinSql
+                        WHERE $whereLStr
+                        GROUP BY ad_map.fb_campaign_id
+                    ");
+                    if ($resLeadByAdCamp) {
+                        while ($lfc = $resLeadByAdCamp->fetch_assoc()) {
+                            $crmLeadByFbCamp[$lfc['fb_campaign_id']] = $lfc;
+                        }
+                    }
+
+                    while ($fbRow = $resFbC->fetch_assoc()) {
+                        $fbCid = $fbRow['campaign_id'];
+                        $lStats = $crmLeadByFbCamp[$fbCid] ?? null;
+                        $rTot = (int)($lStats['total_leads'] ?? $fbRow['fb_leads'] ?? 0);
+                        $rNotLead = (int)($lStats['not_lead_count'] ?? 0);
+                        $rQl = (int)($lStats['ql_count'] ?? $rTot);
+                        $rMQl = (int)($lStats['m_ql_count'] ?? 0);
+                        $rDyg = (int)($lStats['dong_y_gap_count'] ?? 0);
+                        $rSQl = (int)($lStats['s_ql_count'] ?? 0);
+                        $rGd = (int)($lStats['giao_dich_count'] ?? 0);
+                        $rSpend = round((float)$fbRow['spend'], 0);
+
+                        $byFbCampaignTable[] = [
+                            'campaign_id' => $fbCid,
+                            'campaign_name' => $fbRow['campaign_name'],
+                            'project_name' => $fbRow['project_name'],
+                            'donvi_chay' => $fbRow['donvi_chay'],
+                            'account_name' => $fbRow['account_name'],
+                            'lead_phan_loai' => 'R3_Fb',
+                            'total_leads' => $rTot,
+                            'fb_leads' => (int)$fbRow['fb_leads'],
+                            'not_lead_count' => $rNotLead,
+                            'ql_count' => $rQl,
+                            'm_ql_count' => $rMQl,
+                            'dong_y_gap_count' => $rDyg,
+                            's_ql_count' => $rSQl,
+                            'giao_dich_count' => $rGd,
+                            'spend' => $rSpend,
+                            'impressions' => (int)$fbRow['impressions'],
+                            'reach' => (int)$fbRow['reach'],
+                            'clicks' => (int)$fbRow['clicks'],
+                            'cpl' => $rTot > 0 ? round($rSpend / $rTot) : 0,
+                            'cpql' => $rQl > 0 ? round($rSpend / $rQl) : 0,
+                            'cpmql' => $rMQl > 0 ? round($rSpend / $rMQl) : 0,
+                            'cpsql' => $rSQl > 0 ? round($rSpend / $rSQl) : 0,
+                            'cost_per_deal' => $rGd > 0 ? round($rSpend / $rGd) : 0,
                             'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd)
                         ];
                     }
@@ -23563,10 +24012,21 @@ switch ($action) {
                         'dong_y_gap_count' => $mDyg,
                         's_ql_count' => $mSQl,
                         'giao_dich_count' => $mGd,
-                        'cham_soc_dai_han_count' => (int)($mSum['cham_soc_dai_han_count'] ?? 0)
+                        'cham_soc_dai_han_count' => (int)($mSum['cham_soc_dai_han_count'] ?? 0),
+                        'total_spend' => $totalSpend,
+                        'total_impressions' => $totalImpressions,
+                        'total_reach' => $totalReach,
+                        'total_clicks' => $totalClicks,
+                        'fb_leads' => $fbLeadsCount,
+                        'cpl' => $cpl,
+                        'cpql' => $cpql,
+                        'cpmql' => $cpmql,
+                        'cpdyg' => $cpdyg,
+                        'cpsql' => $cpsql,
+                        'cost_per_deal' => $costPerDeal
                     ],
                     'funnel' => [
-                        'note' => 'Đo lường 100% theo Dự án gốc & Chiến dịch gốc trên bảng Leads (MKT)',
+                        'note' => 'Đo lường 100% theo Dự án gốc & Chiến dịch gốc trên bảng Leads & INSIGHT_ADS.LOGS_DAILY_LEVEL_AD',
                         'total_leads' => $mTotal,
                         'ql_count' => $mQl,
                         'm_ql_count' => $mMQl,
@@ -23582,11 +24042,14 @@ switch ($action) {
                     ],
                     'timeline_chart' => $timelineChart,
                     'by_project_chart' => $byProjectChart,
+                    'by_spend_project_chart' => $bySpendProjectChart,
+                    'by_spend_donvi_chart' => $bySpendDonviChart,
                     'by_phan_loai_chart' => $byPhanLoaiChart,
                     'by_channel_chart' => $byChannelChart,
                     'by_donvi_chart' => $byDonviChart,
                     'by_project_table' => $byProjectTable,
-                    'by_campaign_table' => $byCampaignTable
+                    'by_campaign_table' => $byCampaignTable,
+                    'by_fb_campaign_table' => $byFbCampaignTable
                 ]);
                 break;
             }
@@ -23823,6 +24286,13 @@ switch ($action) {
                 ");
                 $bcRow = ($resBookedContacts && $resBookedContacts->num_rows > 0) ? $resBookedContacts->fetch_assoc() : [];
 
+                // Also compute MKT Ad Spend under current filter for ROAS / Cost-to-Revenue comparison
+                $resRevSpend = $conn->query("SELECT COALESCE(SUM(ad.spend), 0) AS total_spend FROM logs_daily_level_ad ad WHERE $whereAdStr");
+                $revSpendRow = ($resRevSpend && $resRevSpend->num_rows > 0) ? $resRevSpend->fetch_assoc() : [];
+                $revMktSpend = round((float)($revSpendRow['total_spend'] ?? 0), 0);
+                $roas = $revMktSpend > 0 ? round($totalRevenueAmount / $revMktSpend, 2) : 0;
+                $cirPercent = $totalRevenueAmount > 0 ? round(($revMktSpend / $totalRevenueAmount) * 100, 1) : 0;
+
                 echo json_encode([
                     'success' => true,
                     'tab' => 'revenue',
@@ -23832,6 +24302,9 @@ switch ($action) {
                         'total_property_value' => $totalPropertyValue,
                         'total_deposit_amount' => $totalDepositAmount,
                         'total_revenue_amount' => $totalRevenueAmount,
+                        'total_mkt_spend' => $revMktSpend,
+                        'roas' => $roas,
+                        'cir_percent' => $cirPercent,
                         'booking_contacts' => (int)($bcRow['booking_contacts'] ?? 0),
                         'dat_coc_contacts' => (int)($bcRow['dat_coc_contacts'] ?? 0)
                     ],
