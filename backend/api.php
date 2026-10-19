@@ -23961,9 +23961,9 @@ switch ($action) {
                     while ($fbRow = $resFbC->fetch_assoc()) {
                         $fbCid = $fbRow['campaign_id'];
                         $lStats = $crmLeadByFbCamp[$fbCid] ?? null;
-                        $rTot = (int)($lStats['total_leads'] ?? $fbRow['fb_leads'] ?? 0);
+                        $rTot = (int)($lStats['total_leads'] ?? 0);
                         $rNotLead = (int)($lStats['not_lead_count'] ?? 0);
-                        $rQl = (int)($lStats['ql_count'] ?? $rTot);
+                        $rQl = (int)($lStats['ql_count'] ?? 0);
                         $rMQl = (int)($lStats['m_ql_count'] ?? 0);
                         $rDyg = (int)($lStats['dong_y_gap_count'] ?? 0);
                         $rSQl = (int)($lStats['s_ql_count'] ?? 0);
@@ -23978,7 +23978,7 @@ switch ($action) {
                             'account_name' => $fbRow['account_name'],
                             'lead_phan_loai' => 'R3_Fb',
                             'total_leads' => $rTot,
-                            'fb_leads' => (int)$fbRow['fb_leads'],
+                            'fb_leads' => $rTot,
                             'not_lead_count' => $rNotLead,
                             'ql_count' => $rQl,
                             'm_ql_count' => $rMQl,

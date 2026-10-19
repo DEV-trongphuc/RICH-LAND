@@ -1820,7 +1820,7 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
           { color: '#3b82f6', text: `Clicks: ${Number(kpis.total_clicks || 0).toLocaleString('vi-VN')}` }
         ],
         footerHighlight: `${Number(kpis.total_impressions || 0).toLocaleString('vi-VN')} hiển thị`,
-        footerText: `• ${Number(kpis.fb_leads || 0).toLocaleString('vi-VN')} FB Ads Leads`
+        footerText: `• ${Number(kpis.total_reach || 0).toLocaleString('vi-VN')} tiếp cận (Reach)`
       },
       {
         id: 'mkt-total-cpl',
@@ -2254,9 +2254,9 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
                       </td>
                       <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 800, color: 'var(--color-text)' }}>
                         {row.total_leads}
-                        {mktTableMode === 'fb_campaign' && Number(row.fb_leads || 0) > 0 && (
+                        {mktTableMode === 'fb_campaign' && Number(row.clicks || 0) > 0 && (
                           <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 500 }}>
-                            (FB: {row.fb_leads})
+                            {Number(row.clicks).toLocaleString('vi-VN')} clicks
                           </span>
                         )}
                       </td>
