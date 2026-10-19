@@ -828,6 +828,24 @@ class ContactController {
                     l.property_type as lead_property_type,
                     l.demand_type as lead_demand_type,
                     l.budget as lead_budget,
+                    COALESCE(l.form_name, c.form_name) as form_name,
+                    COALESCE(l.ad_name, c.ad_name) as ad_name,
+                    COALESCE(l.ad_id, c.ad_id) as ad_id,
+                    COALESCE(l.birthday, c.birthday) as birthday,
+                    COALESCE(l.country, c.country) as country,
+                    COALESCE(l.city, c.city) as city,
+                    COALESCE(l.loai_hinh, l.property_type, c.loai_hinh, c.property_type) as loai_hinh,
+                    COALESCE(l.property_type, l.loai_hinh, c.property_type, c.loai_hinh) as property_type,
+                    COALESCE(l.hinh_thuc_tt, c.hinh_thuc_tt) as hinh_thuc_tt,
+                    COALESCE(l.time_lienhe, c.time_lienhe) as time_lienhe,
+                    COALESCE(l.app_lienhe, c.app_lienhe) as app_lienhe,
+                    COALESCE(l.nhu_cau, l.demand_type, c.nhu_cau, c.demand_type) as nhu_cau,
+                    COALESCE(l.demand_type, l.nhu_cau, c.demand_type, c.nhu_cau) as demand_type,
+                    COALESCE(l.tieu_chi, c.tieu_chi) as tieu_chi,
+                    COALESCE(l.san_pham, c.san_pham) as san_pham,
+                    COALESCE(l.tinh_trang, c.tinh_trang) as tinh_trang,
+                    COALESCE(l.client_context, c.client_context) as client_context,
+                    COALESCE(l.inbox_url, c.inbox_url) as inbox_url,
                     dl.round_id as dl_round_id,
                     dl.status as dl_status,
                     CASE 
@@ -848,8 +866,10 @@ class ContactController {
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
-            LEFT JOIN leads l ON l.id = (
-                SELECT MAX(id) FROM leads WHERE person_id = c.person_id
+            LEFT JOIN leads l ON l.id = COALESCE(
+                NULLIF(c.lead_id, 0),
+                (SELECT MAX(id) FROM leads WHERE appsheet_id IS NOT NULL AND appsheet_id != '' AND appsheet_id = c.appsheet_id),
+                (SELECT MAX(id) FROM leads WHERE person_id = c.person_id AND (c.appsheet_id IS NULL OR c.appsheet_id = '' OR appsheet_id = c.appsheet_id))
             )
             LEFT JOIN distribution_logs dl ON dl.id = (
                 SELECT MAX(id) FROM distribution_logs 

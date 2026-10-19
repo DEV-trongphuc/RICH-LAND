@@ -36,7 +36,7 @@ $updatedContacts = 0;
 $conn->begin_transaction();
 
 try {
-    // Statement UPDATE LEADS
+    // Statement UPDATE LEADS (overwrite Form Đăng Ký fields directly from MKT Lead Ground Truth)
     $stmtLead = $conn->prepare("
         UPDATE leads SET
             appsheet_id     = COALESCE(NULLIF(?, ''), appsheet_id),
@@ -44,37 +44,37 @@ try {
             lead_phan_loai  = COALESCE(NULLIF(?, ''), lead_phan_loai),
             donvi_chay      = COALESCE(NULLIF(?, ''), donvi_chay),
             facebook_link   = COALESCE(NULLIF(?, ''), facebook_link),
-            form_name       = COALESCE(NULLIF(?, ''), form_name),
-            ad_id           = COALESCE(NULLIF(?, ''), ad_id),
-            ad_name         = COALESCE(NULLIF(?, ''), ad_name),
+            form_name       = NULLIF(?, ''),
+            ad_id           = NULLIF(?, ''),
+            ad_name         = NULLIF(?, ''),
             campaign_id     = COALESCE(NULLIF(?, ''), campaign_id),
             campaign_name   = COALESCE(NULLIF(?, ''), campaign_name),
             platform        = COALESCE(NULLIF(?, ''), platform),
             kenh            = COALESCE(NULLIF(?, ''), kenh),
-            loai_hinh       = COALESCE(NULLIF(?, ''), loai_hinh),
-            hinh_thuc_tt    = COALESCE(NULLIF(?, ''), hinh_thuc_tt),
-            time_lienhe     = COALESCE(NULLIF(?, ''), time_lienhe),
-            app_lienhe      = COALESCE(NULLIF(?, ''), app_lienhe),
-            nhu_cau         = COALESCE(NULLIF(?, ''), nhu_cau),
-            demand_type     = COALESCE(NULLIF(?, ''), demand_type),
-            tieu_chi        = COALESCE(NULLIF(?, ''), tieu_chi),
-            san_pham        = COALESCE(NULLIF(?, ''), san_pham),
-            city            = COALESCE(NULLIF(?, ''), city),
-            country         = COALESCE(NULLIF(?, ''), country),
-            birthday        = COALESCE(NULLIF(?, ''), birthday),
-            inbox_url       = COALESCE(NULLIF(?, ''), inbox_url),
-            client_context  = COALESCE(NULLIF(?, ''), client_context),
+            loai_hinh       = NULLIF(?, ''),
+            property_type   = NULLIF(?, ''),
+            hinh_thuc_tt    = NULLIF(?, ''),
+            time_lienhe     = NULLIF(?, ''),
+            app_lienhe      = NULLIF(?, ''),
+            nhu_cau         = NULLIF(?, ''),
+            demand_type     = NULLIF(?, ''),
+            tieu_chi        = NULLIF(?, ''),
+            san_pham        = NULLIF(?, ''),
+            city            = NULLIF(?, ''),
+            country         = NULLIF(?, ''),
+            birthday        = NULLIF(?, ''),
+            inbox_url       = NULLIF(?, ''),
+            client_context  = NULLIF(?, ''),
             mkt_chiateam    = COALESCE(NULLIF(?, ''), mkt_chiateam),
             kho_lead        = COALESCE(NULLIF(?, ''), kho_lead),
             lead_tindung    = COALESCE(NULLIF(?, ''), lead_tindung),
             time_databank   = COALESCE(NULLIF(?, ''), time_databank)
         WHERE 
-            (appsheet_id IS NOT NULL AND appsheet_id = ?)
-            OR (raw_payload IS NOT NULL AND raw_payload LIKE ?)
-            OR (phone IS NOT NULL AND phone != '' AND (phone = ? OR phone = ? OR phone = ?))
+            (appsheet_id IS NOT NULL AND appsheet_id != '' AND appsheet_id = ?)
+            OR ((appsheet_id IS NULL OR appsheet_id = '') AND raw_payload IS NOT NULL AND raw_payload LIKE ?)
     ");
 
-    // Statement UPDATE CONTACTS
+    // Statement UPDATE CONTACTS (overwrite Form Đăng Ký fields directly from MKT Lead Ground Truth)
     $stmtContact = $conn->prepare("
         UPDATE contacts SET
             appsheet_id     = COALESCE(NULLIF(?, ''), appsheet_id),
@@ -83,22 +83,25 @@ try {
             donvi_chay      = COALESCE(NULLIF(?, ''), donvi_chay),
             fb_link         = COALESCE(NULLIF(?, ''), fb_link),
             facebook_link   = COALESCE(NULLIF(?, ''), facebook_link),
-            form_name       = COALESCE(NULLIF(?, ''), form_name),
-            ad_id           = COALESCE(NULLIF(?, ''), ad_id),
-            ad_name         = COALESCE(NULLIF(?, ''), ad_name),
+            form_name       = NULLIF(?, ''),
+            ad_id           = NULLIF(?, ''),
+            ad_name         = NULLIF(?, ''),
             utm_campaign    = COALESCE(NULLIF(?, ''), utm_campaign),
             platform        = COALESCE(NULLIF(?, ''), platform),
-            loai_hinh       = COALESCE(NULLIF(?, ''), loai_hinh),
-            hinh_thuc_tt    = COALESCE(NULLIF(?, ''), hinh_thuc_tt),
-            time_lienhe     = COALESCE(NULLIF(?, ''), time_lienhe),
-            app_lienhe      = COALESCE(NULLIF(?, ''), app_lienhe),
-            nhu_cau         = COALESCE(NULLIF(?, ''), nhu_cau),
-            demand_type     = COALESCE(NULLIF(?, ''), demand_type),
-            tieu_chi        = COALESCE(NULLIF(?, ''), tieu_chi),
-            san_pham        = COALESCE(NULLIF(?, ''), san_pham),
-            city            = COALESCE(NULLIF(?, ''), city),
-            inbox_url       = COALESCE(NULLIF(?, ''), inbox_url),
-            client_context  = COALESCE(NULLIF(?, ''), client_context),
+            loai_hinh       = NULLIF(?, ''),
+            property_type   = NULLIF(?, ''),
+            hinh_thuc_tt    = NULLIF(?, ''),
+            time_lienhe     = NULLIF(?, ''),
+            app_lienhe      = NULLIF(?, ''),
+            nhu_cau         = NULLIF(?, ''),
+            demand_type     = NULLIF(?, ''),
+            tieu_chi        = NULLIF(?, ''),
+            san_pham        = NULLIF(?, ''),
+            city            = NULLIF(?, ''),
+            country         = NULLIF(?, ''),
+            birthday        = NULLIF(?, ''),
+            inbox_url       = NULLIF(?, ''),
+            client_context  = NULLIF(?, ''),
             csdh_time       = COALESCE(NULLIF(?, ''), csdh_time),
             quantam_time    = COALESCE(NULLIF(?, ''), quantam_time),
             dongygap_time   = COALESCE(NULLIF(?, ''), dongygap_time),
@@ -112,9 +115,8 @@ try {
             image_UNC       = COALESCE(NULLIF(?, ''), image_UNC),
             thongtin_kh_origin = COALESCE(NULLIF(?, ''), thongtin_kh_origin)
         WHERE 
-            (appsheet_id IS NOT NULL AND appsheet_id = ?)
-            OR (phone IS NOT NULL AND phone != '' AND (phone = ? OR phone = ? OR phone = ?))
-            OR (legacy_khtn_id IS NOT NULL AND legacy_khtn_id = ?)
+            (legacy_khtn_id IS NOT NULL AND legacy_khtn_id != '' AND ? != '' AND legacy_khtn_id = ?)
+            OR (appsheet_id IS NOT NULL AND appsheet_id != '' AND ? != '' AND appsheet_id = ?)
     ");
 
     foreach ($items as $item) {
@@ -189,11 +191,11 @@ try {
         $leadParams = [
             $appsheetId, $loaiLead, $leadPhanLoai, $donviChay, $linkFb,
             $formName, $adId, $adName, $campaignId, $campaignId,
-            $platform, $platform, $loaiHinh, $hinhThucTt, $timeLienhe,
+            $platform, $platform, $loaiHinh, $loaiHinh, $hinhThucTt, $timeLienhe,
             $appLienhe, $nhuCau, $nhuCau, $tieuChi, $sanPham,
             $city, $country, $birthday, $inboxUrl, $clientCtx,
             $mktChiateam, $khoLead, $leadTindung, $timeDatabank,
-            $appsheetId, $rawPayloadSearch, $rawPhone, $phonePlus84, $phoneZero
+            $appsheetId, $rawPayloadSearch
         ];
         $leadTypes = str_repeat('s', count($leadParams));
         $stmtLead->bind_param($leadTypes, ...$leadParams);
@@ -206,12 +208,12 @@ try {
         $contactParams = [
             $appsheetId, $loaiLead, $leadPhanLoai, $donviChay, $linkFb,
             $linkFb, $formName, $adId, $adName, $campaignId,
-            $platform, $loaiHinh, $hinhThucTt, $timeLienhe, $appLienhe,
-            $nhuCau, $nhuCau, $tieuChi, $sanPham, $city,
+            $platform, $loaiHinh, $loaiHinh, $hinhThucTt, $timeLienhe, $appLienhe,
+            $nhuCau, $nhuCau, $tieuChi, $sanPham, $city, $country, $birthday,
             $inboxUrl, $clientCtx, $csdhTime, $quantamTime, $dongygapTime,
             $dagapTime, $bookingTime, $datcocTime, $slBooking, $chanDung,
             $imgDongy, $imgDagap, $imgUNC, $originInfo,
-            $appsheetId, $rawPhone, $phonePlus84, $phoneZero, $khtnId
+            $khtnId, $khtnId, $appsheetId, $appsheetId
         ];
         $contactTypes = str_repeat('s', count($contactParams));
         $stmtContact->bind_param($contactTypes, ...$contactParams);

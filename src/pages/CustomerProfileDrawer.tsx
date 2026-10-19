@@ -8293,9 +8293,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 { key: 'tieu_chi', label: 'Tiêu chí' },
                                 { key: 'san_pham', label: 'Sản phẩm' },
                                 { key: 'tinh_trang', label: 'Tình trạng' },
-                                { key: 'client_context', label: 'Khảo sát / Ngữ cảnh', fullWidth: true },
-                                { key: 'chan_dung', label: 'Chân dung khách', fullWidth: true },
-                                { key: 'thongtin_kh_origin', label: 'Thông tin gốc form', fullWidth: true }
+                                { key: 'client_context', label: 'Khảo sát / Ngữ cảnh', fullWidth: true }
                               ];
 
                               const getFormVal = (k: string) => {
@@ -8309,10 +8307,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   return lName || lCode || '';
                                 }
                                 if (k === 'ad_name') {
-                                  return webhookData.parsed['ad_name'] || formData.ad_name || contact?.ad_name || formData.utm_content || '';
+                                  return webhookData.parsed['ad_name'] || formData.ad_name || contact?.ad_name || (contact as any)?.lead_ad_name || formData.utm_content || '';
                                 }
                                 if (k === 'form_name') {
-                                  return webhookData.parsed['form_name'] || formData.form_name || contact?.form_name || '';
+                                  return webhookData.parsed['form_name'] || formData.form_name || contact?.form_name || (contact as any)?.lead_form_name || '';
                                 }
                                 const fromWb = webhookData.parsed[k] || webhookData.parsed[k.toLowerCase()];
                                 if (fromWb) return fromWb;
@@ -8320,22 +8318,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 if (k === 'country') return formData.country || contact?.country || '';
                                 if (k === 'birthday') return formData.birthday || contact?.birthday || formData.dob || contact?.dob || '';
                                 if (k === 'loai_hinh') {
-                                  const wbLoai = webhookData.parsed['loai_hinh'] || webhookData.parsed['property_type'] || formData.loai_hinh || contact?.loai_hinh || formData.property_type || contact?.property_type || formData.type || contact?.type || '';
+                                  const wbLoai = webhookData.parsed['loai_hinh'] || webhookData.parsed['property_type'] || formData.loai_hinh || contact?.loai_hinh || formData.property_type || contact?.property_type || (contact as any)?.lead_property_type || '';
                                   if (wbLoai) return wbLoai;
                                   const fullNote = (contact?.notes || formData.notes || '') + ' ' + (contact?.note || '');
                                   const loaiMatch = fullNote.match(/(?:mấy phòng ngủ|may phong ngu|loại căn hộ|loai can ho)[^:]*:\s*([^\n\r,•\-]+)/i);
                                   if (loaiMatch && loaiMatch[1]) return loaiMatch[1].trim();
                                   return '';
                                 }
-                                if (k === 'nhu_cau') return webhookData.parsed['nhu_cau'] || formData.demand_type || contact?.demand_type || formData.nhu_cau || contact?.nhu_cau || '';
+                                if (k === 'nhu_cau') return webhookData.parsed['nhu_cau'] || formData.nhu_cau || contact?.nhu_cau || formData.demand_type || contact?.demand_type || (contact as any)?.lead_demand_type || '';
                                 if (k === 'san_pham') return webhookData.parsed['san_pham'] || formData.san_pham || contact?.san_pham || '';
                                 if (k === 'tieu_chi') return webhookData.parsed['tieu_chi'] || formData.tieu_chi || contact?.tieu_chi || '';
                                 if (k === 'tinh_trang') return webhookData.parsed['tinh_trang'] || formData.tinh_trang || contact?.tinh_trang || '';
                                 if (k === 'hinh_thuc_tt') return webhookData.parsed['hinh_thuc_tt'] || formData.hinh_thuc_tt || contact?.hinh_thuc_tt || '';
                                 if (k === 'time_lienhe') return webhookData.parsed['time_lienhe'] || formData.time_lienhe || contact?.time_lienhe || '';
                                 if (k === 'client_context') return webhookData.parsed['client_context'] || formData.client_context || contact?.client_context || '';
-                                if (k === 'chan_dung') return webhookData.parsed['chan_dung'] || formData.chan_dung || contact?.chan_dung || '';
-                                if (k === 'thongtin_kh_origin') return webhookData.parsed['thongtin_kh_origin'] || formData.thongtin_kh_origin || contact?.thongtin_kh_origin || '';
                                 if (k === 'app_lienhe') {
                                   const wbApp = webhookData.parsed['app_lienhe'] || webhookData.parsed['ung_dung_lien_he'] || webhookData.parsed['app'] || formData.app_lienhe || contact?.app_lienhe || '';
                                   if (wbApp) return wbApp;
