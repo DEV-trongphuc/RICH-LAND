@@ -1917,11 +1917,11 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <DollarSign size={17} color="#a31422" />
-              <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                Định Mức Chi Phí Chuyển Đổi Marketing (Dữ liệu thực tế từ INSIGHT_ADS.LOGS_DAILY_LEVEL_AD & CHIPHI_DUAN)
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                Định Mức Chi Phí Chuyển Đổi Marketing
               </span>
             </div>
-            <span style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
               Tổng ngân sách lọc: <strong style={{ color: '#a31422' }}>{formatVND(Number(kpis.total_spend || 0))}</strong>
             </span>
           </div>
@@ -1939,13 +1939,12 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
                   padding: '10px 12px',
                   borderRadius: '10px',
                   background: 'var(--color-bg)',
-                  border: '1px solid var(--color-border-light)',
-                  borderLeft: `3.5px solid ${m.color}`
+                  border: '1px solid var(--color-border-light)'
                 }}
               >
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{m.title}</div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{m.title}</div>
                 <div style={{ fontSize: '1.05rem', fontWeight: 800, color: m.color, margin: '4px 0 2px 0' }}>{m.value}</div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{m.sub}</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--color-text-light)', fontWeight: 500 }}>{m.sub}</div>
               </div>
             ))}
           </div>
