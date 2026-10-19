@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Users, TrendingUp, Award, Flame, Filter, Layers, Building2,
   CheckCircle2, PhoneCall, Handshake, DollarSign, Percent,
-  BarChart2, PieChart as PieChartIcon, Search, RefreshCw, Info, Briefcase
+  BarChart2, PieChart as PieChartIcon, Search, RefreshCw, Briefcase, Zap, GitBranch
 } from 'lucide-react';
 import {
   ResponsiveContainer, ComposedChart, BarChart, Bar, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend
+  CartesianGrid, Tooltip, PieChart, Pie, Cell, LabelList
 } from 'recharts';
 import { CustomSelect } from '../ui/CustomSelect';
+import { Avatar } from '../ui/Avatar';
 import { fetchAPI } from '../../utils/api';
 import { KpiCardSkeleton, Skeleton } from '../ui/Skeleton';
 
@@ -24,14 +25,14 @@ interface CrmPerformanceDashboardProps {
 }
 
 const CHART_COLORS = [
-  '#BD1D2D',
-  '#2563EB',
-  '#10B981',
-  '#F59E0B',
-  '#8B5CF6',
-  '#06B6D4',
-  '#EC4899',
-  '#64748B'
+  '#a31422',
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#06b6d4',
+  '#ec4899',
+  '#64748b'
 ];
 
 function resolveDateRangeFromFilter(dateFilter: string): { start_date: string; end_date: string } {
@@ -133,6 +134,333 @@ const formatCompactVND = (val: number) => {
     return (val / 1_000_000).toFixed(1).replace(/\.0$/, '') + ' tr';
   }
   return Math.round(val).toLocaleString('vi-VN') + ' ₫';
+};
+
+const WatermarkDecor: React.FC<{ color: string; variant?: 'network' | 'user' | 'alert' | 'bolt' }> = ({
+  color,
+  variant = 'network'
+}) => (
+  <div className="decor-svg" style={{ color }}>
+    {variant === 'network' && (
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+        <circle cx="30" cy="50" r="10" stroke="currentColor" strokeWidth="2" />
+        <circle cx="70" cy="30" r="10" stroke="currentColor" strokeWidth="2" />
+        <circle cx="70" cy="70" r="10" stroke="currentColor" strokeWidth="2" />
+        <path d="M40 50 H 55 V 30 H 60 M 55 50 V 70 H 60" stroke="currentColor" strokeWidth="2" />
+      </svg>
+    )}
+    {variant === 'user' && (
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+        <circle cx="45" cy="35" r="15" stroke="currentColor" strokeWidth="2" />
+        <path d="M20 75 C 20 60, 31 50, 45 50 C 59 50, 70 60, 70 75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M75 35 H 89 M 82 28 V 42" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )}
+    {variant === 'alert' && (
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+        <path d="M50 20 L 85 80 H 15 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M50 40 V 55 M 50 67 H 50.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    )}
+    {variant === 'bolt' && (
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+        <path d="M55 15 L 25 55 H 50 L 45 85 L 75 45 H 50 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+    )}
+  </div>
+);
+
+interface NativeKpiCardItem {
+  id: string;
+  label: string;
+  value: string | number;
+  color: string;
+  iconBg: string;
+  icon: any;
+  decor: 'network' | 'user' | 'alert' | 'bolt';
+  dots: Array<{ color: string; text: string }>;
+  footerText: string;
+  footerHighlight?: string;
+}
+
+const NativeStatCardGrid: React.FC<{ cards: NativeKpiCardItem[] }> = ({ cards }) => (
+  <div
+    className="dashboard-kpi-grid"
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: '1rem',
+      marginBottom: '1.25rem'
+    }}
+  >
+    {cards.map((card, idx) => {
+      const Icon = card.icon;
+      return (
+        <div
+          key={card.id}
+          className="stat-card hover-lift"
+          style={{
+            minHeight: '140px',
+            display: 'flex',
+            flexDirection: 'column',
+            animation: 'slideUp 0.4s ease-out both',
+            animationDelay: `${100 + idx * 40}ms`,
+            position: 'relative',
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+          }}
+        >
+          <WatermarkDecor color={card.color} variant={card.decor} />
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span
+              className="stat-label"
+              style={{
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                fontWeight: 700,
+                color: 'var(--color-text-muted)',
+                fontSize: '0.75rem'
+              }}
+            >
+              {card.label}
+            </span>
+            <div
+              className="stat-icon"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: card.iconBg,
+                color: card.color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Icon size={16} />
+            </div>
+          </div>
+
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)' }}>
+              {card.value}
+            </div>
+
+            <div
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--color-text-muted)',
+                marginTop: '4px',
+                marginBottom: '8px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                flexWrap: 'wrap'
+              }}
+            >
+              {card.dots.map((d, dIdx) => (
+                <span key={dIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: d.color,
+                      display: 'inline-block',
+                      flexShrink: 0
+                    }}
+                  />
+                  <span>{d.text}</span>
+                </span>
+              ))}
+            </div>
+
+            <div
+              className="stat-change up"
+              style={{
+                marginTop: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: card.color
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor" style={{ flexShrink: 0 }}>
+                <path d="M12 5l9 14H3z" />
+              </svg>
+              {card.footerHighlight && <span>{card.footerHighlight}</span>}
+              <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '2px', fontWeight: 500 }}>
+                {card.footerText}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
+
+const DonutCardWithCustomLegend: React.FC<{
+  title: string;
+  subtitle?: string;
+  icon: any;
+  iconColor: string;
+  data: Array<{ name: string; value: number; count?: number; color?: string }>;
+  centerValue: string | number;
+  centerLabel: string;
+  unitLabel?: string;
+  isCurrency?: boolean;
+}> = ({
+  title,
+  subtitle,
+  icon: Icon,
+  iconColor,
+  data,
+  centerValue,
+  centerLabel,
+  unitLabel = 'lead',
+  isCurrency = false
+}) => {
+  const normalized = useMemo(() => {
+    const map = new Map<string, { name: string; value: number; count: number; color?: string }>();
+    (data || []).forEach(item => {
+      const key = String(item.name || 'Khác').trim() || 'Khác';
+      const val = Number(item.value || 0);
+      const cnt = Number(item.count ?? item.value ?? 0);
+      if (val <= 0 && cnt <= 0) return;
+      const existing = map.get(key);
+      if (existing) {
+        existing.value += val;
+        existing.count += cnt;
+      } else {
+        map.set(key, { name: key, value: val > 0 ? val : cnt, count: cnt, color: item.color });
+      }
+    });
+    const arr = Array.from(map.values()).sort((a, b) => b.value - a.value).slice(0, 8);
+    return arr.map((it, idx) => ({
+      ...it,
+      color: it.color || CHART_COLORS[idx % CHART_COLORS.length]
+    }));
+  }, [data]);
+
+  const totalVal = useMemo(() => normalized.reduce((s, x) => s + x.value, 0), [normalized]);
+
+  return (
+    <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '8px' }}>
+        <div>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
+            <Icon size={18} color={iconColor} /> {title}
+          </h3>
+          {subtitle && (
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div style={{ flex: 1, minHeight: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        {normalized.length > 0 && totalVal > 0 ? (
+          <>
+            <div style={{ width: '100%', height: 175, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={normalized}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={52}
+                    outerRadius={74}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {normalized.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val: any, name: any) => [
+                      isCurrency ? formatVND(Number(val)) : `${Number(val).toLocaleString('vi-VN')} ${unitLabel}`,
+                      name
+                    ]}
+                    contentStyle={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 8,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    }}
+                    itemStyle={{ color: 'var(--color-text)', fontWeight: 600 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+
+              <div
+                style={{
+                  position: 'absolute',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  pointerEvents: 'none'
+                }}
+              >
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                  {centerValue}
+                </span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+                  {centerLabel}
+                </span>
+              </div>
+            </div>
+
+            {/* Custom Legend matching Dashboard.tsx L2196-2221 */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                gap: '8px 12px',
+                width: '100%',
+                marginTop: '12px',
+                padding: '0 6px',
+                fontSize: '0.75rem',
+                color: 'var(--color-text-light)'
+              }}
+            >
+              {normalized.map((entry, index) => {
+                const pct = totalVal > 0 ? Math.round((entry.value / totalVal) * 100) : 0;
+                return (
+                  <div
+                    key={index}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}
+                    title={`${entry.name}: ${isCurrency ? formatVND(entry.value) : entry.value}`}
+                  >
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, color: 'var(--color-text)' }}>
+                      {entry.name}
+                    </span>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 600, flexShrink: 0 }}>
+                      {isCurrency ? formatCompactVND(entry.value) : `${entry.value}`} ({pct}%)
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.825rem' }}>
+            Chưa có dữ liệu thống kê
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = ({
@@ -249,7 +577,9 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
     { value: 'all', label: 'Toàn bộ nhân sự Sale' },
     ...(filterOptions.sales_users || []).map((u: any) => ({
       value: String(u.id),
-      label: u.team_name ? `${u.name} (${u.team_name})` : u.name
+      label: u.name || 'Sale',
+      sublabel: u.team_name || u.email || undefined,
+      avatar: u.avatar || undefined
     }))
   ], [filterOptions.sales_users]);
 
@@ -269,16 +599,6 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
     }))
   ], [filterOptions.donvi_list]);
 
-  const kpis = payload?.kpis || {};
-  const funnel = payload?.funnel || {};
-  const funnelRates = funnel?.rates || {
-    tuong_tac_lan_1: 0,
-    ti_le_dot_lua: 0,
-    ti_le_chot: 0,
-    chuyen_doi_chung: 0,
-    ql_rate: 0
-  };
-
   const resetFilters = () => {
     setSelectedSaleId('all');
     setCareRole('all');
@@ -290,1046 +610,1410 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
     setTableSearch('');
   };
 
-  const hasActiveFilters =
-    selectedSaleId !== 'all' ||
-    careRole !== 'all' ||
-    leadSourceType !== 'all' ||
-    selectedProjectId !== 'all' ||
-    selectedCampaignId !== 'all' ||
-    selectedPhanLoai !== 'all' ||
-    selectedDonvi !== 'all';
+  const kpis = payload?.kpis || {};
+  const funnel = payload?.funnel || { rates: {} };
+  const rates = funnel.rates || {};
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* FILTER BAR — Synchronized with RichLand CRM Solid Light Design System */}
+  // ===========================================================================
+  // RENDER FILTER BAR (Unified with Dashboard.tsx card & segmented button pills)
+  // ===========================================================================
+  const renderFilterBar = () => (
+    <div
+      className="card"
+      style={{
+        padding: '1rem 1.25rem',
+        marginBottom: '1.25rem',
+        animation: 'slideUp 0.35s ease-out both'
+      }}
+    >
       <div
-        className="card"
         style={{
-          padding: isMobile ? '0.875rem' : '1rem 1.25rem',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '0.875rem',
-          border: '1px solid var(--color-border-light)'
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: '10px',
+          paddingBottom: '12px',
+          marginBottom: '12px',
+          borderBottom: '1px solid var(--color-border-light)'
         }}
       >
-        {/* Top Row: Scope Pills & Attribution Notice */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-          {activeSubTab === 'sale_perf' ? (
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: '4px' }}>
-                Vai trò chăm sóc:
-              </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              background: 'rgba(163, 20, 34, 0.08)',
+              color: '#a31422',
+              fontSize: '0.75rem',
+              fontWeight: 700
+            }}
+          >
+            <Filter size={13} />
+            {activeSubTab === 'sale_perf' && (isSaleOnly ? 'Hiệu Quả Cá Nhân & Hợp Tác' : 'Bộ Lọc Hiệu Quả Sale (Theo Dự án & Chiến dịch Chăm Sóc)')}
+            {activeSubTab === 'mkt_perf' && 'Bộ Lọc Hiệu Quả MKT (Độc lập theo Dự án & Chiến dịch Gốc trên Leads)'}
+            {activeSubTab === 'revenue' && 'Bộ Lọc Doanh Thu & Giao Dịch'}
+          </span>
+
+          {activeSubTab === 'sale_perf' && (
+            <div
+              style={{
+                display: 'flex',
+                background: 'var(--color-bg)',
+                padding: '3px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border-light)',
+                flexWrap: 'wrap'
+              }}
+            >
               {[
-                { key: 'all', label: 'Tất cả (Chính + Hợp tác)' },
-                { key: 'primary', label: 'Phụ trách chính' },
-                { key: 'coop', label: 'Đồng chăm sóc / Hợp tác' }
+                { id: 'all', label: 'Tất cả vai trò' },
+                { id: 'primary', label: 'Chăm chính' },
+                { id: 'coop', label: 'Hợp tác (Đồng chăm sóc)' }
               ].map(item => {
-                const active = careRole === item.key;
+                const active = careRole === item.id;
                 return (
                   <button
-                    key={item.key}
+                    key={item.id}
                     type="button"
-                    onClick={() => setCareRole(item.key as any)}
+                    onClick={() => setCareRole(item.id as any)}
                     style={{
-                      padding: '5px 12px',
-                      borderRadius: '8px',
-                      fontSize: '0.78rem',
-                      fontWeight: active ? 700 : 600,
-                      border: active ? '1px solid #BD1D2D' : '1px solid var(--color-border)',
-                      background: active ? '#BD1D2D' : 'var(--color-bg)',
-                      color: active ? '#ffffff' : 'var(--color-text)',
+                      padding: '4px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      border: 'none',
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      transition: 'all 0.2s ease',
+                      background: active ? 'var(--color-surface)' : 'transparent',
+                      color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                     }}
                   >
                     {item.label}
                   </button>
                 );
               })}
-
-              <div style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 4px' }} />
-
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: '4px' }}>
-                Nguồn khách:
-              </span>
-              {[
-                { key: 'all', label: 'Tất cả nguồn' },
-                { key: 'distributed', label: 'Được chia' },
-                { key: 'databank', label: 'Kho Databank' },
-                { key: 'personal', label: 'Cá nhân / Giới thiệu' }
-              ].map(item => {
-                const active = leadSourceType === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setLeadSourceType(item.key as any)}
-                    style={{
-                      padding: '5px 11px',
-                      borderRadius: '8px',
-                      fontSize: '0.76rem',
-                      fontWeight: active ? 700 : 600,
-                      border: active ? '1px solid #1e293b' : '1px solid var(--color-border)',
-                      background: active ? '#1e293b' : 'var(--color-bg)',
-                      color: active ? '#ffffff' : 'var(--color-text)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : activeSubTab === 'mkt_perf' ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-              <Info size={15} style={{ color: '#BD1D2D', flexShrink: 0 }} />
-              <span>
-                Đo lường <strong style={{ color: 'var(--color-text)' }}>Hiệu quả MKT</strong> theo đúng <strong style={{ color: '#BD1D2D' }}>Dự án gốc & Chiến dịch gốc trên bảng Leads</strong> (Sale đổi dự án/chiến dịch chăm sóc không làm lệch số gốc của MKT).
-              </span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-              <DollarSign size={15} style={{ color: '#10B981', flexShrink: 0 }} />
-              <span>
-                Tổng hợp <strong style={{ color: 'var(--color-text)' }}>Doanh Thu & Giao Dịch</strong> theo Dự án, Phân loại Lead, Kênh và Đơn vị chạy.
-              </span>
             </div>
           )}
 
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={resetFilters}
+          {activeSubTab === 'sale_perf' && (
+            <div
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '5px 10px',
-                borderRadius: '8px',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                border: '1px solid rgba(189, 29, 45, 0.25)',
-                background: 'rgba(189, 29, 45, 0.06)',
-                color: '#BD1D2D',
-                cursor: 'pointer'
+                display: 'flex',
+                background: 'var(--color-bg)',
+                padding: '3px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border-light)',
+                flexWrap: 'wrap'
               }}
             >
-              <RefreshCw size={12} /> Xóa bộ lọc
-            </button>
+              {[
+                { id: 'all', label: 'Tất cả nguồn' },
+                { id: 'distributed', label: 'Khách được chia' },
+                { id: 'databank', label: 'Kho Databank' },
+                { id: 'personal', label: 'Cá nhân / Giới thiệu' }
+              ].map(item => {
+                const active = leadSourceType === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setLeadSourceType(item.id as any)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      background: active ? 'var(--color-surface)' : 'transparent',
+                      color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
 
-        {/* Bottom Row: Searchable Dropdowns */}
-        <div
+        <button
+          type="button"
+          onClick={resetFilters}
           style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile
-              ? '1fr'
-              : activeSubTab === 'sale_perf' && !isSaleOnly
-                ? 'repeat(4, minmax(0, 1fr))'
-                : 'repeat(4, minmax(0, 1fr))',
-            gap: '0.75rem'
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            border: '1px solid var(--color-border-light)',
+            background: 'var(--color-bg)',
+            color: 'var(--color-text-muted)',
+            cursor: 'pointer'
           }}
         >
-          {/* Sale Filter (for Admin/Manager on Sale Perf or Revenue) */}
-          {!isSaleOnly && (activeSubTab === 'sale_perf' || activeSubTab === 'revenue') && (
-            <div>
-              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>
-                Nhân sự Sale (Tìm kiếm tên)
-              </label>
-              <CustomSelect
-                searchable={true}
-                options={saleUserOptions}
-                value={selectedSaleId}
-                onChange={val => setSelectedSaleId(String(val || 'all'))}
-                placeholder="Chọn hoặc tìm Sale..."
-                width="100%"
-              />
-            </div>
-          )}
-
-          {/* Project Filter */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>
-              {activeSubTab === 'mkt_perf' ? 'Dự án gốc (MKT)' : 'Dự án chăm sóc (Sale)'}
-            </label>
-            <CustomSelect
-              searchable={true}
-              options={projectOptions}
-              value={selectedProjectId}
-              onChange={val => {
-                setSelectedProjectId(String(val || 'all'));
-                setSelectedCampaignId('all');
-              }}
-              placeholder="Chọn dự án..."
-              width="100%"
-            />
-          </div>
-
-          {/* Campaign Filter */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>
-              {activeSubTab === 'mkt_perf' ? 'Chiến dịch gốc (MKT)' : 'Chiến dịch chăm sóc (Sale)'}
-            </label>
-            <CustomSelect
-              searchable={true}
-              options={campaignOptions}
-              value={selectedCampaignId}
-              onChange={val => setSelectedCampaignId(String(val || 'all'))}
-              placeholder="Chọn chiến dịch..."
-              width="100%"
-            />
-          </div>
-
-          {/* Lead Classification / Running Unit Filter */}
-          {activeSubTab === 'mkt_perf' ? (
-            <>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>
-                  Phân loại Lead
-                </label>
-                <CustomSelect
-                  searchable={true}
-                  options={phanLoaiOptions}
-                  value={selectedPhanLoai}
-                  onChange={val => setSelectedPhanLoai(String(val || 'all'))}
-                  placeholder="Tất cả phân loại..."
-                  width="100%"
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>
-                  Đơn vị chạy
-                </label>
-                <CustomSelect
-                  searchable={true}
-                  options={donviOptions}
-                  value={selectedDonvi}
-                  onChange={val => setSelectedDonvi(String(val || 'all'))}
-                  placeholder="Tất cả đơn vị chạy..."
-                  width="100%"
-                />
-              </div>
-            </>
-          ) : (
-            <div>
-              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>
-                Phân loại Lead
-              </label>
-              <CustomSelect
-                searchable={true}
-                options={phanLoaiOptions}
-                value={selectedPhanLoai}
-                onChange={val => setSelectedPhanLoai(String(val || 'all'))}
-                placeholder="Tất cả phân loại..."
-                width="100%"
-              />
-            </div>
-          )}
-        </div>
+          <RefreshCw size={12} />
+          Đặt lại bộ lọc
+        </button>
       </div>
 
-      {/* =================================================================== */}
-      {/* TAB 1 & TAB 2: HIỆU QUẢ SALE & HIỆU QUẢ MKT                          */}
-      {/* =================================================================== */}
-      {(activeSubTab === 'sale_perf' || activeSubTab === 'mkt_perf') && (
-        <>
-          {/* KPI STAT CARDS ROW (Synchronized with App .stat-card) */}
-          {loading && !payload ? (
-            <div className="stats-grid" style={{ gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: '0.875rem' }}>
-              {[1, 2, 3, 4, 5, 6].map(i => <KpiCardSkeleton key={i} />)}
+      {/* Dropdown Selectors Row */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(210px, 1fr))',
+          gap: '12px'
+        }}
+      >
+        {!isSaleOnly && activeSubTab !== 'mkt_perf' && (
+          <div>
+            <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
+              Nhân sự Sale (Tìm kiếm tên)
             </div>
-          ) : (
-            <div
-              className="stats-grid"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(6, minmax(0, 1fr))',
-                gap: '0.875rem'
-              }}
-            >
-              {/* Card 1: Tổng Lead */}
-              <div className="stat-card">
-                <div className="stat-header" style={{ marginBottom: '6px' }}>
-                  <span className="stat-title">TỔNG LEAD</span>
-                  <div className="stat-icon" style={{ background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D' }}>
-                    <Users size={15} />
-                  </div>
-                </div>
-                <div className="stat-value">{(kpis.total_leads || 0).toLocaleString()}</div>
-                <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                  {activeSubTab === 'sale_perf'
-                    ? `Được chia: ${kpis.distributed_leads || 0} • Kho: ${kpis.databank_leads || 0}`
-                    : `Chăm sóc dài hạn: ${kpis.cham_soc_dai_han_count || 0}`}
-                </div>
-              </div>
+            <CustomSelect
+              options={saleUserOptions}
+              value={selectedSaleId}
+              onChange={(val) => setSelectedSaleId(String(val))}
+              searchable={true}
+              showAvatars={true}
+              placeholder="Chọn nhân sự Sale..."
+              width="100%"
+            />
+          </div>
+        )}
 
-              {/* Card 2: Tổng QL & % QL */}
-              <div className="stat-card">
-                <div className="stat-header" style={{ marginBottom: '6px' }}>
-                  <span className="stat-title">QUALIFIED LEAD (QL)</span>
-                  <div className="stat-icon" style={{ background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }}>
-                    <CheckCircle2 size={15} />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                  <div className="stat-value">{(kpis.ql_count || 0).toLocaleString()}</div>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#10B981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '6px' }}>
-                    {kpis.ql_rate || 0}%
-                  </span>
-                </div>
-                <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                  Not Lead: <strong style={{ color: '#EF4444' }}>{kpis.not_lead_count || 0}</strong>
-                </div>
-              </div>
-
-              {/* Card 3: M_QL (Quan tâm+) */}
-              <div className="stat-card">
-                <div className="stat-header" style={{ marginBottom: '6px' }}>
-                  <span className="stat-title">M_QL (QUAN TÂM)</span>
-                  <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#D97706' }}>
-                    <PhoneCall size={15} />
-                  </div>
-                </div>
-                <div className="stat-value">{(kpis.m_ql_count || 0).toLocaleString()}</div>
-                <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                  Tương tác lần 1: <strong style={{ color: 'var(--color-text)' }}>{funnelRates.tuong_tac_lan_1}%</strong>
-                </div>
-              </div>
-
-              {/* Card 4: Đồng ý gặp */}
-              <div className="stat-card">
-                <div className="stat-header" style={{ marginBottom: '6px' }}>
-                  <span className="stat-title">ĐỒNG Ý GẶP</span>
-                  <div className="stat-icon" style={{ background: 'rgba(139, 92, 246, 0.12)', color: '#7C3AED' }}>
-                    <Handshake size={15} />
-                  </div>
-                </div>
-                <div className="stat-value">{(kpis.dong_y_gap_count || 0).toLocaleString()}</div>
-                <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                  Thiện chí hẹn gặp tư vấn
-                </div>
-              </div>
-
-              {/* Card 5: S_QL (Đã gặp) */}
-              <div className="stat-card">
-                <div className="stat-header" style={{ marginBottom: '6px' }}>
-                  <span className="stat-title">S_QL (ĐÃ GẶP)</span>
-                  <div className="stat-icon" style={{ background: 'rgba(6, 182, 212, 0.12)', color: '#0891B2' }}>
-                    <Flame size={15} />
-                  </div>
-                </div>
-                <div className="stat-value">{(kpis.s_ql_count || 0).toLocaleString()}</div>
-                <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                  Tỉ lệ đốt lửa: <strong style={{ color: 'var(--color-text)' }}>{funnelRates.ti_le_dot_lua}%</strong>
-                </div>
-              </div>
-
-              {/* Card 6: Giao dịch (Booking + Đặt cọc) */}
-              <div className="stat-card" style={{ borderLeft: '3px solid #BD1D2D' }}>
-                <div className="stat-header" style={{ marginBottom: '6px' }}>
-                  <span className="stat-title">GIAO DỊCH (CHỐT)</span>
-                  <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#10B981' }}>
-                    <Award size={15} />
-                  </div>
-                </div>
-                <div className="stat-value" style={{ color: '#BD1D2D' }}>{(kpis.giao_dich_count || 0).toLocaleString()}</div>
-                <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                  Tỉ lệ chốt: <strong style={{ color: '#10B981' }}>{funnelRates.ti_le_chot}%</strong> • CĐ chung: <strong>{funnelRates.chuyen_doi_chung}%</strong>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* CONVERSION FUNNEL & 4 CONVERSION RATES + TEMPERATURE PIE */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : '1.65fr 1fr',
-              gap: '1.25rem'
+        <div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
+            {activeSubTab === 'mkt_perf' ? 'Dự án gốc (MKT)' : 'Dự án chăm sóc (Sale)'}
+          </div>
+          <CustomSelect
+            options={projectOptions}
+            value={selectedProjectId}
+            onChange={(val) => {
+              setSelectedProjectId(String(val));
+              setSelectedCampaignId('all');
             }}
-          >
-            {/* Left: Phễu chuyển đổi & 4 Tỉ lệ chuyển đổi cốt lõi */}
-            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Filter size={16} style={{ color: '#BD1D2D' }} />
-                    Phễu Chuyển Đổi & Tỉ Lệ Chốt
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    {funnel.note || 'Đo lường xuyên suốt từ Tổng Lead -> QL -> M_QL -> Đồng ý gặp -> S_QL -> Giao dịch'}
-                  </p>
-                </div>
-                {activeSubTab === 'sale_perf' && (
-                  <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: '999px', background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D' }}>
-                    Phễu tính trên Khách được chia ({funnel.total_leads || 0} leads)
-                  </span>
-                )}
-              </div>
+            searchable={true}
+            width="100%"
+          />
+        </div>
 
-              {/* 4 Conversion Rate Pill Boxes */}
-              <div
+        <div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
+            {activeSubTab === 'mkt_perf' ? 'Chiến dịch gốc (Bảng Leads)' : 'Chiến dịch chăm sóc (Sale)'}
+          </div>
+          <CustomSelect
+            options={campaignOptions}
+            value={selectedCampaignId}
+            onChange={(val) => setSelectedCampaignId(String(val))}
+            searchable={true}
+            width="100%"
+          />
+        </div>
+
+        <div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
+            Phân loại Lead
+          </div>
+          <CustomSelect
+            options={phanLoaiOptions}
+            value={selectedPhanLoai}
+            onChange={(val) => setSelectedPhanLoai(String(val))}
+            searchable={true}
+            width="100%"
+          />
+        </div>
+
+        {activeSubTab !== 'sale_perf' && (
+          <div>
+            <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
+              Đơn vị triển khai
+            </div>
+            <CustomSelect
+              options={donviOptions}
+              value={selectedDonvi}
+              onChange={(val) => setSelectedDonvi(String(val))}
+              searchable={true}
+              width="100%"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // ===========================================================================
+  // SKELETON LOADING STATE
+  // ===========================================================================
+  if (loading && !payload) {
+    return (
+      <div>
+        {renderFilterBar()}
+        <div
+          className="dashboard-kpi-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '1rem',
+            marginBottom: '1.25rem'
+          }}
+        >
+          {Array.from({ length: 4 }).map((_, i) => (
+            <KpiCardSkeleton key={i} />
+          ))}
+        </div>
+        <div
+          className="responsive-grid-6-4"
+          style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}
+        >
+          <div className="card" style={{ padding: '1.25rem' }}>
+            <Skeleton width={220} height={18} style={{ marginBottom: 16 }} />
+            <Skeleton width="100%" height={240} borderRadius={12} />
+          </div>
+          <div className="card" style={{ padding: '1.25rem' }}>
+            <Skeleton width={180} height={18} style={{ marginBottom: 16 }} />
+            <Skeleton width="100%" height={240} borderRadius={12} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ===========================================================================
+  // TAB 1: HIỆU QUẢ SALE (`sale_perf`)
+  // ===========================================================================
+  if (activeSubTab === 'sale_perf') {
+    const staffRows = (payload?.staff_table || []).filter((r: any) => {
+      if (!tableSearch.trim()) return true;
+      const q = tableSearch.toLowerCase();
+      return (
+        String(r.sale_name || '').toLowerCase().includes(q) ||
+        String(r.sale_email || '').toLowerCase().includes(q) ||
+        String(r.team_name || '').toLowerCase().includes(q)
+      );
+    });
+
+    const saleKpiCards: NativeKpiCardItem[] = [
+      {
+        id: 'sale-total',
+        label: 'TỔNG LEAD CHĂM SÓC',
+        value: Number(kpis.total_leads || 0).toLocaleString('vi-VN'),
+        color: '#a31422',
+        iconBg: 'rgba(163, 20, 34, 0.08)',
+        icon: Users,
+        decor: 'network',
+        dots: [
+          { color: '#a31422', text: `Được chia: ${kpis.distributed_leads || 0}` },
+          { color: '#3b82f6', text: `Kho: ${kpis.databank_leads || 0}` },
+          { color: '#10b981', text: `Cá nhân: ${kpis.personal_leads || 0}` }
+        ],
+        footerHighlight: `${kpis.coop_leads || 0} hợp tác`,
+        footerText: `• ${kpis.primary_leads || 0} chăm chính`
+      },
+      {
+        id: 'sale-ql',
+        label: 'QUALIFIED LEAD (QL)',
+        value: Number(kpis.ql_count || 0).toLocaleString('vi-VN'),
+        color: '#3b82f6',
+        iconBg: 'rgba(59, 130, 246, 0.08)',
+        icon: CheckCircle2,
+        decor: 'user',
+        dots: [
+          { color: '#10b981', text: `Tỉ lệ QL: ${kpis.ql_rate || 0}%` },
+          { color: '#ef4444', text: `Not Lead: ${kpis.not_lead_count || 0}` }
+        ],
+        footerHighlight: `${kpis.ql_rate || 0}%`,
+        footerText: 'tỉ lệ đạt chuẩn trên tổng Lead'
+      },
+      {
+        id: 'sale-mql',
+        label: 'QUAN TÂM & ĐỒNG Ý GẶP',
+        value: Number(kpis.m_ql_count || 0).toLocaleString('vi-VN'),
+        color: '#f59e0b',
+        iconBg: 'rgba(245, 158, 11, 0.08)',
+        icon: PhoneCall,
+        decor: 'alert',
+        dots: [
+          { color: '#f59e0b', text: `M_QL (Quan tâm): ${kpis.m_ql_count || 0}` },
+          { color: '#8b5cf6', text: `Đồng ý gặp: ${kpis.dong_y_gap_count || 0}` }
+        ],
+        footerHighlight: `${rates.tuong_tac_lan_1 || 0}%`,
+        footerText: 'tương tác lần 1 (M_QL / Tổng Lead)'
+      },
+      {
+        id: 'sale-sql-gd',
+        label: 'ĐÃ GẶP (S_QL) & GIAO DỊCH',
+        value: `${Number(kpis.giao_dich_count || 0).toLocaleString('vi-VN')} chốt`,
+        color: '#10b981',
+        iconBg: 'rgba(16, 185, 129, 0.08)',
+        icon: Award,
+        decor: 'bolt',
+        dots: [
+          { color: '#06b6d4', text: `Đã gặp (S_QL): ${kpis.s_ql_count || 0}` },
+          { color: '#f59e0b', text: `Booking: ${kpis.booking_count || 0}` },
+          { color: '#10b981', text: `Đặt cọc: ${kpis.dat_coc_count || 0}` }
+        ],
+        footerHighlight: `Tỉ lệ chốt ${rates.ti_le_chot || 0}%`,
+        footerText: `• Đốt lửa ${rates.ti_le_dot_lua || 0}% • CĐ chung ${rates.chuyen_doi_chung || 0}%`
+      }
+    ];
+
+    const funnelSteps = [
+      { label: '1. Tổng Lead được chia', val: funnel.total_leads || 0, color: '#334155', pct: 100 },
+      { label: '2. Qualified Lead (QL)', val: funnel.ql_count || 0, color: '#3b82f6', pct: funnel.total_leads > 0 ? Math.round((funnel.ql_count / funnel.total_leads) * 100) : 0 },
+      { label: '3. Quan tâm (M_QL)', val: funnel.m_ql_count || 0, color: '#f59e0b', pct: funnel.total_leads > 0 ? Math.round((funnel.m_ql_count / funnel.total_leads) * 100) : 0 },
+      { label: '4. Đồng ý gặp', val: funnel.dong_y_gap_count || 0, color: '#8b5cf6', pct: funnel.total_leads > 0 ? Math.round((funnel.dong_y_gap_count / funnel.total_leads) * 100) : 0 },
+      { label: '5. Đã gặp (S_QL)', val: funnel.s_ql_count || 0, color: '#06b6d4', pct: funnel.total_leads > 0 ? Math.round((funnel.s_ql_count / funnel.total_leads) * 100) : 0 },
+      { label: '6. Giao dịch (Booking + Cọc)', val: funnel.giao_dich_count || 0, color: '#a31422', pct: funnel.total_leads > 0 ? Math.round((funnel.giao_dich_count / funnel.total_leads) * 100) : 0 }
+    ];
+
+    return (
+      <div>
+        {renderFilterBar()}
+        <NativeStatCardGrid cards={saleKpiCards} />
+
+        {/* Row 1: Conversion Funnel (6fr) + Temperature Donut (4fr) */}
+        <div
+          className="responsive-grid-6-4"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '6fr 4fr',
+            gap: '1.25rem',
+            marginBottom: '1.25rem'
+          }}
+        >
+          <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '8px', flexWrap: 'wrap' }}>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
+                  <Zap size={18} color="#a31422" /> Phễu Chuyển Đổi & Tỉ Lệ Chốt
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                  {funnel.note || 'Chỉ tính trên khách hàng được chia (không tính khách lấy từ Kho Databank)'}
+                </p>
+              </div>
+              <span
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-                  gap: '0.625rem'
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  background: 'rgba(163, 20, 34, 0.08)',
+                  color: '#a31422'
                 }}
               >
-                {[
-                  { label: 'Tương tác lần 1', formula: 'M_QL / Tổng Lead', value: funnelRates.tuong_tac_lan_1, color: '#2563EB' },
-                  { label: 'Tỉ lệ đốt lửa', formula: 'S_QL / M_QL', value: funnelRates.ti_le_dot_lua, color: '#D97706' },
-                  { label: 'Tỉ lệ chốt', formula: 'Giao dịch / S_QL', value: funnelRates.ti_le_chot, color: '#10B981' },
-                  { label: 'Chuyển đổi chung', formula: 'Giao dịch / QL', value: funnelRates.chuyen_doi_chung, color: '#BD1D2D' }
-                ].map((r, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '0.75rem',
-                      borderRadius: '10px',
-                      background: 'var(--color-bg)',
-                      border: '1px solid var(--color-border-light)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px'
-                    }}
-                  >
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{r.label}</span>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: r.color }}>{r.value}%</span>
-                    <span style={{ fontSize: '0.66rem', color: 'var(--color-text-muted)' }}>{r.formula}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Horizontal Funnel Bars */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginTop: '0.25rem' }}>
-                {[
-                  { label: '1. Tổng Lead', count: funnel.total_leads || 0, color: '#334155' },
-                  { label: '2. Qualified Lead (QL)', count: funnel.ql_count || 0, color: '#2563EB' },
-                  { label: '3. Quan tâm (M_QL)', count: funnel.m_ql_count || 0, color: '#F59E0B' },
-                  { label: '4. Đồng ý gặp', count: funnel.dong_y_gap_count || 0, color: '#8B5CF6' },
-                  { label: '5. Đã gặp (S_QL)', count: funnel.s_ql_count || 0, color: '#06B6D4' },
-                  { label: '6. Giao dịch (Booking + Cọc)', count: funnel.giao_dich_count || 0, color: '#BD1D2D' }
-                ].map((step, idx, arr) => {
-                  const maxVal = Math.max(1, arr[0].count || 1);
-                  const pct = Math.min(100, Math.round((step.count / maxVal) * 100));
-                  return (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: isMobile ? '130px' : '185px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)', flexShrink: 0 }}>
-                        {step.label}
-                      </div>
-                      <div style={{ flex: 1, height: '22px', background: 'var(--color-bg)', borderRadius: '6px', overflow: 'hidden', position: 'relative', border: '1px solid var(--color-border-light)' }}>
-                        <div
-                          style={{
-                            width: `${Math.max(step.count > 0 ? 4 : 0, pct)}%`,
-                            height: '100%',
-                            background: step.color,
-                            borderRadius: '5px',
-                            transition: 'width 0.35s ease'
-                          }}
-                        />
-                      </div>
-                      <div style={{ width: '90px', textAlign: 'right', fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)', flexShrink: 0 }}>
-                        {step.count.toLocaleString()} <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>({pct}%)</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                Mẫu số: {Number(funnel.total_leads || 0).toLocaleString('vi-VN')} leads được chia
+              </span>
             </div>
 
-            {/* Right: Tỉ trọng Nhiệt độ Lead (Nóng / Ấm / Lạnh) */}
-            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Flame size={16} style={{ color: '#BD1D2D' }} />
-                  Tỉ Trọng Nhiệt Độ Khách Hàng
-                </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                  Phân bổ Nóng • Ấm • Lạnh trên tập dữ liệu đang lọc
-                </p>
-              </div>
-
-              <div style={{ width: '100%', height: 210, marginTop: '0.5rem' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={payload?.temperature_chart || []}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={52}
-                      outerRadius={80}
-                      paddingAngle={3}
-                    >
-                      {(payload?.temperature_chart || []).map((entry: any, index: number) => (
-                        <Cell key={`temp-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(val: any) => [`${Number(val).toLocaleString()} khách`, 'Số lượng']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
-                {(payload?.temperature_chart || []).map((tItem: any, idx: number) => {
-                  const tot = Math.max(1, kpis.total_leads || 1);
-                  const pct = ((tItem.value || 0) / tot * 100).toFixed(1);
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: '0.625rem',
-                        borderRadius: '8px',
-                        background: 'var(--color-bg)',
-                        border: '1px solid var(--color-border-light)',
-                        textAlign: 'center'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: tItem.color }} />
-                        {tItem.name}
-                      </div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: tItem.color, marginTop: '2px' }}>
-                        {(tItem.value || 0).toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{pct}%</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* TIMELINE COMPOSED CHART & BREAKDOWN CHARTS */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : '1.65fr 1fr',
-              gap: '1.25rem'
-            }}
-          >
-            {/* Biểu đồ kết hợp Phân loại Lead (M_QL, S_QL, Not Lead, % QL) theo Thời gian */}
-            <div className="card" style={{ padding: '1.25rem' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <BarChart2 size={16} style={{ color: '#BD1D2D' }} />
-                  Biểu Đồ Kết Hợp Chỉ Số Lead (M_QL, S_QL, Not Lead & % QL) Theo Thời Gian
-                </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                  Theo dõi xu hướng chất lượng Lead và chuyển đổi qua các mốc thời gian
-                </p>
-              </div>
-              <div style={{ width: '100%', height: 280 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={payload?.timeline_chart || []} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#334155' : '#e2e8f0'} vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
-                    <YAxis yAxisId="left" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
-                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} unit="%" tick={{ fontSize: 11, fill: '#10B981' }} />
-                    <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
-                    <Bar yAxisId="left" dataKey="m_ql" name="M_QL (Quan tâm)" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={18} />
-                    <Bar yAxisId="left" dataKey="s_ql" name="S_QL (Đã gặp)" fill="#2563EB" radius={[4, 4, 0, 0]} barSize={18} />
-                    <Bar yAxisId="left" dataKey="not_lead" name="Not Lead" fill="#94A3B8" radius={[4, 4, 0, 0]} barSize={18} />
-                    <Line yAxisId="right" type="monotone" dataKey="ql_rate" name="% QL" stroke="#BD1D2D" strokeWidth={2.5} dot={{ r: 3 }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Right Chart: By Project / Source Breakdown */}
-            <div className="card" style={{ padding: '1.25rem' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Building2 size={16} style={{ color: '#BD1D2D' }} />
-                  {activeSubTab === 'sale_perf' ? 'Phân Bổ Khách Theo Dự Án Chăm Sóc' : 'Tỉ Trọng Lead Theo Dự Án Gốc (MKT)'}
-                </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                  {activeSubTab === 'sale_perf'
-                    ? 'Tính theo Dự án Sale đang chăm sóc trên hồ sơ khách hàng'
-                    : 'Tính theo Dự án gốc từ chiến dịch Marketing'}
-                </p>
-              </div>
-              <div style={{ width: '100%', height: 280 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    layout="vertical"
-                    data={(payload?.by_project_chart || []).slice(0, 8)}
-                    margin={{ top: 5, right: 24, left: 10, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#334155' : '#e2e8f0'} horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
-                    <YAxis dataKey="name" type="category" width={125} tick={{ fontSize: 11, fill: 'var(--color-text)' }} />
-                    <Tooltip />
-                    <Bar dataKey="value" name="Số lượng Lead" fill="#BD1D2D" radius={[0, 4, 4, 0]} barSize={16} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* MKT EXTRA BREAKDOWN CHARTS (Loại Lead, Kênh, Đơn vị chạy) */}
-          {activeSubTab === 'mkt_perf' && (
+            {/* 4 Conversion Rate Highlights */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-                gap: '1.25rem'
+                gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+                gap: '10px',
+                marginBottom: '1.25rem'
               }}
             >
               {[
-                { title: 'Tỉ Trọng Theo Loại Lead', data: payload?.by_phan_loai_chart || [] },
-                { title: 'Tỉ Trọng Theo Kênh MKT', data: payload?.by_channel_chart || [] },
-                { title: 'Tỉ Trọng Theo Đơn Vị Chạy', data: payload?.by_donvi_chart || [] }
-              ].map((chartBox, cIdx) => (
-                <div key={cIdx} className="card" style={{ padding: '1.125rem' }}>
-                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.88rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                    {chartBox.title}
-                  </h4>
-                  <div style={{ width: '100%', height: 210 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartBox.data}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={42}
-                          outerRadius={70}
-                          paddingAngle={2}
-                        >
-                          {chartBox.data.map((_: any, i: number) => (
-                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend wrapperStyle={{ fontSize: '0.72rem' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
+                { label: 'Tương tác lần 1', val: `${rates.tuong_tac_lan_1 || 0}%`, formula: 'M_QL / Tổng Lead', color: '#3b82f6' },
+                { label: 'Tỉ lệ đốt lửa', val: `${rates.ti_le_dot_lua || 0}%`, formula: 'S_QL / M_QL', color: '#f59e0b' },
+                { label: 'Tỉ lệ chốt', val: `${rates.ti_le_chot || 0}%`, formula: 'Giao dịch / S_QL', color: '#10b981' },
+                { label: 'Chuyển đổi chung', val: `${rates.chuyen_doi_chung || 0}%`, formula: 'Giao dịch / QL', color: '#a31422' }
+              ].map((m, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    background: 'var(--color-bg)',
+                    border: '1px solid var(--color-border-light)'
+                  }}
+                >
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{m.label}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: m.color, margin: '2px 0' }}>{m.val}</div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--color-text-light)' }}>{m.formula}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Progress Bars */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {funnelSteps.map((step, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: isMobile ? '130px' : '175px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', flexShrink: 0 }}>
+                    {step.label}
+                  </div>
+                  <div style={{ flex: 1, height: '10px', background: 'var(--color-bg)', borderRadius: '5px', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${Math.max(step.val > 0 ? 3 : 0, Math.min(100, step.pct))}%`,
+                        height: '100%',
+                        background: step.color,
+                        borderRadius: '5px',
+                        transition: 'width 0.4s ease'
+                      }}
+                    />
+                  </div>
+                  <div style={{ width: '95px', textAlign: 'right', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)', flexShrink: 0 }}>
+                    {Number(step.val).toLocaleString('vi-VN')}{' '}
+                    <span style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--color-text-muted)' }}>({step.pct}%)</span>
                   </div>
                 </div>
               ))}
             </div>
-          )}
-
-          {/* DETAILED TABLES */}
-          {activeSubTab === 'sale_perf' ? (
-            /* TABLE: BẢNG SO SÁNH HIỆU QUẢ NHÂN SỰ SALE */
-            <div className="card" style={{ padding: '1.25rem' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                    Bảng So Sánh Hiệu Quả Chăm Sóc & Chuyển Đổi Theo Sale
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    Đo lường theo Dự án & Chiến dịch Sale đang chăm sóc (Tỉ lệ chuyển đổi tính trên khách được chia)
-                  </p>
-                </div>
-                <div style={{ position: 'relative', minWidth: isMobile ? '100%' : '250px' }}>
-                  <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                  <input
-                    type="text"
-                    value={tableSearch}
-                    onChange={e => setTableSearch(e.target.value)}
-                    placeholder="Tìm nhanh tên nhân sự hoặc team..."
-                    className="form-input"
-                    style={{ paddingLeft: '30px', height: '34px', fontSize: '0.78rem', width: '100%' }}
-                  />
-                </div>
-              </div>
-
-              <div className="table-container" style={{ overflowX: 'auto' }}>
-                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--color-bg)', textAlign: 'left' }}>
-                      <th style={{ padding: '10px 12px', fontWeight: 800 }}>Nhân sự Sale</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800 }}>Team</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Tổng Lead</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Được chia</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Databank</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Hợp tác</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Not Lead</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>QL (%)</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>M_QL</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Đ.Ý Gặp</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>S_QL</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right', color: '#BD1D2D' }}>Giao dịch</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>CS Dài hạn</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'center' }}>Nóng / Ấm / Lạnh</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>TT Lần 1</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Đốt lửa</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Tỉ lệ chốt</th>
-                      <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>CĐ Chung</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(payload?.staff_table || [])
-                      .filter((r: any) => {
-                        if (!tableSearch.trim()) return true;
-                        const q = tableSearch.toLowerCase();
-                        return (r.sale_name || '').toLowerCase().includes(q) || (r.team_name || '').toLowerCase().includes(q);
-                      })
-                      .map((row: any, idx: number) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                          <td style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text)' }}>{row.sale_name}</td>
-                          <td style={{ padding: '10px 10px', color: 'var(--color-text-muted)' }}>{row.team_name}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 800 }}>{row.total_leads}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>{row.distributed_leads}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', color: '#2563EB' }}>{row.databank_leads}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', color: '#7C3AED' }}>{row.coop_leads}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', color: '#EF4444' }}>{row.not_lead_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700 }}>
-                            {row.ql_count} <span style={{ fontSize: '0.7rem', color: '#10B981' }}>({row.ql_rate}%)</span>
-                          </td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#D97706' }}>{row.m_ql_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>{row.dong_y_gap_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#0891B2' }}>{row.s_ql_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 800, color: '#BD1D2D' }}>{row.giao_dich_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>{row.cham_soc_dai_han_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <span style={{ color: '#BD1D2D', fontWeight: 700 }}>{row.temp_hot}</span>
-                            {' / '}
-                            <span style={{ color: '#F59E0B', fontWeight: 700 }}>{row.temp_warm}</span>
-                            {' / '}
-                            <span style={{ color: '#3B82F6', fontWeight: 700 }}>{row.temp_cold}</span>
-                          </td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 600 }}>{row.rates?.tuong_tac_lan_1 || 0}%</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 600 }}>{row.rates?.ti_le_dot_lua || 0}%</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#10B981' }}>{row.rates?.ti_le_chot || 0}%</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#BD1D2D' }}>{row.rates?.chuyen_doi_chung || 0}%</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            /* MKT TABLES: BY PROJECT & BY ORIGINAL CAMPAIGN */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Table 1: By Original Project & Lead Classification */}
-              <div className="card" style={{ padding: '1.25rem' }}>
-                <div style={{ marginBottom: '0.875rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                    1. Bảng Hiệu Quả MKT Theo Dự Án Gốc & Phân Loại Lead
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    Đo lường chất lượng chuyển đổi theo đúng Dự án gốc (`leads.project_id`) và Phân loại Lead (`leads.lead_phan_loai`)
-                  </p>
-                </div>
-                <div className="table-container" style={{ overflowX: 'auto' }}>
-                  <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--color-bg)', textAlign: 'left' }}>
-                        <th style={{ padding: '10px 12px', fontWeight: 800 }}>Dự án gốc (MKT)</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800 }}>Phân loại Lead</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Tổng Lead</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Not Lead</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>QL (%)</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>M_QL</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Đ.Ý Gặp</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>S_QL</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right', color: '#BD1D2D' }}>Giao dịch</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'center' }}>Nóng / Ấm / Lạnh</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>TT Lần 1</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Đốt lửa</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Tỉ lệ chốt</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>CĐ Chung</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(payload?.by_project_table || []).map((row: any, idx: number) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                          <td style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text)' }}>{row.project_name}</td>
-                          <td style={{ padding: '10px 10px' }}>
-                            <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'var(--color-bg)', fontWeight: 700, fontSize: '0.72rem' }}>
-                              {row.lead_phan_loai}
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 800 }}>{row.total_leads}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', color: '#EF4444' }}>{row.not_lead_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700 }}>
-                            {row.ql_count} <span style={{ fontSize: '0.7rem', color: '#10B981' }}>({row.rates?.ql_rate || 0}%)</span>
-                          </td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#D97706' }}>{row.m_ql_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>{row.dong_y_gap_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#0891B2' }}>{row.s_ql_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 800, color: '#BD1D2D' }}>{row.giao_dich_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <span style={{ color: '#BD1D2D', fontWeight: 700 }}>{row.temp_hot}</span>
-                            {' / '}
-                            <span style={{ color: '#F59E0B', fontWeight: 700 }}>{row.temp_warm}</span>
-                            {' / '}
-                            <span style={{ color: '#3B82F6', fontWeight: 700 }}>{row.temp_cold}</span>
-                          </td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>{row.rates?.tuong_tac_lan_1 || 0}%</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>{row.rates?.ti_le_dot_lua || 0}%</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#10B981' }}>{row.rates?.ti_le_chot || 0}%</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#BD1D2D' }}>{row.rates?.chuyen_doi_chung || 0}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Table 2: By Original Campaign (`leads.campaign_id`) */}
-              <div className="card" style={{ padding: '1.25rem' }}>
-                <div style={{ marginBottom: '0.875rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                    2. Bảng Hiệu Quả MKT Theo Chiến Dịch Gốc (`leads.campaign_id`)
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    Danh sách chiến dịch gốc từ Marketing — giữ nguyên chỉ số gốc ngay cả khi Sale chuyển khách sang chiến dịch khác
-                  </p>
-                </div>
-                <div className="table-container" style={{ overflowX: 'auto' }}>
-                  <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--color-bg)', textAlign: 'left' }}>
-                        <th style={{ padding: '10px 12px', fontWeight: 800 }}>Chiến dịch gốc (MKT)</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800 }}>Dự án gốc</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800 }}>Đơn vị chạy</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Tổng Lead</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Not Lead</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>QL (%)</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>M_QL</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Đ.Ý Gặp</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>S_QL</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right', color: '#BD1D2D' }}>Giao dịch</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'center' }}>Nóng / Ấm / Lạnh</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>TT Lần 1</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Đốt lửa</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Tỉ lệ chốt</th>
-                        <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>CĐ Chung</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(payload?.by_campaign_table || []).map((row: any, idx: number) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                          <td style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-text)', maxWidth: '260px' }}>
-                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.campaign_name}>
-                              {row.campaign_name}
-                            </div>
-                            {row.campaign_id !== row.campaign_name && (
-                              <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{row.campaign_id}</div>
-                            )}
-                          </td>
-                          <td style={{ padding: '10px 10px', color: 'var(--color-text)' }}>{row.project_name}</td>
-                          <td style={{ padding: '10px 10px', color: 'var(--color-text-muted)' }}>{row.donvi_chay}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 800 }}>{row.total_leads}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', color: '#EF4444' }}>{row.not_lead_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700 }}>
-                            {row.ql_count} <span style={{ fontSize: '0.7rem', color: '#10B981' }}>({row.rates?.ql_rate || 0}%)</span>
-                          </td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#D97706' }}>{row.m_ql_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>{row.dong_y_gap_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#0891B2' }}>{row.s_ql_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 800, color: '#BD1D2D' }}>{row.giao_dich_count}</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <span style={{ color: '#BD1D2D', fontWeight: 700 }}>{row.temp_hot}</span>
-                            {' / '}
-                            <span style={{ color: '#F59E0B', fontWeight: 700 }}>{row.temp_warm}</span>
-                            {' / '}
-                            <span style={{ color: '#3B82F6', fontWeight: 700 }}>{row.temp_cold}</span>
-                          </td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>{row.rates?.tuong_tac_lan_1 || 0}%</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>{row.rates?.ti_le_dot_lua || 0}%</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#10B981' }}>{row.rates?.ti_le_chot || 0}%</td>
-                          <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#BD1D2D' }}>{row.rates?.chuyen_doi_chung || 0}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* =================================================================== */}
-      {/* TAB 3: DOANH THU (`revenue`)                                         */}
-      {/* =================================================================== */}
-      {activeSubTab === 'revenue' && (
-        <>
-          {/* Revenue Top KPI Cards */}
-          <div
-            className="stats-grid"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, minmax(0, 1fr))',
-              gap: '0.875rem'
-            }}
-          >
-            <div className="stat-card">
-              <div className="stat-header" style={{ marginBottom: '6px' }}>
-                <span className="stat-title">SỐ LƯỢNG GIAO DỊCH</span>
-                <div className="stat-icon" style={{ background: 'rgba(189, 29, 45, 0.1)', color: '#BD1D2D' }}>
-                  <Award size={15} />
-                </div>
-              </div>
-              <div className="stat-value">{(kpis.total_transactions || 0).toLocaleString()}</div>
-              <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                Khách Đặt cọc: {kpis.dat_coc_contacts || 0} • Booking: {kpis.booking_contacts || 0}
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-header" style={{ marginBottom: '6px' }}>
-                <span className="stat-title">TỔNG GIÁ TRỊ BĐS GIAO DỊCH</span>
-                <div className="stat-icon" style={{ background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }}>
-                  <Building2 size={15} />
-                </div>
-              </div>
-              <div className="stat-value" title={formatVND(kpis.total_property_value || 0)}>
-                {formatCompactVND(kpis.total_property_value || 0)}
-              </div>
-              <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                {formatVND(kpis.total_property_value || 0)}
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-header" style={{ marginBottom: '6px' }}>
-                <span className="stat-title">TỔNG TIỀN CỌC GHI NHẬN</span>
-                <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#D97706' }}>
-                  <Briefcase size={15} />
-                </div>
-              </div>
-              <div className="stat-value" title={formatVND(kpis.total_deposit_amount || 0)}>
-                {formatCompactVND(kpis.total_deposit_amount || 0)}
-              </div>
-              <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                {formatVND(kpis.total_deposit_amount || 0)}
-              </div>
-            </div>
-
-            <div className="stat-card" style={{ borderLeft: '3px solid #10B981' }}>
-              <div className="stat-header" style={{ marginBottom: '6px' }}>
-                <span className="stat-title">TỔNG DOANH THU / HOA HỒNG</span>
-                <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#10B981' }}>
-                  <DollarSign size={15} />
-                </div>
-              </div>
-              <div className="stat-value" style={{ color: '#10B981' }} title={formatVND(kpis.total_revenue_amount || 0)}>
-                {formatCompactVND(kpis.total_revenue_amount || 0)}
-              </div>
-              <div className="stat-desc" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                {formatVND(kpis.total_revenue_amount || 0)}
-              </div>
-            </div>
           </div>
 
-          {/* 4 Revenue Breakdown Charts */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-              gap: '1.25rem'
-            }}
-          >
-            {[
-              { title: '1. Cơ Cấu Doanh Thu Theo Dự Án', data: payload?.by_project_chart || [] },
-              { title: '2. Cơ Cấu Doanh Thu Theo Phân Loại Lead', data: payload?.by_phan_loai_chart || [] },
-              { title: '3. Cơ Cấu Doanh Thu Theo Kênh', data: payload?.by_channel_chart || [] },
-              { title: '4. Cơ Cấu Doanh Thu Theo Đơn Vị Chạy', data: payload?.by_donvi_chart || [] }
-            ].map((box, idx) => (
-              <div key={idx} className="card" style={{ padding: '1.25rem' }}>
-                <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                  {box.title}
-                </h4>
-                <div style={{ width: '100%', height: 220 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={box.data}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={45}
-                        outerRadius={75}
-                        paddingAngle={2}
-                      >
-                        {box.data.map((_: any, i: number) => (
-                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(val: any) => [formatVND(Number(val)), 'Giá trị']} />
-                      <Legend wrapperStyle={{ fontSize: '0.74rem' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ))}
-          </div>
+          <DonutCardWithCustomLegend
+            title="Tỉ Trọng Nhiệt Độ Khách Hàng"
+            subtitle="Phân bổ Nóng • Ấm • Lạnh trên tập khách đang lọc"
+            icon={Flame}
+            iconColor="#a31422"
+            data={payload?.temperature_chart || []}
+            centerValue={Number(kpis.total_leads || 0).toLocaleString('vi-VN')}
+            centerLabel="Tổng KH"
+          />
+        </div>
 
-          {/* Transactions Detail Table */}
-          <div className="card" style={{ padding: '1.25rem' }}>
-            <div style={{ marginBottom: '0.875rem' }}>
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                Bảng Chi Tiết Giao Dịch & Doanh Thu
+        {/* Row 2: Timeline Chart (6fr) + Care Project Progress List (4fr) */}
+        <div
+          className="responsive-grid-6-4"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '6fr 4fr',
+            gap: '1.25rem',
+            marginBottom: '1.25rem'
+          }}
+        >
+          <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
+                <BarChart2 size={18} color="#3b82f6" /> Biểu Đồ Xu Hướng Lead & Chuyển Đổi
               </h3>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                Danh sách phiếu cọc & giao dịch phát sinh từ dữ liệu thực tế trên hệ thống
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                Số lượng Tổng Lead, M_QL (Quan tâm), S_QL (Đã gặp) và Tỉ lệ QL (%)
               </p>
             </div>
-            <div className="table-container" style={{ overflowX: 'auto' }}>
-              <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                <thead>
-                  <tr style={{ background: 'var(--color-bg)', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Mã GD</th>
-                    <th style={{ padding: '10px 10px', fontWeight: 800 }}>Khách hàng</th>
-                    <th style={{ padding: '10px 10px', fontWeight: 800 }}>Dự án / Mã căn</th>
-                    <th style={{ padding: '10px 10px', fontWeight: 800 }}>Chiến dịch</th>
-                    <th style={{ padding: '10px 10px', fontWeight: 800 }}>Loại Lead / Kênh</th>
-                    <th style={{ padding: '10px 10px', fontWeight: 800 }}>Đơn vị chạy</th>
-                    <th style={{ padding: '10px 10px', fontWeight: 800 }}>Sale phụ trách</th>
-                    <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Giá trị BĐS</th>
-                    <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right' }}>Tiền cọc</th>
-                    <th style={{ padding: '10px 10px', fontWeight: 800, textAlign: 'right', color: '#10B981' }}>Doanh thu / HH</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(payload?.transactions_table || []).length === 0 ? (
-                    <tr>
-                      <td colSpan={10} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                        Chưa có giao dịch nào trong khoảng bộ lọc này.
-                      </td>
-                    </tr>
-                  ) : (
-                    (payload?.transactions_table || []).map((tx: any, idx: number) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: '#BD1D2D' }}>{tx.deposit_code}</td>
-                        <td style={{ padding: '10px 10px', fontWeight: 700 }}>{tx.customer_name}</td>
-                        <td style={{ padding: '10px 10px' }}>
-                          <div style={{ fontWeight: 700 }}>{tx.project_name}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Căn: {tx.unit_code}</div>
-                        </td>
-                        <td style={{ padding: '10px 10px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.campaign_name}>
-                          {tx.campaign_name}
-                        </td>
-                        <td style={{ padding: '10px 10px' }}>
-                          <span style={{ fontWeight: 700 }}>{tx.lead_phan_loai}</span> • <span style={{ color: 'var(--color-text-muted)' }}>{tx.channel}</span>
-                        </td>
-                        <td style={{ padding: '10px 10px' }}>{tx.donvi_chay}</td>
-                        <td style={{ padding: '10px 10px', fontWeight: 600 }}>{tx.sale_name}</td>
-                        <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 600 }}>{formatVND(tx.property_value)}</td>
-                        <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#D97706' }}>{formatVND(tx.deposit_amount)}</td>
-                        <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 800, color: '#10B981' }}>{formatVND(tx.revenue_amount)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            {(payload?.timeline_chart || []).length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <ComposedChart data={payload.timeline_chart} margin={{ left: -10, right: 5, top: 15 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 100]} unit="%" tick={{ fontSize: 10, fill: '#10b981' }} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 10,
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+                    }}
+                  />
+                  <Bar yAxisId="left" dataKey="total_leads" name="Tổng Lead" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  <Bar yAxisId="left" dataKey="m_ql" name="M_QL (Quan tâm)" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  <Bar yAxisId="left" dataKey="s_ql" name="S_QL (Đã gặp)" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  <Line yAxisId="right" type="monotone" dataKey="ql_rate" name="Tỉ lệ QL (%)" stroke="#a31422" strokeWidth={2.5} dot={{ r: 3 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                Chưa có dữ liệu thống kê
+              </div>
+            )}
+          </div>
+
+          <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
+                <Building2 size={18} color="#a31422" /> Tỉ Trọng Theo Dự Án Chăm Sóc
+              </h3>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                Tính theo Dự án Sale đang chăm sóc trên hồ sơ khách hàng
+              </p>
+            </div>
+            <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
+              {(payload?.by_project_chart || []).length > 0 ? (
+                (() => {
+                  const list = payload.by_project_chart;
+                  const maxVal = Math.max(1, ...list.map((x: any) => Number(x.value || 0)));
+                  return list.map((p: any, idx: number) => {
+                    const pct = Math.round((Number(p.value || 0) / maxVal) * 100);
+                    const color = CHART_COLORS[idx % CHART_COLORS.length];
+                    return (
+                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.825rem', fontWeight: 600 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', width: 18 }}>#{idx + 1}</span>
+                            <span style={{ color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {p.name}
+                            </span>
+                          </span>
+                          <span style={{ color: 'var(--color-text)', fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>
+                            {p.value} lead <span style={{ fontSize: '0.72rem', color: '#10b981' }}>({p.giao_dich || 0} chốt)</span>
+                          </span>
+                        </div>
+                        <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 4, overflow: 'hidden', marginLeft: 26 }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4 }} />
+                        </div>
+                      </div>
+                    );
+                  });
+                })()
+              ) : (
+                <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                  Chưa có dữ liệu dự án
+                </div>
+              )}
             </div>
           </div>
-        </>
-      )}
-    </div>
-  );
+        </div>
+
+        {/* Row 3: Staff Comparison Table with Avatar (Exact Dashboard.tsx L1862-1962 style) */}
+        <div className="card" style={{ padding: '1.25rem', marginBottom: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: '12px',
+              marginBottom: '1.25rem'
+            }}
+          >
+            <div>
+              <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
+                <Users size={18} color="var(--color-primary)" /> Bảng So Sánh Hiệu Quả Chăm Sóc & Chuyển Đổi Theo Sale
+              </h3>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                Đo lường theo Dự án & Chiến dịch Sale đang chăm sóc (Tỉ lệ chuyển đổi tính trên khách được chia)
+              </p>
+            </div>
+
+            {/* Clean Flex Search Box — Zero Icon Overlap */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '0 12px',
+                height: '36px',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-bg)',
+                minWidth: isMobile ? '100%' : '260px'
+              }}
+            >
+              <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+              <input
+                type="text"
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+                placeholder="Tìm nhanh tên nhân sự hoặc team..."
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  width: '100%',
+                  fontSize: '0.8125rem',
+                  color: 'var(--color-text)'
+                }}
+              />
+            </div>
+          </div>
+
+          <div
+            className="custom-scrollbar"
+            style={{
+              overflowX: 'auto',
+              maxHeight: '440px',
+              overflowY: 'auto',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '12px',
+              background: 'var(--color-surface)'
+            }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', minWidth: '1150px' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: 700 }}>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>Nhân viên Sale</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Tổng Lead</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Được chia / Kho / HT</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Not Lead</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>QL (%)</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>M_QL</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Đồng ý gặp</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>S_QL (Đã gặp)</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Giao dịch</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Nóng / Ấm / Lạnh</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>TT Lần 1</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Đốt Lửa</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Tỉ Lệ Chốt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staffRows.length > 0 ? (
+                  staffRows.map((row: any, idx: number) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', height: '52px' }}>
+                      <td style={{ padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <Avatar src={row.sale_avatar} name={row.sale_name || 'Sale'} size={30} />
+                          <div>
+                            <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{row.sale_name}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                              {row.team_name && row.team_name !== '—' ? row.team_name : (row.sale_email || 'Chưa gắn team')}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 800, color: 'var(--color-text)' }}>
+                        {row.total_leads}
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontSize: '0.78rem', fontWeight: 600 }}>
+                        <span title="Khách được chia" style={{ color: 'var(--color-text)' }}>{row.distributed_leads}</span>
+                        {' / '}
+                        <span title="Kho Databank" style={{ color: '#3b82f6' }}>{row.databank_leads}</span>
+                        {' / '}
+                        <span title="Hợp tác" style={{ color: '#8b5cf6' }}>{row.coop_leads}</span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', color: '#ef4444', fontWeight: 700 }}>
+                        {row.not_lead_count}
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{row.ql_count}</span>{' '}
+                        <span
+                          style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            color: '#10b981'
+                          }}
+                        >
+                          {row.ql_rate}%
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#d97706' }}>
+                        {row.m_ql_count}
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: '#8b5cf6' }}>
+                        {row.dong_y_gap_count}
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#0891b2' }}>
+                        {row.s_ql_count}
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            background: row.giao_dich_count > 0 ? 'rgba(163, 20, 34, 0.1)' : 'var(--color-bg)',
+                            color: row.giao_dich_count > 0 ? '#a31422' : 'var(--color-text-muted)'
+                          }}
+                        >
+                          {row.giao_dich_count}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontSize: '0.78rem', fontWeight: 700 }}>
+                        <span style={{ color: '#a31422' }}>{row.temp_hot}</span>
+                        {' / '}
+                        <span style={{ color: '#f59e0b' }}>{row.temp_warm}</span>
+                        {' / '}
+                        <span style={{ color: '#3b82f6' }}>{row.temp_cold}</span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb' }}>
+                          {row.rates?.tuong_tac_lan_1 || 0}%
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '0.75rem', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706' }}>
+                          {row.rates?.ti_le_dot_lua || 0}%
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
+                          {row.rates?.ti_le_chot || 0}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={13} style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>
+                      Không có dữ liệu nhân sự phù hợp với bộ lọc.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ===========================================================================
+  // TAB 2: HIỆU QUẢ MKT (`mkt_perf`)
+  // ===========================================================================
+  if (activeSubTab === 'mkt_perf') {
+    const campaignRows = (payload?.by_campaign_table || []).filter((r: any) => {
+      if (!tableSearch.trim()) return true;
+      const q = tableSearch.toLowerCase();
+      return (
+        String(r.campaign_name || '').toLowerCase().includes(q) ||
+        String(r.campaign_id || '').toLowerCase().includes(q) ||
+        String(r.project_name || '').toLowerCase().includes(q) ||
+        String(r.donvi_chay || '').toLowerCase().includes(q)
+      );
+    });
+
+    const mktKpiCards: NativeKpiCardItem[] = [
+      {
+        id: 'mkt-total',
+        label: 'TỔNG LEAD GỐC (MKT)',
+        value: Number(kpis.total_leads || 0).toLocaleString('vi-VN'),
+        color: '#a31422',
+        iconBg: 'rgba(163, 20, 34, 0.08)',
+        icon: Layers,
+        decor: 'network',
+        dots: [
+          { color: '#a31422', text: `Bảng Leads: ${kpis.total_leads || 0}` },
+          { color: '#64748b', text: `CS Dài hạn: ${kpis.cham_soc_dai_han_count || 0}` }
+        ],
+        footerHighlight: '100% Độc lập',
+        footerText: 'theo Dự án & Chiến dịch gốc MKT'
+      },
+      {
+        id: 'mkt-ql',
+        label: 'QUALIFIED LEAD (QL)',
+        value: Number(kpis.ql_count || 0).toLocaleString('vi-VN'),
+        color: '#3b82f6',
+        iconBg: 'rgba(59, 130, 246, 0.08)',
+        icon: CheckCircle2,
+        decor: 'user',
+        dots: [
+          { color: '#10b981', text: `Tỉ lệ QL: ${kpis.ql_rate || 0}%` },
+          { color: '#ef4444', text: `Not Lead: ${kpis.not_lead_count || 0}` }
+        ],
+        footerHighlight: `${kpis.ql_rate || 0}%`,
+        footerText: 'tỉ lệ Lead đạt chuẩn MKT'
+      },
+      {
+        id: 'mkt-mql',
+        label: 'M_QL (QUAN TÂM) & HẸN GẶP',
+        value: Number(kpis.m_ql_count || 0).toLocaleString('vi-VN'),
+        color: '#f59e0b',
+        iconBg: 'rgba(245, 158, 11, 0.08)',
+        icon: PhoneCall,
+        decor: 'alert',
+        dots: [
+          { color: '#f59e0b', text: `M_QL: ${kpis.m_ql_count || 0}` },
+          { color: '#8b5cf6', text: `Đồng ý gặp: ${kpis.dong_y_gap_count || 0}` }
+        ],
+        footerHighlight: `${rates.tuong_tac_lan_1 || 0}%`,
+        footerText: 'tương tác lần 1 (M_QL / Tổng Lead)'
+      },
+      {
+        id: 'mkt-sql-gd',
+        label: 'ĐÃ GẶP (S_QL) & GIAO DỊCH',
+        value: `${Number(kpis.giao_dich_count || 0).toLocaleString('vi-VN')} chốt`,
+        color: '#10b981',
+        iconBg: 'rgba(16, 185, 129, 0.08)',
+        icon: Award,
+        decor: 'bolt',
+        dots: [
+          { color: '#06b6d4', text: `Đã gặp (S_QL): ${kpis.s_ql_count || 0}` },
+          { color: '#10b981', text: `Giao dịch: ${kpis.giao_dich_count || 0}` }
+        ],
+        footerHighlight: `Tỉ lệ chốt ${rates.ti_le_chot || 0}%`,
+        footerText: `• Đốt lửa ${rates.ti_le_dot_lua || 0}% • CĐ chung ${rates.chuyen_doi_chung || 0}%`
+      }
+    ];
+
+    return (
+      <div>
+        {renderFilterBar()}
+        <NativeStatCardGrid cards={mktKpiCards} />
+
+        {/* Row 1: MKT Timeline Chart (6fr) + Original Project Breakdown (4fr) */}
+        <div
+          className="responsive-grid-6-4"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '6fr 4fr',
+            gap: '1.25rem',
+            marginBottom: '1.25rem'
+          }}
+        >
+          <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
+                <BarChart2 size={18} color="#a31422" /> Biểu Đồ Hiệu Quả Lead Marketing Theo Thời Gian
+              </h3>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                Đo lường cố định trên bảng Leads gốc (Sale đổi dự án/chiến dịch không làm sai lệch số MKT)
+              </p>
+            </div>
+            {(payload?.timeline_chart || []).length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <ComposedChart data={payload.timeline_chart} margin={{ left: -10, right: 5, top: 15 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 100]} unit="%" tick={{ fontSize: 10, fill: '#10b981' }} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 10,
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+                    }}
+                  />
+                  <Bar yAxisId="left" dataKey="total_leads" name="Tổng Lead" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  <Bar yAxisId="left" dataKey="ql" name="Qualified Lead (QL)" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  <Bar yAxisId="left" dataKey="not_lead" name="Not Lead" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  <Line yAxisId="right" type="monotone" dataKey="ql_rate" name="Tỉ lệ QL (%)" stroke="#a31422" strokeWidth={2.5} dot={{ r: 3 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                Chưa có dữ liệu thống kê
+              </div>
+            )}
+          </div>
+
+          <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
+                <Building2 size={18} color="#a31422" /> Tỉ Trọng Lead Theo Dự Án Gốc (MKT)
+              </h3>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                Tính theo Dự án gốc từ chiến dịch Marketing
+              </p>
+            </div>
+            <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
+              {(payload?.by_project_chart || []).length > 0 ? (
+                (() => {
+                  const list = payload.by_project_chart;
+                  const totalAll = Math.max(1, list.reduce((s: number, x: any) => s + Number(x.value || 0), 0));
+                  const maxVal = Math.max(1, ...list.map((x: any) => Number(x.value || 0)));
+                  return list.map((p: any, idx: number) => {
+                    const barPct = Math.round((Number(p.value || 0) / maxVal) * 100);
+                    const sharePct = Math.round((Number(p.value || 0) / totalAll) * 100);
+                    const color = CHART_COLORS[idx % CHART_COLORS.length];
+                    return (
+                      <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.825rem', fontWeight: 600 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', width: 18 }}>#{idx + 1}</span>
+                            <span style={{ color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {p.name}
+                            </span>
+                          </span>
+                          <span style={{ color: 'var(--color-text)', fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>
+                            {Number(p.value).toLocaleString('vi-VN')} <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>({sharePct}%)</span>
+                          </span>
+                        </div>
+                        <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 4, overflow: 'hidden', marginLeft: 26 }}>
+                          <div style={{ width: `${barPct}%`, height: '100%', background: color, borderRadius: 4 }} />
+                        </div>
+                      </div>
+                    );
+                  });
+                })()
+              ) : (
+                <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                  Chưa có dữ liệu dự án
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: 3 Clean Donut Charts with Custom Legend (Zero Legend Overflow!) */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+            gap: '1.25rem',
+            marginBottom: '1.25rem'
+          }}
+        >
+          <DonutCardWithCustomLegend
+            title="Tỉ Trọng Theo Phân Loại Lead"
+            subtitle="Cơ cấu phân loại Lead MKT"
+            icon={PieChartIcon}
+            iconColor="#3b82f6"
+            data={payload?.by_phan_loai_chart || []}
+            centerValue={Number(kpis.total_leads || 0).toLocaleString('vi-VN')}
+            centerLabel="Tổng Lead"
+          />
+          <DonutCardWithCustomLegend
+            title="Tỉ Trọng Theo Kênh MKT"
+            subtitle="Facebook Ads • Zalo • Google • Khác"
+            icon={GitBranch}
+            iconColor="#10b981"
+            data={payload?.by_channel_chart || []}
+            centerValue={(payload?.by_channel_chart || []).length}
+            centerLabel="Kênh"
+          />
+          <DonutCardWithCustomLegend
+            title="Tỉ Trọng Theo Đơn Vị Chạy"
+            subtitle="Inhouse • Agency / Outsource"
+            icon={Briefcase}
+            iconColor="#f59e0b"
+            data={payload?.by_donvi_chart || []}
+            centerValue={(payload?.by_donvi_chart || []).length}
+            centerLabel="Đơn vị"
+          />
+        </div>
+
+        {/* Row 3: Campaign Attribution Table (`leads.campaign_id` / `leads.campaign_name`) */}
+        <div className="card" style={{ padding: '1.25rem', marginBottom: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: '12px',
+              marginBottom: '1.25rem'
+            }}
+          >
+            <div>
+              <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
+                <Layers size={18} color="#a31422" /> Bảng Đánh Giá Chi Tiết Theo Chiến Dịch Gốc (MKT)
+              </h3>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                Lọc & tổng hợp trực tiếp trên `leads.campaign_id` / `leads.campaign_name`
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '0 12px',
+                height: '36px',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-bg)',
+                minWidth: isMobile ? '100%' : '260px'
+              }}
+            >
+              <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+              <input
+                type="text"
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+                placeholder="Tìm chiến dịch, dự án, đơn vị..."
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  width: '100%',
+                  fontSize: '0.8125rem',
+                  color: 'var(--color-text)'
+                }}
+              />
+            </div>
+          </div>
+
+          <div
+            className="custom-scrollbar"
+            style={{
+              overflowX: 'auto',
+              maxHeight: '440px',
+              overflowY: 'auto',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '12px',
+              background: 'var(--color-surface)'
+            }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', minWidth: '1100px' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: 700 }}>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>Chiến dịch gốc (MKT)</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>Dự án gốc</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>Đơn vị / Phân loại</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Tổng Lead</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Not Lead</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>QL (%)</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>M_QL</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Đồng ý gặp</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>S_QL</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Giao dịch</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>TT Lần 1</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Đốt Lửa</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Tỉ Lệ Chốt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaignRows.length > 0 ? (
+                  campaignRows.map((row: any, idx: number) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', height: '50px' }}>
+                      <td style={{ padding: '8px 12px' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{row.campaign_name}</div>
+                        {row.campaign_id && row.campaign_id !== row.campaign_name && (
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>ID: {row.campaign_id}</div>
+                        )}
+                      </td>
+                      <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--color-text)' }}>{row.project_name}</td>
+                      <td style={{ padding: '8px 12px' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{row.donvi_chay}</span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginLeft: 6 }}>• {row.lead_phan_loai}</span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 800, color: 'var(--color-text)' }}>{row.total_leads}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', color: '#ef4444', fontWeight: 700 }}>{row.not_lead_count}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ fontWeight: 700 }}>{row.ql_count}</span>{' '}
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                          {row.rates?.ql_rate || 0}%
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#d97706' }}>{row.m_ql_count}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: '#8b5cf6' }}>{row.dong_y_gap_count}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#0891b2' }}>{row.s_ql_count}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ padding: '3px 8px', borderRadius: '6px', fontWeight: 800, fontSize: '0.78rem', background: row.giao_dich_count > 0 ? 'rgba(163, 20, 34, 0.1)' : 'var(--color-bg)', color: row.giao_dich_count > 0 ? '#a31422' : 'var(--color-text-muted)' }}>
+                          {row.giao_dich_count}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb' }}>
+                          {row.rates?.tuong_tac_lan_1 || 0}%
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '0.75rem', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706' }}>
+                          {row.rates?.ti_le_dot_lua || 0}%
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
+                          {row.rates?.ti_le_chot || 0}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={13} style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>
+                      Không có dữ liệu chiến dịch phù hợp với bộ lọc.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ===========================================================================
+  // TAB 3: DOANH THU (`revenue`)
+  // ===========================================================================
+  if (activeSubTab === 'revenue') {
+    const txRows = (payload?.transactions_table || []).filter((r: any) => {
+      if (!tableSearch.trim()) return true;
+      const q = tableSearch.toLowerCase();
+      return (
+        String(r.customer_name || '').toLowerCase().includes(q) ||
+        String(r.customer_phone || '').toLowerCase().includes(q) ||
+        String(r.project_name || '').toLowerCase().includes(q) ||
+        String(r.sale_name || '').toLowerCase().includes(q) ||
+        String(r.deposit_code || '').toLowerCase().includes(q)
+      );
+    });
+
+    const revKpiCards: NativeKpiCardItem[] = [
+      {
+        id: 'rev-count',
+        label: 'TỔNG SỐ GIAO DỊCH',
+        value: Number(kpis.total_transactions || 0).toLocaleString('vi-VN'),
+        color: '#a31422',
+        iconBg: 'rgba(163, 20, 34, 0.08)',
+        icon: Handshake,
+        decor: 'network',
+        dots: [
+          { color: '#f59e0b', text: `Booking: ${kpis.booking_contacts || 0}` },
+          { color: '#10b981', text: `Đặt cọc: ${kpis.dat_coc_contacts || 0}` }
+        ],
+        footerHighlight: `${kpis.total_transactions || 0} giao dịch`,
+        footerText: 'ghi nhận trong hệ thống'
+      },
+      {
+        id: 'rev-prop',
+        label: 'TỔNG GIÁ TRỊ BĐS',
+        value: formatCompactVND(Number(kpis.total_property_value || 0)),
+        color: '#3b82f6',
+        iconBg: 'rgba(59, 130, 246, 0.08)',
+        icon: Building2,
+        decor: 'user',
+        dots: [
+          { color: '#3b82f6', text: formatVND(Number(kpis.total_property_value || 0)) }
+        ],
+        footerHighlight: 'GMV Bất động sản',
+        footerText: 'tổng giá trị sản phẩm giao dịch'
+      },
+      {
+        id: 'rev-dep',
+        label: 'TỔNG TIỀN CỌC / THANH TOÁN',
+        value: formatCompactVND(Number(kpis.total_deposit_amount || 0)),
+        color: '#f59e0b',
+        iconBg: 'rgba(245, 158, 11, 0.08)',
+        icon: DollarSign,
+        decor: 'alert',
+        dots: [
+          { color: '#f59e0b', text: formatVND(Number(kpis.total_deposit_amount || 0)) }
+        ],
+        footerHighlight: 'Tiền cọc thực tế',
+        footerText: 'ghi nhận trên phiếu cọc & hóa đơn'
+      },
+      {
+        id: 'rev-comm',
+        label: 'TỔNG DOANH THU / HOA HỒNG',
+        value: formatCompactVND(Number(kpis.total_revenue_amount || 0)),
+        color: '#10b981',
+        iconBg: 'rgba(16, 185, 129, 0.08)',
+        icon: TrendingUp,
+        decor: 'bolt',
+        dots: [
+          { color: '#10b981', text: formatVND(Number(kpis.total_revenue_amount || 0)) }
+        ],
+        footerHighlight: 'Doanh thu kỳ vọng',
+        footerText: 'tổng hợp theo Dự án & Sale'
+      }
+    ];
+
+    // Map count as fallback metric when value is 0 so Donut charts always render proportions cleanly
+    const mapChartItems = (arr: any[]) =>
+      (arr || []).map((item: any) => ({
+        name: item.name,
+        value: Number(item.value || 0) > 0 ? Number(item.value) : Number(item.count || 0),
+        count: Number(item.count || 0)
+      }));
+
+    const hasCurrencyValues = Number(kpis.total_revenue_amount || 0) > 0 || Number(kpis.total_property_value || 0) > 0;
+
+    return (
+      <div>
+        {renderFilterBar()}
+        <NativeStatCardGrid cards={revKpiCards} />
+
+        {/* 2x2 Grid of Donut Charts matching Dashboard.tsx */}
+        <div
+          className="responsive-grid-1-1"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+            gap: '1.25rem',
+            marginBottom: '1.25rem'
+          }}
+        >
+          <DonutCardWithCustomLegend
+            title="Cơ Cấu Giao Dịch Theo Dự Án"
+            subtitle="Phân bổ giao dịch & doanh thu theo Dự án"
+            icon={Building2}
+            iconColor="#a31422"
+            data={mapChartItems(payload?.by_project_chart || [])}
+            centerValue={hasCurrencyValues ? formatCompactVND(Number(kpis.total_revenue_amount || kpis.total_property_value || 0)) : `${kpis.total_transactions || 0} GD`}
+            centerLabel={hasCurrencyValues ? 'Doanh thu' : 'Giao dịch'}
+            unitLabel="GD"
+            isCurrency={hasCurrencyValues}
+          />
+          <DonutCardWithCustomLegend
+            title="Cơ Cấu Theo Phân Loại Lead"
+            subtitle="Tỉ trọng giao dịch theo Phân loại Lead"
+            icon={PieChartIcon}
+            iconColor="#3b82f6"
+            data={mapChartItems(payload?.by_phan_loai_chart || [])}
+            centerValue={`${kpis.total_transactions || 0} GD`}
+            centerLabel="Tổng GD"
+            unitLabel="GD"
+            isCurrency={hasCurrencyValues}
+          />
+          <DonutCardWithCustomLegend
+            title="Cơ Cấu Theo Kênh Marketing"
+            subtitle="Facebook Ads • Zalo • Databank • Cá nhân"
+            icon={GitBranch}
+            iconColor="#10b981"
+            data={mapChartItems(payload?.by_channel_chart || [])}
+            centerValue={(payload?.by_channel_chart || []).length}
+            centerLabel="Kênh"
+            unitLabel="GD"
+            isCurrency={hasCurrencyValues}
+          />
+          <DonutCardWithCustomLegend
+            title="Cơ Cấu Theo Đơn Vị Triển Khai"
+            subtitle="Inhouse • Agency / Outsource"
+            icon={Briefcase}
+            iconColor="#f59e0b"
+            data={mapChartItems(payload?.by_donvi_chart || [])}
+            centerValue={(payload?.by_donvi_chart || []).length}
+            centerLabel="Đơn vị"
+            unitLabel="GD"
+            isCurrency={hasCurrencyValues}
+          />
+        </div>
+
+        {/* Transactions Table with Sale Avatar */}
+        <div className="card" style={{ padding: '1.25rem', marginBottom: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: '12px',
+              marginBottom: '1.25rem'
+            }}
+          >
+            <div>
+              <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
+                <DollarSign size={18} color="#10b981" /> Danh Sách Chi Tiết Giao Dịch (Booking & Đặt Cọc)
+              </h3>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0 0' }}>
+                Tổng hợp toàn bộ giao dịch Đặt cọc & Booking theo bộ lọc hiện tại
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '0 12px',
+                height: '36px',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-bg)',
+                minWidth: isMobile ? '100%' : '260px'
+              }}
+            >
+              <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+              <input
+                type="text"
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+                placeholder="Tìm mã GD, khách hàng, dự án, Sale..."
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  width: '100%',
+                  fontSize: '0.8125rem',
+                  color: 'var(--color-text)'
+                }}
+              />
+            </div>
+          </div>
+
+          <div
+            className="custom-scrollbar"
+            style={{
+              overflowX: 'auto',
+              maxHeight: '440px',
+              overflowY: 'auto',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '12px',
+              background: 'var(--color-surface)'
+            }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', minWidth: '1100px' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: 700 }}>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>Mã GD</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>Khách hàng</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>Dự án / Mã căn</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>Sale phụ trách</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>Chiến dịch / Nguồn</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'right' }}>Giá trị BĐS</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'right' }}>Doanh thu / HH</th>
+                  <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {txRows.length > 0 ? (
+                  txRows.map((tx: any, idx: number) => {
+                    const isBooking = tx.status === 'booking';
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', height: '52px' }}>
+                        <td style={{ padding: '8px 12px', fontWeight: 800, color: '#a31422' }}>{tx.deposit_code}</td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{tx.customer_name}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{tx.customer_phone}</div>
+                        </td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{tx.project_name}</div>
+                          {tx.unit_code && tx.unit_code !== '—' && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Mã căn: {tx.unit_code}</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar src={tx.sale_avatar} name={tx.sale_name || 'Sale'} size={26} />
+                            <div>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{tx.sale_name}</div>
+                              {tx.sale_email && <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{tx.sale_email}</div>}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{tx.channel} • {tx.donvi_chay}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{tx.lead_phan_loai}</div>
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--color-text)' }}>
+                          {tx.property_value > 0 ? formatVND(tx.property_value) : '—'}
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: '#10b981' }}>
+                          {tx.revenue_amount > 0 ? formatVND(tx.revenue_amount) : '—'}
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                          <span
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontWeight: 700,
+                              fontSize: '0.72rem',
+                              background: isBooking ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                              color: isBooking ? '#d97706' : '#059669'
+                            }}
+                          >
+                            {isBooking ? 'Booking' : 'Đặt cọc'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>
+                      Chưa có giao dịch trong khoảng thời gian / bộ lọc này.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };

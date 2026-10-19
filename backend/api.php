@@ -22864,7 +22864,7 @@ switch ($action) {
             $salesUsersList = [];
             if (!$isSaleOnly) {
                 $resUsers = $conn->query("
-                    SELECT u.id, u.full_name, u.email, u.role, u.team_id,
+                    SELECT u.id, u.full_name, u.email, u.role, u.avatar_url, u.team_id,
                            (SELECT t.name FROM teams t WHERE t.id = u.team_id LIMIT 1) AS team_name
                     FROM users u
                     WHERE u.is_active = 1 AND u.role IN ('sale', 'sales', 'consultant', 'manager', 'director', 'admin')
@@ -22875,8 +22875,9 @@ switch ($action) {
                         $salesUsersList[] = [
                             'id' => (int)$u['id'],
                             'name' => $u['full_name'] ?: $u['email'],
-                            'email' => $u['email'],
-                            'role' => $u['role'],
+                            'email' => $u['email'] ?? '',
+                            'avatar' => $u['avatar_url'] ?? '',
+                            'role' => $u['role'] ?? 'sale',
                             'team_id' => !empty($u['team_id']) ? (int)$u['team_id'] : null,
                             'team_name' => $u['team_name'] ?? ''
                         ];
@@ -23118,6 +23119,9 @@ switch ($action) {
                     SELECT
                         c.owner_id,
                         COALESCE(u.full_name, 'Chưa phân bổ') AS sale_name,
+                        COALESCE(u.email, '') AS sale_email,
+                        COALESCE(u.avatar_url, '') AS sale_avatar,
+                        COALESCE(u.role, 'sale') AS sale_role,
                         COALESCE(t.name, '—') AS team_name,
                         COUNT(*) AS total_leads,
                         SUM(CASE WHEN $isDistributedExpr THEN 1 ELSE 0 END) AS distributed_leads,
@@ -23143,7 +23147,7 @@ switch ($action) {
                     LEFT JOIN users u ON u.id = c.owner_id
                     LEFT JOIN teams t ON t.id = u.team_id
                     WHERE $whereCStr
-                    GROUP BY c.owner_id, u.full_name, t.name
+                    GROUP BY c.owner_id, u.full_name, u.email, u.avatar_url, u.role, t.name
                     ORDER BY giao_dich_count DESC, s_ql_count DESC, m_ql_count DESC, total_leads DESC
                     LIMIT 100
                 ";
@@ -23162,6 +23166,9 @@ switch ($action) {
                         $staffTable[] = [
                             'owner_id' => (int)($st['owner_id'] ?? 0),
                             'sale_name' => $st['sale_name'],
+                            'sale_email' => $st['sale_email'] ?? '',
+                            'sale_avatar' => $st['sale_avatar'] ?? '',
+                            'sale_role' => $st['sale_role'] ?? 'sale',
                             'team_name' => $st['team_name'],
                             'total_leads' => $stTotal,
                             'distributed_leads' => (int)$st['distributed_leads'],
@@ -23363,34 +23370,35 @@ switch ($action) {
                 }
 
                 // 2.3 Breakdown Charts: By Original Project, By Lead Phan Loai, By Channel, By Donvi Chay
+                // IMPORTANT: Do NOT use `AS name ... GROUP BY name` because `leads` has column `l.name` (customer name)!
                 $byProjectChart = [];
                 $resMProj = $conn->query("
-                    SELECT COALESCE(p.name, 'Chưa gắn dự án') AS name, COUNT(*) AS val
+                    SELECT COALESCE(p.name, 'Chưa gắn dự án') AS proj_label, COUNT(*) AS val
                     FROM leads l
                     LEFT JOIN projects p ON p.id = l.project_id
                     WHERE $whereLStr
                     GROUP BY l.project_id, p.name
                     ORDER BY val DESC
-                    LIMIT 12
+                    LIMIT 10
                 ");
                 if ($resMProj) {
                     while ($r = $resMProj->fetch_assoc()) {
-                        $byProjectChart[] = ['name' => $r['name'], 'value' => (int)$r['val']];
+                        $byProjectChart[] = ['name' => $r['proj_label'], 'value' => (int)$r['val']];
                     }
                 }
 
                 $byPhanLoaiChart = [];
                 $resMPl = $conn->query("
-                    SELECT COALESCE(NULLIF(l.lead_phan_loai, ''), 'Chưa phân loại') AS name, COUNT(*) AS val
+                    SELECT COALESCE(NULLIF(TRIM(l.lead_phan_loai), ''), 'Chưa phân loại') AS phan_loai_label, COUNT(*) AS val
                     FROM leads l
                     WHERE $whereLStr
-                    GROUP BY name
+                    GROUP BY COALESCE(NULLIF(TRIM(l.lead_phan_loai), ''), 'Chưa phân loại')
                     ORDER BY val DESC
-                    LIMIT 12
+                    LIMIT 10
                 ");
                 if ($resMPl) {
                     while ($r = $resMPl->fetch_assoc()) {
-                        $byPhanLoaiChart[] = ['name' => $r['name'], 'value' => (int)$r['val']];
+                        $byPhanLoaiChart[] = ['name' => $r['phan_loai_label'], 'value' => (int)$r['val']];
                     }
                 }
 
@@ -23401,32 +23409,34 @@ switch ($action) {
                         WHEN LOWER(COALESCE(l.platform, l.source, '')) LIKE '%zalo%' THEN 'Zalo'
                         WHEN LOWER(COALESCE(l.platform, l.source, '')) LIKE '%google%' OR LOWER(COALESCE(l.platform, l.source, '')) LIKE '%gg%' THEN 'Google Ads'
                         WHEN LOWER(COALESCE(l.platform, l.source, '')) LIKE '%tiktok%' THEN 'TikTok'
-                        WHEN COALESCE(NULLIF(l.platform, ''), NULLIF(l.source, '')) IS NOT NULL THEN COALESCE(NULLIF(l.platform, ''), l.source)
+                        WHEN COALESCE(NULLIF(TRIM(l.platform), ''), NULLIF(TRIM(l.source), '')) IS NOT NULL THEN COALESCE(NULLIF(TRIM(l.platform), ''), TRIM(l.source))
                         ELSE 'Khác'
-                    END AS channel_name,
+                    END AS channel_label,
                     COUNT(*) AS val
                     FROM leads l
                     WHERE $whereLStr
-                    GROUP BY channel_name
+                    GROUP BY channel_label
                     ORDER BY val DESC
+                    LIMIT 10
                 ");
                 if ($resMCh) {
                     while ($r = $resMCh->fetch_assoc()) {
-                        $byChannelChart[] = ['name' => $r['channel_name'], 'value' => (int)$r['val']];
+                        $byChannelChart[] = ['name' => $r['channel_label'], 'value' => (int)$r['val']];
                     }
                 }
 
                 $byDonviChart = [];
                 $resMDv = $conn->query("
-                    SELECT COALESCE(NULLIF(l.donvi_chay, ''), 'Inhouse') AS name, COUNT(*) AS val
+                    SELECT COALESCE(NULLIF(TRIM(l.donvi_chay), ''), 'Inhouse') AS donvi_label, COUNT(*) AS val
                     FROM leads l
                     WHERE $whereLStr
-                    GROUP BY name
+                    GROUP BY COALESCE(NULLIF(TRIM(l.donvi_chay), ''), 'Inhouse')
                     ORDER BY val DESC
+                    LIMIT 10
                 ");
                 if ($resMDv) {
                     while ($r = $resMDv->fetch_assoc()) {
-                        $byDonviChart[] = ['name' => $r['name'], 'value' => (int)$r['val']];
+                        $byDonviChart[] = ['name' => $r['donvi_label'], 'value' => (int)$r['val']];
                     }
                 }
 
@@ -23586,49 +23596,61 @@ switch ($action) {
             // =========================================================================
             if ($tab === 'revenue') {
                 $whereD = ["d.status != 'cancelled'"];
+                $whereCRev = ["c.deleted_at IS NULL", "c.pipeline_status IN ('booking', 'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong')"];
                 if ($startDate !== '') {
                     $sd = $conn->real_escape_string($startDate . ' 00:00:00');
                     $whereD[] = "d.created_at >= '$sd'";
+                    $whereCRev[] = "c.created_at >= '$sd'";
                 }
                 if ($endDate !== '') {
                     $ed = $conn->real_escape_string($endDate . ' 23:59:59');
                     $whereD[] = "d.created_at <= '$ed'";
+                    $whereCRev[] = "c.created_at <= '$ed'";
                 }
                 if ($projectId > 0) {
                     $whereD[] = "(d.project_id = $projectId OR c.project_id = $projectId)";
+                    $whereCRev[] = "c.project_id = $projectId";
                 }
                 if ($campaignId !== '') {
                     $cidEsc = $conn->real_escape_string($campaignId);
                     $whereD[] = "(c.campaign_id = '$cidEsc' OR l.campaign_id = '$cidEsc')";
+                    $whereCRev[] = "(c.campaign_id = '$cidEsc' OR l.campaign_id = '$cidEsc')";
                 }
                 if ($targetSaleId > 0) {
                     $whereD[] = "(d.created_by = $targetSaleId OR c.owner_id = $targetSaleId)";
+                    $whereCRev[] = "c.owner_id = $targetSaleId";
                 }
                 if ($donviChay !== '') {
                     $dvEsc = $conn->real_escape_string($donviChay);
                     $whereD[] = "(c.donvi_chay = '$dvEsc' OR l.donvi_chay = '$dvEsc')";
+                    $whereCRev[] = "(c.donvi_chay = '$dvEsc' OR l.donvi_chay = '$dvEsc')";
                 }
 
                 $whereDStr = implode(' AND ', $whereD);
+                $whereCRevStr = implode(' AND ', $whereCRev);
 
                 $sqlDeals = "
                     SELECT
                         d.id,
+                        d.contact_id,
                         CONCAT('#COC-', d.id) AS deposit_code,
                         COALESCE(NULLIF(TRIM(CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, ''))), ''), 'Khách hàng') AS customer_name,
                         COALESCE(c.phone, '—') AS customer_phone,
                         COALESCE(p.name, p2.name, 'Chưa gắn dự án') AS project_name,
                         d.unit_code,
-                        COALESCE(d.price, 0) AS property_value,
+                        COALESCE(d.price, c.expected_revenue, 0) AS property_value,
                         COALESCE(dm.paid_amount, dm.total_milestone_amount, d.price, 0) AS deposit_amount,
                         CASE
                             WHEN COALESCE(d.expected_commission, 0) > 0 THEN d.expected_commission
                             WHEN COALESCE(d.price, 0) > 0 THEN d.price * 0.03
+                            WHEN COALESCE(c.expected_revenue, 0) > 0 THEN c.expected_revenue * 0.03
                             ELSE 0
                         END AS revenue_amount,
                         d.status,
                         d.created_at,
                         COALESCE(u.full_name, u2.full_name, '—') AS sale_name,
+                        COALESCE(u.avatar_url, u2.avatar_url, '') AS sale_avatar,
+                        COALESCE(u.email, u2.email, '') AS sale_email,
                         COALESCE(NULLIF(c.campaign_id, ''), NULLIF(l.campaign_id, ''), '—') AS campaign_id,
                         COALESCE(NULLIF(c.lead_phan_loai, ''), NULLIF(l.lead_phan_loai, ''), NULLIF(c.source, ''), 'Khác') AS lead_phan_loai,
                         COALESCE(NULLIF(c.donvi_chay, ''), NULLIF(l.donvi_chay, ''), 'Inhouse') AS donvi_chay,
@@ -23663,82 +23685,141 @@ switch ($action) {
                 $byChannelMap = [];
                 $byDonviMap = [];
                 $transactionsTable = [];
+                $seenContactIds = [];
+
+                $appendTxRow = function(array $row) use (
+                    &$totalTransactions, &$totalPropertyValue, &$totalDepositAmount, &$totalRevenueAmount,
+                    &$byProjMap, &$byPhanLoaiMap, &$byChannelMap, &$byDonviMap, &$transactionsTable,
+                    $campaignNameMap
+                ) {
+                    $totalTransactions++;
+                    $propVal = (float)($row['property_value'] ?? 0);
+                    $depAmt = (float)($row['deposit_amount'] ?? 0);
+                    $revAmt = (float)($row['revenue_amount'] ?? 0);
+
+                    $metricVal = $revAmt > 0 ? $revAmt : ($depAmt > 0 ? $depAmt : $propVal);
+
+                    $totalPropertyValue += $propVal;
+                    $totalDepositAmount += $depAmt;
+                    $totalRevenueAmount += $revAmt;
+
+                    $pName = trim((string)($row['project_name'] ?? '')) ?: 'Chưa gắn dự án';
+                    $plName = trim((string)($row['lead_phan_loai'] ?? '')) ?: 'Khác';
+                    $dvName = trim((string)($row['donvi_chay'] ?? '')) ?: 'Inhouse';
+                    $chRaw = strtolower(trim((string)($row['channel_raw'] ?? '')));
+                    if (strpos($chRaw, 'fb') !== false || strpos($chRaw, 'facebook') !== false || strpos($chRaw, 'r3') === 0 || strpos($chRaw, 'r2') === 0) {
+                        $chName = 'Facebook Ads';
+                    } elseif (strpos($chRaw, 'zalo') !== false) {
+                        $chName = 'Zalo';
+                    } elseif (strpos($chRaw, 'databank') !== false) {
+                        $chName = 'Databank';
+                    } elseif (strpos($chRaw, 'ca_nhan') !== false || strpos($chRaw, 'gioi_thieu') !== false) {
+                        $chName = 'Cá nhân / Giới thiệu';
+                    } else {
+                        $chName = trim((string)($row['channel_raw'] ?? '')) ?: 'Khác';
+                    }
+
+                    if (!isset($byProjMap[$pName])) $byProjMap[$pName] = ['name' => $pName, 'count' => 0, 'value' => 0.0];
+                    $byProjMap[$pName]['count']++;
+                    $byProjMap[$pName]['value'] += $metricVal;
+
+                    if (!isset($byPhanLoaiMap[$plName])) $byPhanLoaiMap[$plName] = ['name' => $plName, 'count' => 0, 'value' => 0.0];
+                    $byPhanLoaiMap[$plName]['count']++;
+                    $byPhanLoaiMap[$plName]['value'] += $metricVal;
+
+                    if (!isset($byChannelMap[$chName])) $byChannelMap[$chName] = ['name' => $chName, 'count' => 0, 'value' => 0.0];
+                    $byChannelMap[$chName]['count']++;
+                    $byChannelMap[$chName]['value'] += $metricVal;
+
+                    if (!isset($byDonviMap[$dvName])) $byDonviMap[$dvName] = ['name' => $dvName, 'count' => 0, 'value' => 0.0];
+                    $byDonviMap[$dvName]['count']++;
+                    $byDonviMap[$dvName]['value'] += $metricVal;
+
+                    $cIdRaw = (string)($row['campaign_id'] ?? '—');
+                    $transactionsTable[] = [
+                        'id' => (int)$row['id'],
+                        'deposit_code' => $row['deposit_code'] ?: ('#GD-' . $row['id']),
+                        'customer_name' => $row['customer_name'],
+                        'customer_phone' => $row['customer_phone'],
+                        'project_name' => $pName,
+                        'unit_code' => $row['unit_code'] ?: '—',
+                        'campaign_name' => $campaignNameMap[$cIdRaw] ?? $cIdRaw,
+                        'lead_phan_loai' => $plName,
+                        'channel' => $chName,
+                        'donvi_chay' => $dvName,
+                        'sale_name' => $row['sale_name'],
+                        'sale_avatar' => $row['sale_avatar'] ?? '',
+                        'sale_email' => $row['sale_email'] ?? '',
+                        'property_value' => $propVal,
+                        'deposit_amount' => $depAmt,
+                        'revenue_amount' => $revAmt,
+                        'status' => $row['status'],
+                        'created_at' => $row['created_at']
+                    ];
+                };
 
                 if ($resDeals) {
                     while ($row = $resDeals->fetch_assoc()) {
-                        $totalTransactions++;
-                        $propVal = (float)$row['property_value'];
-                        $depAmt = (float)$row['deposit_amount'];
-                        $revAmt = (float)$row['revenue_amount'];
-
-                        // If property_value wasn't filled, use deposit_amount as fallback value metric
-                        $metricVal = $revAmt > 0 ? $revAmt : $depAmt;
-
-                        $totalPropertyValue += $propVal;
-                        $totalDepositAmount += $depAmt;
-                        $totalRevenueAmount += $revAmt;
-
-                        $pName = $row['project_name'] ?: 'Chưa gắn dự án';
-                        $plName = $row['lead_phan_loai'] ?: 'Khác';
-                        $dvName = $row['donvi_chay'] ?: 'Inhouse';
-                        $chRaw = strtolower((string)$row['channel_raw']);
-                        if (strpos($chRaw, 'fb') !== false || strpos($chRaw, 'facebook') !== false || strpos($chRaw, 'r3') === 0 || strpos($chRaw, 'r2') === 0) {
-                            $chName = 'Facebook Ads';
-                        } elseif (strpos($chRaw, 'zalo') !== false) {
-                            $chName = 'Zalo';
-                        } elseif (strpos($chRaw, 'databank') !== false) {
-                            $chName = 'Databank';
-                        } elseif (strpos($chRaw, 'ca_nhan') !== false || strpos($chRaw, 'gioi_thieu') !== false) {
-                            $chName = 'Cá nhân / Giới thiệu';
-                        } else {
-                            $chName = $row['channel_raw'] ?: 'Khác';
+                        if (!empty($row['contact_id'])) {
+                            $seenContactIds[(int)$row['contact_id']] = true;
                         }
-
-                        if (!isset($byProjMap[$pName])) $byProjMap[$pName] = ['name' => $pName, 'count' => 0, 'value' => 0.0];
-                        $byProjMap[$pName]['count']++;
-                        $byProjMap[$pName]['value'] += $metricVal;
-
-                        if (!isset($byPhanLoaiMap[$plName])) $byPhanLoaiMap[$plName] = ['name' => $plName, 'count' => 0, 'value' => 0.0];
-                        $byPhanLoaiMap[$plName]['count']++;
-                        $byPhanLoaiMap[$plName]['value'] += $metricVal;
-
-                        if (!isset($byChannelMap[$chName])) $byChannelMap[$chName] = ['name' => $chName, 'count' => 0, 'value' => 0.0];
-                        $byChannelMap[$chName]['count']++;
-                        $byChannelMap[$chName]['value'] += $metricVal;
-
-                        if (!isset($byDonviMap[$dvName])) $byDonviMap[$dvName] = ['name' => $dvName, 'count' => 0, 'value' => 0.0];
-                        $byDonviMap[$dvName]['count']++;
-                        $byDonviMap[$dvName]['value'] += $metricVal;
-
-                        $cIdRaw = $row['campaign_id'];
-                        $transactionsTable[] = [
-                            'id' => (int)$row['id'],
-                            'deposit_code' => $row['deposit_code'] ?: ('#COC-' . $row['id']),
-                            'customer_name' => $row['customer_name'],
-                            'customer_phone' => $row['customer_phone'],
-                            'project_name' => $pName,
-                            'unit_code' => $row['unit_code'] ?: '—',
-                            'campaign_name' => $campaignNameMap[$cIdRaw] ?? $cIdRaw,
-                            'lead_phan_loai' => $plName,
-                            'channel' => $chName,
-                            'donvi_chay' => $dvName,
-                            'sale_name' => $row['sale_name'],
-                            'property_value' => $propVal,
-                            'deposit_amount' => $depAmt,
-                            'revenue_amount' => $revAmt,
-                            'status' => $row['status'],
-                            'created_at' => $row['created_at']
-                        ];
+                        $appendTxRow($row);
                     }
                 }
 
-                // Also compute contacts in booking/dat_coc status count for summary context
+                // Also include contacts in booking/dat_coc that don't have an active deposit record yet
+                $sqlContactDeals = "
+                    SELECT
+                        c.id,
+                        c.id AS contact_id,
+                        CONCAT(CASE WHEN c.pipeline_status = 'booking' THEN '#BK-' ELSE '#DC-' END, c.id) AS deposit_code,
+                        COALESCE(NULLIF(TRIM(CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, ''))), ''), 'Khách hàng') AS customer_name,
+                        COALESCE(c.phone, '—') AS customer_phone,
+                        COALESCE(p.name, p2.name, 'Chưa gắn dự án') AS project_name,
+                        COALESCE(c.san_pham, '') AS unit_code,
+                        COALESCE(c.expected_revenue, c.budget, 0) AS property_value,
+                        COALESCE(c.total_spent, 0) AS deposit_amount,
+                        CASE
+                            WHEN COALESCE(c.total_spent, 0) > 0 THEN c.total_spent
+                            WHEN COALESCE(c.expected_revenue, 0) > 0 THEN c.expected_revenue * 0.03
+                            ELSE 0
+                        END AS revenue_amount,
+                        c.pipeline_status AS status,
+                        COALESCE(c.datcoc_time, c.booking_time, c.updated_at, c.created_at) AS created_at,
+                        COALESCE(u.full_name, '—') AS sale_name,
+                        COALESCE(u.avatar_url, '') AS sale_avatar,
+                        COALESCE(u.email, '') AS sale_email,
+                        COALESCE(NULLIF(c.campaign_id, ''), NULLIF(l.campaign_id, ''), '—') AS campaign_id,
+                        COALESCE(NULLIF(c.lead_phan_loai, ''), NULLIF(l.lead_phan_loai, ''), NULLIF(c.source, ''), 'Khác') AS lead_phan_loai,
+                        COALESCE(NULLIF(c.donvi_chay, ''), NULLIF(l.donvi_chay, ''), 'Inhouse') AS donvi_chay,
+                        COALESCE(NULLIF(c.platform, ''), NULLIF(l.platform, ''), NULLIF(c.source, ''), 'Khác') AS channel_raw
+                    FROM contacts c
+                    LEFT JOIN leads l ON l.id = c.lead_id
+                    LEFT JOIN projects p ON p.id = c.project_id
+                    LEFT JOIN projects p2 ON p2.id = l.project_id
+                    LEFT JOIN users u ON u.id = c.owner_id
+                    WHERE $whereCRevStr
+                    ORDER BY COALESCE(c.datcoc_time, c.booking_time, c.created_at) DESC
+                    LIMIT 300
+                ";
+                $resCDeals = $conn->query($sqlContactDeals);
+                if ($resCDeals) {
+                    while ($cRow = $resCDeals->fetch_assoc()) {
+                        $cid = (int)$cRow['contact_id'];
+                        if (isset($seenContactIds[$cid])) continue;
+                        $seenContactIds[$cid] = true;
+                        $appendTxRow($cRow);
+                    }
+                }
+
+                // Compute contacts in booking/dat_coc status count under current filter
                 $resBookedContacts = $conn->query("
                     SELECT
-                        SUM(CASE WHEN pipeline_status = 'booking' THEN 1 ELSE 0 END) AS booking_contacts,
-                        SUM(CASE WHEN pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong') THEN 1 ELSE 0 END) AS dat_coc_contacts
-                    FROM contacts
-                    WHERE deleted_at IS NULL
+                        SUM(CASE WHEN c.pipeline_status = 'booking' THEN 1 ELSE 0 END) AS booking_contacts,
+                        SUM(CASE WHEN c.pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong') THEN 1 ELSE 0 END) AS dat_coc_contacts
+                    FROM contacts c
+                    LEFT JOIN leads l ON l.id = c.lead_id
+                    WHERE $whereCRevStr
                 ");
                 $bcRow = ($resBookedContacts && $resBookedContacts->num_rows > 0) ? $resBookedContacts->fetch_assoc() : [];
 
