@@ -1568,7 +1568,7 @@ if (!function_exists('recallInactiveLeads')) {
                     }
                 } else {
                     $leadStatusToSet = ($newStatus === 'pending_work_hours') ? 'pending_work_hours' : 'assigned';
-                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = ?, last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL WHERE id = ?");
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = ?, last_assigned_at = NOW(), last_interaction_date = NOW(), is_accepted = 0, next_attempt_date = NULL, zalo_notify_status = 'none', telegram_notify_status = 'none', email_notify_status = 'none' WHERE id = ?");
                     $upLead->bind_param("isi", $newConsultantId, $leadStatusToSet, $leadId);
                     $upLead->execute();
                     $upLead->close();

@@ -72,6 +72,10 @@ function respondAndNotifyAdmin($conn, $connData, $leadId, $customerData, $distDa
         }
     }
     
+    if (function_exists('flushQueuedSaleLeadNotifications')) {
+        flushQueuedSaleLeadNotifications($conn);
+    }
+
     $conn->close();
     exit();
 }

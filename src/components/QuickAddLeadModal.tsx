@@ -149,7 +149,7 @@ export const QuickAddLeadModal = () => {
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
   const [bulkInputText, setBulkInputText] = useState('');
   const [bulkParsedLeads, setBulkParsedLeads] = useState<any[]>([]);
-  const [distributionMode, setDistributionMode] = useState<'auto_round' | 'direct_databank' | 'self_assign'>(() => {
+  const [distributionMode, setDistributionMode] = useState<'auto_round' | 'unassigned' | 'direct_databank' | 'self_assign'>(() => {
     return (userRole === 'sale' || (userRole === 'manager' && managerBehaviorMode === 'sale')) ? 'self_assign' : 'auto_round';
   });
   const [bulkSubtab, setBulkSubtab] = useState<'text' | 'file'>('text');
@@ -1373,7 +1373,7 @@ export const QuickAddLeadModal = () => {
             phan_loai_lead: manualData.lead_phan_loai || '',
             source: manualData.lead_phan_loai || manualData.source || 'ca_nhan'
           },
-          override_round_id: overrideRoundId ? Number(overrideRoundId) : (distributionMode === 'auto_round' ? previewCons?.round_id : null),
+          override_round_id: distributionMode === 'auto_round' ? (overrideRoundId ? Number(overrideRoundId) : previewCons?.round_id) : null,
           override_consultant_id: distributionMode === 'auto_round' && overrideConsId ? Number(overrideConsId) : null,
           compensate_skipped: compensateSkipped,
           skipped_consultant_id: distributionMode === 'auto_round' ? previewCons?.consultant?.consultant_id : null,
@@ -1522,7 +1522,7 @@ export const QuickAddLeadModal = () => {
           <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'block' }}>
             {t('Cách thức phân bổ')}
           </label>
-          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
               <input
                 type="radio"
@@ -1534,6 +1534,19 @@ export const QuickAddLeadModal = () => {
               <div>
                 <strong>{t('Tự động chia (Auto Round)')}</strong>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Quay vòng theo luật phân phối hoạt động')}</div>
+              </div>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
+              <input
+                type="radio"
+                name="distribution_mode"
+                checked={distributionMode === 'unassigned'}
+                onChange={() => setDistributionMode('unassigned')}
+                style={{ accentColor: '#bd1d2d' }}
+              />
+              <div>
+                <strong>{t('Lưu chờ phân bổ (Không chia)')}</strong>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Lưu vào Quản lý Lead (Chưa gán vòng hay Sale)')}</div>
               </div>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
@@ -2302,7 +2315,9 @@ export const QuickAddLeadModal = () => {
               <span>{t('Đang lưu...')}</span>
             </>
           ) : (
-            activeTab === 'single' ? t('Lưu & Giao Data') : t('Import và Giao ') + bulkParsedLeads.length + t(' Data')
+            activeTab === 'single'
+              ? (distributionMode === 'unassigned' ? t('Lưu (Chờ phân bổ)') : t('Lưu & Giao Data'))
+              : (distributionMode === 'unassigned' ? t('Import ') + bulkParsedLeads.length + t(' Data (Chờ phân bổ)') : t('Import và Giao ') + bulkParsedLeads.length + t(' Data'))
           )}
         </button>
       </div>

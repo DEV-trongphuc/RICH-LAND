@@ -2575,10 +2575,10 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
         $sale = null;
         $cStmt = $conn->prepare("
             SELECT c.id, c.name, c.email,
-                   COALESCE(NULLIF(c.zalo_chat_id, ''), u.zalo_chat_id) AS zalo_chat_id,
-                   u.telegram_chat_id
+                   COALESCE(NULLIF(TRIM(c.zalo_chat_id), ''), NULLIF(TRIM(u.zalo_chat_id), '')) AS zalo_chat_id,
+                   COALESCE(NULLIF(TRIM(c.telegram_chat_id), ''), NULLIF(TRIM(u.telegram_chat_id), '')) AS telegram_chat_id
             FROM consultants c
-            LEFT JOIN users u ON u.email = c.email AND u.deleted_at IS NULL
+            LEFT JOIN users u ON (u.id = c.id OR u.email = c.email)
             WHERE c.id = ?
             LIMIT 1
         ");
@@ -2610,16 +2610,22 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
         if (!$lead) return;
 
         $ccEmails = '';
+        $roundName = '';
         if ($roundId && (int)$roundId > 0) {
-            $rStmt = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ? LIMIT 1");
+            $rStmt = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ? LIMIT 1");
             if ($rStmt) {
                 $rIdInt = (int)$roundId;
                 $rStmt->bind_param("i", $rIdInt);
                 $rStmt->execute();
                 $rRow = $rStmt->get_result()->fetch_assoc();
                 $rStmt->close();
-                if ($rRow && !empty($rRow['cc_emails'])) {
-                    $ccEmails = $rRow['cc_emails'];
+                if ($rRow) {
+                    if (!empty($rRow['cc_emails'])) {
+                        $ccEmails = $rRow['cc_emails'];
+                    }
+                    if (!empty($rRow['round_name'])) {
+                        $roundName = $rRow['round_name'];
+                    }
                 }
             }
         }
@@ -2648,7 +2654,7 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
             if (strlen($trimmed) >= 7) {
                 $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
             } else {
-                $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
+                $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', max(1, strlen($trimmed) - 2));
             }
         } else {
             $maskedPhone = 'Không có';
@@ -2672,12 +2678,28 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
             $maskedEmail = 'Không có';
         }
 
+        // 2b. Kênh Chuông Web In-App (bảng notifications)
+        try {
+            $notifTitle = "Lead mới được phân bổ: " . $maskedName;
+            $notifBody = "Bạn vừa được phân bổ Lead {$maskedName} ({$maskedPhone})" . ($roundName ? " từ vòng \"{$roundName}\"" : "") . ". Vui lòng mở Bàn làm việc và bấm Tiếp nhận ngay!";
+            $saleUid = (int)$sale['id'];
+            $insN = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'lead_assigned', '/workspace')");
+            if ($insN) {
+                $insN->bind_param("iss", $saleUid, $notifTitle, $notifBody);
+                $insN->execute();
+                $insN->close();
+            }
+        } catch (\Throwable $eWeb) {
+            error_log("Assign Web Notif Error: " . $eWeb->getMessage());
+        }
+
         // 3. Construct Zalo message for Sale
         $zaloMsg = "🚨 [ CÓ LEAD MỚI ĐƯỢC PHÂN BỔ CHO BẠN! ] 🚨\n"
             . "━━━━━━━━━━━━━━━━━━━━\n"
             . "👤 Khách hàng: " . $maskedName . "\n"
             . "📞 Số ĐT: " . $maskedPhone . "\n"
             . "✉️ Email: " . $maskedEmail . "\n"
+            . ($roundName ? "🔄 Vòng chia: " . $roundName . "\n" : "")
             . "🌐 Nguồn: " . ($lead['source'] ?? 'Không có') . "\n"
             . "📋 Phân loại: " . ($lead['type'] ?? 'Không có') . "\n"
             . "📝 Ghi chú: " . ($lead['note'] ?? 'Không có') . "\n\n"
@@ -2687,7 +2709,7 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
         $emailSubj = "[Rich Land CRM] 🚨 Bạn vừa nhận được Lead mới: " . $maskedName;
         $emailBody = "<h3>🚨 Thông báo Lead mới phân bổ!</h3>"
             . "<p>Chào <strong>" . htmlspecialchars($sale['name']) . "</strong>,</p>"
-            . "<p>Hệ thống vừa tự động phân bổ cho bạn một Lead mới từ vòng chia:</p>"
+            . "<p>Hệ thống vừa tự động phân bổ cho bạn một Lead mới" . ($roundName ? " từ vòng <strong>" . htmlspecialchars($roundName) . "</strong>" : "") . ":</p>"
             . "<ul>"
             . "    <li><strong>Khách hàng:</strong> " . htmlspecialchars($maskedName) . "</li>"
             . "    <li><strong>Số điện thoại:</strong> " . htmlspecialchars($maskedPhone) . "</li>"
@@ -2698,19 +2720,19 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
             . "</ul>"
             . "<p>Vui lòng đăng nhập hệ thống CRM để tiếp nhận và tương tác với khách hàng kịp thời!</p>";
 
-        // 5. Send Zalo
+        // 5. Send Zalo immediately (post-commit) so Sale gets it before 2-min recall timer expires
         if (!empty($botToken) && !empty($sale['zalo_chat_id'])) {
             require_once __DIR__ . '/zalo_bot.php';
-            sendZaloMessage($botToken, $sale['zalo_chat_id'], $zaloMsg, false, (int)$leadId);
+            sendZaloMessage($botToken, $sale['zalo_chat_id'], $zaloMsg, true, (int)$leadId);
         }
 
         // 6. Send Email
         if (!empty($sale['email'])) {
             require_once __DIR__ . '/mailer.php';
-            sendEmailNotification($sale['email'], $emailSubj, 'Phân bổ Lead mới', $emailBody, $ccEmails);
+            sendEmailNotification($sale['email'], $emailSubj, 'Phân bổ Lead mới', $emailBody, $ccEmails, (int)$leadId);
         }
 
-        // 7. Send Telegram if configured
+        // 7. Send Telegram immediately (post-commit) so Sale gets it before 2-min recall timer expires
         $teleBotToken = get_system_setting($conn, 'telegram_bot_token');
         if (!empty($teleBotToken) && !empty($sale['telegram_chat_id'])) {
             require_once __DIR__ . '/telegram_bot.php';
@@ -2719,17 +2741,18 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
                 . "👤 <b>Khách hàng:</b> " . htmlspecialchars($maskedName) . "\n"
                 . "📞 <b>Số ĐT:</b> " . htmlspecialchars($maskedPhone) . "\n"
                 . "✉️ <b>Email:</b> " . htmlspecialchars($maskedEmail) . "\n"
+                . ($roundName ? "🔄 <b>Vòng chia:</b> " . htmlspecialchars($roundName) . "\n" : "")
                 . "🌐 <b>Nguồn:</b> " . htmlspecialchars($lead['source'] ?? 'Không có') . "\n"
                 . "📋 <b>Phân loại:</b> " . htmlspecialchars($lead['type'] ?? 'Không có') . "\n"
                 . "📝 <b>Ghi chú:</b> " . htmlspecialchars($lead['note'] ?? 'Không có') . "\n\n"
                 . "⏰ <i>Vui lòng truy cập hệ thống CRM để TIẾP NHẬN LEAD NGAY!</i>";
             
             if (function_exists('sendTelegramMessage')) {
-                sendTelegramMessage($teleBotToken, $sale['telegram_chat_id'], $teleMsg, false, (int)$leadId);
+                sendTelegramMessage($teleBotToken, $sale['telegram_chat_id'], $teleMsg, true, (int)$leadId);
             }
         }
 
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         error_log("Error in sendDirectSaleLeadNotification: " . $e->getMessage());
     }
 }
@@ -5273,7 +5296,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             if ($stmtContact) {
                 $createdBy = 1;
                 $stmtContact->bind_param(
-                    "iiisiiissssssissssssssssssssdssssssssssssssss",
+                    "iiisiisssssssissssssssssssssdsssssssssssssss",
                     $person_id, $leadId, $projectId, $leadCampaignId, $ownerUserId, $createdBy,
                     $firstName, $lastName, $email, $phone, $source,
                     $triggerStatus, $stageId, $secExpiresTime, $note,

@@ -1372,15 +1372,18 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
         }
     }
 
-    // Default 'auto_round' mode
-    $assignedRoundId = $override_round_id;
+    // Default 'auto_round' or 'unassigned' mode
+    $assignedRoundId = ($distribution_mode === 'unassigned') ? null : $override_round_id;
+    if ($distribution_mode === 'unassigned') {
+        $override_consultant_id = null;
+    }
     $inject = [];
     $isFallback = false;
     $isFallbackAdmin = false;
     $fallbackAdminData = null;
     $fallbackCcEmails = '';
 
-    if (!$assignedRoundId) {
+    if ($distribution_mode !== 'unassigned' && !$assignedRoundId) {
         $ruleResult = evaluateRules($conn, $leadData, $source, $type, null, 'manual');
         if (is_array($ruleResult)) {
             $assignedRoundId = $ruleResult['target_round_id'];
@@ -1403,7 +1406,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
         }
     }
 
-    if (!$assignedRoundId) {
+    if ($distribution_mode !== 'unassigned' && !$assignedRoundId) {
         $fbSettings = [];
         $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
         if ($fbRes) {
@@ -1506,7 +1509,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
             $dupCheckMonths = 6;
         }
 
-        if (!$override_consultant_id && $crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
+        if ($distribution_mode !== 'unassigned' && !$override_consultant_id && $crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
             $assignedTo = $crmCheckResult['assignedTo'];
             $conn->begin_transaction();
             $inTransaction = true;
@@ -3699,11 +3702,13 @@ switch ($action) {
         if (isset($_GET['exclude_public']) && $_GET['exclude_public'] == '1') {
             $extraCondition .= " AND (p.is_public IS NULL OR p.is_public = 0) AND dl.status != 'released_to_kho' AND dl.status != 'databank'";
         }
-        // Exclude leads whose associated customer contact has already been moved to trash / deleted
+        // Exclude leads whose associated customer contact has already been moved to trash / deleted after the lead was created
         $extraCondition .= " AND NOT (
-            (
-                (l.person_id IS NOT NULL AND EXISTS (SELECT 1 FROM contacts c_del WHERE c_del.person_id = l.person_id AND c_del.deleted_at IS NOT NULL))
-                OR (l.phone IS NOT NULL AND l.phone != '' AND EXISTS (SELECT 1 FROM contacts c_del2 WHERE c_del2.phone = l.phone AND c_del2.deleted_at IS NOT NULL))
+            l.is_accepted = 1
+            AND (
+                EXISTS (SELECT 1 FROM contacts c_del0 WHERE c_del0.lead_id = l.id AND c_del0.deleted_at IS NOT NULL)
+                OR (l.person_id IS NOT NULL AND EXISTS (SELECT 1 FROM contacts c_del WHERE c_del.person_id = l.person_id AND c_del.deleted_at IS NOT NULL AND c_del.deleted_at >= l.created_at))
+                OR (l.phone IS NOT NULL AND l.phone != '' AND EXISTS (SELECT 1 FROM contacts c_del2 WHERE c_del2.phone = l.phone AND c_del2.deleted_at IS NOT NULL AND c_del2.deleted_at >= l.created_at))
             )
             AND (l.person_id IS NULL OR NOT EXISTS (
                 SELECT 1 FROM contacts c_act1 
@@ -24339,7 +24344,12 @@ if (function_exists('fastcgi_finish_request')) {
     flush();
 }
 
-// 2. Pseudo-cron: Kiểm tra báo cáo hàng ngày
+// 2. Flush queued Sale lead assignment notifications immediately (Web + Zalo + Telegram + Email)
+if (function_exists('flushQueuedSaleLeadNotifications')) {
+    flushQueuedSaleLeadNotifications($conn);
+}
+
+// 3. Pseudo-cron: Kiểm tra báo cáo hàng ngày
 require_once __DIR__ . '/cron_daily_report.php';
 runDailyReportCron($conn);
 
