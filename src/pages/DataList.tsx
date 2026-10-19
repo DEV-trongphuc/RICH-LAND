@@ -2522,11 +2522,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     ...Array.from(new Set([
                       ...availableLeadPhanLoai,
                       ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
-                      'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
-                    ])).map(pl => ({
-                      value: pl,
-                      label: pl
-                    }))
+                      'R3_Fb', 'R3', 'R2', 'R3_Zalo', 'VIP'
+                    ]))
+                      .filter(pl => !['ca_nhan', 'gioi_thieu'].includes(String(pl).toLowerCase()))
+                      .map(pl => ({
+                        value: pl,
+                        label: pl
+                      }))
                   ]}
                   value={leadPhanLoaiFilter}
                   onChange={val => updateParams('lead_phan_loai', val.toString())}
@@ -2569,10 +2571,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   { value: 'facebook', label: 'Facebook' },
                   { value: 'google', label: 'Google Ads' },
                   { value: 'R3_Zalo', label: 'Zalo Ads' },
-                  { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
                   { value: 'databank', label: 'Kho Data' },
                   { value: 'website', label: 'Website' },
-                  { value: 'gioi_thieu', label: 'Giới thiệu' },
                   { value: 'other', label: 'Khác' }
                 ]}
                 value={sourceFilter}
@@ -2951,8 +2951,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       ...Array.from(new Set([
                         ...availableLeadPhanLoai,
                         ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
-                        'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
-                      ])).map(pl => ({ value: pl, label: pl }))
+                        'R3_Fb', 'R3', 'R2', 'R3_Zalo', 'VIP'
+                      ]))
+                        .filter(pl => !['ca_nhan', 'gioi_thieu'].includes(String(pl).toLowerCase()))
+                        .map(pl => ({ value: pl, label: pl }))
                     ]}
                     searchable={true}
                     width="100%"
@@ -9237,8 +9239,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           ...Array.from(new Set([
                             ...availableLeadPhanLoai,
                             ...leads.map(l => l.lead_phan_loai || l.loai_lead).filter(Boolean),
-                            'R3_Fb', 'R3', 'R2', 'ca_nhan', 'R3_Zalo', 'VIP'
-                          ])).map(pl => ({ value: pl, label: pl }))
+                            'R3_Fb', 'R3', 'R2', 'R3_Zalo', 'VIP'
+                          ]))
+                            .filter(pl => !['ca_nhan', 'gioi_thieu'].includes(String(pl).toLowerCase()))
+                            .map(pl => ({ value: pl, label: pl }))
                         ]}
                         value={leadPhanLoaiFilter}
                         onChange={val => updateParams('lead_phan_loai', val.toString())}
@@ -9275,10 +9279,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           { value: 'facebook', label: 'Facebook' },
                           { value: 'google', label: 'Google Ads' },
                           { value: 'R3_Zalo', label: 'Zalo Ads' },
-                          { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
                           { value: 'databank', label: 'Kho Data' },
                           { value: 'website', label: 'Website' },
-                          { value: 'gioi_thieu', label: 'Giới thiệu' },
                           { value: 'other', label: 'Khác' }
                         ]}
                         value={sourceFilter}

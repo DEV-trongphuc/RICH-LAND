@@ -5031,13 +5031,22 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             $lastName = '';
         }
 
-        $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
-        $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus);
-        if (empty($chuaXacDinhDuration)) {
-            $shareHours = (int)get_system_setting($conn, 'uncontacted_lead_share_hours');
-            $chuaXacDinhDuration = $shareHours > 0 ? "+$shareHours hours" : '+3 hours';
+        $leadPhanLoaiLower = mb_strtolower(trim($lead['lead_phan_loai'] ?? ''));
+        $sourceLower = mb_strtolower(trim($source));
+        $isPersonalOrSelf = in_array($sourceLower, ['ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self'], true)
+            || in_array($leadPhanLoaiLower, ['ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self'], true);
+
+        if ($isPersonalOrSelf) {
+            $secExpiresTime = null;
+        } else {
+            $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
+            $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus);
+            if (empty($chuaXacDinhDuration)) {
+                $shareHours = (int)get_system_setting($conn, 'uncontacted_lead_share_hours');
+                $chuaXacDinhDuration = $shareHours > 0 ? "+$shareHours hours" : '+3 hours';
+            }
+            $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
         }
-        $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
         $ownerUserId = null;
         if ($assigned_to > 0) {

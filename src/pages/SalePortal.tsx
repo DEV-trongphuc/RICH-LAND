@@ -9077,7 +9077,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
                     {isAdmin && (
-                      <th style={{ padding: '1rem', width: '40px' }}>
+                      <th style={{ padding: '0.75rem 0.5rem 0.75rem 1rem', width: '36px' }}>
                         <input 
                           type="checkbox" 
                           checked={paginatedPublicLeads.length > 0 && paginatedPublicLeads.every(lead => selectedPublicLeads.includes(lead.id))}
@@ -9098,11 +9098,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         />
                       </th>
                     )}
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Khách hàng')}</th>
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Liên hệ')}</th>
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Trạng thái')}</th>
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Thời gian ra kho')}</th>
-                    <th style={{ padding: '1rem', width: isAdmin ? 310 : 140, whiteSpace: 'nowrap' }}></th>
+                    <th style={{ padding: '0.75rem 0.75rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', minWidth: '170px' }}>{t('Khách hàng')}</th>
+                    <th style={{ padding: '0.75rem 0.75rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', width: '130px', maxWidth: '145px', whiteSpace: 'nowrap' }}>{t('Liên hệ')}</th>
+                    <th className="w-[150px] max-w-[170px]" style={{ padding: '0.75rem 0.75rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', width: '150px', maxWidth: '170px' }}>{t('Trạng thái')}</th>
+                    <th style={{ padding: '0.75rem 0.75rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', width: '135px', whiteSpace: 'nowrap' }}>{t('Thời gian ra kho')}</th>
+                    <th className="whitespace-nowrap" style={{ padding: '0.75rem 1rem 0.75rem 0.5rem', width: isAdmin ? '280px' : '130px', whiteSpace: 'nowrap' }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -9134,7 +9134,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         }}
                       >
                         {isAdmin && (
-                          <td style={{ padding: '1rem' }} onClick={e => e.stopPropagation()}>
+                          <td style={{ padding: '0.75rem 0.5rem 0.75rem 1rem', width: '36px' }} onClick={e => e.stopPropagation()}>
                             <input 
                               type="checkbox" 
                               checked={selectedPublicLeads.includes(lead.id)}
@@ -9148,27 +9148,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             />
                           </td>
                         )}
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <td style={{ padding: '0.75rem 0.75rem', maxWidth: '220px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minWidth: 0 }}>
                             <Avatar name={lead.full_name || t('Khách hàng')} size={32} />
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.full_name || t('Khách hàng')}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                              <span className="truncate" style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.full_name || t('Khách hàng')}</span>
                               {lead.project_name && (
-                                <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                                  <Building2 size={11} /> {lead.project_name}
+                                <span className="truncate" style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <Building2 size={11} style={{ flexShrink: 0 }} /> {lead.project_name}
                                 </span>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '1rem' }}>
+                        <td style={{ padding: '0.75rem 0.75rem', width: '130px', maxWidth: '145px', whiteSpace: 'nowrap' }}>
                           <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
                             {lead.phone || '-'}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email || '-'}</div>
+                          <div className="truncate" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }} title={lead.email || ''}>{lead.email || '-'}</div>
                         </td>
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                        <td className="w-[150px] max-w-[170px]" style={{ padding: '0.75rem 0.75rem', width: '150px', maxWidth: '170px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start', maxWidth: '154px', overflow: 'hidden' }}>
                             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                               {Number(lead.is_won) === 1 ? (
                                 <span className="badge" style={{ background: '#ffe3e8', color: '#8a0f1b', border: '1px solid #ffe3e8', fontWeight: 700 }}>
@@ -9189,21 +9189,31 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               )}
                             </div>
                             {isAdmin && lead.reclaimed_from?.name && (
-                              <div style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                background: 'rgba(217, 119, 6, 0.08)',
-                                border: '1px solid rgba(217, 119, 6, 0.2)',
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                color: '#d97706',
-                                marginTop: '2px'
-                              }}>
-                                <RotateCcw size={10} />
-                                {t('Thu hồi từ')}: <strong>{lead.reclaimed_from.name}</strong>
+                              <div
+                                className="truncate"
+                                title={`${t('Thu hồi từ')}: ${lead.reclaimed_from.name}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '2px 6px',
+                                  borderRadius: '6px',
+                                  background: 'rgba(217, 119, 6, 0.08)',
+                                  border: '1px solid rgba(217, 119, 6, 0.2)',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 600,
+                                  color: '#d97706',
+                                  marginTop: '2px',
+                                  maxWidth: '100%',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                <RotateCcw size={10} style={{ flexShrink: 0 }} />
+                                <span className="truncate" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {t('Thu hồi từ')}: <strong>{lead.reclaimed_from.name}</strong>
+                                </span>
                               </div>
                             )}
                             {(() => {
@@ -9229,11 +9239,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               }
                               
                               if (displayTakers.length === 0) return null;
+                              const takersText = displayTakers.map((t: any) => t.name).join(', ');
                               
                               return (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    {displayTakers.map((taker: any, tIdx: number) => (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px', maxWidth: '100%', minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                                    {displayTakers.slice(0, 3).map((taker: any, tIdx: number) => (
                                       <div 
                                         key={taker.id || tIdx} 
                                         style={{ 
@@ -9246,7 +9257,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         <Avatar 
                                           src={taker.avatar} 
                                           name={taker.name} 
-                                          size={20} 
+                                          size={18} 
                                           style={{ 
                                             border: '1.5px solid var(--color-surface)',
                                             boxShadow: 'var(--shadow-sm)'
@@ -9255,19 +9266,32 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                       </div>
                                     ))}
                                   </div>
-                                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                                    {displayTakers.map((t: any) => t.name).join(', ')}
+                                  <span
+                                    className="truncate"
+                                    title={takersText}
+                                    style={{
+                                      fontSize: '0.72rem',
+                                      color: 'var(--color-text-muted)',
+                                      fontWeight: 500,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      maxWidth: '105px',
+                                      display: 'inline-block'
+                                    }}
+                                  >
+                                    {takersText}
                                   </span>
                                 </div>
                               );
                             })()}
                           </div>
                         </td>
-                        <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                        <td style={{ padding: '0.75rem 0.75rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap', width: '135px' }}>
                           {lead.released_to_kho_at ? parseServerDate(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
                         </td>
-                        <td style={{ padding: '1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'nowrap' }}>
+                        <td className="whitespace-nowrap" style={{ padding: '0.75rem 1rem 0.75rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap', width: isAdmin ? '280px' : '130px' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'nowrap' }}>
                             {Number(lead.is_won) === 1 ? (
                               <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', paddingRight: '8px' }}>-</span>
                             ) : (
@@ -9281,8 +9305,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                       }}
                                       className="btn sm outline"
                                       style={{
-                                        height: 32,
-                                        padding: '0 10px',
+                                        height: 30,
+                                        padding: '0 8px',
                                         borderRadius: '16px',
                                         display: 'inline-flex',
                                         alignItems: 'center',
@@ -9310,9 +9334,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}
                                         className="btn sm outline success-hover"
                                         style={{
-                                          height: 32,
-                                          width: 32,
-                                          minWidth: 32,
+                                          height: 30,
+                                          width: 30,
+                                          minWidth: 30,
                                           flexShrink: 0,
                                           padding: 0,
                                           borderRadius: '50%',
@@ -9326,7 +9350,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}
                                         title={t('Khôi phục hiển thị Databank')}
                                       >
-                                        <RotateCcw size={14} />
+                                        <RotateCcw size={13} />
                                       </button>
                                     ) : (
                                       <button
@@ -9336,9 +9360,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}
                                         className="btn sm outline danger-hover"
                                         style={{
-                                          height: 32,
-                                          width: 32,
-                                          minWidth: 32,
+                                          height: 30,
+                                          width: 30,
+                                          minWidth: 30,
                                           flexShrink: 0,
                                           padding: 0,
                                           borderRadius: '50%',
@@ -9352,7 +9376,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}
                                         title={t('Ẩn/Xóa khỏi Databank')}
                                       >
-                                        <Trash2 size={14} />
+                                        <Trash2 size={13} />
                                       </button>
                                     )}
 
@@ -9364,9 +9388,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}
                                         className="btn sm outline info-hover"
                                         style={{
-                                          height: 32,
-                                          width: 32,
-                                          minWidth: 32,
+                                          height: 30,
+                                          width: 30,
+                                          minWidth: 30,
                                           flexShrink: 0,
                                           padding: 0,
                                           borderRadius: '50%',
@@ -9380,7 +9404,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}
                                         title={t('Hủy chặn vĩnh viễn')}
                                       >
-                                        <CheckSquare size={14} />
+                                        <CheckSquare size={13} />
                                       </button>
                                     ) : (
                                       <button
@@ -9390,9 +9414,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}
                                         className="btn sm outline danger-hover"
                                         style={{
-                                          height: 32,
-                                          width: 32,
-                                          minWidth: 32,
+                                          height: 30,
+                                          width: 30,
+                                          minWidth: 30,
                                           flexShrink: 0,
                                           padding: 0,
                                           borderRadius: '50%',
@@ -9406,7 +9430,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }}
                                         title={t('Chặn vĩnh viễn liên hệ')}
                                       >
-                                        <Ban size={14} />
+                                        <Ban size={13} />
                                       </button>
                                     )}
                                   </>
@@ -9419,7 +9443,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   disabled={isClaimingLeadId !== null || hasClaimed || isFull || isAdmin || isQuotaExceeded}
                                   className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
                                   style={{
-                                    height: 32,
+                                    height: 30,
                                     fontSize: '0.72rem',
                                     fontWeight: 700,
                                     padding: '0 10px',

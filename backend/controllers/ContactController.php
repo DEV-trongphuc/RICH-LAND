@@ -103,6 +103,13 @@ class ContactController {
             $where[] = '1=0';
         }
 
+        // Bước 3: MKT không ghi nhận và không xem khách cá nhân — chỉ Sale nhập, tự xem, tự tương tác
+        if (in_array(strtolower($auth['role'] ?? ''), ['mkt', 'marketing'], true)) {
+            $where[] = "LOWER(COALESCE(c.source, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')";
+            $where[] = "LOWER(COALESCE(c.lead_phan_loai, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')";
+            $where[] = "LOWER(COALESCE(c.loai_lead, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')";
+        }
+
         if (!empty($search)) {
             $this->applySmartSearch((string)$search, $where, $params);
         }
@@ -691,11 +698,23 @@ class ContactController {
             }
         }
 
+        $rawSource = trim((string)($b['source'] ?? 'other'));
+        $rawPhanLoai = trim((string)($b['lead_phan_loai'] ?? ''));
+        $isPersonalCreate = in_array(mb_strtolower($rawSource), ['ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self'], true)
+            || in_array(mb_strtolower($rawPhanLoai), ['ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self'], true);
+
+        if ($isPersonalCreate && in_array(strtolower($auth['role'] ?? ''), ['mkt', 'marketing'], true)) {
+            respond(403, null, 'Bộ phận Marketing không ghi nhận khách hàng cá nhân. Chỉ Sale tự nhập và tương tác khách hàng cá nhân.', false);
+        }
+        if ($isPersonalCreate && $rawPhanLoai === '') {
+            $rawPhanLoai = in_array(mb_strtolower($rawSource), ['gioi_thieu', 'giới thiệu', 'referral'], true) ? 'giới thiệu' : 'ca_nhan';
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO contacts (tenant_id,company_id,owner_id,created_by,first_name,last_name,
-                email,phone,mobile,job_title,department,source,status,tags,notes,stage_id,
-                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score,person_id,collaborator_ids,nguoi_gioi_thieu_id,project_id,campaign_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                email,phone,mobile,job_title,department,source,lead_phan_loai,status,tags,notes,stage_id,
+                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score,person_id,collaborator_ids,nguoi_gioi_thieu_id,project_id,campaign_id,security_expires_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)
         ");
         $stmt->execute([
             $auth['tenant_id'],
@@ -703,7 +722,7 @@ class ContactController {
             $auth['user_id'], $b['first_name'], $b['last_name'] ?? '',
             $email, $phone, $phone,
             $b['job_title'] ?? null, $b['department'] ?? null,
-            $b['source'] ?? 'other', $b['status'] ?? 'lead',
+            $rawSource, $rawPhanLoai !== '' ? $rawPhanLoai : null, $b['status'] ?? 'lead',
             $tags, $b['notes'] ?? null, $stageId,
             $birthday, $b['address'] ?? null, $b['city'] ?? null, $b['ward'] ?? null,
             $b['expected_revenue'] ?? 0, $b['win_probability'] ?? 50,
@@ -715,6 +734,9 @@ class ContactController {
             $campaignId
         ]);
         $id = (int)$this->db->lastInsertId();
+        if ($isPersonalCreate && $personId) {
+            $this->db->prepare("UPDATE persons SET is_public = 0, released_to_kho_at = NULL WHERE id = ?")->execute([$personId]);
+        }
         if ($duplicateFlag) {
             $upd = $this->db->prepare("UPDATE contacts SET duplicate_flag = 1, duplicate_with_id = ? WHERE id = ?");
             $upd->execute([$duplicateWithId, $id]);
@@ -883,6 +905,12 @@ class ContactController {
             WHERE c.id=? AND c.tenant_id=?";
         
         $p = [$id, $auth['tenant_id']];
+        if (in_array(strtolower($auth['role'] ?? ''), ['mkt', 'marketing'], true)) {
+            $sql .= " AND COALESCE(LOWER(c.source), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      AND COALESCE(LOWER(c.lead_phan_loai), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      AND COALESCE(LOWER(c.loai_lead), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      AND NOT ((c.lead_id IS NULL OR c.lead_id = 0) AND COALESCE(LOWER(c.source), '') != 'databank')";
+        }
         $scope = $this->getScope($auth, 'leads', 'read');
         if ($scope === 'all') {
             // No filters
@@ -1359,8 +1387,9 @@ class ContactController {
                 require_once __DIR__ . '/../config/TriggerHelper.php';
                 TriggerHelper::dispatch($this->db, 'pipeline_status', $currStatus, $newStatus, $id);
 
-                // Update security_expires_at for higher status
-                $securityExpires = $this->getSecurityExpiration($newStatus);
+                // Update security_expires_at for higher status (never set timer on personal/self-entered contacts)
+                $isPersContact = $this->isPersonalOrSelfContact((int)$id);
+                $securityExpires = $isPersContact ? null : $this->getSecurityExpiration($newStatus);
                 $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
                 $stmtTimer->execute([$securityExpires, $id]);
 
@@ -1376,9 +1405,20 @@ class ContactController {
                         $stmtHidePerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
                         $stmtHidePerson->execute([$targetPersonId]);
 
-                        // Ghi thời gian gia hạn của trạng thái cao hơn đó cho các contact active của Person
-                        $stmtSyncTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE person_id = ? AND deleted_at IS NULL AND (security_expires_at IS NULL OR security_expires_at < ?)");
-                        $stmtSyncTimer->execute([$securityExpires, $targetPersonId, $securityExpires]);
+                        if (!$isPersContact && $securityExpires !== null) {
+                            // Ghi thời gian gia hạn của trạng thái cao hơn đó cho các contact active (không phải cá nhân) của Person
+                            $stmtSyncTimer = $this->db->prepare("
+                                UPDATE contacts
+                                SET security_expires_at = ?
+                                WHERE person_id = ?
+                                  AND deleted_at IS NULL
+                                  AND LOWER(COALESCE(source, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                                  AND LOWER(COALESCE(lead_phan_loai, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                                  AND LOWER(COALESCE(loai_lead, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                                  AND (security_expires_at IS NULL OR security_expires_at < ?)
+                            ");
+                            $stmtSyncTimer->execute([$securityExpires, $targetPersonId, $securityExpires]);
+                        }
 
                         // Cập nhật trạng thái bản ghi gốc MKT (leads)
                         $stmtUpdLead = $this->db->prepare("UPDATE leads SET status = ?, last_interaction_date = NOW() WHERE person_id = ? AND status NOT IN ('dat_coc', 'dong_deal', 'not_lead')");
@@ -1609,8 +1649,9 @@ class ContactController {
             require_once __DIR__ . '/../config/TriggerHelper.php';
             TriggerHelper::dispatch($this->db, 'pipeline_status', $currStatus, $newStatus, $id);
 
-            // Update security timer for higher status
-            $securityExpires = $this->getSecurityExpiration($newStatus);
+            // Update security timer for higher status (never set timer on personal/self-entered contacts)
+            $isPersContact = $this->isPersonalOrSelfContact((int)$id);
+            $securityExpires = $isPersContact ? null : $this->getSecurityExpiration($newStatus);
             $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
             $stmtTimer->execute([$securityExpires, $id]);
 
@@ -1626,9 +1667,20 @@ class ContactController {
                     $stmtHidePerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
                     $stmtHidePerson->execute([$targetPersonId]);
 
-                    // Ghi thời gian gia hạn của trạng thái cao hơn đó cho các contact active của Person
-                    $stmtSyncTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE person_id = ? AND deleted_at IS NULL AND (security_expires_at IS NULL OR security_expires_at < ?)");
-                    $stmtSyncTimer->execute([$securityExpires, $targetPersonId, $securityExpires]);
+                    if (!$isPersContact && $securityExpires !== null) {
+                        // Ghi thời gian gia hạn của trạng thái cao hơn đó cho các contact active (không phải cá nhân) của Person
+                        $stmtSyncTimer = $this->db->prepare("
+                            UPDATE contacts
+                            SET security_expires_at = ?
+                            WHERE person_id = ?
+                              AND deleted_at IS NULL
+                              AND LOWER(COALESCE(source, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                              AND LOWER(COALESCE(lead_phan_loai, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                              AND LOWER(COALESCE(loai_lead, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                              AND (security_expires_at IS NULL OR security_expires_at < ?)
+                        ");
+                        $stmtSyncTimer->execute([$securityExpires, $targetPersonId, $securityExpires]);
+                    }
 
                     // Cập nhật trạng thái bản ghi gốc MKT (leads)
                     $stmtUpdLead = $this->db->prepare("UPDATE leads SET status = ?, last_interaction_date = NOW() WHERE person_id = ? AND status NOT IN ('dat_coc', 'dong_deal', 'not_lead')");
@@ -1795,23 +1847,40 @@ class ContactController {
         return $val !== false ? $val : $default;
     }
 
+    private function isPersonalOrSelfContact(int $contactId): bool {
+        if ($contactId <= 0) return false;
+        $stmt = $this->db->prepare("SELECT source, lead_phan_loai, loai_lead, lead_id FROM contacts WHERE id = ? LIMIT 1");
+        $stmt->execute([$contactId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return false;
+        $personalTags = ['ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self'];
+        $src = mb_strtolower(trim((string)($row['source'] ?? '')));
+        $pl = mb_strtolower(trim((string)($row['lead_phan_loai'] ?? '')));
+        $ll = mb_strtolower(trim((string)($row['loai_lead'] ?? '')));
+        if (in_array($src, $personalTags, true) || in_array($pl, $personalTags, true) || in_array($ll, $personalTags, true)) {
+            return true;
+        }
+        return (empty($row['lead_id']) && $src !== 'databank');
+    }
+
     private function getSecurityExpiration(string $status): ?string {
+        if (in_array($status, ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead'], true)) {
+            return null;
+        }
         $defaultDurations = [
             'chua_xac_dinh' => '+3 hours',
             'quan_tam' => '+1 day',
-            'thien_chi' => '+3 days',
-            'dong_y_gap' => '+3 days',
+            'thien_chi' => '+4 days',
+            'dong_y_gap' => '+4 days',
             'da_gap' => '+5 days',
             'booking' => '+3 months',
-            'dat_coc' => '+6 months',
-            'dong_deal' => '+12 months',
             'cham_soc_dai_han' => '+30 days'
         ];
-        $default = $defaultDurations[$status] ?? '+3 days';
+        $default = $defaultDurations[$status] ?? '+4 days';
         if ($status === 'dong_y_gap' || $status === 'thien_chi') {
-            $thienChiVal = $this->getSetting('security_timer_thien_chi', '');
             $dongYGapVal = $this->getSetting('security_timer_dong_y_gap', '');
-            $duration = $thienChiVal !== '' ? $thienChiVal : ($dongYGapVal !== '' ? $dongYGapVal : $default);
+            $thienChiVal = $this->getSetting('security_timer_thien_chi', '');
+            $duration = $dongYGapVal !== '' ? $dongYGapVal : ($thienChiVal !== '' ? $thienChiVal : $default);
         } else {
             $duration = $this->getSetting('security_timer_' . $status, '');
             if ($duration === '') {
@@ -1826,6 +1895,9 @@ class ContactController {
             if ($duration === '') {
                 $duration = $default;
             }
+        }
+        if (in_array(strtolower(trim((string)$duration)), ['forever', 'permanent', 'null', 'none', '0'], true)) {
+            return null;
         }
         
         return date('Y-m-d H:i:s', strtotime($duration));
@@ -1850,7 +1922,7 @@ class ContactController {
         $tid = $auth['tenant_id'];
 
         // 1. Fetch contact
-        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name, source FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name, source, lead_phan_loai, loai_lead FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
         $stmt->execute([$id, $tid]);
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$contact) respond(404, null, 'Không tìm thấy liên hệ', false);
@@ -1859,8 +1931,8 @@ class ContactController {
             respond(403, null, 'Bạn chỉ có quyền trả về Databank đối với khách hàng do chính bạn phụ trách!', false);
         }
 
-        if (($contact['source'] ?? '') === 'manual' || ($contact['source'] ?? '') === 'self') {
-            respond(400, null, 'Lead do Sale tự tạo không liên kết với kho Databank và không được phép trả vào Databank!', false);
+        if ($this->isPersonalOrSelfContact((int)$id)) {
+            respond(400, null, 'Khách hàng cá nhân / tự nhập là bảo mật vĩnh viễn và TUYỆT ĐỐI KHÔNG được phép đưa ra kho Databank!', false);
         }
 
         $personId = $contact['person_id'];
@@ -2189,6 +2261,9 @@ class ContactController {
     }
 
     private function restorePersonPublicStatus(int $contactId, int $tenantId): void {
+        if ($this->isPersonalOrSelfContact($contactId)) {
+            return;
+        }
         $stmt = $this->db->prepare("SELECT person_id FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$contactId, $tenantId]);
         $personId = $stmt->fetchColumn();
@@ -2197,12 +2272,20 @@ class ContactController {
             $stmtCount->execute([$personId, $tenantId]);
             $activeClaims = (int)$stmtCount->fetchColumn();
 
-            $hasProtectedStatus = false;
-            if ($activeClaims > 0) {
-                $stmtProtected = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND deleted_at IS NULL AND pipeline_status = (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1)");
-                $stmtProtected->execute([$personId, $tenantId]);
-                $hasProtectedStatus = ((int)$stmtProtected->fetchColumn() > 0);
-            }
+            $stmtProtected = $this->db->prepare("
+                SELECT COUNT(*) FROM contacts 
+                WHERE person_id = ? AND tenant_id = ? AND deleted_at IS NULL 
+                  AND (
+                      pipeline_status IN ((SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1), 'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead')
+                      OR security_expires_at > NOW()
+                      OR COALESCE(LOWER(source), '') IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      OR COALESCE(LOWER(lead_phan_loai), '') IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      OR COALESCE(LOWER(loai_lead), '') IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      OR ((lead_id IS NULL OR lead_id = 0) AND COALESCE(LOWER(source), '') != 'databank')
+                  )
+            ");
+            $stmtProtected->execute([$personId, $tenantId]);
+            $hasProtectedStatus = ((int)$stmtProtected->fetchColumn() > 0);
 
             $maxParallelClaims = 2;
             $stmtSetting = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'max_parallel_sales_per_client' LIMIT 1");
@@ -2213,7 +2296,7 @@ class ContactController {
             }
 
             if ($activeClaims < $maxParallelClaims && !$hasProtectedStatus) {
-                $stmtUp = $this->db->prepare("UPDATE persons SET is_public = 1 WHERE id = ?");
+                $stmtUp = $this->db->prepare("UPDATE persons SET is_public = 1 WHERE id = ? AND is_blocked = 0");
                 $stmtUp->execute([$personId]);
             }
         }

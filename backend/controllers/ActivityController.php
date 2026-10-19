@@ -651,7 +651,7 @@ class ActivityController {
             $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
             $stmtStatus->execute([$cid]);
             $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
-            $securityExpires = $this->getSecurityExpiration($currStatus);
+            $securityExpires = $this->isPersonalOrSelfContact((int)$cid) ? null : $this->getSecurityExpiration($currStatus);
 
             $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
                  ->execute([$securityExpires, $cid, $auth['tenant_id']]);
@@ -663,7 +663,7 @@ class ActivityController {
                 $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
                 $stmtStatus->execute([$cid]);
                 $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
-                $securityExpires = $this->getSecurityExpiration($currStatus);
+                $securityExpires = $this->isPersonalOrSelfContact((int)$cid) ? null : $this->getSecurityExpiration($currStatus);
 
                 $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
                      ->execute([$securityExpires, $cid, $auth['tenant_id']]);
@@ -998,7 +998,7 @@ class ActivityController {
             $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
             $stmtStatus->execute([$cid]);
             $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
-            $securityExpires = $this->getSecurityExpiration($currStatus);
+            $securityExpires = $this->isPersonalOrSelfContact((int)$cid) ? null : $this->getSecurityExpiration($currStatus);
 
             $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
                  ->execute([$securityExpires, $cid, $auth['tenant_id']]);
@@ -1325,7 +1325,7 @@ class ActivityController {
                 $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
                 $stmtStatus->execute([$cid]);
                 $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
-                $securityExpires = $this->getSecurityExpiration($currStatus);
+                $securityExpires = $this->isPersonalOrSelfContact($cid) ? null : $this->getSecurityExpiration($currStatus);
 
                 $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
                      ->execute([$securityExpires, $cid, $auth['tenant_id']]);
@@ -1405,7 +1405,7 @@ class ActivityController {
                 $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
                 $stmtStatus->execute([$cid]);
                 $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
-                $securityExpires = $maxDate ? $this->getSecurityExpiration($currStatus, $maxDate) : null;
+                $securityExpires = ($maxDate && !$this->isPersonalOrSelfContact($cid)) ? $this->getSecurityExpiration($currStatus, $maxDate) : null;
 
                 $stmtUpdate = $this->db->prepare("UPDATE contacts SET last_contact = ?, security_expires_at = ? WHERE id = ? AND tenant_id = ?");
                 $stmtUpdate->execute([$maxDate ?: null, $securityExpires, $cid, $auth['tenant_id']]);
@@ -1636,27 +1636,44 @@ class ActivityController {
         }
     }
 
+    private function isPersonalOrSelfContact(int $contactId): bool {
+        if ($contactId <= 0) return false;
+        $stmt = $this->db->prepare("SELECT source, lead_phan_loai, loai_lead, lead_id FROM contacts WHERE id = ? LIMIT 1");
+        $stmt->execute([$contactId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return false;
+        $personalTags = ['ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self'];
+        $src = mb_strtolower(trim((string)($row['source'] ?? '')));
+        $pl = mb_strtolower(trim((string)($row['lead_phan_loai'] ?? '')));
+        $ll = mb_strtolower(trim((string)($row['loai_lead'] ?? '')));
+        if (in_array($src, $personalTags, true) || in_array($pl, $personalTags, true) || in_array($ll, $personalTags, true)) {
+            return true;
+        }
+        return (empty($row['lead_id']) && $src !== 'databank');
+    }
+
     private function getSecurityExpiration(string $status, ?string $baseDate = null): ?string {
+        if (in_array($status, ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead'], true)) {
+            return null;
+        }
         $fallback = [
             'chua_xac_dinh' => '+3 hours',
             'quan_tam' => '+1 day',
-            'thien_chi' => '+3 days',
-            'dong_y_gap' => '+3 days',
+            'thien_chi' => '+4 days',
+            'dong_y_gap' => '+4 days',
             'da_gap' => '+5 days',
             'booking' => '+3 months',
-            'dat_coc' => '+6 months',
-            'dong_deal' => '+12 months',
             'cham_soc_dai_han' => '+30 days',
         ];
         $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
         if ($status === 'dong_y_gap' || $status === 'thien_chi') {
-            $stmt->execute(['security_timer_thien_chi']);
+            $stmt->execute(['security_timer_dong_y_gap']);
             $val = $stmt->fetchColumn();
             if ($val === false || $val === null || $val === '') {
-                $stmt->execute(['security_timer_dong_y_gap']);
+                $stmt->execute(['security_timer_thien_chi']);
                 $val = $stmt->fetchColumn();
             }
-            $duration = ($val !== false && $val !== null && $val !== '') ? $val : ($fallback[$status] ?? '+3 days');
+            $duration = ($val !== false && $val !== null && $val !== '') ? $val : ($fallback[$status] ?? '+4 days');
         } else {
             $stmt->execute(['security_timer_' . $status]);
             $val = $stmt->fetchColumn();
@@ -1681,6 +1698,9 @@ class ActivityController {
                 }
                 $duration = $fallback[$status];
             }
+        }
+        if (in_array(strtolower(trim((string)$duration)), ['forever', 'permanent', 'null', 'none', '0'], true)) {
+            return null;
         }
         
         $baseTimestamp = $baseDate ? strtotime($baseDate) : time();

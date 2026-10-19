@@ -1371,7 +1371,7 @@ export const QuickAddLeadModal = () => {
             ...manualData,
             lead_phan_loai: manualData.lead_phan_loai || '',
             phan_loai_lead: manualData.lead_phan_loai || '',
-            source: manualData.lead_phan_loai || manualData.source || 'ca_nhan'
+            source: manualData.lead_phan_loai || manualData.source || ((isSale || canSelfAssign) ? 'ca_nhan' : '')
           },
           override_round_id: distributionMode === 'auto_round' ? (overrideRoundId ? Number(overrideRoundId) : previewCons?.round_id) : null,
           override_consultant_id: distributionMode === 'auto_round' && overrideConsId ? Number(overrideConsId) : null,
@@ -1406,6 +1406,7 @@ export const QuickAddLeadModal = () => {
           setShowOverrideSelector(false);
           setCompensateSkipped(true);
           window.dispatchEvent(new CustomEvent('lead-added'));
+          window.dispatchEvent(new CustomEvent('contact-updated'));
         } else {
           toast.error(json.message || t('Thêm thất bại'));
         }
@@ -1440,6 +1441,7 @@ export const QuickAddLeadModal = () => {
           setBulkInputText('');
           setBulkParsedLeads([]);
           window.dispatchEvent(new CustomEvent('lead-added'));
+          window.dispatchEvent(new CustomEvent('contact-updated'));
         } else {
           toast.error(json.message || t('Import thất bại'));
         }
@@ -1836,6 +1838,7 @@ export const QuickAddLeadModal = () => {
                   {showSourceSuggestions && (
                     (() => {
                       const filtered = existingSources.filter(src =>
+                        (isSale || canSelfAssign || !['ca_nhan', 'gioi_thieu'].includes(src.toLowerCase())) &&
                         src.toLowerCase().includes((manualData.source || '').toLowerCase())
                       );
                       if (filtered.length === 0) return null;
@@ -1899,8 +1902,10 @@ export const QuickAddLeadModal = () => {
                     { value: 'R3', label: 'R3' },
                     { value: 'R2', label: 'R2' },
                     { value: 'R3_Zalo', label: 'R3_Zalo' },
-                    { value: 'ca_nhan', label: 'ca_nhan' },
-                    { value: 'gioi_thieu', label: 'gioi_thieu' },
+                    ...((isSale || canSelfAssign) ? [
+                      { value: 'ca_nhan', label: 'ca_nhan' },
+                      { value: 'gioi_thieu', label: 'gioi_thieu' },
+                    ] : []),
                     { value: 'broadcast', label: 'broadcast' },
                     { value: 'databank', label: 'databank' },
                     ...(manualData.lead_phan_loai && !['', 'R3_Fb', 'R3', 'R2', 'R3_Zalo', 'ca_nhan', 'gioi_thieu', 'broadcast', 'databank'].includes(manualData.lead_phan_loai)

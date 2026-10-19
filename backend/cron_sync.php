@@ -1292,6 +1292,20 @@ if (!function_exists('recallInactiveLeads')) {
                 LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
                 WHERE l.is_accepted = 0
                   AND l.assigned_to IS NOT NULL
+                  AND LOWER(COALESCE(l.source, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                  AND LOWER(COALESCE(l.lead_phan_loai, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                  AND LOWER(COALESCE(l.loai_lead, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM contacts c_pers
+                      WHERE (c_pers.lead_id = l.id OR (l.person_id IS NOT NULL AND c_pers.person_id = l.person_id))
+                        AND c_pers.deleted_at IS NULL
+                        AND (
+                            LOWER(COALESCE(c_pers.source, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                            OR LOWER(COALESCE(c_pers.lead_phan_loai, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                            OR LOWER(COALESCE(c_pers.loai_lead, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                            OR ((c_pers.lead_id IS NULL OR c_pers.lead_id = 0) AND LOWER(COALESCE(c_pers.source, '')) != 'databank')
+                        )
+                  )
                 ORDER BY l.id ASC";
                 
         $stmt = $conn->prepare($sql);
@@ -1810,6 +1824,9 @@ if (!function_exists('recallUnprocessedDatabankClaimedLeads')) {
             SELECT c.id as contact_id, c.owner_id, c.first_name, c.last_name, c.phone, c.person_id, c.lead_id, c.created_at
             FROM contacts c
             WHERE (c.lead_phan_loai = 'databank' OR c.source = 'databank')
+              AND COALESCE(LOWER(c.lead_phan_loai), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+              AND COALESCE(LOWER(c.loai_lead), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+              AND COALESCE(LOWER(c.source), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
               AND c.deleted_at IS NULL
               AND c.pipeline_status IN ('chua_xac_dinh', 'not_lead_pending')
               AND c.created_at <= DATE_SUB(NOW(), INTERVAL ? HOUR)
@@ -1847,7 +1864,23 @@ if (!function_exists('recallUnprocessedDatabankClaimedLeads')) {
                 }
 
                 if ($personId > 0) {
-                    $stmtPub = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = IFNULL(released_to_kho_at, NOW()) WHERE id = ? AND COALESCE(deleted_from_databank, 0) = 0");
+                    $stmtPub = $conn->prepare("
+                        UPDATE persons p
+                        SET p.is_public = 1, p.released_to_kho_at = IFNULL(p.released_to_kho_at, NOW())
+                        WHERE p.id = ?
+                          AND COALESCE(p.deleted_from_databank, 0) = 0
+                          AND NOT EXISTS (
+                              SELECT 1 FROM contacts c_pers
+                              WHERE c_pers.person_id = p.id
+                                AND c_pers.deleted_at IS NULL
+                                AND (
+                                    COALESCE(LOWER(c_pers.source), '') IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                                    OR COALESCE(LOWER(c_pers.lead_phan_loai), '') IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                                    OR COALESCE(LOWER(c_pers.loai_lead), '') IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                                    OR ((c_pers.lead_id IS NULL OR c_pers.lead_id = 0) AND COALESCE(LOWER(c_pers.source), '') != 'databank')
+                                )
+                          )
+                    ");
                     if ($stmtPub) {
                         $stmtPub->bind_param("i", $personId);
                         $stmtPub->execute();
@@ -2950,15 +2983,27 @@ function releaseExpiredLeadsToKho($conn) {
             WHERE c.security_expires_at <= NOW()
               AND c.security_expires_at IS NOT NULL
               AND c.deleted_at IS NULL
+              AND COALESCE(LOWER(c.source), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+              AND COALESCE(LOWER(c.lead_phan_loai), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+              AND COALESCE(LOWER(c.loai_lead), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+              AND NOT ((c.lead_id IS NULL OR c.lead_id = 0) AND COALESCE(LOWER(c.source), '') != 'databank')
               AND p.is_public = 0
               AND p.is_blocked = 0
               AND p.deleted_from_databank = 0
+              AND (c.pipeline_status != 'chua_xac_dinh' OR COALESCE(c.parallel_assigned, 0) != 0)
               AND c.pipeline_status NOT IN ((SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1), 'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead')
               AND NOT EXISTS (
                   SELECT 1 FROM contacts c_active 
                   WHERE c_active.person_id = p.id 
                     AND c_active.deleted_at IS NULL 
-                    AND (c_active.security_expires_at > NOW() OR c_active.pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'))
+                    AND (
+                        c_active.security_expires_at > NOW()
+                        OR c_active.pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong')
+                        OR COALESCE(LOWER(c_active.source), '') IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                        OR COALESCE(LOWER(c_active.lead_phan_loai), '') IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                        OR COALESCE(LOWER(c_active.loai_lead), '') IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                        OR ((c_active.lead_id IS NULL OR c_active.lead_id = 0) AND COALESCE(LOWER(c_active.source), '') != 'databank')
+                    )
               )
               AND NOT EXISTS (
                   SELECT 1 FROM data_reports dr 
@@ -3096,7 +3141,10 @@ function assignParallelLeads($conn) {
     }
 
     $sql = "SELECT c.id as contact_id, c.person_id, c.lead_id, c.owner_id, c.project_id, c.email, c.phone, c.first_name, c.last_name, c.source, c.notes, c.customer_type, c.tenant_id,
-                   (SELECT dr.round_id FROM distribution_logs dr WHERE (dr.lead_id = c.lead_id OR dr.lead_id = c.id) AND dr.status = 'assigned' ORDER BY dr.id DESC LIMIT 1) as original_round_id
+                   COALESCE(
+                       (SELECT dr.round_id FROM distribution_logs dr WHERE (dr.lead_id = c.lead_id OR dr.lead_id = c.id) AND dr.status IN ('assigned', 'grabbed', 'compensation', 'pending_claim') AND dr.round_id IS NOT NULL AND dr.round_id > 0 ORDER BY dr.id DESC LIMIT 1),
+                       (SELECT l2.target_round_id FROM leads l2 WHERE l2.id = c.lead_id AND l2.target_round_id IS NOT NULL AND l2.target_round_id > 0 LIMIT 1)
+                   ) as original_round_id
             FROM contacts c
             JOIN persons p ON c.person_id = p.id
             WHERE c.pipeline_status = ?
@@ -3105,6 +3153,10 @@ function assignParallelLeads($conn) {
               AND c.security_expires_at IS NOT NULL
               AND c.owner_id IS NOT NULL
               AND c.deleted_at IS NULL
+              AND COALESCE(LOWER(c.source), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+              AND COALESCE(LOWER(c.lead_phan_loai), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+              AND COALESCE(LOWER(c.loai_lead), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+              AND NOT ((c.lead_id IS NULL OR c.lead_id = 0) AND COALESCE(LOWER(c.source), '') != 'databank')
               AND NOT EXISTS (
                   SELECT 1 FROM cooperation_slips cs
                   WHERE cs.contact_id = c.id

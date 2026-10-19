@@ -1265,30 +1265,189 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
         return ['success' => false, 'message' => 'Chỉ có Sale hoặc Manager dạng Sale mới được phép tự nhận chăm sóc (Self-assign) data.'];
     }
 
-    if ($decodedUser['role'] === 'sale' || $distribution_mode === 'self_assign') {
-        $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
-        $stmtC->bind_param("s", $decodedUser['email']);
-        $stmtC->execute();
-        $cRow = $stmtC->get_result()->fetch_assoc();
-        $stmtC->close();
-        if ($cRow) {
-            $override_consultant_id = (int)$cRow['id'];
-        } else {
-            $override_consultant_id = (int)$decodedUser['user_id'];
-        }
-        $distribution_mode = 'auto_round';
-        if ($source !== 'gioi_thieu' && empty($lead_phan_loai)) {
-            $source = 'ca_nhan';
-            $lead_phan_loai = 'ca_nhan';
-        }
-    }
-
     if (empty($phone) && empty($email)) {
         return ['success' => false, 'message' => 'Vui lòng nhập SĐT hoặc Email'];
     }
 
     if (isLeadBlocked($conn, $phone, $email)) {
         return ['success' => false, 'message' => 'Liên hệ này đã bị chặn vĩnh viễn trong hệ thống (Blocked).'];
+    }
+
+    $isPersonalInput = in_array(mb_strtolower(trim((string)$source), 'UTF-8'), ['ca_nhan', 'cá nhân', 'ca nhan', 'gioi_thieu', 'giới thiệu', 'gioi thieu', 'personal', 'referral', 'manual', 'self'], true)
+        || in_array(mb_strtolower(trim((string)$lead_phan_loai), 'UTF-8'), ['ca_nhan', 'cá nhân', 'ca nhan', 'gioi_thieu', 'giới thiệu', 'gioi thieu', 'personal', 'referral', 'manual', 'self'], true);
+
+    if ($isPersonalInput && $decodedUser['role'] !== 'sale' && !$canSelfAssign) {
+        return ['success' => false, 'message' => 'MKT không ghi nhận khách cá nhân. Chỉ Sale mới được nhập khách cá nhân và tự chăm sóc.'];
+    }
+
+    // Bước 3: Chỉ Sale nhập khách cá nhân và tự xem tự tương tác (Không ghi nhận vào bảng leads của MKT, không gắn đồng hồ thu hồi ra kho)
+    if ($decodedUser['role'] === 'sale' || $distribution_mode === 'self_assign' || $isPersonalInput) {
+        $saleUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+        if ($saleUserId <= 0 && !empty($decodedUser['email'])) {
+            $stU = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+            if ($stU) {
+                $stU->bind_param("s", $decodedUser['email']);
+                $stU->execute();
+                $uRow = $stU->get_result()->fetch_assoc();
+                $stU->close();
+                if ($uRow) $saleUserId = (int)$uRow['id'];
+            }
+        }
+        if ($saleUserId <= 0) {
+            return ['success' => false, 'message' => 'Không xác định được tài khoản Sale hiện tại.'];
+        }
+
+        $srcLower = mb_strtolower(trim((string)$source), 'UTF-8');
+        $plLower = mb_strtolower(trim((string)$lead_phan_loai), 'UTF-8');
+        if (in_array($srcLower, ['gioi_thieu', 'giới thiệu', 'gioi thieu', 'referral'], true) || in_array($plLower, ['gioi_thieu', 'giới thiệu', 'gioi thieu', 'referral'], true)) {
+            $source = 'gioi_thieu';
+            $lead_phan_loai = 'gioi_thieu';
+        } else {
+            $source = 'ca_nhan';
+            $lead_phan_loai = 'ca_nhan';
+        }
+
+        // Check if this Sale already owns an active contact with this phone
+        if (!empty($phone)) {
+            $stOwnChk = $conn->prepare("SELECT id FROM contacts WHERE owner_id = ? AND (phone = ? OR mobile = ?) AND deleted_at IS NULL LIMIT 1");
+            if ($stOwnChk) {
+                $stOwnChk->bind_param("iss", $saleUserId, $phone, $phone);
+                $stOwnChk->execute();
+                $ownRow = $stOwnChk->get_result()->fetch_assoc();
+                $stOwnChk->close();
+                if ($ownRow) {
+                    return ['success' => false, 'message' => 'Khách hàng này đã có trong danh sách chăm sóc của bạn.'];
+                }
+            }
+        }
+
+        // Check 30-day MKT duplicate warning (Rule 1.9) without inserting into MKT leads
+        $isMktDuplicate = false;
+        $daysSinceMkt = 0;
+        $oldMktSource = '';
+        $duplicateWithId = null;
+        if (!empty($phone)) {
+            $stMktChk = $conn->prepare("SELECT id, source, created_at FROM contacts WHERE (phone = ? OR mobile = ?) AND deleted_at IS NULL AND LOWER(COALESCE(source,'')) NOT IN ('ca_nhan','cá nhân','ca nhan','gioi_thieu','giới thiệu','databank','kho_data') ORDER BY id DESC LIMIT 1");
+            if ($stMktChk) {
+                $stMktChk->bind_param("ss", $phone, $phone);
+                $stMktChk->execute();
+                $mRow = $stMktChk->get_result()->fetch_assoc();
+                $stMktChk->close();
+                if ($mRow) {
+                    $daysSinceMkt = (time() - strtotime($mRow['created_at'])) / 86400;
+                    if ($daysSinceMkt <= 30) {
+                        $isMktDuplicate = true;
+                        $oldMktSource = $mRow['source'] ?: 'Marketing';
+                        $duplicateWithId = (int)$mRow['id'];
+                    }
+                }
+            }
+            if (!$isMktDuplicate) {
+                $stLeadChk = $conn->prepare("SELECT id, source, created_at FROM leads WHERE phone = ? AND LOWER(COALESCE(source,'')) NOT IN ('ca_nhan','cá nhân','ca nhan','gioi_thieu','giới thiệu','databank','kho_data') ORDER BY id DESC LIMIT 1");
+                if ($stLeadChk) {
+                    $stLeadChk->bind_param("s", $phone);
+                    $stLeadChk->execute();
+                    $lRow = $stLeadChk->get_result()->fetch_assoc();
+                    $stLeadChk->close();
+                    if ($lRow) {
+                        $daysSinceMkt = (time() - strtotime($lRow['created_at'])) / 86400;
+                        if ($daysSinceMkt <= 30) {
+                            $isMktDuplicate = true;
+                            $oldMktSource = $lRow['source'] ?: 'Marketing';
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($isMktDuplicate) {
+            $note = "[CẢNH BÁO RỬA NGUỒN]: Khách hàng cá nhân tự nhập trùng SĐT active với lead MKT (" . $oldMktSource . ") cách đây " . round($daysSinceMkt) . " ngày.\n" . $note;
+        }
+
+        $conn->begin_transaction();
+        try {
+            $fullName = trim($name) !== '' ? trim($name) : 'Khách hàng cá nhân';
+            $parts = preg_split('/\s+/u', $fullName);
+            $lastName = array_shift($parts) ?? '';
+            $firstName = implode(' ', $parts);
+            if ($firstName === '') {
+                $firstName = $lastName;
+                $lastName = '';
+            }
+
+            $personId = null;
+            if (!empty($phone)) {
+                $stmtPerson = $conn->prepare("
+                    INSERT INTO persons (phone, email, full_name, is_public, released_to_kho_at, deleted_from_databank)
+                    VALUES (?, ?, ?, 0, NULL, 0)
+                    ON DUPLICATE KEY UPDATE
+                        email = IF(email IS NULL OR email = '', VALUES(email), email),
+                        full_name = IF(full_name IS NULL OR full_name = '', VALUES(full_name), full_name),
+                        is_public = 0,
+                        released_to_kho_at = NULL
+                ");
+                $stmtPerson->bind_param("sss", $phone, $email, $fullName);
+                $stmtPerson->execute();
+                $stmtPerson->close();
+
+                $stmtGetP = $conn->prepare("SELECT id FROM persons WHERE phone = ? LIMIT 1");
+                $stmtGetP->bind_param("s", $phone);
+                $stmtGetP->execute();
+                $pRow = $stmtGetP->get_result()->fetch_assoc();
+                $stmtGetP->close();
+                if ($pRow) $personId = (int)$pRow['id'];
+            }
+
+            $stageId = 1;
+            $chkStage = $conn->query("SELECT id FROM pipeline_stages WHERE system_slug = 'chua_xac_dinh' LIMIT 1");
+            if ($chkStage && $chkStage->num_rows > 0) {
+                $stageId = (int)$chkStage->fetch_assoc()['id'];
+            }
+
+            $dupFlagInt = $isMktDuplicate ? 1 : 0;
+            $loaiLeadVal = !empty($loai_lead) ? $loai_lead : (!empty($type) ? $type : null);
+            $custTypeVal = !empty($type) ? $type : null;
+
+            $stmtInsCt = $conn->prepare("
+                INSERT INTO contacts (
+                    tenant_id, person_id, lead_id, project_id, owner_id, created_by,
+                    first_name, last_name, email, phone, mobile,
+                    source, lead_phan_loai, loai_lead, customer_type,
+                    status, pipeline_status, stage_id, temperature,
+                    security_expires_at, notes, facebook_link, link_video_ads,
+                    duplicate_flag, duplicate_with_id, created_at, updated_at
+                ) VALUES (
+                    1, ?, NULL, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    'lead', 'chua_xac_dinh', ?, 'neutral',
+                    NULL, ?, ?, ?,
+                    ?, ?, NOW(), NOW()
+                )
+            ");
+            $stmtInsCt->bind_param(
+                "iiiisssssssssisssii",
+                $personId, $project_id, $saleUserId, $saleUserId,
+                $firstName, $lastName, $email, $phone, $phone,
+                $source, $lead_phan_loai, $loaiLeadVal, $custTypeVal,
+                $stageId,
+                $note, $facebook_link, $link_video_ads,
+                $dupFlagInt, $duplicateWithId
+            );
+            $stmtInsCt->execute();
+            $newContactId = (int)$conn->insert_id;
+            $stmtInsCt->close();
+
+            $conn->commit();
+            return [
+                'success' => true,
+                'contact_id' => $newContactId,
+                'message' => 'Đã thêm khách hàng cá nhân thành công!'
+            ];
+        } catch (Exception $e) {
+            $conn->rollback();
+            return ['success' => false, 'message' => 'Lỗi thêm khách hàng cá nhân: ' . $e->getMessage()];
+        }
     }
 
     if ($distribution_mode === 'direct_databank') {
@@ -3702,6 +3861,9 @@ switch ($action) {
         if (isset($_GET['exclude_public']) && $_GET['exclude_public'] == '1') {
             $extraCondition .= " AND (p.is_public IS NULL OR p.is_public = 0) AND dl.status != 'released_to_kho' AND dl.status != 'databank'";
         }
+        // Bước 3: MKT không ghi nhận và không hiển thị khách cá nhân / giới thiệu trong bảng Quản lý Lead
+        $extraCondition .= " AND LOWER(COALESCE(l.source,'')) NOT IN ('ca_nhan','cá nhân','ca nhan','gioi_thieu','giới thiệu','gioi thieu','personal','referral','manual','self')
+                             AND LOWER(COALESCE(l.lead_phan_loai,'')) NOT IN ('ca_nhan','cá nhân','ca nhan','gioi_thieu','giới thiệu','gioi thieu','personal','referral','manual','self')";
         // Exclude leads whose associated customer contact has already been moved to trash / deleted after the lead was created
         $extraCondition .= " AND NOT (
             l.is_accepted = 1
@@ -21693,6 +21855,33 @@ switch ($action) {
                 break;
             }
 
+            // 1a. Absolute Protection: Never allow claiming a Person owned as Personal / Self-Entered by any Sale
+            $stmtChkPersonal = $conn->prepare("
+                SELECT id FROM contacts
+                WHERE person_id = ? AND deleted_at IS NULL
+                  AND (
+                      LOWER(COALESCE(source, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      OR LOWER(COALESCE(lead_phan_loai, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      OR LOWER(COALESCE(loai_lead, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      OR ((lead_id IS NULL OR lead_id = 0) AND LOWER(COALESCE(source, '')) != 'databank')
+                  )
+                LIMIT 1
+            ");
+            $stmtChkPersonal->bind_param("i", $personId);
+            $stmtChkPersonal->execute();
+            $isPersonalOwned = $stmtChkPersonal->get_result()->num_rows > 0;
+            $stmtChkPersonal->close();
+
+            if ($isPersonalOwned) {
+                $stmtHidePers = $conn->prepare("UPDATE persons SET is_public = 0, released_to_kho_at = NULL WHERE id = ?");
+                $stmtHidePers->bind_param("i", $personId);
+                $stmtHidePers->execute();
+                $stmtHidePers->close();
+                $conn->commit();
+                echo json_encode(['success' => false, 'message' => 'Khách hàng cá nhân / tự khai thác của Sale không thuộc diện nhận từ Kho chung!']);
+                break;
+            }
+
             // 1b. Check Same-Reason Reject Lockout (Rule 5.13)
             $lockoutCount = (int) get_system_setting($conn, 'lockout_reason_count_threshold') ?: 3;
             $stmtLock = $conn->prepare("
@@ -22004,8 +22193,27 @@ switch ($action) {
         $dealWonStatus = get_system_setting($conn, 'deal_won_status') ?: 'dong_deal';
         $dealWonEsc = $conn->real_escape_string($dealWonStatus);
 
+        $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources');
+        if ($applicableSourcesStr === null || trim($applicableSourcesStr) === '' || trim($applicableSourcesStr) === '*' || trim(strtolower($applicableSourcesStr)) === 'all') {
+            $sourcesFilter = "";
+        } else {
+            $applicableSources = array_filter(array_map('trim', explode(',', $applicableSourcesStr)));
+            $applicableSources = array_filter($applicableSources, function($s) {
+                return !in_array(strtolower($s), ['ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self'], true);
+            });
+            $applicableSourcesEscaped = array_map(function($s) use ($conn) {
+                return "'" . $conn->real_escape_string($s) . "'";
+            }, $applicableSources);
+            if (!empty($applicableSourcesEscaped)) {
+                $sourcesFilter = "AND (c.source IN (" . implode(',', $applicableSourcesEscaped) . ") OR c.source = 'databank')";
+            } else {
+                $sourcesFilter = "";
+            }
+        }
+
         // Instant sync: release any leads whose security timer has expired back to Databank (is_public = 1)
         // Throttled to once every 30s via lock file to prevent table-wide lock contention when multiple Sales open Databank
+        // NEVER release personal/self-entered leads!
         $dbkSyncLock = sys_get_temp_dir() . '/richland_databank_sync.lock';
         if (!file_exists($dbkSyncLock) || (time() - @filemtime($dbkSyncLock)) >= 30) {
             @touch($dbkSyncLock);
@@ -22019,12 +22227,25 @@ switch ($action) {
                   AND p.is_public = 0
                   AND p.is_blocked = 0
                   AND p.deleted_from_databank = 0
+                  AND LOWER(COALESCE(c.source, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                  AND LOWER(COALESCE(c.lead_phan_loai, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                  AND LOWER(COALESCE(c.loai_lead, '')) NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                  AND NOT ((c.lead_id IS NULL OR c.lead_id = 0) AND LOWER(COALESCE(c.source, '')) != 'databank')
+                  $sourcesFilter
+                  AND (c.pipeline_status != 'chua_xac_dinh' OR COALESCE(c.parallel_assigned, 0) != 0)
                   AND c.pipeline_status NOT IN ('$dealWonEsc', 'dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', 'not_lead')
                   AND NOT EXISTS (
                       SELECT 1 FROM contacts c_active 
                       WHERE c_active.person_id = p.id 
                         AND c_active.deleted_at IS NULL 
-                        AND (c_active.security_expires_at > NOW() OR c_active.pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'))
+                        AND (
+                            c_active.security_expires_at > NOW()
+                            OR c_active.pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong')
+                            OR LOWER(COALESCE(c_active.source, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                            OR LOWER(COALESCE(c_active.lead_phan_loai, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                            OR LOWER(COALESCE(c_active.loai_lead, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                            OR ((c_active.lead_id IS NULL OR c_active.lead_id = 0) AND LOWER(COALESCE(c_active.source, '')) != 'databank')
+                        )
                   )
                   AND NOT EXISTS (
                       SELECT 1 FROM data_reports dr 
@@ -22036,6 +22257,17 @@ switch ($action) {
 
         $blockCond = "
             AND p.is_blocked = 0 
+            AND NOT EXISTS (
+                SELECT 1 FROM contacts c_pers
+                WHERE c_pers.person_id = p.id
+                  AND c_pers.deleted_at IS NULL
+                  AND (
+                      LOWER(COALESCE(c_pers.source, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      OR LOWER(COALESCE(c_pers.lead_phan_loai, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      OR LOWER(COALESCE(c_pers.loai_lead, '')) IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
+                      OR ((c_pers.lead_id IS NULL OR c_pers.lead_id = 0) AND LOWER(COALESCE(c_pers.source, '')) != 'databank')
+                  )
+            )
             AND NOT EXISTS (
                 SELECT 1 FROM persons p2 
                 WHERE p2.is_blocked = 1 
