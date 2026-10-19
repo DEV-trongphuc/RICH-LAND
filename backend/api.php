@@ -22787,19 +22787,15 @@ switch ($action) {
             // Map of marketing_campaigns and lead campaign names
             $campaignNameMap = [];
             $saleCampaignsList = [];
-            $resMC = $conn->query("SELECT id, name, code, project_id FROM marketing_campaigns ORDER BY id DESC");
+            $resMC = $conn->query("SELECT id, name, project_id FROM marketing_campaigns ORDER BY id DESC");
             if ($resMC) {
                 while ($mc = $resMC->fetch_assoc()) {
                     $mcId = (string)$mc['id'];
-                    $mcCode = trim((string)($mc['code'] ?? ''));
-                    $mcName = trim((string)($mc['name'] ?? '')) ?: $mcCode;
+                    $mcName = trim((string)($mc['name'] ?? '')) ?: $mcId;
                     $campaignNameMap[$mcId] = $mcName;
-                    if ($mcCode !== '') {
-                        $campaignNameMap[$mcCode] = $mcName;
-                    }
                     $saleCampaignsList[$mcId] = [
                         'id' => $mcId,
-                        'name' => $mcName . ($mcCode ? " ($mcCode)" : ''),
+                        'name' => $mcName,
                         'project_id' => !empty($mc['project_id']) ? (int)$mc['project_id'] : null
                     ];
                 }
