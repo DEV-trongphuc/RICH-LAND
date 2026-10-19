@@ -230,6 +230,7 @@ CREATE TABLE IF NOT EXISTS `contacts` (
   `lead_id` int(11) DEFAULT NULL,   -- FK to Leads (Intake lead)
   `nguoi_gioi_thieu_id` int(11) DEFAULT NULL, -- FK to referrer contact
   `project_id` int(11) DEFAULT NULL, -- FK to Projects
+  `campaign_id` varchar(255) DEFAULT NULL, -- Sale Care Campaign ID / Code
   `company_id` int(11) DEFAULT NULL,
   `owner_id` int(11) DEFAULT NULL,   -- FK to Users (Sales Owner)
   `created_by` int(11) NOT NULL,

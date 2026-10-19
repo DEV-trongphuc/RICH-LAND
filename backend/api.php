@@ -22744,6 +22744,1035 @@ switch ($action) {
         }
         break;
 
+    case 'get_crm_dashboard_v2':
+        if (!$decodedUser) {
+            respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
+        }
+        try {
+            $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            $userRole = strtolower((string)($decodedUser['role'] ?? 'sale'));
+            $isSaleOnly = in_array($userRole, ['sale', 'sales', 'consultant'], true);
+
+            $tab = trim((string)($_GET['tab'] ?? 'sale_perf'));
+            if ($isSaleOnly) {
+                $tab = 'sale_perf';
+            }
+
+            $startDate = trim((string)($_GET['start_date'] ?? ''));
+            $endDate = trim((string)($_GET['end_date'] ?? ''));
+            $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' && $_GET['project_id'] !== 'all' ? (int)$_GET['project_id'] : 0;
+            $campaignId = isset($_GET['campaign_id']) && $_GET['campaign_id'] !== '' && $_GET['campaign_id'] !== 'all' ? trim((string)$_GET['campaign_id']) : '';
+            $saleIdParam = isset($_GET['sale_id']) && $_GET['sale_id'] !== '' && $_GET['sale_id'] !== 'all' ? (int)$_GET['sale_id'] : 0;
+            $careRole = trim((string)($_GET['care_role'] ?? 'all')); // all | primary | coop
+            $leadSourceType = trim((string)($_GET['lead_source_type'] ?? 'all')); // all | distributed | databank | personal
+            $leadPhanLoai = isset($_GET['lead_phan_loai']) && $_GET['lead_phan_loai'] !== '' && $_GET['lead_phan_loai'] !== 'all' ? trim((string)$_GET['lead_phan_loai']) : '';
+            $donviChay = isset($_GET['donvi_chay']) && $_GET['donvi_chay'] !== '' && $_GET['donvi_chay'] !== 'all' ? trim((string)$_GET['donvi_chay']) : '';
+            $channelFilter = isset($_GET['channel']) && $_GET['channel'] !== '' && $_GET['channel'] !== 'all' ? trim((string)$_GET['channel']) : '';
+
+            $targetSaleId = $isSaleOnly ? $currentUserId : $saleIdParam;
+
+            // 1. Build Filter Options (lightweight queries)
+            $projectsList = [];
+            $resProj = $conn->query("SELECT id, name, code FROM projects ORDER BY name ASC");
+            if ($resProj) {
+                while ($r = $resProj->fetch_assoc()) {
+                    $projectsList[] = [
+                        'id' => (int)$r['id'],
+                        'name' => $r['name'],
+                        'code' => $r['code']
+                    ];
+                }
+            }
+
+            // Map of marketing_campaigns and lead campaign names
+            $campaignNameMap = [];
+            $saleCampaignsList = [];
+            $resMC = $conn->query("SELECT id, name, code, project_id FROM marketing_campaigns ORDER BY id DESC");
+            if ($resMC) {
+                while ($mc = $resMC->fetch_assoc()) {
+                    $mcId = (string)$mc['id'];
+                    $mcCode = trim((string)($mc['code'] ?? ''));
+                    $mcName = trim((string)($mc['name'] ?? '')) ?: $mcCode;
+                    $campaignNameMap[$mcId] = $mcName;
+                    if ($mcCode !== '') {
+                        $campaignNameMap[$mcCode] = $mcName;
+                    }
+                    $saleCampaignsList[$mcId] = [
+                        'id' => $mcId,
+                        'name' => $mcName . ($mcCode ? " ($mcCode)" : ''),
+                        'project_id' => !empty($mc['project_id']) ? (int)$mc['project_id'] : null
+                    ];
+                }
+            }
+
+            $mktCampaignsList = [];
+            $resLeadCamp = $conn->query("
+                SELECT l.campaign_id AS id,
+                       MAX(COALESCE(NULLIF(l.campaign_name, ''), l.campaign_id)) AS name,
+                       MAX(l.project_id) AS project_id,
+                       COUNT(*) AS cnt
+                FROM leads l
+                WHERE l.campaign_id IS NOT NULL AND l.campaign_id != '' AND l.campaign_id != '0'
+                GROUP BY l.campaign_id
+                ORDER BY cnt DESC
+                LIMIT 250
+            ");
+            if ($resLeadCamp) {
+                while ($lc = $resLeadCamp->fetch_assoc()) {
+                    $cId = trim((string)$lc['id']);
+                    if ($cId === '') continue;
+                    $cName = trim((string)($lc['name'] ?? '')) ?: $cId;
+                    if (!isset($campaignNameMap[$cId])) {
+                        $campaignNameMap[$cId] = $cName;
+                    }
+                    $displayLabel = ($cName !== $cId) ? "$cName ($cId)" : $cId;
+                    $mktCampaignsList[] = [
+                        'id' => $cId,
+                        'name' => $displayLabel,
+                        'project_id' => !empty($lc['project_id']) ? (int)$lc['project_id'] : null,
+                        'count' => (int)$lc['cnt']
+                    ];
+                    if (!isset($saleCampaignsList[$cId])) {
+                        $saleCampaignsList[$cId] = [
+                            'id' => $cId,
+                            'name' => $displayLabel,
+                            'project_id' => !empty($lc['project_id']) ? (int)$lc['project_id'] : null
+                        ];
+                    }
+                }
+            }
+
+            // Also include any distinct campaign_id on contacts not yet in saleCampaignsList
+            $resContactCamp = $conn->query("
+                SELECT c.campaign_id AS id, MAX(c.project_id) AS project_id, COUNT(*) AS cnt
+                FROM contacts c
+                WHERE c.deleted_at IS NULL AND c.campaign_id IS NOT NULL AND c.campaign_id != '' AND c.campaign_id != '0'
+                GROUP BY c.campaign_id
+                ORDER BY cnt DESC
+                LIMIT 200
+            ");
+            if ($resContactCamp) {
+                while ($cc = $resContactCamp->fetch_assoc()) {
+                    $cId = trim((string)$cc['id']);
+                    if ($cId !== '' && !isset($saleCampaignsList[$cId])) {
+                        $cName = $campaignNameMap[$cId] ?? $cId;
+                        $saleCampaignsList[$cId] = [
+                            'id' => $cId,
+                            'name' => ($cName !== $cId) ? "$cName ($cId)" : $cId,
+                            'project_id' => !empty($cc['project_id']) ? (int)$cc['project_id'] : null
+                        ];
+                    }
+                }
+            }
+
+            $salesUsersList = [];
+            if (!$isSaleOnly) {
+                $resUsers = $conn->query("
+                    SELECT u.id, u.full_name, u.email, u.role, u.team_id,
+                           (SELECT t.name FROM teams t WHERE t.id = u.team_id LIMIT 1) AS team_name
+                    FROM users u
+                    WHERE u.is_active = 1 AND u.role IN ('sale', 'sales', 'consultant', 'manager', 'director', 'admin')
+                    ORDER BY u.full_name ASC
+                ");
+                if ($resUsers) {
+                    while ($u = $resUsers->fetch_assoc()) {
+                        $salesUsersList[] = [
+                            'id' => (int)$u['id'],
+                            'name' => $u['full_name'] ?: $u['email'],
+                            'email' => $u['email'],
+                            'role' => $u['role'],
+                            'team_id' => !empty($u['team_id']) ? (int)$u['team_id'] : null,
+                            'team_name' => $u['team_name'] ?? ''
+                        ];
+                    }
+                }
+            }
+
+            $donviList = [];
+            $resDv = $conn->query("SELECT DISTINCT donvi_chay FROM leads WHERE donvi_chay IS NOT NULL AND donvi_chay != '' ORDER BY donvi_chay ASC LIMIT 50");
+            if ($resDv) {
+                while ($r = $resDv->fetch_assoc()) {
+                    $donviList[] = $r['donvi_chay'];
+                }
+            }
+
+            $phanLoaiList = [];
+            $resPl = $conn->query("SELECT DISTINCT lead_phan_loai FROM leads WHERE lead_phan_loai IS NOT NULL AND lead_phan_loai != '' ORDER BY lead_phan_loai ASC LIMIT 50");
+            if ($resPl) {
+                while ($r = $resPl->fetch_assoc()) {
+                    $phanLoaiList[] = $r['lead_phan_loai'];
+                }
+            }
+
+            $filterOptions = [
+                'projects' => $projectsList,
+                'sale_campaigns' => array_values($saleCampaignsList),
+                'mkt_campaigns' => $mktCampaignsList,
+                'sales_users' => $salesUsersList,
+                'donvi_list' => $donviList,
+                'phan_loai_list' => $phanLoaiList
+            ];
+
+            // Helper closure to compute conversion rates safely
+            $calcRates = function(int $total, int $ql, int $mQl, int $sQl, int $giaoDich): array {
+                return [
+                    'tuong_tac_lan_1' => $total > 0 ? round(($mQl / $total) * 100, 1) : 0.0,
+                    'ti_le_dot_lua'   => $mQl > 0 ? round(($sQl / $mQl) * 100, 1) : 0.0,
+                    'ti_le_chot'      => $sQl > 0 ? round(($giaoDich / $sQl) * 100, 1) : 0.0,
+                    'chuyen_doi_chung'=> $ql > 0 ? round(($giaoDich / $ql) * 100, 1) : 0.0,
+                    'ql_rate'         => $total > 0 ? round(($ql / $total) * 100, 1) : 0.0
+                ];
+            };
+
+            // =========================================================================
+            // TAB 1: HIỆU QUẢ SALE (Measured on `contacts`: contacts.project_id & contacts.campaign_id)
+            // =========================================================================
+            if ($tab === 'sale_perf') {
+                $whereC = ["c.deleted_at IS NULL"];
+                if ($startDate !== '') {
+                    $sd = $conn->real_escape_string($startDate . ' 00:00:00');
+                    $whereC[] = "c.created_at >= '$sd'";
+                }
+                if ($endDate !== '') {
+                    $ed = $conn->real_escape_string($endDate . ' 23:59:59');
+                    $whereC[] = "c.created_at <= '$ed'";
+                }
+                if ($projectId > 0) {
+                    $whereC[] = "c.project_id = " . (int)$projectId;
+                }
+                if ($campaignId !== '') {
+                    $cidEsc = $conn->real_escape_string($campaignId);
+                    $whereC[] = "(c.campaign_id = '$cidEsc' OR ((c.campaign_id IS NULL OR c.campaign_id = '' OR c.campaign_id = '0') AND c.utm_campaign = '$cidEsc'))";
+                }
+                if ($leadPhanLoai !== '') {
+                    $plEsc = $conn->real_escape_string($leadPhanLoai);
+                    $whereC[] = "c.lead_phan_loai = '$plEsc'";
+                }
+                if ($donviChay !== '') {
+                    $dvEsc = $conn->real_escape_string($donviChay);
+                    $whereC[] = "c.donvi_chay = '$dvEsc'";
+                }
+
+                // Care Role & Sale ID filter
+                if ($targetSaleId > 0) {
+                    $sid = (int)$targetSaleId;
+                    $primaryCond = "(c.owner_id = $sid)";
+                    $coopCond = "(FIND_IN_SET('$sid', c.collaborator_ids) > 0 OR EXISTS (SELECT 1 FROM quyen_truy_cap qtc WHERE qtc.contact_id = c.id AND qtc.user_id = $sid) OR EXISTS (SELECT 1 FROM cooperation_slips cs WHERE cs.contact_id = c.id AND cs.status NOT IN ('rejected', 'cancelled') AND (cs.created_by = $sid OR JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE '{}' END), '\"$sid\"'))))";
+                    if ($careRole === 'primary') {
+                        $whereC[] = $primaryCond;
+                    } elseif ($careRole === 'coop') {
+                        $whereC[] = "($coopCond AND c.owner_id != $sid)";
+                    } else {
+                        $whereC[] = "($primaryCond OR $coopCond)";
+                    }
+                } else {
+                    if ($careRole === 'coop') {
+                        $whereC[] = "((c.collaborator_ids IS NOT NULL AND c.collaborator_ids != '' AND c.collaborator_ids != '0') OR EXISTS (SELECT 1 FROM cooperation_slips cs WHERE cs.contact_id = c.id AND cs.status NOT IN ('rejected', 'cancelled')))";
+                    }
+                }
+
+                // Lead Source Type filter (all | distributed | databank | personal)
+                $isDatabankExpr = "(c.source = 'databank' OR COALESCE(c.lead_phan_loai, '') = 'databank')";
+                $isPersonalExpr = "(c.source IN ('ca_nhan', 'gioi_thieu'))";
+                $isDistributedExpr = "(NOT $isDatabankExpr AND NOT $isPersonalExpr)";
+
+                if ($leadSourceType === 'distributed') {
+                    $whereC[] = $isDistributedExpr;
+                } elseif ($leadSourceType === 'databank') {
+                    $whereC[] = $isDatabankExpr;
+                } elseif ($leadSourceType === 'personal') {
+                    $whereC[] = $isPersonalExpr;
+                }
+
+                $whereCStr = implode(' AND ', $whereC);
+
+                // Milestone SQL expressions on `contacts c`
+                $qlExpr = "(c.pipeline_status != 'not_lead')";
+                $mQlExpr = "(c.pipeline_status != 'not_lead' AND (c.pipeline_status IN ('quan_tam','dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.quantam_time IS NOT NULL OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $dygExpr = "(c.pipeline_status != 'not_lead' AND (c.pipeline_status IN ('dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $sQlExpr = "(c.pipeline_status != 'not_lead' AND (c.pipeline_status IN ('da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $gdExpr  = "(c.pipeline_status != 'not_lead' AND (c.pipeline_status IN ('booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+
+                $coopCountExpr = $targetSaleId > 0
+                    ? "(c.owner_id != " . (int)$targetSaleId . ")"
+                    : "((c.collaborator_ids IS NOT NULL AND c.collaborator_ids != '' AND c.collaborator_ids != '0'))";
+
+                // 1.1 Main KPI & Funnel Aggregation in a SINGLE SQL scan
+                $sqlSummary = "
+                    SELECT
+                        COUNT(*) AS total_leads,
+                        SUM(CASE WHEN $isDistributedExpr THEN 1 ELSE 0 END) AS distributed_leads,
+                        SUM(CASE WHEN $isDatabankExpr THEN 1 ELSE 0 END) AS databank_leads,
+                        SUM(CASE WHEN $isPersonalExpr THEN 1 ELSE 0 END) AS personal_leads,
+                        SUM(CASE WHEN $coopCountExpr THEN 1 ELSE 0 END) AS coop_leads,
+                        SUM(CASE WHEN c.pipeline_status = 'not_lead' THEN 1 ELSE 0 END) AS not_lead_count,
+                        SUM(CASE WHEN $qlExpr THEN 1 ELSE 0 END) AS ql_count,
+                        SUM(CASE WHEN $mQlExpr THEN 1 ELSE 0 END) AS m_ql_count,
+                        SUM(CASE WHEN $dygExpr THEN 1 ELSE 0 END) AS dong_y_gap_count,
+                        SUM(CASE WHEN $sQlExpr THEN 1 ELSE 0 END) AS s_ql_count,
+                        SUM(CASE WHEN $gdExpr THEN 1 ELSE 0 END) AS giao_dich_count,
+                        SUM(CASE WHEN c.pipeline_status = 'booking' OR (c.booking_time IS NOT NULL AND c.datcoc_time IS NULL AND c.pipeline_status NOT IN ('dat_coc','da_coc','dong_deal','thanh_cong')) THEN 1 ELSE 0 END) AS booking_count,
+                        SUM(CASE WHEN c.pipeline_status IN ('dat_coc','da_coc','dong_deal','thanh_cong') OR c.datcoc_time IS NOT NULL THEN 1 ELSE 0 END) AS dat_coc_count,
+                        SUM(CASE WHEN c.pipeline_status = 'cham_soc_dai_han' THEN 1 ELSE 0 END) AS cham_soc_dai_han_count,
+                        SUM(CASE WHEN c.pipeline_status = 'chua_xac_dinh' THEN 1 ELSE 0 END) AS chua_xac_dinh_count,
+                        SUM(CASE WHEN c.temperature IN ('hot', 'warm') THEN 1 ELSE 0 END) AS temp_hot,
+                        SUM(CASE WHEN c.temperature = 'neutral' THEN 1 ELSE 0 END) AS temp_warm,
+                        SUM(CASE WHEN c.temperature IN ('cold', 'cool') OR c.temperature IS NULL OR c.temperature = '' THEN 1 ELSE 0 END) AS temp_cold,
+                        -- Funnel & Conversion Rates strictly on Distributed Leads (excluding Databank per Excel Row 4)
+                        SUM(CASE WHEN NOT $isDatabankExpr THEN 1 ELSE 0 END) AS dist_total,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $qlExpr THEN 1 ELSE 0 END) AS dist_ql,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $mQlExpr THEN 1 ELSE 0 END) AS dist_m_ql,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $dygExpr THEN 1 ELSE 0 END) AS dist_dong_y_gap,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $sQlExpr THEN 1 ELSE 0 END) AS dist_s_ql,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $gdExpr THEN 1 ELSE 0 END) AS dist_giao_dich
+                    FROM contacts c
+                    WHERE $whereCStr
+                ";
+                $resSum = $conn->query($sqlSummary);
+                $sumRow = ($resSum && $resSum->num_rows > 0) ? $resSum->fetch_assoc() : [];
+
+                $totalLeads = (int)($sumRow['total_leads'] ?? 0);
+                $qlCount = (int)($sumRow['ql_count'] ?? 0);
+                $mQlCount = (int)($sumRow['m_ql_count'] ?? 0);
+                $dygCount = (int)($sumRow['dong_y_gap_count'] ?? 0);
+                $sQlCount = (int)($sumRow['s_ql_count'] ?? 0);
+                $gdCount = (int)($sumRow['giao_dich_count'] ?? 0);
+
+                $distTotal = (int)($sumRow['dist_total'] ?? 0);
+                $distQl = (int)($sumRow['dist_ql'] ?? 0);
+                $distMQl = (int)($sumRow['dist_m_ql'] ?? 0);
+                $distDyg = (int)($sumRow['dist_dong_y_gap'] ?? 0);
+                $distSQl = (int)($sumRow['dist_s_ql'] ?? 0);
+                $distGd = (int)($sumRow['dist_giao_dich'] ?? 0);
+
+                $distRates = $calcRates($distTotal, $distQl, $distMQl, $distSQl, $distGd);
+                $overallRates = $calcRates($totalLeads, $qlCount, $mQlCount, $sQlCount, $gdCount);
+
+                // 1.2 Time-series chart (by day if <= 45 days or filtered, else by month)
+                $useDaily = ($startDate !== '' && $endDate !== '' && (strtotime($endDate) - strtotime($startDate)) <= 60 * 86400);
+                $dateGroupExpr = $useDaily ? "DATE_FORMAT(c.created_at, '%d/%m')" : "DATE_FORMAT(c.created_at, '%m/%Y')";
+                $dateOrderExpr = $useDaily ? "DATE(c.created_at)" : "DATE_FORMAT(c.created_at, '%Y-%m')";
+
+                $timelineChart = [];
+                $sqlTimeline = "
+                    SELECT
+                        $dateGroupExpr AS label,
+                        $dateOrderExpr AS sort_key,
+                        COUNT(*) AS total_leads,
+                        SUM(CASE WHEN c.pipeline_status = 'not_lead' THEN 1 ELSE 0 END) AS not_lead,
+                        SUM(CASE WHEN $qlExpr THEN 1 ELSE 0 END) AS ql,
+                        SUM(CASE WHEN $mQlExpr THEN 1 ELSE 0 END) AS m_ql,
+                        SUM(CASE WHEN $sQlExpr THEN 1 ELSE 0 END) AS s_ql,
+                        SUM(CASE WHEN $gdExpr THEN 1 ELSE 0 END) AS giao_dich
+                    FROM contacts c
+                    WHERE $whereCStr
+                    GROUP BY sort_key, label
+                    ORDER BY sort_key ASC
+                    LIMIT 60
+                ";
+                $resTl = $conn->query($sqlTimeline);
+                if ($resTl) {
+                    while ($tl = $resTl->fetch_assoc()) {
+                        $tTotal = (int)$tl['total_leads'];
+                        $tQl = (int)$tl['ql'];
+                        $timelineChart[] = [
+                            'label' => $tl['label'],
+                            'total_leads' => $tTotal,
+                            'not_lead' => (int)$tl['not_lead'],
+                            'ql' => $tQl,
+                            'ql_rate' => $tTotal > 0 ? round(($tQl / $tTotal) * 100, 1) : 0,
+                            'm_ql' => (int)$tl['m_ql'],
+                            's_ql' => (int)$tl['s_ql'],
+                            'giao_dich' => (int)$tl['giao_dich']
+                        ];
+                    }
+                }
+
+                // 1.3 Care Project Breakdown (contacts.project_id)
+                $byProjectChart = [];
+                $sqlByProj = "
+                    SELECT COALESCE(p.name, 'Chưa gắn dự án') AS name,
+                           COUNT(*) AS total,
+                           SUM(CASE WHEN $mQlExpr THEN 1 ELSE 0 END) AS m_ql,
+                           SUM(CASE WHEN $sQlExpr THEN 1 ELSE 0 END) AS s_ql,
+                           SUM(CASE WHEN $gdExpr THEN 1 ELSE 0 END) AS giao_dich
+                    FROM contacts c
+                    LEFT JOIN projects p ON p.id = c.project_id
+                    WHERE $whereCStr
+                    GROUP BY c.project_id, p.name
+                    ORDER BY total DESC
+                    LIMIT 15
+                ";
+                $resBp = $conn->query($sqlByProj);
+                if ($resBp) {
+                    while ($bp = $resBp->fetch_assoc()) {
+                        $byProjectChart[] = [
+                            'name' => $bp['name'],
+                            'value' => (int)$bp['total'],
+                            'm_ql' => (int)$bp['m_ql'],
+                            's_ql' => (int)$bp['s_ql'],
+                            'giao_dich' => (int)$bp['giao_dich']
+                        ];
+                    }
+                }
+
+                // 1.4 Staff Comparison Table (grouped by owner_id)
+                $staffTable = [];
+                $sqlStaff = "
+                    SELECT
+                        c.owner_id,
+                        COALESCE(u.full_name, 'Chưa phân bổ') AS sale_name,
+                        COALESCE(t.name, '—') AS team_name,
+                        COUNT(*) AS total_leads,
+                        SUM(CASE WHEN $isDistributedExpr THEN 1 ELSE 0 END) AS distributed_leads,
+                        SUM(CASE WHEN $isDatabankExpr THEN 1 ELSE 0 END) AS databank_leads,
+                        SUM(CASE WHEN $isPersonalExpr THEN 1 ELSE 0 END) AS personal_leads,
+                        SUM(CASE WHEN (c.collaborator_ids IS NOT NULL AND c.collaborator_ids != '' AND c.collaborator_ids != '0') THEN 1 ELSE 0 END) AS coop_leads,
+                        SUM(CASE WHEN c.pipeline_status = 'not_lead' THEN 1 ELSE 0 END) AS not_lead_count,
+                        SUM(CASE WHEN $qlExpr THEN 1 ELSE 0 END) AS ql_count,
+                        SUM(CASE WHEN $mQlExpr THEN 1 ELSE 0 END) AS m_ql_count,
+                        SUM(CASE WHEN $dygExpr THEN 1 ELSE 0 END) AS dong_y_gap_count,
+                        SUM(CASE WHEN $sQlExpr THEN 1 ELSE 0 END) AS s_ql_count,
+                        SUM(CASE WHEN $gdExpr THEN 1 ELSE 0 END) AS giao_dich_count,
+                        SUM(CASE WHEN c.pipeline_status = 'cham_soc_dai_han' THEN 1 ELSE 0 END) AS cham_soc_dai_han_count,
+                        SUM(CASE WHEN c.temperature IN ('hot', 'warm') THEN 1 ELSE 0 END) AS temp_hot,
+                        SUM(CASE WHEN c.temperature = 'neutral' THEN 1 ELSE 0 END) AS temp_warm,
+                        SUM(CASE WHEN c.temperature IN ('cold', 'cool') OR c.temperature IS NULL OR c.temperature = '' THEN 1 ELSE 0 END) AS temp_cold,
+                        SUM(CASE WHEN NOT $isDatabankExpr THEN 1 ELSE 0 END) AS dist_total,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $qlExpr THEN 1 ELSE 0 END) AS dist_ql,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $mQlExpr THEN 1 ELSE 0 END) AS dist_m_ql,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $sQlExpr THEN 1 ELSE 0 END) AS dist_s_ql,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $gdExpr THEN 1 ELSE 0 END) AS dist_giao_dich
+                    FROM contacts c
+                    LEFT JOIN users u ON u.id = c.owner_id
+                    LEFT JOIN teams t ON t.id = u.team_id
+                    WHERE $whereCStr
+                    GROUP BY c.owner_id, u.full_name, t.name
+                    ORDER BY giao_dich_count DESC, s_ql_count DESC, m_ql_count DESC, total_leads DESC
+                    LIMIT 100
+                ";
+                $resStaff = $conn->query($sqlStaff);
+                if ($resStaff) {
+                    while ($st = $resStaff->fetch_assoc()) {
+                        $stRates = $calcRates(
+                            (int)$st['dist_total'],
+                            (int)$st['dist_ql'],
+                            (int)$st['dist_m_ql'],
+                            (int)$st['dist_s_ql'],
+                            (int)$st['dist_giao_dich']
+                        );
+                        $stTotal = (int)$st['total_leads'];
+                        $stQl = (int)$st['ql_count'];
+                        $staffTable[] = [
+                            'owner_id' => (int)($st['owner_id'] ?? 0),
+                            'sale_name' => $st['sale_name'],
+                            'team_name' => $st['team_name'],
+                            'total_leads' => $stTotal,
+                            'distributed_leads' => (int)$st['distributed_leads'],
+                            'databank_leads' => (int)$st['databank_leads'],
+                            'personal_leads' => (int)$st['personal_leads'],
+                            'coop_leads' => (int)$st['coop_leads'],
+                            'not_lead_count' => (int)$st['not_lead_count'],
+                            'ql_count' => $stQl,
+                            'ql_rate' => $stTotal > 0 ? round(($stQl / $stTotal) * 100, 1) : 0.0,
+                            'm_ql_count' => (int)$st['m_ql_count'],
+                            'dong_y_gap_count' => (int)$st['dong_y_gap_count'],
+                            's_ql_count' => (int)$st['s_ql_count'],
+                            'giao_dich_count' => (int)$st['giao_dich_count'],
+                            'cham_soc_dai_han_count' => (int)$st['cham_soc_dai_han_count'],
+                            'temp_hot' => (int)$st['temp_hot'],
+                            'temp_warm' => (int)$st['temp_warm'],
+                            'temp_cold' => (int)$st['temp_cold'],
+                            'rates' => $stRates
+                        ];
+                    }
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'tab' => 'sale_perf',
+                    'filter_options' => $filterOptions,
+                    'kpis' => [
+                        'total_leads' => $totalLeads,
+                        'distributed_leads' => (int)($sumRow['distributed_leads'] ?? 0),
+                        'databank_leads' => (int)($sumRow['databank_leads'] ?? 0),
+                        'personal_leads' => (int)($sumRow['personal_leads'] ?? 0),
+                        'coop_leads' => (int)($sumRow['coop_leads'] ?? 0),
+                        'primary_leads' => max(0, $totalLeads - (int)($sumRow['coop_leads'] ?? 0)),
+                        'not_lead_count' => (int)($sumRow['not_lead_count'] ?? 0),
+                        'ql_count' => $qlCount,
+                        'ql_rate' => $overallRates['ql_rate'],
+                        'm_ql_count' => $mQlCount,
+                        'dong_y_gap_count' => $dygCount,
+                        's_ql_count' => $sQlCount,
+                        'giao_dich_count' => $gdCount,
+                        'booking_count' => (int)($sumRow['booking_count'] ?? 0),
+                        'dat_coc_count' => (int)($sumRow['dat_coc_count'] ?? 0),
+                        'cham_soc_dai_han_count' => (int)($sumRow['cham_soc_dai_han_count'] ?? 0),
+                        'chua_xac_dinh_count' => (int)($sumRow['chua_xac_dinh_count'] ?? 0)
+                    ],
+                    'funnel' => [
+                        'note' => 'Chỉ tính trên khách hàng được chia (không tính khách lấy từ Kho Databank)',
+                        'total_leads' => $distTotal,
+                        'ql_count' => $distQl,
+                        'm_ql_count' => $distMQl,
+                        'dong_y_gap_count' => $distDyg,
+                        's_ql_count' => $distSQl,
+                        'giao_dich_count' => $distGd,
+                        'rates' => $distRates
+                    ],
+                    'temperature_chart' => [
+                        ['name' => 'Nóng', 'value' => (int)($sumRow['temp_hot'] ?? 0), 'color' => '#BD1D2D'],
+                        ['name' => 'Ấm', 'value' => (int)($sumRow['temp_warm'] ?? 0), 'color' => '#F59E0B'],
+                        ['name' => 'Lạnh', 'value' => (int)($sumRow['temp_cold'] ?? 0), 'color' => '#3B82F6']
+                    ],
+                    'source_chart' => [
+                        ['name' => 'Khách được chia', 'value' => (int)($sumRow['distributed_leads'] ?? 0), 'color' => '#BD1D2D'],
+                        ['name' => 'Tự khai thác Databank', 'value' => (int)($sumRow['databank_leads'] ?? 0), 'color' => '#2563EB'],
+                        ['name' => 'Cá nhân / Giới thiệu', 'value' => (int)($sumRow['personal_leads'] ?? 0), 'color' => '#10B981']
+                    ],
+                    'timeline_chart' => $timelineChart,
+                    'by_project_chart' => $byProjectChart,
+                    'staff_table' => $staffTable
+                ]);
+                break;
+            }
+
+            // =========================================================================
+            // TAB 2: HIỆU QUẢ MKT (Measured 100% on `leads`: leads.project_id & leads.campaign_id)
+            // =========================================================================
+            if ($tab === 'mkt_perf') {
+                $whereL = ["1=1"];
+                if ($startDate !== '') {
+                    $sd = $conn->real_escape_string($startDate . ' 00:00:00');
+                    $whereL[] = "l.created_at >= '$sd'";
+                }
+                if ($endDate !== '') {
+                    $ed = $conn->real_escape_string($endDate . ' 23:59:59');
+                    $whereL[] = "l.created_at <= '$ed'";
+                }
+                if ($projectId > 0) {
+                    $whereL[] = "l.project_id = " . (int)$projectId;
+                }
+                if ($campaignId !== '') {
+                    $cidEsc = $conn->real_escape_string($campaignId);
+                    $whereL[] = "(l.campaign_id = '$cidEsc' OR l.campaign_name = '$cidEsc')";
+                }
+                if ($leadPhanLoai !== '') {
+                    $plEsc = $conn->real_escape_string($leadPhanLoai);
+                    $whereL[] = "l.lead_phan_loai = '$plEsc'";
+                }
+                if ($donviChay !== '') {
+                    $dvEsc = $conn->real_escape_string($donviChay);
+                    $whereL[] = "l.donvi_chay = '$dvEsc'";
+                }
+                if ($channelFilter !== '') {
+                    $chEsc = $conn->real_escape_string($channelFilter);
+                    $whereL[] = "(l.platform = '$chEsc' OR l.source = '$chEsc')";
+                }
+
+                $whereLStr = implode(' AND ', $whereL);
+
+                // Derived contact progression per lead_id (preserving leads.project_id & leads.campaign_id for MKT attribution)
+                $contactJoinSql = "
+                    LEFT JOIN (
+                        SELECT lead_id,
+                               MAX(pipeline_status) AS pipeline_status,
+                               MAX(temperature) AS temperature,
+                               MAX(quantam_time) AS quantam_time,
+                               MAX(dongygap_time) AS dongygap_time,
+                               MAX(dagap_time) AS dagap_time,
+                               MAX(booking_time) AS booking_time,
+                               MAX(datcoc_time) AS datcoc_time
+                        FROM contacts
+                        WHERE deleted_at IS NULL AND lead_id IS NOT NULL
+                        GROUP BY lead_id
+                    ) c ON c.lead_id = l.id
+                ";
+
+                $mktNotLeadExpr = "(COALESCE(c.pipeline_status, '') = 'not_lead' OR l.status IN ('not_lead', 'blacklisted', 'error'))";
+                $mktQlExpr  = "(NOT $mktNotLeadExpr)";
+                $mktMQlExpr = "(NOT $mktNotLeadExpr AND (c.pipeline_status IN ('quan_tam','dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.quantam_time IS NOT NULL OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $mktDygExpr = "(NOT $mktNotLeadExpr AND (c.pipeline_status IN ('dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $mktSQlExpr = "(NOT $mktNotLeadExpr AND (c.pipeline_status IN ('da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $mktGdExpr  = "(NOT $mktNotLeadExpr AND (c.pipeline_status IN ('booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+
+                $sqlMktSum = "
+                    SELECT
+                        COUNT(*) AS total_leads,
+                        SUM(CASE WHEN $mktNotLeadExpr THEN 1 ELSE 0 END) AS not_lead_count,
+                        SUM(CASE WHEN $mktQlExpr THEN 1 ELSE 0 END) AS ql_count,
+                        SUM(CASE WHEN $mktMQlExpr THEN 1 ELSE 0 END) AS m_ql_count,
+                        SUM(CASE WHEN $mktDygExpr THEN 1 ELSE 0 END) AS dong_y_gap_count,
+                        SUM(CASE WHEN $mktSQlExpr THEN 1 ELSE 0 END) AS s_ql_count,
+                        SUM(CASE WHEN $mktGdExpr THEN 1 ELSE 0 END) AS giao_dich_count,
+                        SUM(CASE WHEN c.pipeline_status = 'cham_soc_dai_han' THEN 1 ELSE 0 END) AS cham_soc_dai_han_count,
+                        SUM(CASE WHEN c.temperature IN ('hot', 'warm') THEN 1 ELSE 0 END) AS temp_hot,
+                        SUM(CASE WHEN c.temperature = 'neutral' THEN 1 ELSE 0 END) AS temp_warm,
+                        SUM(CASE WHEN c.temperature IN ('cold', 'cool') OR c.temperature IS NULL OR c.temperature = '' THEN 1 ELSE 0 END) AS temp_cold
+                    FROM leads l
+                    $contactJoinSql
+                    WHERE $whereLStr
+                ";
+                $resMktSum = $conn->query($sqlMktSum);
+                $mSum = ($resMktSum && $resMktSum->num_rows > 0) ? $resMktSum->fetch_assoc() : [];
+
+                $mTotal = (int)($mSum['total_leads'] ?? 0);
+                $mQl = (int)($mSum['ql_count'] ?? 0);
+                $mMQl = (int)($mSum['m_ql_count'] ?? 0);
+                $mDyg = (int)($mSum['dong_y_gap_count'] ?? 0);
+                $mSQl = (int)($mSum['s_ql_count'] ?? 0);
+                $mGd = (int)($mSum['giao_dich_count'] ?? 0);
+                $mktRates = $calcRates($mTotal, $mQl, $mMQl, $mSQl, $mGd);
+
+                // 2.2 MKT Timeline Chart
+                $useDaily = ($startDate !== '' && $endDate !== '' && (strtotime($endDate) - strtotime($startDate)) <= 60 * 86400);
+                $dateGroupExpr = $useDaily ? "DATE_FORMAT(l.created_at, '%d/%m')" : "DATE_FORMAT(l.created_at, '%m/%Y')";
+                $dateOrderExpr = $useDaily ? "DATE(l.created_at)" : "DATE_FORMAT(l.created_at, '%Y-%m')";
+
+                $timelineChart = [];
+                $sqlMktTl = "
+                    SELECT
+                        $dateGroupExpr AS label,
+                        $dateOrderExpr AS sort_key,
+                        COUNT(*) AS total_leads,
+                        SUM(CASE WHEN $mktNotLeadExpr THEN 1 ELSE 0 END) AS not_lead,
+                        SUM(CASE WHEN $mktQlExpr THEN 1 ELSE 0 END) AS ql,
+                        SUM(CASE WHEN $mktMQlExpr THEN 1 ELSE 0 END) AS m_ql,
+                        SUM(CASE WHEN $mktSQlExpr THEN 1 ELSE 0 END) AS s_ql,
+                        SUM(CASE WHEN $mktGdExpr THEN 1 ELSE 0 END) AS giao_dich
+                    FROM leads l
+                    $contactJoinSql
+                    WHERE $whereLStr
+                    GROUP BY sort_key, label
+                    ORDER BY sort_key ASC
+                    LIMIT 60
+                ";
+                $resMktTl = $conn->query($sqlMktTl);
+                if ($resMktTl) {
+                    while ($tl = $resMktTl->fetch_assoc()) {
+                        $tTotal = (int)$tl['total_leads'];
+                        $tQl = (int)$tl['ql'];
+                        $timelineChart[] = [
+                            'label' => $tl['label'],
+                            'total_leads' => $tTotal,
+                            'not_lead' => (int)$tl['not_lead'],
+                            'ql' => $tQl,
+                            'ql_rate' => $tTotal > 0 ? round(($tQl / $tTotal) * 100, 1) : 0,
+                            'm_ql' => (int)$tl['m_ql'],
+                            's_ql' => (int)$tl['s_ql'],
+                            'giao_dich' => (int)$tl['giao_dich']
+                        ];
+                    }
+                }
+
+                // 2.3 Breakdown Charts: By Original Project, By Lead Phan Loai, By Channel, By Donvi Chay
+                $byProjectChart = [];
+                $resMProj = $conn->query("
+                    SELECT COALESCE(p.name, 'Chưa gắn dự án') AS name, COUNT(*) AS val
+                    FROM leads l
+                    LEFT JOIN projects p ON p.id = l.project_id
+                    WHERE $whereLStr
+                    GROUP BY l.project_id, p.name
+                    ORDER BY val DESC
+                    LIMIT 12
+                ");
+                if ($resMProj) {
+                    while ($r = $resMProj->fetch_assoc()) {
+                        $byProjectChart[] = ['name' => $r['name'], 'value' => (int)$r['val']];
+                    }
+                }
+
+                $byPhanLoaiChart = [];
+                $resMPl = $conn->query("
+                    SELECT COALESCE(NULLIF(l.lead_phan_loai, ''), 'Chưa phân loại') AS name, COUNT(*) AS val
+                    FROM leads l
+                    WHERE $whereLStr
+                    GROUP BY name
+                    ORDER BY val DESC
+                    LIMIT 12
+                ");
+                if ($resMPl) {
+                    while ($r = $resMPl->fetch_assoc()) {
+                        $byPhanLoaiChart[] = ['name' => $r['name'], 'value' => (int)$r['val']];
+                    }
+                }
+
+                $byChannelChart = [];
+                $resMCh = $conn->query("
+                    SELECT CASE
+                        WHEN LOWER(COALESCE(l.platform, l.source, '')) LIKE '%fb%' OR LOWER(COALESCE(l.platform, l.source, '')) LIKE '%facebook%' OR LOWER(COALESCE(l.source, '')) LIKE 'r3%' OR LOWER(COALESCE(l.source, '')) LIKE 'r2%' THEN 'Facebook Ads'
+                        WHEN LOWER(COALESCE(l.platform, l.source, '')) LIKE '%zalo%' THEN 'Zalo'
+                        WHEN LOWER(COALESCE(l.platform, l.source, '')) LIKE '%google%' OR LOWER(COALESCE(l.platform, l.source, '')) LIKE '%gg%' THEN 'Google Ads'
+                        WHEN LOWER(COALESCE(l.platform, l.source, '')) LIKE '%tiktok%' THEN 'TikTok'
+                        WHEN COALESCE(NULLIF(l.platform, ''), NULLIF(l.source, '')) IS NOT NULL THEN COALESCE(NULLIF(l.platform, ''), l.source)
+                        ELSE 'Khác'
+                    END AS channel_name,
+                    COUNT(*) AS val
+                    FROM leads l
+                    WHERE $whereLStr
+                    GROUP BY channel_name
+                    ORDER BY val DESC
+                ");
+                if ($resMCh) {
+                    while ($r = $resMCh->fetch_assoc()) {
+                        $byChannelChart[] = ['name' => $r['channel_name'], 'value' => (int)$r['val']];
+                    }
+                }
+
+                $byDonviChart = [];
+                $resMDv = $conn->query("
+                    SELECT COALESCE(NULLIF(l.donvi_chay, ''), 'Inhouse') AS name, COUNT(*) AS val
+                    FROM leads l
+                    WHERE $whereLStr
+                    GROUP BY name
+                    ORDER BY val DESC
+                ");
+                if ($resMDv) {
+                    while ($r = $resMDv->fetch_assoc()) {
+                        $byDonviChart[] = ['name' => $r['name'], 'value' => (int)$r['val']];
+                    }
+                }
+
+                // 2.4 Table 1: By Original Project & Lead Classification
+                $byProjectTable = [];
+                $sqlProjTbl = "
+                    SELECT
+                        COALESCE(p.name, 'Chưa gắn dự án') AS project_name,
+                        COALESCE(NULLIF(l.lead_phan_loai, ''), COALESCE(NULLIF(l.source, ''), 'Khác')) AS lead_phan_loai,
+                        COUNT(*) AS total_leads,
+                        SUM(CASE WHEN $mktNotLeadExpr THEN 1 ELSE 0 END) AS not_lead_count,
+                        SUM(CASE WHEN $mktQlExpr THEN 1 ELSE 0 END) AS ql_count,
+                        SUM(CASE WHEN $mktMQlExpr THEN 1 ELSE 0 END) AS m_ql_count,
+                        SUM(CASE WHEN $mktDygExpr THEN 1 ELSE 0 END) AS dong_y_gap_count,
+                        SUM(CASE WHEN $mktSQlExpr THEN 1 ELSE 0 END) AS s_ql_count,
+                        SUM(CASE WHEN $mktGdExpr THEN 1 ELSE 0 END) AS giao_dich_count,
+                        SUM(CASE WHEN c.pipeline_status = 'cham_soc_dai_han' THEN 1 ELSE 0 END) AS cham_soc_dai_han_count,
+                        SUM(CASE WHEN c.temperature IN ('hot', 'warm') THEN 1 ELSE 0 END) AS temp_hot,
+                        SUM(CASE WHEN c.temperature = 'neutral' THEN 1 ELSE 0 END) AS temp_warm,
+                        SUM(CASE WHEN c.temperature IN ('cold', 'cool') OR c.temperature IS NULL OR c.temperature = '' THEN 1 ELSE 0 END) AS temp_cold
+                    FROM leads l
+                    LEFT JOIN projects p ON p.id = l.project_id
+                    $contactJoinSql
+                    WHERE $whereLStr
+                    GROUP BY l.project_id, p.name, lead_phan_loai
+                    ORDER BY total_leads DESC
+                    LIMIT 100
+                ";
+                $resPT = $conn->query($sqlProjTbl);
+                if ($resPT) {
+                    while ($row = $resPT->fetch_assoc()) {
+                        $rTot = (int)$row['total_leads'];
+                        $rQl = (int)$row['ql_count'];
+                        $rMQl = (int)$row['m_ql_count'];
+                        $rSQl = (int)$row['s_ql_count'];
+                        $rGd = (int)$row['giao_dich_count'];
+                        $byProjectTable[] = [
+                            'project_name' => $row['project_name'],
+                            'lead_phan_loai' => $row['lead_phan_loai'],
+                            'total_leads' => $rTot,
+                            'not_lead_count' => (int)$row['not_lead_count'],
+                            'ql_count' => $rQl,
+                            'm_ql_count' => $rMQl,
+                            'dong_y_gap_count' => (int)$row['dong_y_gap_count'],
+                            's_ql_count' => $rSQl,
+                            'giao_dich_count' => $rGd,
+                            'cham_soc_dai_han_count' => (int)$row['cham_soc_dai_han_count'],
+                            'temp_hot' => (int)$row['temp_hot'],
+                            'temp_warm' => (int)$row['temp_warm'],
+                            'temp_cold' => (int)$row['temp_cold'],
+                            'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd)
+                        ];
+                    }
+                }
+
+                // 2.5 Table 2: By Original Campaign (`leads.campaign_id` / `leads.campaign_name`)
+                $byCampaignTable = [];
+                $sqlCampTbl = "
+                    SELECT
+                        COALESCE(NULLIF(l.campaign_id, ''), 'Chưa gắn chiến dịch') AS campaign_id,
+                        MAX(COALESCE(NULLIF(l.campaign_name, ''), NULLIF(l.campaign_id, ''), 'Chưa gắn chiến dịch')) AS campaign_name,
+                        MAX(COALESCE(p.name, 'Chưa gắn dự án')) AS project_name,
+                        MAX(COALESCE(NULLIF(l.donvi_chay, ''), 'Inhouse')) AS donvi_chay,
+                        MAX(COALESCE(NULLIF(l.lead_phan_loai, ''), COALESCE(NULLIF(l.source, ''), 'Khác'))) AS lead_phan_loai,
+                        COUNT(*) AS total_leads,
+                        SUM(CASE WHEN $mktNotLeadExpr THEN 1 ELSE 0 END) AS not_lead_count,
+                        SUM(CASE WHEN $mktQlExpr THEN 1 ELSE 0 END) AS ql_count,
+                        SUM(CASE WHEN $mktMQlExpr THEN 1 ELSE 0 END) AS m_ql_count,
+                        SUM(CASE WHEN $mktDygExpr THEN 1 ELSE 0 END) AS dong_y_gap_count,
+                        SUM(CASE WHEN $mktSQlExpr THEN 1 ELSE 0 END) AS s_ql_count,
+                        SUM(CASE WHEN $mktGdExpr THEN 1 ELSE 0 END) AS giao_dich_count,
+                        SUM(CASE WHEN c.temperature IN ('hot', 'warm') THEN 1 ELSE 0 END) AS temp_hot,
+                        SUM(CASE WHEN c.temperature = 'neutral' THEN 1 ELSE 0 END) AS temp_warm,
+                        SUM(CASE WHEN c.temperature IN ('cold', 'cool') OR c.temperature IS NULL OR c.temperature = '' THEN 1 ELSE 0 END) AS temp_cold
+                    FROM leads l
+                    LEFT JOIN projects p ON p.id = l.project_id
+                    $contactJoinSql
+                    WHERE $whereLStr
+                    GROUP BY COALESCE(NULLIF(l.campaign_id, ''), 'Chưa gắn chiến dịch')
+                    ORDER BY total_leads DESC
+                    LIMIT 100
+                ";
+                $resCT = $conn->query($sqlCampTbl);
+                if ($resCT) {
+                    while ($row = $resCT->fetch_assoc()) {
+                        $rTot = (int)$row['total_leads'];
+                        $rQl = (int)$row['ql_count'];
+                        $rMQl = (int)$row['m_ql_count'];
+                        $rSQl = (int)$row['s_ql_count'];
+                        $rGd = (int)$row['giao_dich_count'];
+                        $cIdRaw = $row['campaign_id'];
+                        $cResolvedName = $campaignNameMap[$cIdRaw] ?? $row['campaign_name'];
+                        $byCampaignTable[] = [
+                            'campaign_id' => $cIdRaw,
+                            'campaign_name' => $cResolvedName,
+                            'project_name' => $row['project_name'],
+                            'donvi_chay' => $row['donvi_chay'],
+                            'lead_phan_loai' => $row['lead_phan_loai'],
+                            'total_leads' => $rTot,
+                            'not_lead_count' => (int)$row['not_lead_count'],
+                            'ql_count' => $rQl,
+                            'm_ql_count' => $rMQl,
+                            'dong_y_gap_count' => (int)$row['dong_y_gap_count'],
+                            's_ql_count' => $rSQl,
+                            'giao_dich_count' => $rGd,
+                            'temp_hot' => (int)$row['temp_hot'],
+                            'temp_warm' => (int)$row['temp_warm'],
+                            'temp_cold' => (int)$row['temp_cold'],
+                            'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd)
+                        ];
+                    }
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'tab' => 'mkt_perf',
+                    'filter_options' => $filterOptions,
+                    'kpis' => [
+                        'total_leads' => $mTotal,
+                        'not_lead_count' => (int)($mSum['not_lead_count'] ?? 0),
+                        'ql_count' => $mQl,
+                        'ql_rate' => $mktRates['ql_rate'],
+                        'm_ql_count' => $mMQl,
+                        'dong_y_gap_count' => $mDyg,
+                        's_ql_count' => $mSQl,
+                        'giao_dich_count' => $mGd,
+                        'cham_soc_dai_han_count' => (int)($mSum['cham_soc_dai_han_count'] ?? 0)
+                    ],
+                    'funnel' => [
+                        'note' => 'Đo lường 100% theo Dự án gốc & Chiến dịch gốc trên bảng Leads (MKT)',
+                        'total_leads' => $mTotal,
+                        'ql_count' => $mQl,
+                        'm_ql_count' => $mMQl,
+                        'dong_y_gap_count' => $mDyg,
+                        's_ql_count' => $mSQl,
+                        'giao_dich_count' => $mGd,
+                        'rates' => $mktRates
+                    ],
+                    'temperature_chart' => [
+                        ['name' => 'Nóng', 'value' => (int)($mSum['temp_hot'] ?? 0), 'color' => '#BD1D2D'],
+                        ['name' => 'Ấm', 'value' => (int)($mSum['temp_warm'] ?? 0), 'color' => '#F59E0B'],
+                        ['name' => 'Lạnh', 'value' => (int)($mSum['temp_cold'] ?? 0), 'color' => '#3B82F6']
+                    ],
+                    'timeline_chart' => $timelineChart,
+                    'by_project_chart' => $byProjectChart,
+                    'by_phan_loai_chart' => $byPhanLoaiChart,
+                    'by_channel_chart' => $byChannelChart,
+                    'by_donvi_chart' => $byDonviChart,
+                    'by_project_table' => $byProjectTable,
+                    'by_campaign_table' => $byCampaignTable
+                ]);
+                break;
+            }
+
+            // =========================================================================
+            // TAB 3: DOANH THU (`revenue`)
+            // =========================================================================
+            if ($tab === 'revenue') {
+                $whereD = ["d.status != 'cancelled'"];
+                if ($startDate !== '') {
+                    $sd = $conn->real_escape_string($startDate . ' 00:00:00');
+                    $whereD[] = "d.created_at >= '$sd'";
+                }
+                if ($endDate !== '') {
+                    $ed = $conn->real_escape_string($endDate . ' 23:59:59');
+                    $whereD[] = "d.created_at <= '$ed'";
+                }
+                if ($projectId > 0) {
+                    $whereD[] = "(d.project_id = $projectId OR c.project_id = $projectId)";
+                }
+                if ($campaignId !== '') {
+                    $cidEsc = $conn->real_escape_string($campaignId);
+                    $whereD[] = "(c.campaign_id = '$cidEsc' OR l.campaign_id = '$cidEsc')";
+                }
+                if ($targetSaleId > 0) {
+                    $whereD[] = "(d.created_by = $targetSaleId OR c.owner_id = $targetSaleId)";
+                }
+                if ($donviChay !== '') {
+                    $dvEsc = $conn->real_escape_string($donviChay);
+                    $whereD[] = "(c.donvi_chay = '$dvEsc' OR l.donvi_chay = '$dvEsc')";
+                }
+
+                $whereDStr = implode(' AND ', $whereD);
+
+                $sqlDeals = "
+                    SELECT
+                        d.id,
+                        CONCAT('#COC-', d.id) AS deposit_code,
+                        COALESCE(NULLIF(TRIM(CONCAT(COALESCE(c.last_name, ''), ' ', COALESCE(c.first_name, ''))), ''), 'Khách hàng') AS customer_name,
+                        COALESCE(c.phone, '—') AS customer_phone,
+                        COALESCE(p.name, p2.name, 'Chưa gắn dự án') AS project_name,
+                        d.unit_code,
+                        COALESCE(d.price, 0) AS property_value,
+                        COALESCE(dm.paid_amount, dm.total_milestone_amount, d.price, 0) AS deposit_amount,
+                        CASE
+                            WHEN COALESCE(d.expected_commission, 0) > 0 THEN d.expected_commission
+                            WHEN COALESCE(d.price, 0) > 0 THEN d.price * 0.03
+                            ELSE 0
+                        END AS revenue_amount,
+                        d.status,
+                        d.created_at,
+                        COALESCE(u.full_name, u2.full_name, '—') AS sale_name,
+                        COALESCE(NULLIF(c.campaign_id, ''), NULLIF(l.campaign_id, ''), '—') AS campaign_id,
+                        COALESCE(NULLIF(c.lead_phan_loai, ''), NULLIF(l.lead_phan_loai, ''), NULLIF(c.source, ''), 'Khác') AS lead_phan_loai,
+                        COALESCE(NULLIF(c.donvi_chay, ''), NULLIF(l.donvi_chay, ''), 'Inhouse') AS donvi_chay,
+                        COALESCE(NULLIF(c.platform, ''), NULLIF(l.platform, ''), NULLIF(c.source, ''), 'Khác') AS channel_raw
+                    FROM deposits d
+                    LEFT JOIN contacts c ON c.id = d.contact_id
+                    LEFT JOIN leads l ON l.id = c.lead_id
+                    LEFT JOIN projects p ON p.id = d.project_id
+                    LEFT JOIN projects p2 ON p2.id = c.project_id
+                    LEFT JOIN users u ON u.id = c.owner_id
+                    LEFT JOIN users u2 ON u2.id = d.created_by
+                    LEFT JOIN (
+                        SELECT deposit_id,
+                               SUM(CASE WHEN status = 'approved' THEN expected_amount ELSE 0 END) AS paid_amount,
+                               SUM(expected_amount) AS total_milestone_amount
+                        FROM deposit_milestones
+                        GROUP BY deposit_id
+                    ) dm ON dm.deposit_id = d.id
+                    WHERE $whereDStr
+                    ORDER BY d.created_at DESC
+                    LIMIT 300
+                ";
+                $resDeals = $conn->query($sqlDeals);
+
+                $totalTransactions = 0;
+                $totalPropertyValue = 0.0;
+                $totalDepositAmount = 0.0;
+                $totalRevenueAmount = 0.0;
+
+                $byProjMap = [];
+                $byPhanLoaiMap = [];
+                $byChannelMap = [];
+                $byDonviMap = [];
+                $transactionsTable = [];
+
+                if ($resDeals) {
+                    while ($row = $resDeals->fetch_assoc()) {
+                        $totalTransactions++;
+                        $propVal = (float)$row['property_value'];
+                        $depAmt = (float)$row['deposit_amount'];
+                        $revAmt = (float)$row['revenue_amount'];
+
+                        // If property_value wasn't filled, use deposit_amount as fallback value metric
+                        $metricVal = $revAmt > 0 ? $revAmt : $depAmt;
+
+                        $totalPropertyValue += $propVal;
+                        $totalDepositAmount += $depAmt;
+                        $totalRevenueAmount += $revAmt;
+
+                        $pName = $row['project_name'] ?: 'Chưa gắn dự án';
+                        $plName = $row['lead_phan_loai'] ?: 'Khác';
+                        $dvName = $row['donvi_chay'] ?: 'Inhouse';
+                        $chRaw = strtolower((string)$row['channel_raw']);
+                        if (strpos($chRaw, 'fb') !== false || strpos($chRaw, 'facebook') !== false || strpos($chRaw, 'r3') === 0 || strpos($chRaw, 'r2') === 0) {
+                            $chName = 'Facebook Ads';
+                        } elseif (strpos($chRaw, 'zalo') !== false) {
+                            $chName = 'Zalo';
+                        } elseif (strpos($chRaw, 'databank') !== false) {
+                            $chName = 'Databank';
+                        } elseif (strpos($chRaw, 'ca_nhan') !== false || strpos($chRaw, 'gioi_thieu') !== false) {
+                            $chName = 'Cá nhân / Giới thiệu';
+                        } else {
+                            $chName = $row['channel_raw'] ?: 'Khác';
+                        }
+
+                        if (!isset($byProjMap[$pName])) $byProjMap[$pName] = ['name' => $pName, 'count' => 0, 'value' => 0.0];
+                        $byProjMap[$pName]['count']++;
+                        $byProjMap[$pName]['value'] += $metricVal;
+
+                        if (!isset($byPhanLoaiMap[$plName])) $byPhanLoaiMap[$plName] = ['name' => $plName, 'count' => 0, 'value' => 0.0];
+                        $byPhanLoaiMap[$plName]['count']++;
+                        $byPhanLoaiMap[$plName]['value'] += $metricVal;
+
+                        if (!isset($byChannelMap[$chName])) $byChannelMap[$chName] = ['name' => $chName, 'count' => 0, 'value' => 0.0];
+                        $byChannelMap[$chName]['count']++;
+                        $byChannelMap[$chName]['value'] += $metricVal;
+
+                        if (!isset($byDonviMap[$dvName])) $byDonviMap[$dvName] = ['name' => $dvName, 'count' => 0, 'value' => 0.0];
+                        $byDonviMap[$dvName]['count']++;
+                        $byDonviMap[$dvName]['value'] += $metricVal;
+
+                        $cIdRaw = $row['campaign_id'];
+                        $transactionsTable[] = [
+                            'id' => (int)$row['id'],
+                            'deposit_code' => $row['deposit_code'] ?: ('#COC-' . $row['id']),
+                            'customer_name' => $row['customer_name'],
+                            'customer_phone' => $row['customer_phone'],
+                            'project_name' => $pName,
+                            'unit_code' => $row['unit_code'] ?: '—',
+                            'campaign_name' => $campaignNameMap[$cIdRaw] ?? $cIdRaw,
+                            'lead_phan_loai' => $plName,
+                            'channel' => $chName,
+                            'donvi_chay' => $dvName,
+                            'sale_name' => $row['sale_name'],
+                            'property_value' => $propVal,
+                            'deposit_amount' => $depAmt,
+                            'revenue_amount' => $revAmt,
+                            'status' => $row['status'],
+                            'created_at' => $row['created_at']
+                        ];
+                    }
+                }
+
+                // Also compute contacts in booking/dat_coc status count for summary context
+                $resBookedContacts = $conn->query("
+                    SELECT
+                        SUM(CASE WHEN pipeline_status = 'booking' THEN 1 ELSE 0 END) AS booking_contacts,
+                        SUM(CASE WHEN pipeline_status IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong') THEN 1 ELSE 0 END) AS dat_coc_contacts
+                    FROM contacts
+                    WHERE deleted_at IS NULL
+                ");
+                $bcRow = ($resBookedContacts && $resBookedContacts->num_rows > 0) ? $resBookedContacts->fetch_assoc() : [];
+
+                echo json_encode([
+                    'success' => true,
+                    'tab' => 'revenue',
+                    'filter_options' => $filterOptions,
+                    'kpis' => [
+                        'total_transactions' => $totalTransactions,
+                        'total_property_value' => $totalPropertyValue,
+                        'total_deposit_amount' => $totalDepositAmount,
+                        'total_revenue_amount' => $totalRevenueAmount,
+                        'booking_contacts' => (int)($bcRow['booking_contacts'] ?? 0),
+                        'dat_coc_contacts' => (int)($bcRow['dat_coc_contacts'] ?? 0)
+                    ],
+                    'by_project_chart' => array_values($byProjMap),
+                    'by_phan_loai_chart' => array_values($byPhanLoaiMap),
+                    'by_channel_chart' => array_values($byChannelMap),
+                    'by_donvi_chart' => array_values($byDonviMap),
+                    'transactions_table' => $transactionsTable
+                ]);
+                break;
+            }
+
+            echo json_encode(['success' => false, 'message' => 'Tab không hợp lệ']);
+        } catch (\Throwable $ex) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi tải dữ liệu Dashboard: ' . $ex->getMessage()]);
+        }
+        break;
+
     default:
         echo json_encode(['success' => false, 'message' => 'Unknown action']);
 }

@@ -121,7 +121,7 @@ class ContactController {
         if ($owner)  { $where[] = 'c.owner_id = ?'; $params[] = (int)$owner; }
         if ($companyId) { $where[] = 'c.company_id = ?'; $params[] = (int)$companyId; }
         if ($projectId !== '') { $where[] = 'c.project_id = ?'; $params[] = (int)$projectId; }
-        if ($campaignId !== '') { $where[] = 'c.campaign_id = ?'; $params[] = (int)$campaignId; }
+        if ($campaignId !== '') { $where[] = 'c.campaign_id = ?'; $params[] = (string)$campaignId; }
         if ($tag !== '') {
             $where[] = '(c.tags LIKE ? OR c.tags LIKE ?)';
             $params[] = '%"' . $tag . '"%';
@@ -681,10 +681,10 @@ class ContactController {
         $last_contact = empty($b['last_contact']) ? null : $b['last_contact'];
 
         $projectId = !empty($b['project_id']) ? (int)$b['project_id'] : null;
-        $campaignId = !empty($b['campaign_id']) ? (int)$b['campaign_id'] : null;
-        if ($campaignId && !$projectId) {
+        $campaignId = (!empty($b['campaign_id']) && $b['campaign_id'] !== '0' && $b['campaign_id'] !== 0) ? trim((string)$b['campaign_id']) : null;
+        if ($campaignId && ctype_digit($campaignId) && !$projectId) {
             $stmtCampProj = $this->db->prepare("SELECT project_id FROM marketing_campaigns WHERE id = ?");
-            $stmtCampProj->execute([$campaignId]);
+            $stmtCampProj->execute([(int)$campaignId]);
             $campProjId = $stmtCampProj->fetchColumn();
             if ($campProjId) {
                 $projectId = (int)$campProjId;
@@ -807,6 +807,10 @@ class ContactController {
                         COALESCE((SELECT MAX(e.approved_at) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL), '1970-01-01 00:00:00')
                     ), '1970-01-01 00:00:00') as last_order_at,
                     l.id as lead_id,
+                    l.project_id as lead_project_id,
+                    (SELECT name FROM projects WHERE id = l.project_id LIMIT 1) as lead_project_name,
+                    l.campaign_id as lead_campaign_id,
+                    l.campaign_name as lead_campaign_name,
                     l.note as lead_note,
                     l.type as lead_type,
                     l.source as lead_source,
@@ -1063,10 +1067,10 @@ class ContactController {
 
         // Resolve project_id from campaign_id if project_id is empty/0 but campaign_id is set
         $reqProjectId = array_key_exists('project_id', $b) ? (int)$b['project_id'] : null;
-        $reqCampaignId = array_key_exists('campaign_id', $b) ? (int)$b['campaign_id'] : null;
-        if ($reqCampaignId > 0 && (!$reqProjectId || $reqProjectId === 0)) {
+        $reqCampaignId = array_key_exists('campaign_id', $b) ? trim((string)$b['campaign_id']) : null;
+        if ($reqCampaignId && ctype_digit($reqCampaignId) && (int)$reqCampaignId > 0 && (!$reqProjectId || $reqProjectId === 0)) {
             $stmtCampProj = $this->db->prepare("SELECT project_id FROM marketing_campaigns WHERE id = ?");
-            $stmtCampProj->execute([$reqCampaignId]);
+            $stmtCampProj->execute([(int)$reqCampaignId]);
             $campProjId = $stmtCampProj->fetchColumn();
             if ($campProjId) {
                 $b['project_id'] = (int)$campProjId;
@@ -1126,8 +1130,11 @@ class ContactController {
                 // Fix date string & numeric strict mode crashes
                 if (in_array($f, ['birthday', 'dob', 'last_contact', 'leave_start', 'leave_end']) && ($b[$f] === '' || $b[$f] === null || $b[$f] === 'null')) {
                     $params[] = null;
-                } else if (in_array($f, ['stage_id', 'project_id', 'campaign_id', 'owner_id', 'company_id', 'nguoi_gioi_thieu_id']) && (empty($b[$f]) || $b[$f] === 0 || $b[$f] === '0' || $b[$f] === 'null')) {
+                } else if (in_array($f, ['stage_id', 'project_id', 'owner_id', 'company_id', 'nguoi_gioi_thieu_id']) && (empty($b[$f]) || $b[$f] === 0 || $b[$f] === '0' || $b[$f] === 'null')) {
                     $params[] = null;
+                } else if ($f === 'campaign_id') {
+                    $valCamp = trim((string)($b[$f] ?? ''));
+                    $params[] = ($valCamp === '' || $valCamp === '0' || $valCamp === 'null') ? null : $valCamp;
                 } else if (in_array($f, ['budget', 'expected_revenue', 'win_probability']) && ($b[$f] === '' || $b[$f] === null || $b[$f] === 'null')) {
                     $params[] = 0;
                 } else if ($f === 'ttl1_data' && is_array($b[$f])) {
@@ -1226,56 +1233,42 @@ class ContactController {
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
 
-            // Sync campaign_id, owner_id (assigned_to), and project_id to linked leads record for cross-table consistency
-            if (array_key_exists('campaign_id', $b) || array_key_exists('owner_id', $b) || array_key_exists('project_id', $b)) {
+            // Sync owner_id (assigned_to) to linked leads record (DO NOT overwrite leads.project_id or leads.campaign_id to preserve MKT original indicators)
+            if (array_key_exists('owner_id', $b)) {
                 $personId = $currentContact['person_id'] ?? null;
                 $linkedLeadId = !empty($currentContact['lead_id']) ? (int)$currentContact['lead_id'] : null;
                 $cPhone = !empty($currentContact['phone']) ? $currentContact['phone'] : ($currentContact['mobile'] ?? null);
                 try {
-                    $leadSyncSets = [];
-                    $syncParams = [];
-                    if (array_key_exists('campaign_id', $b)) {
-                        $leadSyncSets[] = "campaign_id = ?";
-                        $syncParams[] = !empty($b['campaign_id']) ? (string)$b['campaign_id'] : null;
-                    }
-                    if (array_key_exists('owner_id', $b)) {
-                        $newOwnerUid = !empty($b['owner_id']) ? (int)$b['owner_id'] : null;
-                        $newAssignedCid = $newOwnerUid;
-                        if ($newOwnerUid) {
-                            $stmtCid = $this->db->prepare("SELECT c.id FROM consultants c JOIN users u ON u.email = c.email WHERE u.id = ? LIMIT 1");
-                            $stmtCid->execute([$newOwnerUid]);
-                            $resolvedCid = $stmtCid->fetchColumn();
-                            if ($resolvedCid) {
-                                $newAssignedCid = (int)$resolvedCid;
-                            }
+                    $newOwnerUid = !empty($b['owner_id']) ? (int)$b['owner_id'] : null;
+                    $newAssignedCid = $newOwnerUid;
+                    if ($newOwnerUid) {
+                        $stmtCid = $this->db->prepare("SELECT c.id FROM consultants c JOIN users u ON u.email = c.email WHERE u.id = ? LIMIT 1");
+                        $stmtCid->execute([$newOwnerUid]);
+                        $resolvedCid = $stmtCid->fetchColumn();
+                        if ($resolvedCid) {
+                            $newAssignedCid = (int)$resolvedCid;
                         }
-                        $leadSyncSets[] = "assigned_to = ?";
-                        $syncParams[] = $newAssignedCid;
                     }
-                    if (array_key_exists('project_id', $b)) {
-                        $leadSyncSets[] = "project_id = ?";
-                        $syncParams[] = !empty($b['project_id']) ? (int)$b['project_id'] : null;
-                    }
+                    $leadSyncSets = ["assigned_to = ?"];
+                    $syncParams = [$newAssignedCid];
 
-                    if (!empty($leadSyncSets)) {
-                        if ($linkedLeadId) {
-                            $syncParams[] = $linkedLeadId;
-                            $stmtSyncLead = $this->db->prepare("UPDATE leads SET " . implode(', ', $leadSyncSets) . " WHERE id = ?");
-                            $stmtSyncLead->execute($syncParams);
-                        } elseif ($personId || $cPhone) {
-                            $whereSync = [];
-                            if ($personId) {
-                                $whereSync[] = "person_id = ?";
-                                $syncParams[] = $personId;
-                            }
-                            if ($cPhone) {
-                                $whereSync[] = "phone = ?";
-                                $syncParams[] = $cPhone;
-                            }
-                            $leadSyncSql = "UPDATE leads SET " . implode(', ', $leadSyncSets) . " WHERE (" . implode(' OR ', $whereSync) . ") ORDER BY id DESC LIMIT 1";
-                            $stmtSyncLead = $this->db->prepare($leadSyncSql);
-                            $stmtSyncLead->execute($syncParams);
+                    if ($linkedLeadId) {
+                        $syncParams[] = $linkedLeadId;
+                        $stmtSyncLead = $this->db->prepare("UPDATE leads SET " . implode(', ', $leadSyncSets) . " WHERE id = ?");
+                        $stmtSyncLead->execute($syncParams);
+                    } elseif ($personId || $cPhone) {
+                        $whereSync = [];
+                        if ($personId) {
+                            $whereSync[] = "person_id = ?";
+                            $syncParams[] = $personId;
                         }
+                        if ($cPhone) {
+                            $whereSync[] = "phone = ?";
+                            $syncParams[] = $cPhone;
+                        }
+                        $leadSyncSql = "UPDATE leads SET " . implode(', ', $leadSyncSets) . " WHERE (" . implode(' OR ', $whereSync) . ") ORDER BY id DESC LIMIT 1";
+                        $stmtSyncLead = $this->db->prepare($leadSyncSql);
+                        $stmtSyncLead->execute($syncParams);
                     }
                 } catch (\Throwable $e) {}
             }

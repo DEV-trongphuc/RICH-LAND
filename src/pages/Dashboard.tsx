@@ -23,6 +23,7 @@ import { KpiCardSkeleton, Skeleton, ChartSkeleton } from '../components/ui/Skele
 
 import { Avatar } from '../components/ui/Avatar';
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
+import { CrmPerformanceDashboard, type DashboardSubTab } from '../components/Dashboard/CrmPerformanceDashboard';
 import { useAuth } from '../contexts/AuthContext';
 
 const parseServerDate = (dateStr: string) => {
@@ -38,6 +39,8 @@ const parseServerDate = (dateStr: string) => {
 const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const isSaleOnly = ['sale', 'sales', 'consultant'].includes(String(user?.role || '').toLowerCase());
+  const [activeSubTab, setActiveSubTab] = useState<DashboardSubTab>('sale_perf');
   const daysOfWeek = [
     t('Thứ 2'),
     t('Thứ 3'),
@@ -291,11 +294,14 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       setDateFilter(savedDate);
       return;
     }
+    if (activeSubTab !== 'distribution' && !showHealthModal) {
+      return;
+    }
     // BUG-04 fix: Tạo AbortController để hủy fetch cũ khi dateFilter thay đổi nhanh
     const abortController = new AbortController();
     fetchDashboard(abortController.signal);
     return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
-  }, [dateFilter, isActive]);
+  }, [dateFilter, isActive, activeSubTab, showHealthModal]);
 
   useEffect(() => {
     if (isActive) {
@@ -957,11 +963,31 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         );
       })()}
 
-      {/* Header */}
-      <div className="page-header" style={{ animation: 'slideUp 0.4s ease-out both', animationDelay: '50ms' }}>
+      {/* Header & Role-Based Subtabs */}
+      <div className="page-header" style={{ animation: 'slideUp 0.4s ease-out both', animationDelay: '50ms', marginBottom: '0.875rem' }}>
         <div>
-          <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
-          <p className="page-subtitle">{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
+          <h1 className="page-title">
+            {isSaleOnly
+              ? t("Dashboard Hiệu Quả Cá Nhân & Hợp Tác")
+              : activeSubTab === 'sale_perf'
+                ? t("Dashboard Hiệu Quả Sale")
+                : activeSubTab === 'mkt_perf'
+                  ? t("Dashboard Hiệu Quả Marketing (MKT)")
+                  : activeSubTab === 'revenue'
+                    ? t("Dashboard Doanh Thu & Giao Dịch")
+                    : t("Tổng quan Phân bổ Data")}
+          </h1>
+          <p className="page-subtitle">
+            {isSaleOnly
+              ? t("Theo dõi chỉ số chăm sóc khách hàng, phễu chuyển đổi và giao dịch của bạn theo thời gian thực.")
+              : activeSubTab === 'sale_perf'
+                ? t("Đo lường theo Dự án & Chiến dịch Sale đang chăm sóc — lọc toàn bộ hoặc theo từng nhân sự Sale.")
+                : activeSubTab === 'mkt_perf'
+                  ? t("Đo lường độc lập theo Dự án gốc & Chiến dịch gốc trên bảng Leads của Marketing.")
+                  : activeSubTab === 'revenue'
+                    ? t("Thống kê doanh thu, giá trị BĐS và cơ cấu giao dịch theo Dự án, Loại Lead, Kênh & Đơn vị chạy.")
+                    : t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}
+          </p>
         </div>
         <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto' }}>
           <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, flex: '1 1 auto', minWidth: '180px', maxWidth: isMobile ? 'none' : '320px' }}>
@@ -979,38 +1005,100 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             />
           </div>
 
-          {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}
-          <button
-            className="btn primary resource-health-btn"
-            onClick={() => setShowHealthModal(true)}
-            title={t("Kiểm tra kết nối hệ thống / Tài nguyên sử dụng")}
-            style={{
-              width: 38,
-              height: 38,
-              padding: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-              color: '#fff',
-              border: 'none',
-              boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
-              cursor: 'pointer',
-              flexShrink: 0,
-              flex: '0 0 38px',
-              minWidth: '38px'
-            }}
-          >
-            <Server size={15} style={{ flexShrink: 0 }} />
-          </button>
+          {!isSaleOnly && (
+            <button
+              className="btn primary resource-health-btn"
+              onClick={() => setShowHealthModal(true)}
+              title={t("Kiểm tra kết nối hệ thống / Tài nguyên sử dụng")}
+              style={{
+                width: 38,
+                height: 38,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 'var(--radius-md)',
+                background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
+                cursor: 'pointer',
+                flexShrink: 0,
+                flex: '0 0 38px',
+                minWidth: '38px'
+              }}
+            >
+              <Server size={15} style={{ flexShrink: 0 }} />
+            </button>
+          )}
         </div>
       </div>
 
-      
+      {/* Subtab Bar for Admin / Director / Manager */}
+      {!isSaleOnly && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '6px',
+            padding: '5px',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '12px',
+            marginBottom: '1.25rem',
+            width: isMobile ? '100%' : 'fit-content'
+          }}
+        >
+          {[
+            { id: 'sale_perf', label: 'Hiệu quả Sale', icon: Users },
+            { id: 'mkt_perf', label: 'Hiệu quả MKT', icon: BarChart2 },
+            { id: 'revenue', label: 'Doanh Thu', icon: DollarSign },
+            { id: 'distribution', label: 'Phân bổ Data', icon: GitBranch }
+          ].map(tabItem => {
+            const IconComp = tabItem.icon;
+            const isTabActive = activeSubTab === tabItem.id;
+            return (
+              <button
+                key={tabItem.id}
+                type="button"
+                onClick={() => setActiveSubTab(tabItem.id as DashboardSubTab)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  padding: isMobile ? '8px 12px' : '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.82rem',
+                  fontWeight: isTabActive ? 800 : 600,
+                  border: 'none',
+                  background: isTabActive ? '#BD1D2D' : 'transparent',
+                  color: isTabActive ? '#ffffff' : 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.18s ease',
+                  boxShadow: isTabActive ? '0 2px 8px rgba(189, 29, 45, 0.25)' : 'none'
+                }}
+              >
+                <IconComp size={15} />
+                <span>{tabItem.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {/* AI Pre-screener evaluation strip */}
-      {aiScreenerEnabled && (
+      {activeSubTab !== 'distribution' ? (
+        <CrmPerformanceDashboard
+          activeSubTab={isSaleOnly ? 'sale_perf' : activeSubTab}
+          isSaleOnly={isSaleOnly}
+          dateFilter={dateFilter}
+          isActive={isActive}
+          theme={theme}
+          isMobile={isMobile}
+        />
+      ) : (
+        <>
+          {/* AI Pre-screener evaluation strip */}
+          {aiScreenerEnabled && (
         loading && !stats ? (
           <div
             key="ai-screener-skeleton"
@@ -2715,6 +2803,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           </div>
         </>
       )}{/* end stats ternary */}
+        </>
+      )}{/* end activeSubTab ternary */}
       {/* Date Picker Modal */}
       <CustomModal
         isOpen={showDateModal}

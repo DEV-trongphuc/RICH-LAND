@@ -5159,9 +5159,10 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
         $adName = !empty($lead['ad_name']) ? $lead['ad_name'] : null;
         $donviChay = !empty($lead['donvi_chay']) ? $lead['donvi_chay'] : null;
         $appLienhe = !empty($lead['app_lienhe']) ? $lead['app_lienhe'] : null;
+        $leadCampaignId = !empty($lead['campaign_id']) ? (string)$lead['campaign_id'] : (!empty($lead['utm_campaign']) ? (string)$lead['utm_campaign'] : null);
 
         if (!empty($existingContacts)) {
-            // Update existing active contacts with latest info
+            // Update existing active contacts with latest info (preserve Sale's modified project_id and campaign_id)
             $stmtUpContact = $conn->prepare("
                 UPDATE contacts 
                 SET first_name = IF(? != '' AND (first_name = '' OR first_name IS NULL), ?, first_name),
@@ -5172,7 +5173,8 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     customer_type = IF(? != '' AND (customer_type = '' OR customer_type IS NULL), ?, customer_type),
                     loai_lead = COALESCE(?, loai_lead),
                     lead_phan_loai = COALESCE(?, lead_phan_loai),
-                    project_id = COALESCE(?, project_id),
+                    project_id = COALESCE(project_id, ?),
+                    campaign_id = COALESCE(NULLIF(campaign_id, ''), ?),
                     facebook_link = COALESCE(?, facebook_link),
                     link_video_ads = COALESCE(?, link_video_ads),
                     ad_name = COALESCE(?, ad_name),
@@ -5182,7 +5184,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                 WHERE person_id = ? AND deleted_at IS NULL
             ");
             if ($stmtUpContact) {
-                $stmtUpContact->bind_param("sssssssssssssssisssssii", 
+                $stmtUpContact->bind_param("sssssssssssssssissssssii", 
                     $firstName, $firstName, 
                     $lastName, $lastName, 
                     $email, $email, 
@@ -5192,6 +5194,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     $loaiLead,
                     $leadPhanLoai,
                     $projectId,
+                    $leadCampaignId,
                     $facebookLink,
                     $linkVideoAds,
                     $adName,
@@ -5246,7 +5249,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
 
             $stmtContact = $conn->prepare("
                 INSERT INTO contacts (
-                    tenant_id, person_id, lead_id, project_id, owner_id, created_by, 
+                    tenant_id, person_id, lead_id, project_id, campaign_id, owner_id, created_by, 
                     first_name, last_name, email, phone, source, 
                     status, pipeline_status, stage_id, security_expires_at, notes, 
                     customer_type, loai_lead, lead_phan_loai, temperature, suggested_temperature, phone2, gender, 
@@ -5256,7 +5259,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                     form_name, zalo_phone, facebook_link, link_video_ads,
                     ad_name, donvi_chay, app_lienhe
                 ) VALUES (
-                    1, ?, ?, ?, ?, ?, 
+                    1, ?, ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
                     'lead', ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, ?, ?, 
@@ -5270,8 +5273,8 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             if ($stmtContact) {
                 $createdBy = 1;
                 $stmtContact->bind_param(
-                    "iiiiissssssissssssssssssssdssssssssssssssss",
-                    $person_id, $leadId, $projectId, $ownerUserId, $createdBy,
+                    "iiisiiissssssissssssssssssssdssssssssssssssss",
+                    $person_id, $leadId, $projectId, $leadCampaignId, $ownerUserId, $createdBy,
                     $firstName, $lastName, $email, $phone, $source,
                     $triggerStatus, $stageId, $secExpiresTime, $note,
                     $type, $loaiLead, $leadPhanLoai, $initTemp, $initTemp, $phone2, $gender,

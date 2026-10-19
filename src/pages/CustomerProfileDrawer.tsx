@@ -3994,7 +3994,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   useEffect(() => {
     if (formData.campaign_id && !formData.project_id && allowedCampaigns.length > 0) {
-      const camp = allowedCampaigns.find(c => Number(c.id) === Number(formData.campaign_id));
+      const camp = allowedCampaigns.find(c => String(c.id) === String(formData.campaign_id) || (c.code && String(c.code) === String(formData.campaign_id)));
       if (camp && camp.project_id) {
         setFormData((prev: any) => ({
           ...prev,
@@ -4061,7 +4061,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         api.get('/projects?bypass_roster=1').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
       }
       if (allowedCampaigns.length === 0) {
-        api.get('/marketing-campaigns?bypass_roster=1').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
+        api.get('/marketing-campaigns?bypass_roster=1&include_lead_campaigns=1').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
       }
       if (allowedTeams.length === 0) {
         api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
@@ -8188,8 +8188,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   if (!selectedId) {
                                     nextCampaignId = null;
                                   } else if (nextCampaignId) {
-                                    const campObj = allowedCampaigns.find(c => Number(c.id) === Number(nextCampaignId));
-                                    if (campObj && Number(campObj.project_id) !== selectedId) {
+                                    const campObj = allowedCampaigns.find(c => String(c.id) === String(nextCampaignId) || (c.code && String(c.code) === String(nextCampaignId)));
+                                    if (campObj && campObj.project_id && Number(campObj.project_id) !== selectedId) {
                                       nextCampaignId = null;
                                     }
                                   }
@@ -8207,40 +8207,50 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Chiến dịch</label>
                                   <span 
-                                    title="Tại trường này có liên quan tới Dashboard đo lường chiến dịch sau này. Dashboard sẽ đo những khách hàng được gắn thẻ theo chiến dịch. Trường hợp khách cũ ở chiến dịch cũ sale chủ động chuyển qua chiến dịch mới được coi là hợp lệ." 
+                                    title="Tại trường này có liên quan tới Dashboard đo lường chiến dịch của Sale & Quản lý Sale. Khi Sale đổi Dự án hoặc Chiến dịch tại đây, chỉ số chăm sóc của Sale sẽ cập nhật theo lựa chọn này (không ghi đè về chỉ số gốc của MKT)." 
                                     style={{ cursor: 'help', display: 'flex', alignItems: 'center' }}
                                   >
                                     <Info size={12} style={{ color: 'var(--color-text-muted)' }} />
                                   </span>
                                 </div>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Đo lường Dashboard</span>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Đo lường Sale</span>
                               </div>
                               {(() => {
+                                const currentCampVal = formData.campaign_id ? String(formData.campaign_id) : '';
                                 const filteredCamps = formData.project_id
-                                  ? allowedCampaigns.filter(c => Number(c.project_id) === Number(formData.project_id) || Number(c.id) === Number(formData.campaign_id))
+                                  ? allowedCampaigns.filter(c => !c.project_id || Number(c.project_id) === Number(formData.project_id) || String(c.id) === currentCampVal || (c.code && String(c.code) === currentCampVal))
                                   : allowedCampaigns;
+                                const campOptions = filteredCamps.map(c => {
+                                  const pName = projectsList.find(p => Number(p.id) === Number(c.project_id))?.name || c.project_name;
+                                  const baseLabel = c.code && c.name && String(c.name) !== String(c.code) ? `${c.name} (${c.code})` : (c.name || c.code || String(c.id));
+                                  const labelText = (!formData.project_id && pName) ? `${baseLabel} • ${pName}` : baseLabel;
+                                  return {
+                                    value: String(c.id),
+                                    label: labelText,
+                                    faded: c.status !== 'active' && c.status !== 'running'
+                                  };
+                                });
+                                if (currentCampVal && !campOptions.some(o => o.value === currentCampVal)) {
+                                  campOptions.unshift({
+                                    value: currentCampVal,
+                                    label: currentCampVal,
+                                    faded: false
+                                  });
+                                }
                                 return (
                                   <CustomSelect
                                     searchable
                                     placeholder="Chọn chiến dịch..."
                                     options={[
                                       { value: '', label: '— Chọn chiến dịch —' },
-                                      ...filteredCamps.map(c => {
-                                        const pName = projectsList.find(p => Number(p.id) === Number(c.project_id))?.name || c.project_name;
-                                        const labelText = (!formData.project_id && pName) ? `${c.name} (${pName})` : c.name;
-                                        return {
-                                          value: String(c.id),
-                                          label: labelText,
-                                          faded: c.status !== 'active'
-                                        };
-                                      })
+                                      ...campOptions
                                     ]}
-                                    value={formData.campaign_id ? String(formData.campaign_id) : ''}
+                                    value={currentCampVal}
                                     onChange={val => {
-                                      const nextCampaign = val ? Number(val) : null;
+                                      const nextCampaign = val ? String(val) : null;
                                       let nextProjectId = formData.project_id;
                                       if (nextCampaign) {
-                                        const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
+                                        const campObj = allowedCampaigns.find(c => String(c.id) === nextCampaign || (c.code && String(c.code) === nextCampaign));
                                         if (campObj && campObj.project_id) {
                                           nextProjectId = Number(campObj.project_id);
                                         }
@@ -8268,6 +8278,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                             {(() => {
                               const FORM_SPEC = [
+                                { key: 'lead_project_origin', label: 'Dự án gốc (MKT)' },
+                                { key: 'lead_campaign_origin', label: 'Chiến dịch gốc (MKT)' },
                                 { key: 'ad_name', label: 'Mẫu quảng cáo', fullWidth: true },
                                 { key: 'form_name', label: 'Tên Form', fullWidth: true },
                                 { key: 'birthday', label: 'Sinh nhật' },
@@ -8287,6 +8299,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               ];
 
                               const getFormVal = (k: string) => {
+                                if (k === 'lead_project_origin') {
+                                  return (formData as any).lead_project_name || (contact as any)?.lead_project_name || webhookData.parsed['du_an'] || webhookData.parsed['duan'] || '';
+                                }
+                                if (k === 'lead_campaign_origin') {
+                                  const lName = (formData as any).lead_campaign_name || (contact as any)?.lead_campaign_name || '';
+                                  const lCode = (formData as any).lead_campaign_id || (contact as any)?.lead_campaign_id || formData.utm_campaign || (contact as any)?.utm_campaign || '';
+                                  if (lName && lCode && lName !== lCode) return `${lName} (${lCode})`;
+                                  return lName || lCode || '';
+                                }
                                 if (k === 'ad_name') {
                                   return webhookData.parsed['ad_name'] || formData.ad_name || contact?.ad_name || formData.utm_content || '';
                                 }

@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 202;
+$targetVersion = 203;
 $currentVersion = 186;
 
 // Query current DB version
@@ -597,8 +597,30 @@ try {
         WHERE l.target_round_id IS NULL OR l.target_round_id = 0
     ");
 
+    // 11.6 Ensure contacts.campaign_id is VARCHAR(255) and backfilled for Sale Care Campaign attribution
+    $chkCampCol = $conn->query("SHOW COLUMNS FROM `contacts` LIKE 'campaign_id'");
+    if ($chkCampCol && $chkCampCol->num_rows > 0) {
+        $campColRow = $chkCampCol->fetch_assoc();
+        if (stripos($campColRow['Type'] ?? '', 'varchar') === false) {
+            $conn->query("ALTER TABLE `contacts` MODIFY COLUMN `campaign_id` VARCHAR(255) DEFAULT NULL");
+            $logMsg("Đã nâng cấp contacts.campaign_id sang VARCHAR(255).", "success");
+        }
+    } else {
+        $conn->query("ALTER TABLE `contacts` ADD COLUMN `campaign_id` VARCHAR(255) DEFAULT NULL");
+        $logMsg("Đã thêm cột contacts.campaign_id VARCHAR(255).", "success");
+    }
+    $conn->query("UPDATE `contacts` SET `campaign_id` = `utm_campaign` WHERE (`campaign_id` IS NULL OR `campaign_id` = '' OR `campaign_id` = '0') AND `utm_campaign` IS NOT NULL AND `utm_campaign` != ''");
+    $chkProjCampC = $conn->query("SHOW INDEX FROM `contacts` WHERE Key_name = 'idx_contacts_proj_camp'");
+    if ($chkProjCampC && $chkProjCampC->num_rows == 0) {
+        $conn->query("ALTER TABLE `contacts` ADD INDEX `idx_contacts_proj_camp` (`project_id`, `campaign_id`, `deleted_at`)");
+    }
+    $chkProjCampL = $conn->query("SHOW INDEX FROM `leads` WHERE Key_name = 'idx_leads_proj_camp'");
+    if ($chkProjCampL && $chkProjCampL->num_rows == 0) {
+        $conn->query("ALTER TABLE `leads` ADD INDEX `idx_leads_proj_camp` (`project_id`, `campaign_id`, `created_at`)");
+    }
+
     // 12. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '202') ON DUPLICATE KEY UPDATE setting_value = '202'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '203') ON DUPLICATE KEY UPDATE setting_value = '203'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

@@ -83,7 +83,49 @@ class CampaignController {
         } else {
             $stmt = $this->db->prepare("SELECT *, (SELECT name FROM projects WHERE id = project_id) as project_name, (SELECT code FROM projects WHERE id = project_id) as project_code FROM marketing_campaigns $where ORDER BY created_at DESC");
             $stmt->execute($params);
-            respond(200, $stmt->fetchAll(), 'Lấy danh sách chiến dịch thành công');
+            $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($_GET['include_lead_campaigns'])) {
+                $existingKeys = [];
+                foreach ($campaigns as $mc) {
+                    if (!empty($mc['id'])) $existingKeys[(string)$mc['id']] = true;
+                    if (!empty($mc['code'])) $existingKeys[(string)$mc['code']] = true;
+                }
+                try {
+                    $leadCampSql = "
+                        SELECT l.campaign_id AS code,
+                               MAX(COALESCE(NULLIF(l.campaign_name, ''), l.campaign_id)) AS name,
+                               MAX(l.project_id) AS project_id,
+                               (SELECT p.name FROM projects p WHERE p.id = MAX(l.project_id) LIMIT 1) AS project_name
+                        FROM leads l
+                        WHERE l.campaign_id IS NOT NULL AND l.campaign_id != '' AND l.campaign_id != '0'
+                        " . ($projectId > 0 ? " AND l.project_id = " . (int)$projectId : "") . "
+                        GROUP BY l.campaign_id
+                        ORDER BY COUNT(*) DESC
+                        LIMIT 200
+                    ";
+                    $stmtLC = $this->db->query($leadCampSql);
+                    if ($stmtLC) {
+                        while ($lc = $stmtLC->fetch(PDO::FETCH_ASSOC)) {
+                            $cCode = trim((string)($lc['code'] ?? ''));
+                            if ($cCode !== '' && !isset($existingKeys[$cCode])) {
+                                $existingKeys[$cCode] = true;
+                                $campaigns[] = [
+                                    'id' => $cCode,
+                                    'code' => $cCode,
+                                    'name' => $lc['name'] ?: $cCode,
+                                    'project_id' => !empty($lc['project_id']) ? (int)$lc['project_id'] : null,
+                                    'project_name' => $lc['project_name'] ?? null,
+                                    'status' => 'running',
+                                    'is_lead_campaign' => true
+                                ];
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {}
+            }
+
+            respond(200, $campaigns, 'Lấy danh sách chiến dịch thành công');
         }
     }
 
