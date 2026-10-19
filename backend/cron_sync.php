@@ -3428,6 +3428,10 @@ function checkTaskDueSlaAlerts($conn) {
 
 function checkCapiStuckAlert($conn) {
     logSync("Running checkCapiStuckAlert...");
+    $capiEnabled = get_system_setting($conn, 'capi_enabled');
+    if ($capiEnabled !== '1' && $capiEnabled !== 'true') {
+        return;
+    }
     $thresholdHours = (int) get_system_setting($conn, 'capi_stuck_alert_threshold_hours') ?: 24;
     
     $stmt = $conn->prepare("
@@ -3445,13 +3449,18 @@ function checkCapiStuckAlert($conn) {
         
         $count = $res ? (int)$res['cnt'] : 0;
         if ($count > 0) {
-            logSync("Found $count failed CAPI events older than $thresholdHours hours. Sending alert to admin/marketing...");
-            
             $admRes = $conn->query("
-                SELECT id, tenant_id FROM users 
-                WHERE role IN ('admin', 'superadmin', 'super_admin', 'director', 'assistant')
+                SELECT u.id, u.tenant_id FROM users u
+                WHERE u.role IN ('admin', 'superadmin', 'super_admin', 'director', 'assistant')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM notifications n
+                      WHERE n.user_id = u.id
+                        AND n.title = 'CẢNH BÁO CAPI: Tắc nghẽn hàng đợi'
+                        AND n.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                  )
             ");
-            if ($admRes) {
+            if ($admRes && $admRes->num_rows > 0) {
+                logSync("Found $count failed CAPI events older than $thresholdHours hours. Sending alert to admin/marketing...");
                 $notifStmt = $conn->prepare("
                     INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
                     VALUES (?, ?, ?, ?, ?, ?)
