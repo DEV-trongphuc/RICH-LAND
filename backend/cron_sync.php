@@ -3752,6 +3752,15 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                 $chkCheckin->close();
                                 
                                 if (!$alreadyCheckedIn) {
+                                    $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'checkin_reminder', ?)");
+                                    $ins->bind_param("is", $userId, $todayStr);
+                                    $ins->execute();
+                                    $claimedReminder = $ins->affected_rows > 0;
+                                    $ins->close();
+                                    if (!$claimedReminder) {
+                                        continue;
+                                    }
+
                                     $msg = "ĐÃ ĐẾN GIỜ CHẤM CÔNG";
                                     
                                     // 1. Send Web In-App Notification Bell (Isolated)

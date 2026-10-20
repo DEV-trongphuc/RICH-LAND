@@ -2554,6 +2554,31 @@ function flushQueuedSaleLeadNotifications($conn = null) {
     if (!$conn && isset($GLOBALS['conn'])) {
         $conn = $GLOBALS['conn'];
     }
+    $isConnAlive = false;
+    if ($conn instanceof mysqli) {
+        try {
+            $chk = @$conn->query("SELECT 1");
+            if ($chk !== false) {
+                $isConnAlive = true;
+            }
+        } catch (\Throwable $e) {
+            $isConnAlive = false;
+        }
+    }
+    if (!$isConnAlive) {
+        $servername = $_ENV['DB_HOST'] ?? "localhost";
+        $username = $_ENV['DB_USER'] ?? "zccqvhhh_crm-rlvn";
+        $password = $_ENV['DB_PASS'] ?? '$1;RKuCwX)VD;k~#';
+        $dbname = $_ENV['DB_NAME'] ?? "zccqvhhh_crm-rlvn";
+        try {
+            $conn = @new mysqli($servername, $username, $password, $dbname);
+            if ($conn && !$conn->connect_error) {
+                $conn->set_charset("utf8mb4");
+                @$conn->query("SET time_zone = '+07:00'");
+                $GLOBALS['conn'] = $conn;
+            }
+        } catch (\Throwable $e) {}
+    }
     $queue = $GLOBALS['__queued_sale_lead_notifs'];
     $GLOBALS['__queued_sale_lead_notifs'] = [];
     foreach ($queue as $item) {

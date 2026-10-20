@@ -47,13 +47,20 @@ $conn->query("SET time_zone = '+07:00'");
 @$conn->query("SET SESSION wait_timeout = 10");
 @$conn->query("SET SESSION interactive_timeout = 10");
 
-// Tự động đóng connection ngay khi PHP gửi xong response, không để connection ở trạng thái Sleep
+// Tự động flush hàng đợi thông báo Lead (nếu còn) trước khi đóng connection ở pha cuối cùng của shutdown
 register_shutdown_function(function() {
-    if (isset($GLOBALS['conn']) && $GLOBALS['conn'] instanceof mysqli) {
+    if (function_exists('flushQueuedSaleLeadNotifications') && isset($GLOBALS['conn'])) {
         try {
-            @$GLOBALS['conn']->close();
+            flushQueuedSaleLeadNotifications($GLOBALS['conn']);
         } catch (\Throwable $e) {}
     }
+    register_shutdown_function(function() {
+        if (isset($GLOBALS['conn']) && $GLOBALS['conn'] instanceof mysqli) {
+            try {
+                @$GLOBALS['conn']->close();
+            } catch (\Throwable $e) {}
+        }
+    });
 });
 
 // Global helper: Log Zalo/Email/Telegram communications to database

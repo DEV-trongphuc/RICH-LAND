@@ -1679,9 +1679,12 @@ if (function_exists('fastcgi_finish_request')) {
     flush();
 }
 
-// Background Task: Notify via email (this takes 2-5s so it's done after responding to webhook)
+// Background Task: Flush Sale Lead Notifications (Telegram, Zalo, Email, In-App Bell) immediately while $conn is open!
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/zalo_bot.php';
+if (function_exists('flushQueuedSaleLeadNotifications')) {
+    flushQueuedSaleLeadNotifications($conn);
+}
 
 try {
     if ($isFallbackAdmin && $fallbackAdminData) {
@@ -1776,6 +1779,10 @@ if ($notifyAdmin === 1 && !empty($leadId)) {
     } catch (Exception $e) {
         error_log("Error in sendNewLeadApiNotificationToAdmins: " . $e->getMessage());
     }
+}
+
+if (function_exists('flushQueuedSaleLeadNotifications')) {
+    flushQueuedSaleLeadNotifications($conn);
 }
 
 // Release advisory lock before closing connection
