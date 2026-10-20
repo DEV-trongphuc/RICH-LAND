@@ -17,6 +17,7 @@ import { Avatar } from '../components/ui/Avatar';
 import styles from './EntityDrawer.module.css';
 import { Skeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
@@ -81,6 +82,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const { user: currentUser } = useAuth();
   const { showConfirm, closeConfirm } = useUIStore();
   const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth <= 1024);
+  useMobileBackHandler(Boolean(isOpen && task && !embedMode), onClose, 220);
 
   useEffect(() => {
     const handleResize = () => setIsMobileOrTablet(window.innerWidth <= 1024);

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 import { emitCrmSync } from '../utils/crmEvents';
 import {
@@ -1552,6 +1553,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsStatus, setWsStatus] = useState('planned'); // Default: hide completed
   const [showDoneTasks, setShowDoneTasks] = useState(false);
   const [wsViewMode, setWsViewMode] = useState<'grid' | 'kanban' | 'focus'>('grid');
+  useMobileBackHandler(Boolean(!embedMode && isMobile && isMobileSidebarOpen), () => setIsMobileSidebarOpen(false), 180);
+  useMobileBackHandler(showWarRoom, () => setShowWarRoom(false), 170);
+  useMobileBackHandler(wsViewMode === 'focus', () => setWsViewMode('grid'), 160);
+  useMobileBackHandler(Boolean(activeTab !== (activeTabProp || 'workspace')), () => setActiveTab(activeTabProp || 'workspace'), 120);
   const [hideWorkspaceAlerts, setHideWorkspaceAlerts] = useState(true);
   const [showWorkspaceCustomizer, setShowWorkspaceCustomizer] = useState(false);
   const [isWorkspaceStatsModalOpen, setIsWorkspaceStatsModalOpen] = useState(false);
@@ -2975,6 +2980,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [profileCertificates, setProfileCertificates] = useState<{ id: string, name: string, code: string, issuer: string, link: string, image: string, issuedDate: string, expiryDate: string }[]>([]);
   const [isEditingCertificates, setIsEditingCertificates] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  useMobileBackHandler(Boolean(previewImage), () => setPreviewImage(null), 420);
+  useMobileBackHandler(Boolean(meetingToComplete), () => setMeetingToComplete(null), 350);
   const [hoveredImgIndex, setHoveredImgIndex] = useState<number | null>(null);
   const [profileHRRecords, setProfileHRRecords] = useState<{ id: string, type: 'award' | 'warning' | 'discipline', title: string, date: string, amount: string, reason: string, decisionNumber: string, documentLink: string }[]>([]);
   const [isEditingHRRecords, setIsEditingHRRecords] = useState(false);

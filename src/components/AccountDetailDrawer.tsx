@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Camera, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Save, Trash2, Download, 
@@ -177,6 +178,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   }, []);
 
   const [activeTab, setActiveTab] = useState<'personal' | 'erp' | 'assets' | 'account' | 'bank' | 'emergency' | 'schedule' | 'documents' | 'certificates' | 'hr_records' | ''>(() => window.innerWidth <= 1024 ? '' : 'personal');
+  useMobileBackHandler(Boolean(isOpen && isMobileOrTablet && activeTab), () => setActiveTab(''), 250);
+  useMobileBackHandler(Boolean(isOpen), onClose, 200);
   const [addressTemporary, setAddressTemporary] = useState('');
   const [certificates, setCertificates] = useState<{ id: string, name: string, code: string, issuer: string, link: string, image: string, issuedDate: string, expiryDate: string }[]>([]);
   const [hrRecords, setHrRecords] = useState<{ id: string, type: 'award' | 'warning' | 'discipline', title: string, date: string, amount: string, reason: string, decisionNumber: string, documentLink: string }[]>([]);

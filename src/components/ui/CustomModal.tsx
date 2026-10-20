@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { X } from 'lucide-react';
 import styles from './CustomModal.module.css';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 
 interface CustomModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 }) => {
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
   const dragControls = useDragControls();
+  useMobileBackHandler(isOpen, onClose, 300);
 
   // Prevent body scroll and handle mobile resize only when modal is active
   useEffect(() => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, ExternalLink, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 
 export interface AttachmentItem {
   url: string;
@@ -23,6 +24,7 @@ export const AttachmentLightboxModal: React.FC<AttachmentLightboxModalProps> = (
   initialIndex = 0
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  useMobileBackHandler(isOpen, onClose, 420);
 
   useEffect(() => {
     if (isOpen) {

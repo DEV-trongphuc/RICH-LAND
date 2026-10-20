@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 import { ChevronDown, Search, Check } from 'lucide-react';
 import styles from './CustomSelect.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -58,6 +59,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
+  useMobileBackHandler(isOpen, () => setIsOpen(false), 400);
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);

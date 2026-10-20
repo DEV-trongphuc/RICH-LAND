@@ -10,6 +10,7 @@ import { SIDEBAR_GROUPS } from './Sidebar';
 import { Avatar } from '../ui/Avatar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CustomModal } from '../ui/CustomModal';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 import { NotificationSettingsModal } from '../ui/NotificationSettingsModal';
 import { fetchAPI } from '../../utils/api';
 import { playNotificationChime } from '../../utils/soundHelper';
@@ -296,6 +297,9 @@ export const Header = ({
 
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [isMatrixModalOpen, setIsMatrixModalOpen] = useState(false);
+  useMobileBackHandler(Boolean(isNotifModalOpen && showNotifSettings), () => setShowNotifSettings(false), 350);
+  useMobileBackHandler(isProfileMenuOpen, () => setIsProfileMenuOpen(false), 190);
+  useMobileBackHandler(isLangOpen, () => setIsLangOpen(false), 190);
   const [notifPrefs, setNotifPrefs] = useState<any>({
     email_warning: 1,
     email_mention: 1,

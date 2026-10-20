@@ -10,6 +10,7 @@ import { useUIStore } from '../store/uiStore';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import { StatRowSkeleton } from '../components/ui/Skeleton';
 import styles from './EntityDrawer.module.css'; 
 
@@ -32,6 +33,7 @@ const PRIORITIES = [
 
 export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdate, contacts = [], users = [], onOpenContact }) => {
   const [isMobile, setIsMobile] = useState(false);
+  useMobileBackHandler(Boolean(isOpen), onClose, 220);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     handleResize();

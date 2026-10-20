@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { MapPin, ChevronRight, Check, Search, Globe, ArrowLeft, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 
 // ─── Types ────────────────────────────────────────────────────
 interface City { code: string | number; name: string; }
@@ -37,6 +38,10 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [search, setSearch] = useState('');
   const [isForeign, setIsForeign] = useState(false);
+  useMobileBackHandler(open, () => {
+    if (!isForeign && step > 1) setStep((step - 1) as 1 | 2 | 3);
+    else setOpen(false);
+  }, 400);
   const [foreignText, setForeignText] = useState('');
 
   const [selectedCity, setSelectedCity] = useState<City | null>(null);

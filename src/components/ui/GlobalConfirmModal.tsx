@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Info, X, RefreshCw } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 
 export const GlobalConfirmModal: React.FC = () => {
   const { confirmModal, closeConfirm } = useUIStore();
@@ -80,6 +81,8 @@ export const GlobalConfirmModal: React.FC = () => {
     if (onCancel) onCancel();
     closeConfirm();
   };
+
+  useMobileBackHandler(isOpen, handleCancel, 450);
 
   const renderMessage = (text: string) => {
     if (!text) return null;

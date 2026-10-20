@@ -12,6 +12,7 @@ import api from '../api/axios';
 import { compressToWebP } from '../utils/imageCompress';
 import { ActivityModal } from '../components/ui/ActivityModal';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
 import { numberToText } from '../utils/numberToText';
 import { useAuth } from '../contexts/AuthContext';
@@ -242,6 +243,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       onClose();
     }
   }, [hasChanges, onClose, showConfirm, handleSave]);
+  useMobileBackHandler(Boolean(isOpen && isMobileOrTablet && activeTab), () => setActiveTab(''), 250);
+  useMobileBackHandler(Boolean(isOpen), handleClose, 200);
   const [helpModal, setHelpModal] = useState<{title: string, content: string} | null>(null);
   
   // B2B Sub-contacts State — loaded from API

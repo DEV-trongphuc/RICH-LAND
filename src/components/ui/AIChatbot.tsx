@@ -3,6 +3,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Send, X, Database, Sparkles, LayoutGrid, Search, ChevronRight, RefreshCw, ChevronLeft, FileText } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 
 interface Message {
   id: string;
@@ -69,6 +70,9 @@ export const AIChatbot: React.FC = () => {
   const [parentProj, setParentProj] = useState<any>(null);
   const [showDocSelectModal, setShowDocSelectModal] = useState(false);
   const [docSearchQuery, setDocSearchQuery] = useState('');
+  useMobileBackHandler(showDocSelectModal, () => setShowDocSelectModal(false), 360);
+  useMobileBackHandler(Boolean(isOpen && chatMode === 'project_campaign' && selectedEntity), () => setSelectedEntity(null), 340);
+  useMobileBackHandler(isOpen, () => setIsOpen(false), 320);
 
   const loadEntities = async () => {
     setLoadingEntities(true);

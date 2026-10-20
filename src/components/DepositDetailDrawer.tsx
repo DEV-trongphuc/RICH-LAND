@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, ChevronLeft, ChevronRight, Plus, Trash2, Upload, AlertCircle, Loader2, Clock, Activity,
@@ -665,6 +666,7 @@ export const DepositDetailDrawer: React.FC<DepositDetailDrawerProps> = ({
       setIsClosing(false);
     }, 280);
   };
+  useMobileBackHandler(Boolean(isOpen && selectedDepForManage), handleClose, 220);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {

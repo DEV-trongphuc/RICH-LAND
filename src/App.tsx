@@ -15,6 +15,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { LoadingModal } from './components/ui/LoadingModal';
 import { AutoUpdateChecker } from './components/AutoUpdateChecker';
 import { hasModuleApprovalAccess } from './utils/approvalPermissions';
+import { MobileBackSentinel } from './utils/mobileBackStack';
 import './utils/toastEnhancer';
 
 
@@ -613,6 +614,7 @@ export default function App() {
               document.body
             ) : null}
             <Router>
+              <MobileBackSentinel />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/login" element={<Login />} />

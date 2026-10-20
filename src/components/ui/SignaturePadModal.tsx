@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, RefreshCw, Upload, Edit3, Trash2, Check, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 import toast from 'react-hot-toast';
 
 interface SignaturePadModalProps {
@@ -25,6 +26,7 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
   saveLabel
 }) => {
   const { t } = useLanguage();
+  useMobileBackHandler(isOpen, onClose, 410);
   const isSigningMode = !!title;
   const [signMethod, setSignMethod] = useState<'saved' | 'draw'>(initialSignatureUrl ? 'saved' : 'draw');
   const [activeTab, setActiveTab] = useState<'draw' | 'upload'>('draw');

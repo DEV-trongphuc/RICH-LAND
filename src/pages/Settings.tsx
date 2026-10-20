@@ -8,6 +8,7 @@ import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, C
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI, clearSettingsCache } from '../utils/api';
 import toast from 'react-hot-toast';
@@ -224,6 +225,7 @@ const SettingsInner = () => {
   })));
 
   const [activeTab, setActiveTab] = useState<string>(window.innerWidth <= 768 ? 'menu' : 'business_limits');
+  useMobileBackHandler(Boolean(typeof window !== 'undefined' && window.innerWidth <= 768 && activeTab !== 'menu'), () => setActiveTab('menu'), 150);
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
 
   // Settings Live Search State & Index

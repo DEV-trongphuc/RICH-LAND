@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 
 interface MobileSheetProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const MobileSheet: React.FC<MobileSheetProps> = ({
   className = ''
 }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useMobileBackHandler(isOpen, onClose, 300);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);

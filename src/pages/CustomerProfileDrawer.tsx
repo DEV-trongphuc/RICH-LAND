@@ -1,6 +1,7 @@
 /* eslint-disable */
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2, Sparkles, ExternalLink, Globe, Video, UserX, ArrowLeft, MoreVertical, Info } from 'lucide-react';
 import { triggerFullConfetti } from '../utils/confettiHelper';
@@ -1828,6 +1829,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       onClose();
     }
   }, [hasChanges, onClose, showConfirm, handleSave]);
+  useMobileBackHandler(Boolean(isOpen && isMobileOrTablet && activeTab), () => setActiveTab(''), 250);
+  useMobileBackHandler(Boolean(isOpen), handleClose, 200);
   const [showCallLogger, setShowCallLogger] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [meetingToComplete, setMeetingToComplete] = useState<any | null>(null);

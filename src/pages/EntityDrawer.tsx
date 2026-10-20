@@ -10,6 +10,7 @@ import { useUIStore } from '../store/uiStore';
 import { useAuthStore } from '../store/authStore';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import styles from './EntityDrawer.module.css';
 
 interface EntityDrawerProps {
@@ -30,6 +31,7 @@ const TABS = [
 
 export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, entity, onSave }) => {
   const { addToast } = useUIStore();
+  useMobileBackHandler(Boolean(isOpen), onClose, 220);
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState(entity || {});

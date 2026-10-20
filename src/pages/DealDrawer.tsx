@@ -8,6 +8,7 @@ import { useUIStore } from '../store/uiStore';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../utils/mobileBackStack';
 import styles from './EntityDrawer.module.css';
 import { TagInput } from '../components/ui/TagInput';
 import { MentionInput } from '../components/ui/MentionInput';
@@ -33,6 +34,7 @@ const TABS = [
 
 export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, onSave, stages }) => {
   const { addToast, setShowPOS } = useUIStore();
+  useMobileBackHandler(Boolean(isOpen), onClose, 220);
   const [activeTab, setActiveTab] = useState<'info' | 'activities' | 'products' | 'quotes' | string>('info');
   const [formData, setFormData] = useState(deal || {});
 

@@ -2,11 +2,13 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Phone, Smartphone, Copy } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 import { QRCodeCanvas } from 'qrcode.react';
 
 export const QRCodeCallModal: React.FC = () => {
   const { callModal, closeCall } = useUIStore();
   const { isOpen, phone } = callModal;
+  useMobileBackHandler(isOpen, closeCall, 410);
 
   if (!isOpen) return null;
 

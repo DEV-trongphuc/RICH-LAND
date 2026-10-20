@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
+import { useMobileBackHandler } from '../../utils/mobileBackStack';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Sidebar, SIDEBAR_GROUPS } from './Sidebar';
@@ -80,6 +81,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   }, []);
   
   const { showPOS, setShowPOS } = useUIStore();
+  useMobileBackHandler(Boolean(isMobile && isMobileSidebarOpen), () => setIsMobileSidebarOpen(false), 180);
+  useMobileBackHandler(Boolean(showPOS), () => setShowPOS(false), 310);
   
   const { user, token } = useAuth();
   const navigate = useNavigate();
