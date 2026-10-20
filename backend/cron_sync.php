@@ -2982,6 +2982,7 @@ function releaseExpiredLeadsToKho($conn) {
             JOIN persons p ON c.person_id = p.id
             WHERE c.security_expires_at <= NOW()
               AND c.security_expires_at IS NOT NULL
+              AND CAST(c.security_expires_at AS CHAR) > '2000-01-01 00:00:00'
               AND c.deleted_at IS NULL
               AND COALESCE(LOWER(c.source), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
               AND COALESCE(LOWER(c.lead_phan_loai), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
@@ -3026,11 +3027,15 @@ function releaseExpiredLeadsToKho($conn) {
         return;
     }
 
+    $processedKhoPersonIds = [];
     while ($row = $res->fetch_assoc()) {
         $contactId = (int)$row['contact_id'];
         $personId = (int)$row['person_id'];
         $ownerId = (int)$row['owner_id'];
         $tenantId = (int)$row['tenant_id'];
+        if ($personId > 0 && isset($processedKhoPersonIds[$personId])) {
+            continue;
+        }
 
         $conn->begin_transaction();
         try {
@@ -3078,11 +3083,19 @@ function releaseExpiredLeadsToKho($conn) {
             }
 
             // Update person is_public = 1 (Hiện lên Databank cho sale khác thấy)
-            $stmtPerson = $conn->prepare("SELECT public_count FROM persons WHERE id = ? FOR UPDATE");
+            $stmtPerson = $conn->prepare("SELECT is_public, public_count FROM persons WHERE id = ? FOR UPDATE");
             $stmtPerson->bind_param("i", $personId);
             $stmtPerson->execute();
             $personData = $stmtPerson->get_result()->fetch_assoc();
             $stmtPerson->close();
+
+            if ($personId > 0) {
+                $processedKhoPersonIds[$personId] = true;
+            }
+            if ((int)($personData['is_public'] ?? 0) === 1) {
+                $conn->commit();
+                continue;
+            }
 
             $publicCount = (int)($personData['public_count'] ?? 0);
             if ($publicCount === 0) {
@@ -3151,6 +3164,8 @@ function assignParallelLeads($conn) {
               AND (c.parallel_assigned IS NULL OR c.parallel_assigned = 0)
               AND c.security_expires_at <= NOW()
               AND c.security_expires_at IS NOT NULL
+              AND CAST(c.security_expires_at AS CHAR) > '2000-01-01 00:00:00'
+              AND c.created_at <= DATE_SUB(NOW(), INTERVAL 30 MINUTE)
               AND c.owner_id IS NOT NULL
               AND c.deleted_at IS NULL
               AND COALESCE(LOWER(c.source), '') NOT IN ('ca_nhan', 'cá nhân', 'gioi_thieu', 'giới thiệu', 'personal', 'referral', 'manual', 'self')
@@ -3174,12 +3189,37 @@ function assignParallelLeads($conn) {
         return;
     }
     
+    $processedParallelPersons = [];
     while ($row = $res->fetch_assoc()) {
         $contactId = (int)$row['contact_id'];
         $personId = (int)$row['person_id'];
         $ownerId = (int)$row['owner_id'];
         $projectId = $row['project_id'] ? (int)$row['project_id'] : null;
         $roundId = $row['original_round_id'] ? (int)$row['original_round_id'] : null;
+
+        if ($personId > 0) {
+            if (isset($processedParallelPersons[$personId])) {
+                $conn->query("UPDATE contacts SET parallel_assigned = 1 WHERE id = " . (int)$contactId);
+                continue;
+            }
+            $chkCntStmt = $conn->prepare("SELECT COUNT(*) as cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL");
+            if ($chkCntStmt) {
+                $chkCntStmt->bind_param("i", $personId);
+                $chkCntStmt->execute();
+                $activeCnt = (int)($chkCntStmt->get_result()->fetch_assoc()['cnt'] ?? 0);
+                $chkCntStmt->close();
+                if ($activeCnt >= 2) {
+                    $updAlready = $conn->prepare("UPDATE contacts SET parallel_assigned = 1 WHERE person_id = ? AND deleted_at IS NULL AND (parallel_assigned IS NULL OR parallel_assigned = 0)");
+                    if ($updAlready) {
+                        $updAlready->bind_param("i", $personId);
+                        $updAlready->execute();
+                        $updAlready->close();
+                    }
+                    $processedParallelPersons[$personId] = true;
+                    continue;
+                }
+            }
+        }
         
         if (!$roundId) {
             $leadData = [
@@ -3276,8 +3316,15 @@ function assignParallelLeads($conn) {
             $upd1->execute();
             $upd1->close();
             
-            $secTimerVal = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+3 hours';
-            $secExpiresTime = date('Y-m-d H:i:s', strtotime($secTimerVal));
+            $secTimerVal = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+6 hours';
+            if (is_numeric(trim((string)$secTimerVal))) {
+                $secTimerVal = '+' . (int)trim((string)$secTimerVal) . ' hours';
+            }
+            $parsedSecTs = strtotime((string)$secTimerVal);
+            if (!$parsedSecTs || $parsedSecTs <= time()) {
+                $parsedSecTs = time() + 6 * 3600;
+            }
+            $secExpiresTime = date('Y-m-d H:i:s', $parsedSecTs);
 
             if ($projectId !== null) {
                 $chkExists = $conn->query("SELECT id FROM projects WHERE id = " . (int)$projectId);
@@ -3298,24 +3345,8 @@ function assignParallelLeads($conn) {
             $secondContactId = $stmtIns->insert_id;
             $stmtIns->close();
 
-            // Insert a clean new lead record for the parallel assignment (never force leads.id = $secondContactId)
-            $stmtLead = $conn->prepare("
-                INSERT INTO leads (person_id, name, phone, email, project_id, source, assigned_to, last_assigned_at, last_interaction_date, status, is_accepted, target_round_id, note, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'assigned', 0, ?, ?, NOW())
-            ");
-            $leadName = trim($row['first_name'] . ' ' . $row['last_name']);
-            $leadNote = $row['notes'] ?? '';
-            $stmtLead->bind_param("isssisiss", $personId, $leadName, $row['phone'], $row['email'], $projectId, $row['source'], $secondSaleId, $roundId, $leadNote);
-            $stmtLead->execute();
-            $newParallelLeadId = (int)$stmtLead->insert_id;
-            $stmtLead->close();
-
-            if ($newParallelLeadId > 0) {
-                $updContactLead = $conn->prepare("UPDATE contacts SET lead_id = ? WHERE id = ?");
-                $updContactLead->bind_param("ii", $newParallelLeadId, $secondContactId);
-                $updContactLead->execute();
-                $updContactLead->close();
-            }
+            // Keep linked to the original lead_id ($leadIdVal) so we never create an unaccepted duplicate lead that triggers recallInactiveLeads!
+            $distLeadId = $leadIdVal ?: $secondContactId;
             
             $updRound = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
             $updRound->bind_param("ii", $secondSaleId, $roundId);
@@ -3326,15 +3357,18 @@ function assignParallelLeads($conn) {
             $labelsArr = $statusLabel ? json_decode($statusLabel, true) : [];
             $statusText = $labelsArr[$triggerStatus] ?? $triggerStatus;
             
-            $timerHours = preg_replace('/[^0-9]/', '', $secTimerVal); // e.g. 3
+            $timerHours = preg_replace('/[^0-9]/', '', $secTimerVal); // e.g. 6
             if (empty($timerHours)) {
-                $timerHours = '3';
+                $timerHours = '6';
             }
             
             $logMsg = "Gán song song tự động ($statusText > $timerHours giờ)";
-            $distLeadId = $newParallelLeadId > 0 ? $newParallelLeadId : $secondContactId;
             // logDistribution queues sendDirectSaleLeadNotification (Email + Zalo) for $secondSaleId
             logDistribution($conn, $distLeadId, $secondSaleId, $roundId, 'assigned', $logMsg, false);
+
+            if ($personId > 0) {
+                $processedParallelPersons[$personId] = true;
+            }
             
             $conn->commit();
             logSync("Parallel assigned Person ID $personId (Contact ID $contactId) to Sale ID $secondSaleId.");

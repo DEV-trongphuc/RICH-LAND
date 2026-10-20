@@ -5045,7 +5045,14 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
                 $shareHours = (int)get_system_setting($conn, 'uncontacted_lead_share_hours');
                 $chuaXacDinhDuration = $shareHours > 0 ? "+$shareHours hours" : '+3 hours';
             }
-            $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
+            if (is_numeric(trim((string)$chuaXacDinhDuration))) {
+                $chuaXacDinhDuration = '+' . (int)trim((string)$chuaXacDinhDuration) . ' hours';
+            }
+            $parsedSecTs = strtotime((string)$chuaXacDinhDuration);
+            if (!$parsedSecTs || $parsedSecTs <= time()) {
+                $parsedSecTs = time() + 6 * 3600;
+            }
+            $secExpiresTime = date('Y-m-d H:i:s', $parsedSecTs);
         }
 
         $ownerUserId = null;
@@ -5305,7 +5312,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
             if ($stmtContact) {
                 $createdBy = 1;
                 $stmtContact->bind_param(
-                    "iiisiisssssssissssssssssssssdsssssssssssssss",
+                    "iiisiissssssissssssssssssssdssssssssssssssss",
                     $person_id, $leadId, $projectId, $leadCampaignId, $ownerUserId, $createdBy,
                     $firstName, $lastName, $email, $phone, $source,
                     $triggerStatus, $stageId, $secExpiresTime, $note,
