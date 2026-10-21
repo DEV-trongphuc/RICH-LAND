@@ -379,6 +379,10 @@ class ContactController {
                    r.round_name,
                    dl.id as log_id,
                    l.id as lead_id,
+                   l.project_id as lead_project_id,
+                   (SELECT name FROM projects WHERE id = l.project_id LIMIT 1) as lead_project_name,
+                   l.campaign_id as lead_campaign_id,
+                   l.campaign_name as lead_campaign_name,
                    l.note as lead_note,
                    l.type as lead_type,
                    l.source as lead_source,
@@ -1474,11 +1478,81 @@ class ContactController {
                     NULLIF(GREATEST(
                         COALESCE((SELECT MAX(paid_at) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL), '1970-01-01 00:00:00'),
                         COALESCE((SELECT MAX(e.approved_at) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL), '1970-01-01 00:00:00')
-                    ), '1970-01-01 00:00:00') as last_order_at
+                    ), '1970-01-01 00:00:00') as last_order_at,
+                    l.id as lead_id,
+                    l.project_id as lead_project_id,
+                    (SELECT name FROM projects WHERE id = l.project_id LIMIT 1) as lead_project_name,
+                    l.campaign_id as lead_campaign_id,
+                    l.campaign_name as lead_campaign_name,
+                    l.note as lead_note,
+                    l.type as lead_type,
+                    l.source as lead_source,
+                    COALESCE(NULLIF(c.lead_phan_loai, ''), NULLIF(l.lead_phan_loai, ''), c.source) as lead_phan_loai,
+                    COALESCE(NULLIF(c.loai_lead, ''), NULLIF(l.loai_lead, ''), c.customer_type) as loai_lead,
+                    l.lead_phan_loai as lead_lead_phan_loai,
+                    l.loai_lead as lead_loai_lead,
+                    l.platform as lead_platform,
+                    l.donvi_chay as lead_donvi_chay,
+                    l.ad_name as lead_ad_name,
+                    l.form_name as lead_form_name,
+                    l.link_video_ads as lead_link_video_ads,
+                    l.preferred_location as lead_preferred_location,
+                    l.bedroom_count as lead_bedroom_count,
+                    l.property_type as lead_property_type,
+                    l.demand_type as lead_demand_type,
+                    l.budget as lead_budget,
+                    COALESCE(l.form_name, c.form_name) as form_name,
+                    COALESCE(l.ad_name, c.ad_name) as ad_name,
+                    COALESCE(l.ad_id, c.ad_id) as ad_id,
+                    COALESCE(l.birthday, c.birthday) as birthday,
+                    COALESCE(l.country, c.country) as country,
+                    COALESCE(l.city, c.city) as city,
+                    COALESCE(l.loai_hinh, l.property_type, c.loai_hinh, c.property_type) as loai_hinh,
+                    COALESCE(l.property_type, l.loai_hinh, c.property_type, c.loai_hinh) as property_type,
+                    COALESCE(l.hinh_thuc_tt, c.hinh_thuc_tt) as hinh_thuc_tt,
+                    COALESCE(l.time_lienhe, c.time_lienhe) as time_lienhe,
+                    COALESCE(l.app_lienhe, c.app_lienhe) as app_lienhe,
+                    COALESCE(l.nhu_cau, l.demand_type, c.nhu_cau, c.demand_type) as nhu_cau,
+                    COALESCE(l.demand_type, l.nhu_cau, c.demand_type, c.nhu_cau) as demand_type,
+                    COALESCE(l.tieu_chi, c.tieu_chi) as tieu_chi,
+                    COALESCE(l.san_pham, c.san_pham) as san_pham,
+                    COALESCE(l.tinh_trang, c.tinh_trang) as tinh_trang,
+                    COALESCE(l.client_context, c.client_context) as client_context,
+                    COALESCE(l.inbox_url, c.inbox_url) as inbox_url,
+                    dl.round_id as dl_round_id,
+                    dl.status as dl_status,
+                    CASE 
+                        WHEN c.source = 'databank' 
+                             OR c.lead_phan_loai = 'databank' 
+                             OR dl.status = 'databank_claim'
+                             OR EXISTS (
+                                 SELECT 1 FROM distribution_logs dl_dbk 
+                                 WHERE dl_dbk.lead_id = l.id AND dl_dbk.assigned_to = c.owner_id AND dl_dbk.status = 'databank_claim'
+                             )
+                        THEN 1 
+                        ELSE 0 
+                    END as from_databank,
+                    r.round_name,
+                    dr.status as ticket_status,
+                    dr.reason as ticket_reason
             FROM contacts c
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
+            LEFT JOIN leads l ON l.id = COALESCE(
+                NULLIF(c.lead_id, 0),
+                (SELECT MAX(id) FROM leads WHERE appsheet_id IS NOT NULL AND appsheet_id != '' AND appsheet_id = c.appsheet_id),
+                (SELECT MAX(id) FROM leads WHERE person_id = c.person_id AND (c.appsheet_id IS NULL OR c.appsheet_id = '' OR appsheet_id = c.appsheet_id))
+            )
+            LEFT JOIN distribution_logs dl ON dl.id = (
+                SELECT MAX(id) FROM distribution_logs 
+                WHERE lead_id = l.id AND assigned_to = c.owner_id
+            )
+            LEFT JOIN distribution_rounds r ON COALESCE(dl.round_id, l.target_round_id) = r.id
+            LEFT JOIN data_reports dr ON dr.id = (
+                SELECT MAX(id) FROM data_reports
+                WHERE lead_id = l.id AND consultant_id = c.owner_id
+            )
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
         
         $stmt = $this->db->prepare($sql);

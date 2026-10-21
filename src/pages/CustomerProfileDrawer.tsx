@@ -1795,7 +1795,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setIsSubmitting(true);
     try {
       const res = await api.put(`/contacts/${contact.id}`, payload);
-      const updated = res.data?.data || { ...formData, tags };
+      const rawUpdated = res.data?.data || { ...formData, tags };
+      const updated = {
+        ...contact,
+        ...formData,
+        ...rawUpdated,
+        lead_project_id: rawUpdated.lead_project_id ?? (formData as any).lead_project_id ?? (contact as any)?.lead_project_id,
+        lead_project_name: rawUpdated.lead_project_name ?? (formData as any).lead_project_name ?? (contact as any)?.lead_project_name,
+        lead_campaign_id: rawUpdated.lead_campaign_id ?? (formData as any).lead_campaign_id ?? (contact as any)?.lead_campaign_id,
+        lead_campaign_name: rawUpdated.lead_campaign_name ?? (formData as any).lead_campaign_name ?? (contact as any)?.lead_campaign_name,
+        tags: rawUpdated.tags || tags
+      };
       setFormData(updated);
       setBaseData(updated);
       setBaseTags(updated.tags || []);
