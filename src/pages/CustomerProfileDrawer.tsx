@@ -4064,7 +4064,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         api.get('/projects?bypass_roster=1').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
       }
       if (allowedCampaigns.length === 0) {
-        api.get('/marketing-campaigns?bypass_roster=1&include_lead_campaigns=1').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
+        api.get('/marketing-campaigns?bypass_roster=1').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
       }
       if (allowedTeams.length === 0) {
         api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
@@ -4487,10 +4487,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         });
       }
 
-      const updatedContactObj = { ...formData, ...contact, pipeline_status: targetId, status: calculatedStatus };
+      const updatedContactObj = { ...formData, ...contact, pipeline_status: targetId, status: calculatedStatus, ...(targetId === 'not_lead' ? { not_lead_proposed: 1 } : {}) };
       onUpdate?.(updatedContactObj);
       window.dispatchEvent(new CustomEvent('contact-updated'));
       addToast(`Đã cập nhật trạng thái sang "${targetLabel}" thành công!`, 'success');
+      if (targetId === 'not_lead') {
+        handleClose();
+        return;
+      }
       await fetchData();
     } catch (e: any) {
       setFormData((prev: any) => ({
@@ -5944,7 +5948,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           addToast('Gửi báo lỗi data thành công! Đang chờ admin duyệt bù.', 'success');
         }
         setShowReportModal(false);
-        fetchData();
+        onUpdate?.({ ...formData, pipeline_status: 'not_lead', not_lead_proposed: res.data.auto_approved ? 0 : 1, report_status: res.data.auto_approved ? 'approved' : 'pending' });
+        window.dispatchEvent(new CustomEvent('contact-updated'));
+        handleClose();
       } else {
         addToast(res.data.message || 'Gửi báo lỗi thất bại', 'error');
       }
@@ -8221,7 +8227,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               {(() => {
                                 const currentCampVal = formData.campaign_id ? String(formData.campaign_id) : '';
                                 const filteredCamps = formData.project_id
-                                  ? allowedCampaigns.filter(c => !c.project_id || Number(c.project_id) === Number(formData.project_id) || String(c.id) === currentCampVal || (c.code && String(c.code) === currentCampVal))
+                                  ? allowedCampaigns.filter(c => !c.project_id || Number(c.project_id) === Number(formData.project_id) || String(c.id) === currentCampVal)
                                   : allowedCampaigns;
                                 const campOptions = filteredCamps.map(c => {
                                   const pName = projectsList.find(p => Number(p.id) === Number(c.project_id))?.name || c.project_name;
@@ -8233,13 +8239,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     faded: c.status !== 'active' && c.status !== 'running'
                                   };
                                 });
-                                if (currentCampVal && !campOptions.some(o => o.value === currentCampVal)) {
-                                  campOptions.unshift({
-                                    value: currentCampVal,
-                                    label: currentCampVal,
-                                    faded: false
-                                  });
-                                }
+                                const effectiveCampVal = campOptions.some(o => o.value === currentCampVal) ? currentCampVal : '';
                                 return (
                                   <CustomSelect
                                     searchable
@@ -8248,7 +8248,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       { value: '', label: '— Chọn chiến dịch —' },
                                       ...campOptions
                                     ]}
-                                    value={currentCampVal}
+                                    value={effectiveCampVal}
                                     onChange={val => {
                                       const nextCampaign = val ? String(val) : null;
                                       let nextProjectId = formData.project_id;

@@ -878,9 +878,9 @@ export const ContactsPage: React.FC = () => {
       const r = await api.get('/contacts', { params, signal: currentSignal });
       const data = r.data.data;
       const items = data.items || [];
-      // Double guard: Ensure not_lead and proposed not_lead are hidden from sales
+      // Double guard: Ensure not_lead, proposed not_lead, and reported leads are hidden from sales
       const filteredItems = isSale 
-        ? items.filter((c: any) => c.pipeline_status !== 'not_lead' && Number(c.not_lead_proposed || 0) !== 1)
+        ? items.filter((c: any) => c.pipeline_status !== 'not_lead' && c.status !== 'not_lead' && Number(c.not_lead_proposed || 0) !== 1 && !['pending', 'approved', 'approved_no_comp'].includes(String(c.report_status || '')))
         : items;
       setContacts(filteredItems.map((c: any) => ({ ...c, score: calcScore(c, scoringRules, decayDays) })));
       setTotal(data.total || filteredItems.length);

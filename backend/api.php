@@ -3246,6 +3246,23 @@ switch ($action) {
         $effectiveRecallSql = "CASE WHEN IFNULL(sc.lead_recall_minutes, 0) > 0 THEN sc.lead_recall_minutes ELSE $globalRecallMins END";
         $unacceptedNotExpiredSql = "(l.last_interaction_date IS NULL OR ($effectiveRecallSql) <= 0 OR TIMESTAMPDIFF(SECOND, l.last_interaction_date, NOW()) < (($effectiveRecallSql) * 60))";
 
+        $notLeadPortalExcludeSql = "
+            AND COALESCE(l.status, '') != 'not_lead'
+            AND NOT EXISTS (
+                SELECT 1 FROM data_reports dr_ex
+                WHERE dr_ex.lead_id = l.id
+                  AND dr_ex.consultant_id = dl.assigned_to
+                  AND dr_ex.status IN ('pending', 'approved', 'approved_no_comp')
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM contacts c_ex
+                WHERE c_ex.owner_id = dl.assigned_to
+                  AND c_ex.deleted_at IS NULL
+                  AND (c_ex.lead_id = l.id OR (c_ex.person_id = l.person_id AND l.person_id > 0))
+                  AND (c_ex.pipeline_status = 'not_lead' OR COALESCE(c_ex.not_lead_proposed, 0) = 1)
+            )
+        ";
+
         // Count query for pagination support
         $sqlCount = "
             SELECT COUNT(*) as cnt
@@ -3258,7 +3275,7 @@ switch ($action) {
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
-            WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent') AND $unacceptedNotExpiredSql) OR (l.is_accepted = 1 AND $dateConditionDl) )
+            WHERE $whereClause $notLeadPortalExcludeSql AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent', 'not_lead') AND $unacceptedNotExpiredSql) OR (l.is_accepted = 1 AND $dateConditionDl) )
         ";
         $totalCount = 0;
         $stmtCount = $conn->prepare($sqlCount);
@@ -3288,7 +3305,7 @@ switch ($action) {
                    dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason, dr.created_at as report_created_at,
                    IFNULL(sc.lead_recall_minutes, 0) as lead_recall_minutes,
                    sc.sheet_name as connection_name,
-                   c_real.id as contact_id, c_real.last_contact as contact_last_contact FROM distribution_logs dl
+                   c_real.id as contact_id, c_real.last_contact as contact_last_contact, c_real.pipeline_status as contact_pipeline_status, c_real.not_lead_proposed FROM distribution_logs dl
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
@@ -3309,7 +3326,7 @@ switch ($action) {
                     GROUP BY lead_id, consultant_id
                 ) dr2 ON dr1.id = dr2.max_dr_id
             ) dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
-            WHERE $whereClause AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent') AND $unacceptedNotExpiredSql) OR (l.is_accepted = 1 AND $dateConditionDl) )
+            WHERE $whereClause $notLeadPortalExcludeSql AND ( (l.is_accepted = 0 AND l.assigned_to = dl.assigned_to AND l.assigned_to IS NOT NULL AND l.status NOT IN ('unassigned', 'released_to_kho', 'pending_approval', 'duplicate', 'silent', 'not_lead') AND $unacceptedNotExpiredSql) OR (l.is_accepted = 1 AND $dateConditionDl) )
             ORDER BY COALESCE(l.created_at, dl.received_at) DESC, l.id DESC
             $limitStr
         ";
@@ -3714,10 +3731,18 @@ switch ($action) {
             SELECT COUNT(*) as cnt 
             FROM contacts c
             WHERE c.deleted_at IS NULL
-              AND (c.status IS NULL OR c.status != 'rejected')
+              AND (c.status IS NULL OR c.status NOT IN ('rejected', 'not_lead'))
               AND c.pipeline_status IN ('chua_xac_dinh', 'quan_tam')
+              AND COALESCE(c.not_lead_proposed, 0) = 0
               AND NOT EXISTS (SELECT 1 FROM activities WHERE (related_type = 'contact' AND related_id = c.id) OR contact_id = c.id)
               AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = c.id)
+              AND NOT EXISTS (
+                  SELECT 1 FROM data_reports dr
+                  LEFT JOIN leads l3 ON dr.lead_id = l3.id
+                  WHERE (dr.lead_id = c.lead_id OR (l3.person_id = c.person_id AND c.person_id > 0))
+                    AND dr.consultant_id = c.owner_id
+                    AND dr.status IN ('pending', 'approved', 'approved_no_comp')
+              )
         ";
         if ($isSale) {
             $uncontactedQuery .= " AND c.owner_id = " . (int)$saleUserId;
@@ -10999,11 +11024,28 @@ switch ($action) {
                 $updLead->execute();
                 $updLead->close();
 
-                // 3. Mark distribution_logs as error - chỉ áp dụng cho lượt đang hoạt động gần nhất
-                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'grabbed', 'compensation') ORDER BY id DESC LIMIT 1");
-                $updLog->bind_param("iii", $lead_id, $sale_id, $round_id);
+                // 3. Mark distribution_logs as error for this consultant
+                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'reminder')");
+                $updLog->bind_param("ii", $lead_id, $sale_id);
                 $updLog->execute();
                 $updLog->close();
+
+                // 3b. Sync contacts table immediately -> pipeline_status = 'not_lead' so it hides from Sale
+                $updAutoContact = $conn->prepare("
+                    UPDATE contacts 
+                    SET pipeline_status = 'not_lead', not_lead_proposed = 0, not_lead_reason = ?
+                    WHERE owner_id = ? AND deleted_at IS NULL
+                      AND (
+                          lead_id = ?
+                          OR (person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND person_id > 0)
+                          OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')
+                      )
+                ");
+                if ($updAutoContact) {
+                    $updAutoContact->bind_param("siiii", $reason, $sale_id, $lead_id, $lead_id, $lead_id);
+                    $updAutoContact->execute();
+                    $updAutoContact->close();
+                }
 
                 // 4. Increment compensation_count for the consultant in that round
                 $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id=? AND consultant_id=?");
@@ -11126,6 +11168,26 @@ switch ($action) {
         $stmt->close();
 
         if ($success) {
+            // Immediately hide from Sale by marking the Sale's contact as pipeline_status = 'not_lead' and not_lead_proposed = 1
+            $updPendingContact = $conn->prepare("
+                UPDATE contacts 
+                SET pipeline_status = 'not_lead',
+                    not_lead_proposed = 1,
+                    not_lead_proposed_by = ?,
+                    not_lead_proposed_at = NOW(),
+                    not_lead_reason = ?
+                WHERE owner_id = ? AND deleted_at IS NULL
+                  AND (
+                      lead_id = ?
+                      OR (person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND person_id > 0)
+                      OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')
+                  )
+            ");
+            if ($updPendingContact) {
+                $updPendingContact->bind_param("isiiii", $sale_id, $reason, $sale_id, $lead_id, $lead_id, $lead_id);
+                $updPendingContact->execute();
+                $updPendingContact->close();
+            }
             // FEATURE: Gửi email thông báo tới admin được thiết lập nhận ticket (dùng chung cấu hình báo cáo ngày)
             require_once __DIR__ . '/mailer.php';
 
@@ -12010,10 +12072,10 @@ switch ($action) {
                 }
             }
 
-            // Always mark distribution_logs as error so grab cooldown is reset immediately (Mục 20)
-            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'grabbed', 'compensation') ORDER BY id DESC LIMIT 1");
+            // Always mark distribution_logs as error so grab cooldown is reset immediately and lead is hidden from SalePortal
+            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND status IN ('assigned', 'grabbed', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'reminder')");
             if ($updLog) {
-                $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
+                $updLog->bind_param("ii", $report['lead_id'], $report['consultant_id']);
                 $updLog->execute();
                 $updLog->close();
             }
@@ -12092,32 +12154,20 @@ switch ($action) {
 
                 $conn->commit();
                 triggerTwoWaySync($conn, $report['lead_id']);
-            } elseif ($no_compensation) {
-                // Nhánh 2: Duyệt không đền bù ("Bạn vẫn sở hữu lead này")
-                // Chỉ reset not_lead_proposed = 0, KHÔNG xóa owner_id, KHÔNG khóa khách!
-                $updKeepContact = $conn->prepare("
+            } else {
+                // Nhánh 2 & 3: Duyệt loại bỏ Not Lead / Lead lỗi ($new_consultant_id <= 0, bao gồm cả Duyệt đền bù & Duyệt không bù)
+                // Sync contacts table - set pipeline_status to not_lead, unassign owner, clear proposal flag
+                $updContact = $conn->prepare("
                     UPDATE contacts 
-                    SET not_lead_proposed = 0 
+                    SET pipeline_status = 'not_lead', owner_id = NULL, not_lead_proposed = 0 
                     WHERE (
                         lead_id = ?
                         OR (person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND person_id > 0)
                         OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')
                     )
                 ");
-                if ($updKeepContact) {
-                    $updKeepContact->bind_param("iii", $report['lead_id'], $report['lead_id'], $report['lead_id']);
-                    $updKeepContact->execute();
-                    $updKeepContact->close();
-                }
-
-                $conn->commit();
-                triggerTwoWaySync($conn, $report['lead_id']);
-            } else {
-                // Nhánh 3: Duyệt loại bỏ Lead rác thực sự ($new_consultant_id <= 0 && !$no_compensation)
-                // Sync contacts table - set pipeline_status to not_lead, unassign owner, clear proposal flag
-                $updContact = $conn->prepare("UPDATE contacts SET pipeline_status = 'not_lead', owner_id = NULL, not_lead_proposed = 0 WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ?) AND phone IS NOT NULL AND phone != '')");
                 if ($updContact) {
-                    $updContact->bind_param("ii", $report['lead_id'], $report['lead_id']);
+                    $updContact->bind_param("iii", $report['lead_id'], $report['lead_id'], $report['lead_id']);
                     $updContact->execute();
                     $updContact->close();
                 }
@@ -12590,10 +12640,19 @@ switch ($action) {
                 'reject_reason' => $reject_reason
             ]);
 
-            // Reset not_lead_proposed on contacts table so contact returns to sales rep's active list
-            $updContact = $conn->prepare("UPDATE contacts SET not_lead_proposed = 0 WHERE (person_id = (SELECT person_id FROM leads WHERE id = ?) AND person_id > 0) OR (phone = (SELECT phone FROM leads WHERE id = ?) AND phone IS NOT NULL AND phone != '')");
+            // Rule: Sale báo Not Lead sẽ ẩn với Sale luôn (Admin duyệt hay từ chối vẫn giữ trạng thái not_lead cho Sale đó)
+            $updContact = $conn->prepare("
+                UPDATE contacts 
+                SET pipeline_status = 'not_lead', not_lead_proposed = 0 
+                WHERE owner_id = ? AND deleted_at IS NULL
+                  AND (
+                      lead_id = ?
+                      OR (person_id = (SELECT person_id FROM leads WHERE id = ? LIMIT 1) AND person_id > 0)
+                      OR (phone = (SELECT phone FROM leads WHERE id = ? LIMIT 1) AND phone IS NOT NULL AND phone != '')
+                  )
+            ");
             if ($updContact) {
-                $updContact->bind_param("ii", $report['lead_id'], $report['lead_id']);
+                $updContact->bind_param("iiii", $report['consultant_id'], $report['lead_id'], $report['lead_id'], $report['lead_id']);
                 $updContact->execute();
                 $updContact->close();
             }
@@ -23065,36 +23124,6 @@ switch ($action) {
                         'project_id' => !empty($lc['project_id']) ? (int)$lc['project_id'] : null,
                         'count' => (int)$lc['cnt']
                     ];
-                    if (!isset($saleCampaignsList[$cId])) {
-                        $saleCampaignsList[$cId] = [
-                            'id' => $cId,
-                            'name' => $displayLabel,
-                            'project_id' => !empty($lc['project_id']) ? (int)$lc['project_id'] : null
-                        ];
-                    }
-                }
-            }
-
-            // Also include any distinct campaign_id on contacts not yet in saleCampaignsList
-            $resContactCamp = $conn->query("
-                SELECT c.campaign_id AS id, MAX(c.project_id) AS project_id, COUNT(*) AS cnt
-                FROM contacts c
-                WHERE c.deleted_at IS NULL AND c.campaign_id IS NOT NULL AND c.campaign_id != '' AND c.campaign_id != '0'
-                GROUP BY c.campaign_id
-                ORDER BY cnt DESC
-                LIMIT 200
-            ");
-            if ($resContactCamp) {
-                while ($cc = $resContactCamp->fetch_assoc()) {
-                    $cId = trim((string)$cc['id']);
-                    if ($cId !== '' && !isset($saleCampaignsList[$cId])) {
-                        $cName = $campaignNameMap[$cId] ?? $cId;
-                        $saleCampaignsList[$cId] = [
-                            'id' => $cId,
-                            'name' => ($cName !== $cId) ? "$cName ($cId)" : $cId,
-                            'project_id' => !empty($cc['project_id']) ? (int)$cc['project_id'] : null
-                        ];
-                    }
                 }
             }
 
@@ -23356,7 +23385,7 @@ switch ($action) {
                 }
                 if ($campaignId !== '') {
                     $cidEsc = $conn->real_escape_string($campaignId);
-                    $whereC[] = "(c.campaign_id = '$cidEsc' OR ((c.campaign_id IS NULL OR c.campaign_id = '' OR c.campaign_id = '0') AND c.utm_campaign = '$cidEsc'))";
+                    $whereC[] = "c.campaign_id = '$cidEsc'";
                 }
                 if ($leadPhanLoai !== '') {
                     $plEsc = $conn->real_escape_string($leadPhanLoai);

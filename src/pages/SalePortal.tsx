@@ -6412,6 +6412,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const filteredLeads = useMemo(() => {
     return (data.leads || []).filter((lead: any) => {
+      if (lead.status === 'not_lead' || lead.pipeline_status === 'not_lead' || lead.contact_pipeline_status === 'not_lead' || Number(lead.not_lead_proposed || 0) === 1 || ['pending', 'approved', 'approved_no_comp'].includes(String(lead.report_status || ''))) {
+        return false;
+      }
       if (statusFilter !== 'all') {
         if (statusFilter === 'assigned') {
           if (!['assigned', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim'].includes(lead.status) || lead.report_status) return false;
@@ -6915,7 +6918,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }
     ];
 
-    const recentLeads = data.leads.slice(0, 5);
+    const recentLeads = (data.leads || []).filter((lead: any) => !(lead.status === 'not_lead' || lead.pipeline_status === 'not_lead' || lead.contact_pipeline_status === 'not_lead' || Number(lead.not_lead_proposed || 0) === 1 || ['pending', 'approved', 'approved_no_comp'].includes(String(lead.report_status || '')))).slice(0, 5);
 
     return (
       <>

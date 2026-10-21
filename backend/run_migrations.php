@@ -609,7 +609,7 @@ try {
         $conn->query("ALTER TABLE `contacts` ADD COLUMN `campaign_id` VARCHAR(255) DEFAULT NULL");
         $logMsg("Đã thêm cột contacts.campaign_id VARCHAR(255).", "success");
     }
-    $conn->query("UPDATE `contacts` SET `campaign_id` = `utm_campaign` WHERE (`campaign_id` IS NULL OR `campaign_id` = '' OR `campaign_id` = '0') AND `utm_campaign` IS NOT NULL AND `utm_campaign` != ''");
+    $conn->query("UPDATE `contacts` c LEFT JOIN `marketing_campaigns` mc ON mc.`id` = CAST(c.`campaign_id` AS UNSIGNED) AND c.`campaign_id` REGEXP '^[0-9]+$' SET c.`campaign_id` = NULL WHERE c.`campaign_id` IS NOT NULL AND c.`campaign_id` != '' AND mc.`id` IS NULL");
     $chkProjCampC = $conn->query("SHOW INDEX FROM `contacts` WHERE Key_name = 'idx_contacts_proj_camp'");
     if ($chkProjCampC && $chkProjCampC->num_rows == 0) {
         $conn->query("ALTER TABLE `contacts` ADD INDEX `idx_contacts_proj_camp` (`project_id`, `campaign_id`, `deleted_at`)");

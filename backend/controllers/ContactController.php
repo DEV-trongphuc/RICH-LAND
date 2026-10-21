@@ -137,20 +137,26 @@ class ContactController {
         
         $isMinimal = isset($_GET['minimal']) && (string)$_GET['minimal'] === '1';
 
+        $isSaleRole = in_array(strtolower((string)($auth['role'] ?? '')), ['sale', 'sales', 'consultant'], true);
+        $errorCond = "(
+            EXISTS (
+                SELECT 1 FROM leads l2 
+                JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                WHERE (l2.id = c.lead_id OR (l2.person_id = c.person_id AND c.person_id > 0))
+                  AND dl2.assigned_to = c.owner_id
+                  AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+            )
+            OR EXISTS (
+                SELECT 1 FROM data_reports dr
+                LEFT JOIN leads l3 ON dr.lead_id = l3.id
+                WHERE (dr.lead_id = c.lead_id OR (l3.person_id = c.person_id AND c.person_id > 0))
+                  AND (dr.consultant_id = c.owner_id OR c.owner_id IS NULL)
+                  AND dr.status IN ('pending', 'approved', 'approved_no_comp')
+            )
+        )";
+
         if ($dataType !== '') {
-            $errorCond = "(
-                EXISTS (
-                    SELECT 1 FROM leads l2 
-                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                    WHERE l2.person_id = c.person_id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
-                )
-                OR EXISTS (
-                    SELECT 1 FROM data_reports dr
-                    JOIN leads l3 ON dr.lead_id = l3.id
-                    WHERE l3.person_id = c.person_id AND dr.status IN ('pending', 'approved')
-                )
-            )";
-            if ($dataType === 'error_ticket') {
+            if ($dataType === 'error_ticket' && !$isSaleRole) {
                 $where[] = $errorCond;
             } else {
                 $where[] = "NOT $errorCond";
@@ -180,24 +186,13 @@ class ContactController {
                     )";
                 }
             }
-        } else if (($auth['role'] ?? '') === 'sale') {
-            if (!$isMinimal) {
-                $errorCond = "(
-                    EXISTS (
-                        SELECT 1 FROM leads l2 
-                        JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                        WHERE l2.person_id = c.person_id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
-                    )
-                    OR EXISTS (
-                        SELECT 1 FROM data_reports dr
-                        JOIN leads l3 ON dr.lead_id = l3.id
-                        WHERE l3.person_id = c.person_id AND dr.status IN ('pending', 'approved')
-                    )
-                )";
-                $where[] = "NOT $errorCond";
-            }
-            // Rule: Not Lead is completely hidden from Sales (only visible to Managers/Admins for review)
-            $where[] = "(c.pipeline_status != 'not_lead' AND COALESCE(c.not_lead_proposed, 0) = 0)";
+        } else if ($isSaleRole && !$isMinimal) {
+            $where[] = "NOT $errorCond";
+        }
+
+        // Rule: Not Lead is completely hidden from Sales (both pending proposal and approved/not approved)
+        if ($isSaleRole) {
+            $where[] = "(COALESCE(c.pipeline_status, '') != 'not_lead' AND COALESCE(c.status, '') != 'not_lead' AND COALESCE(c.not_lead_proposed, 0) = 0)";
         }
         
         if ($from !== '') {
@@ -1008,11 +1003,12 @@ class ContactController {
             if ($isFromDatabank) {
                 respond(400, null, 'Khách hàng nhận từ Kho Databank không được phép chuyển sang Not Lead. Vui lòng sử dụng tính năng "Trả về Databank"!', false);
             }
-            if (in_array($auth['role'], ['sale', 'sales'], true)) {
+            if (in_array(strtolower((string)$auth['role']), ['sale', 'sales', 'consultant'], true)) {
                 $reasonText = trim((string)($b['not_lead_reason'] ?? 'Đề xuất chuyển trạng thái Not Lead'));
                 $stmtProp = $this->db->prepare("
                     UPDATE contacts 
-                    SET not_lead_proposed = 1, 
+                    SET pipeline_status = 'not_lead',
+                        not_lead_proposed = 1, 
                         not_lead_proposed_by = ?, 
                         not_lead_proposed_at = NOW(),
                         not_lead_reason = ?
@@ -1521,11 +1517,12 @@ class ContactController {
             if ($isFromDatabank) {
                 respond(400, null, 'Khách hàng nhận từ Kho Databank không được phép chuyển sang Not Lead. Vui lòng sử dụng tính năng "Trả về Databank"!', false);
             }
-            if (in_array($auth['role'], ['sale', 'sales'], true)) {
+            if (in_array(strtolower((string)$auth['role']), ['sale', 'sales', 'consultant'], true)) {
                 $reasonText = trim((string)($b['not_lead_reason'] ?? 'Đề xuất chuyển trạng thái Not Lead'));
                 $stmtProp = $this->db->prepare("
                     UPDATE contacts 
-                    SET not_lead_proposed = 1, 
+                    SET pipeline_status = 'not_lead',
+                        not_lead_proposed = 1, 
                         not_lead_proposed_by = ?, 
                         not_lead_proposed_at = NOW(),
                         not_lead_reason = ?
@@ -2126,10 +2123,11 @@ class ContactController {
         // 2. Ensure a single pending ticket exists in data_reports for Admin / Manager review
         $this->ensurePendingNotLeadTicket($id, $contact, (int)$auth['user_id'], $reason);
 
-        // 3. Update contact: mark not_lead_proposed = 1 for admin review (hidden from sales, kept in ownership until approved)
+        // 3. Update contact: mark pipeline_status = 'not_lead' and not_lead_proposed = 1 (immediately hidden from sale)
         $stmtUpContact = $this->db->prepare("
             UPDATE contacts 
-            SET not_lead_proposed = 1,
+            SET pipeline_status = 'not_lead',
+                not_lead_proposed = 1,
                 not_lead_proposed_by = ?,
                 not_lead_proposed_at = NOW(),
                 not_lead_reason = ?

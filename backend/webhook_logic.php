@@ -5223,7 +5223,16 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
         $adName = !empty($lead['ad_name']) ? $lead['ad_name'] : null;
         $donviChay = !empty($lead['donvi_chay']) ? $lead['donvi_chay'] : null;
         $appLienhe = !empty($lead['app_lienhe']) ? $lead['app_lienhe'] : null;
-        $leadCampaignId = !empty($lead['campaign_id']) ? (string)$lead['campaign_id'] : (!empty($lead['utm_campaign']) ? (string)$lead['utm_campaign'] : null);
+        $leadCampaignId = null;
+        if (!empty($lead['campaign_id']) && ctype_digit(trim((string)$lead['campaign_id']))) {
+            $chkMcId = (int)trim((string)$lead['campaign_id']);
+            if ($chkMcId > 0) {
+                $resMcChk = $conn->query("SELECT id FROM marketing_campaigns WHERE id = $chkMcId LIMIT 1");
+                if ($resMcChk && $resMcChk->num_rows > 0) {
+                    $leadCampaignId = (string)$chkMcId;
+                }
+            }
+        }
 
         if (!empty($existingContacts)) {
             // Update existing active contacts with latest info (preserve Sale's modified project_id and campaign_id)
