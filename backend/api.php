@@ -23322,12 +23322,18 @@ switch ($action) {
             $whereAdStr = implode(' AND ', $whereAd);
 
             // Helper closure to compute conversion rates safely
-            $calcRates = function(int $total, int $ql, int $mQl, int $sQl, int $giaoDich): array {
+            // Formulas:
+            // - Tương tác lần 1 = MQL / Tổng Lead
+            // - Tỉ lệ đốt lửa   = SQL / MQL
+            // - Tỉ lệ chốt      = Giao dịch / SQL
+            // - Chuyển đổi chung= Giao dịch / (Tổng Lead - Not Lead)
+            $calcRates = function(int $total, int $ql, int $mQl, int $sQl, int $giaoDich, int $notLead = 0): array {
+                $validBase = max(0, $total - $notLead);
                 return [
                     'tuong_tac_lan_1' => $total > 0 ? round(($mQl / $total) * 100, 1) : 0.0,
                     'ti_le_dot_lua'   => $mQl > 0 ? round(($sQl / $mQl) * 100, 1) : 0.0,
                     'ti_le_chot'      => $sQl > 0 ? round(($giaoDich / $sQl) * 100, 1) : 0.0,
-                    'chuyen_doi_chung'=> $ql > 0 ? round(($giaoDich / $ql) * 100, 1) : 0.0,
+                    'chuyen_doi_chung'=> $validBase > 0 ? round(($giaoDich / $validBase) * 100, 1) : 0.0,
                     'ql_rate'         => $total > 0 ? round(($ql / $total) * 100, 1) : 0.0
                 ];
             };
@@ -23395,7 +23401,11 @@ switch ($action) {
                 $whereCStr = implode(' AND ', $whereC);
 
                 // Milestone SQL expressions on `contacts c`
-                $qlExpr = "(c.pipeline_status != 'not_lead')";
+                // QL  = Chăm sóc dài hạn trở lên (excludes not_lead and chua_xac_dinh)
+                // MQL = Quan tâm trở lên
+                // SQL = Đã gặp trở lên
+                // Giao dịch = Booking & Đặt cọc
+                $qlExpr  = "(c.pipeline_status != 'not_lead' AND (c.pipeline_status IN ('cham_soc_dai_han','quan_tam','dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.quantam_time IS NOT NULL OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
                 $mQlExpr = "(c.pipeline_status != 'not_lead' AND (c.pipeline_status IN ('quan_tam','dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.quantam_time IS NOT NULL OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
                 $dygExpr = "(c.pipeline_status != 'not_lead' AND (c.pipeline_status IN ('dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
                 $sQlExpr = "(c.pipeline_status != 'not_lead' AND (c.pipeline_status IN ('da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
@@ -23422,17 +23432,26 @@ switch ($action) {
                         SUM(CASE WHEN c.pipeline_status = 'booking' OR (c.booking_time IS NOT NULL AND c.datcoc_time IS NULL AND c.pipeline_status NOT IN ('dat_coc','da_coc','dong_deal','thanh_cong')) THEN 1 ELSE 0 END) AS booking_count,
                         SUM(CASE WHEN c.pipeline_status IN ('dat_coc','da_coc','dong_deal','thanh_cong') OR c.datcoc_time IS NOT NULL THEN 1 ELSE 0 END) AS dat_coc_count,
                         SUM(CASE WHEN c.pipeline_status = 'cham_soc_dai_han' THEN 1 ELSE 0 END) AS cham_soc_dai_han_count,
-                        SUM(CASE WHEN c.pipeline_status = 'chua_xac_dinh' THEN 1 ELSE 0 END) AS chua_xac_dinh_count,
+                        SUM(CASE WHEN c.pipeline_status = 'chua_xac_dinh' OR c.pipeline_status IS NULL OR c.pipeline_status = '' THEN 1 ELSE 0 END) AS chua_xac_dinh_count,
                         SUM(CASE WHEN c.temperature IN ('hot', 'warm') THEN 1 ELSE 0 END) AS temp_hot,
                         SUM(CASE WHEN c.temperature = 'neutral' THEN 1 ELSE 0 END) AS temp_warm,
                         SUM(CASE WHEN c.temperature IN ('cold', 'cool') OR c.temperature IS NULL OR c.temperature = '' THEN 1 ELSE 0 END) AS temp_cold,
                         -- Funnel & Conversion Rates strictly on Distributed Leads (excluding Databank per Excel Row 4)
                         SUM(CASE WHEN NOT $isDatabankExpr THEN 1 ELSE 0 END) AS dist_total,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND c.pipeline_status = 'not_lead' THEN 1 ELSE 0 END) AS dist_not_lead,
                         SUM(CASE WHEN NOT $isDatabankExpr AND $qlExpr THEN 1 ELSE 0 END) AS dist_ql,
                         SUM(CASE WHEN NOT $isDatabankExpr AND $mQlExpr THEN 1 ELSE 0 END) AS dist_m_ql,
                         SUM(CASE WHEN NOT $isDatabankExpr AND $dygExpr THEN 1 ELSE 0 END) AS dist_dong_y_gap,
                         SUM(CASE WHEN NOT $isDatabankExpr AND $sQlExpr THEN 1 ELSE 0 END) AS dist_s_ql,
-                        SUM(CASE WHEN NOT $isDatabankExpr AND $gdExpr THEN 1 ELSE 0 END) AS dist_giao_dich
+                        SUM(CASE WHEN NOT $isDatabankExpr AND $gdExpr THEN 1 ELSE 0 END) AS dist_giao_dich,
+                        -- 7 Pipeline Statuses (from Chưa xác định -> Đặt cọc) on Distributed Leads
+                        SUM(CASE WHEN NOT $isDatabankExpr AND (c.pipeline_status = 'chua_xac_dinh' OR c.pipeline_status IS NULL OR c.pipeline_status = '') THEN 1 ELSE 0 END) AS dist_stage_chua_xac_dinh,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND c.pipeline_status = 'cham_soc_dai_han' THEN 1 ELSE 0 END) AS dist_stage_cham_soc_dai_han,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND c.pipeline_status = 'quan_tam' THEN 1 ELSE 0 END) AS dist_stage_quan_tam,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND c.pipeline_status IN ('thien_chi', 'dong_y_gap') THEN 1 ELSE 0 END) AS dist_stage_dong_y_gap,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND c.pipeline_status = 'da_gap' THEN 1 ELSE 0 END) AS dist_stage_da_gap,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND c.pipeline_status = 'booking' THEN 1 ELSE 0 END) AS dist_stage_booking,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND c.pipeline_status IN ('dat_coc','da_coc','dong_deal','thanh_cong') THEN 1 ELSE 0 END) AS dist_stage_dat_coc
                     FROM contacts c
                     WHERE $whereCStr
                 ";
@@ -23440,6 +23459,7 @@ switch ($action) {
                 $sumRow = ($resSum && $resSum->num_rows > 0) ? $resSum->fetch_assoc() : [];
 
                 $totalLeads = (int)($sumRow['total_leads'] ?? 0);
+                $notLeadCount = (int)($sumRow['not_lead_count'] ?? 0);
                 $qlCount = (int)($sumRow['ql_count'] ?? 0);
                 $mQlCount = (int)($sumRow['m_ql_count'] ?? 0);
                 $dygCount = (int)($sumRow['dong_y_gap_count'] ?? 0);
@@ -23447,14 +23467,15 @@ switch ($action) {
                 $gdCount = (int)($sumRow['giao_dich_count'] ?? 0);
 
                 $distTotal = (int)($sumRow['dist_total'] ?? 0);
+                $distNotLead = (int)($sumRow['dist_not_lead'] ?? 0);
                 $distQl = (int)($sumRow['dist_ql'] ?? 0);
                 $distMQl = (int)($sumRow['dist_m_ql'] ?? 0);
                 $distDyg = (int)($sumRow['dist_dong_y_gap'] ?? 0);
                 $distSQl = (int)($sumRow['dist_s_ql'] ?? 0);
                 $distGd = (int)($sumRow['dist_giao_dich'] ?? 0);
 
-                $distRates = $calcRates($distTotal, $distQl, $distMQl, $distSQl, $distGd);
-                $overallRates = $calcRates($totalLeads, $qlCount, $mQlCount, $sQlCount, $gdCount);
+                $distRates = $calcRates($distTotal, $distQl, $distMQl, $distSQl, $distGd, $distNotLead);
+                $overallRates = $calcRates($totalLeads, $qlCount, $mQlCount, $sQlCount, $gdCount, $notLeadCount);
 
                 // 1.2 Time-series chart (by day if <= 45 days or filtered, else by month)
                 $useDaily = ($startDate !== '' && $endDate !== '' && (strtotime($endDate) - strtotime($startDate)) <= 60 * 86400);
@@ -23550,6 +23571,7 @@ switch ($action) {
                         SUM(CASE WHEN c.temperature = 'neutral' THEN 1 ELSE 0 END) AS temp_warm,
                         SUM(CASE WHEN c.temperature IN ('cold', 'cool') OR c.temperature IS NULL OR c.temperature = '' THEN 1 ELSE 0 END) AS temp_cold,
                         SUM(CASE WHEN NOT $isDatabankExpr THEN 1 ELSE 0 END) AS dist_total,
+                        SUM(CASE WHEN NOT $isDatabankExpr AND c.pipeline_status = 'not_lead' THEN 1 ELSE 0 END) AS dist_not_lead,
                         SUM(CASE WHEN NOT $isDatabankExpr AND $qlExpr THEN 1 ELSE 0 END) AS dist_ql,
                         SUM(CASE WHEN NOT $isDatabankExpr AND $mQlExpr THEN 1 ELSE 0 END) AS dist_m_ql,
                         SUM(CASE WHEN NOT $isDatabankExpr AND $sQlExpr THEN 1 ELSE 0 END) AS dist_s_ql,
@@ -23570,7 +23592,8 @@ switch ($action) {
                             (int)$st['dist_ql'],
                             (int)$st['dist_m_ql'],
                             (int)$st['dist_s_ql'],
-                            (int)$st['dist_giao_dich']
+                            (int)$st['dist_giao_dich'],
+                            (int)$st['dist_not_lead']
                         );
                         $stTotal = (int)$st['total_leads'];
                         $stQl = (int)$st['ql_count'];
@@ -23628,11 +23651,19 @@ switch ($action) {
                     'funnel' => [
                         'note' => 'Chỉ tính trên khách hàng được chia (không tính khách lấy từ Kho Databank)',
                         'total_leads' => $distTotal,
+                        'not_lead_count' => $distNotLead,
                         'ql_count' => $distQl,
                         'm_ql_count' => $distMQl,
                         'dong_y_gap_count' => $distDyg,
                         's_ql_count' => $distSQl,
                         'giao_dich_count' => $distGd,
+                        'stage_chua_xac_dinh' => (int)($sumRow['dist_stage_chua_xac_dinh'] ?? 0),
+                        'stage_cham_soc_dai_han' => (int)($sumRow['dist_stage_cham_soc_dai_han'] ?? 0),
+                        'stage_quan_tam' => (int)($sumRow['dist_stage_quan_tam'] ?? 0),
+                        'stage_dong_y_gap' => (int)($sumRow['dist_stage_dong_y_gap'] ?? 0),
+                        'stage_da_gap' => (int)($sumRow['dist_stage_da_gap'] ?? 0),
+                        'stage_booking' => (int)($sumRow['dist_stage_booking'] ?? 0),
+                        'stage_dat_coc' => (int)($sumRow['dist_stage_dat_coc'] ?? 0),
                         'rates' => $distRates
                     ],
                     'temperature_chart' => [
@@ -23688,10 +23719,22 @@ switch ($action) {
                 $whereLStr = implode(' AND ', $whereL);
 
                 // Derived contact progression per lead_id (preserving leads.project_id & leads.campaign_id for MKT attribution)
+                // Use numeric stage rank so multi-contact leads resolve to the highest achieved pipeline stage
                 $contactJoinSql = "
                     LEFT JOIN (
                         SELECT lead_id,
                                MAX(pipeline_status) AS pipeline_status,
+                               MAX(CASE
+                                   WHEN pipeline_status IN ('dat_coc','da_coc','dong_deal','thanh_cong') THEN 8
+                                   WHEN pipeline_status = 'booking' THEN 7
+                                   WHEN pipeline_status = 'da_gap' THEN 6
+                                   WHEN pipeline_status IN ('thien_chi','dong_y_gap') THEN 5
+                                   WHEN pipeline_status = 'quan_tam' THEN 4
+                                   WHEN pipeline_status = 'cham_soc_dai_han' THEN 3
+                                   WHEN pipeline_status = 'chua_xac_dinh' THEN 2
+                                   WHEN pipeline_status = 'not_lead' THEN 1
+                                   ELSE 0
+                               END) AS max_stage_rank,
                                MAX(temperature) AS temperature,
                                MAX(quantam_time) AS quantam_time,
                                MAX(dongygap_time) AS dongygap_time,
@@ -23704,12 +23747,12 @@ switch ($action) {
                     ) c ON c.lead_id = l.id
                 ";
 
-                $mktNotLeadExpr = "(COALESCE(c.pipeline_status, '') = 'not_lead' OR l.status IN ('not_lead', 'blacklisted', 'error'))";
-                $mktQlExpr  = "(NOT $mktNotLeadExpr)";
-                $mktMQlExpr = "(NOT $mktNotLeadExpr AND (c.pipeline_status IN ('quan_tam','dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.quantam_time IS NOT NULL OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
-                $mktDygExpr = "(NOT $mktNotLeadExpr AND (c.pipeline_status IN ('dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
-                $mktSQlExpr = "(NOT $mktNotLeadExpr AND (c.pipeline_status IN ('da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
-                $mktGdExpr  = "(NOT $mktNotLeadExpr AND (c.pipeline_status IN ('booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $mktNotLeadExpr = "((COALESCE(c.max_stage_rank, 0) = 1 AND COALESCE(c.pipeline_status, '') = 'not_lead') OR l.status IN ('not_lead', 'blacklisted', 'error'))";
+                $mktQlExpr  = "(NOT $mktNotLeadExpr AND (COALESCE(c.max_stage_rank, 0) >= 3 OR c.pipeline_status IN ('cham_soc_dai_han','quan_tam','dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.quantam_time IS NOT NULL OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $mktMQlExpr = "(NOT $mktNotLeadExpr AND (COALESCE(c.max_stage_rank, 0) >= 4 OR c.pipeline_status IN ('quan_tam','dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.quantam_time IS NOT NULL OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $mktDygExpr = "(NOT $mktNotLeadExpr AND (COALESCE(c.max_stage_rank, 0) >= 5 OR c.pipeline_status IN ('dong_y_gap','thien_chi','da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dongygap_time IS NOT NULL OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $mktSQlExpr = "(NOT $mktNotLeadExpr AND (COALESCE(c.max_stage_rank, 0) >= 6 OR c.pipeline_status IN ('da_gap','booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.dagap_time IS NOT NULL OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
+                $mktGdExpr  = "(NOT $mktNotLeadExpr AND (COALESCE(c.max_stage_rank, 0) >= 7 OR c.pipeline_status IN ('booking','dat_coc','da_coc','dong_deal','thanh_cong') OR c.booking_time IS NOT NULL OR c.datcoc_time IS NOT NULL))";
 
                 $sqlMktSum = "
                     SELECT
@@ -23720,7 +23763,7 @@ switch ($action) {
                         SUM(CASE WHEN $mktDygExpr THEN 1 ELSE 0 END) AS dong_y_gap_count,
                         SUM(CASE WHEN $mktSQlExpr THEN 1 ELSE 0 END) AS s_ql_count,
                         SUM(CASE WHEN $mktGdExpr THEN 1 ELSE 0 END) AS giao_dich_count,
-                        SUM(CASE WHEN c.pipeline_status = 'cham_soc_dai_han' THEN 1 ELSE 0 END) AS cham_soc_dai_han_count,
+                        SUM(CASE WHEN COALESCE(c.max_stage_rank, 0) = 3 OR c.pipeline_status = 'cham_soc_dai_han' THEN 1 ELSE 0 END) AS cham_soc_dai_han_count,
                         SUM(CASE WHEN c.temperature IN ('hot', 'warm') THEN 1 ELSE 0 END) AS temp_hot,
                         SUM(CASE WHEN c.temperature = 'neutral' THEN 1 ELSE 0 END) AS temp_warm,
                         SUM(CASE WHEN c.temperature IN ('cold', 'cool') OR c.temperature IS NULL OR c.temperature = '' THEN 1 ELSE 0 END) AS temp_cold
@@ -23732,12 +23775,13 @@ switch ($action) {
                 $mSum = ($resMktSum && $resMktSum->num_rows > 0) ? $resMktSum->fetch_assoc() : [];
 
                 $mTotal = (int)($mSum['total_leads'] ?? 0);
+                $mNotLead = (int)($mSum['not_lead_count'] ?? 0);
                 $mQl = (int)($mSum['ql_count'] ?? 0);
                 $mMQl = (int)($mSum['m_ql_count'] ?? 0);
                 $mDyg = (int)($mSum['dong_y_gap_count'] ?? 0);
                 $mSQl = (int)($mSum['s_ql_count'] ?? 0);
                 $mGd = (int)($mSum['giao_dich_count'] ?? 0);
-                $mktRates = $calcRates($mTotal, $mQl, $mMQl, $mSQl, $mGd);
+                $mktRates = $calcRates($mTotal, $mQl, $mMQl, $mSQl, $mGd, $mNotLead);
 
                 // 2.1.b Ad Spend & Impressions Aggregation from `logs_daily_level_ad`
                 $resAdSum = $conn->query("
@@ -24071,7 +24115,7 @@ switch ($action) {
                             'cpmql' => $rMQl > 0 ? round($rSpend / $rMQl) : 0,
                             'cpsql' => $rSQl > 0 ? round($rSpend / $rSQl) : 0,
                             'cost_per_deal' => $rGd > 0 ? round($rSpend / $rGd) : 0,
-                            'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd)
+                            'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd, (int)$row['not_lead_count'])
                         ];
                     }
                 }
@@ -24139,7 +24183,7 @@ switch ($action) {
                             'cpmql' => $rMQl > 0 ? round($rSpend / $rMQl) : 0,
                             'cpsql' => $rSQl > 0 ? round($rSpend / $rSQl) : 0,
                             'cost_per_deal' => $rGd > 0 ? round($rSpend / $rGd) : 0,
-                            'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd)
+                            'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd, (int)$row['not_lead_count'])
                         ];
                     }
                 }
@@ -24231,7 +24275,7 @@ switch ($action) {
                             'cpmql' => $rMQl > 0 ? round($rSpend / $rMQl) : 0,
                             'cpsql' => $rSQl > 0 ? round($rSpend / $rSQl) : 0,
                             'cost_per_deal' => $rGd > 0 ? round($rSpend / $rGd) : 0,
-                            'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd)
+                            'rates' => $calcRates($rTot, $rQl, $rMQl, $rSQl, $rGd, $rNotLead)
                         ];
                     }
                 }

@@ -1354,7 +1354,7 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
           { color: '#ef4444', text: `Not Lead: ${kpis.not_lead_count || 0}` }
         ],
         footerHighlight: `${kpis.ql_rate || 0}%`,
-        footerText: 'tỉ lệ đạt chuẩn trên tổng Lead'
+        footerText: 'Chăm sóc dài hạn trở lên'
       },
       {
         id: 'sale-mql',
@@ -1365,7 +1365,7 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
         icon: PhoneCall,
         decor: 'alert',
         dots: [
-          { color: '#f59e0b', text: `M_QL (Quan tâm): ${kpis.m_ql_count || 0}` },
+          { color: '#f59e0b', text: `M_QL (Quan tâm trở lên): ${kpis.m_ql_count || 0}` },
           { color: '#8b5cf6', text: `Đồng ý gặp: ${kpis.dong_y_gap_count || 0}` }
         ],
         footerHighlight: `${rates.tuong_tac_lan_1 || 0}%`,
@@ -1390,12 +1390,13 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
     ];
 
     const funnelSteps = [
-      { label: '1. Tổng Lead được chia', val: funnel.total_leads || 0, color: '#334155', pct: 100 },
-      { label: '2. Qualified Lead (QL)', val: funnel.ql_count || 0, color: '#3b82f6', pct: funnel.total_leads > 0 ? Math.round((funnel.ql_count / funnel.total_leads) * 100) : 0 },
-      { label: '3. Quan tâm (M_QL)', val: funnel.m_ql_count || 0, color: '#f59e0b', pct: funnel.total_leads > 0 ? Math.round((funnel.m_ql_count / funnel.total_leads) * 100) : 0 },
-      { label: '4. Đồng ý gặp', val: funnel.dong_y_gap_count || 0, color: '#8b5cf6', pct: funnel.total_leads > 0 ? Math.round((funnel.dong_y_gap_count / funnel.total_leads) * 100) : 0 },
-      { label: '5. Đã gặp (S_QL)', val: funnel.s_ql_count || 0, color: '#06b6d4', pct: funnel.total_leads > 0 ? Math.round((funnel.s_ql_count / funnel.total_leads) * 100) : 0 },
-      { label: '6. Giao dịch (Booking + Cọc)', val: funnel.giao_dich_count || 0, color: '#a31422', pct: funnel.total_leads > 0 ? Math.round((funnel.giao_dich_count / funnel.total_leads) * 100) : 0 }
+      { label: '2. Chưa xác định', val: funnel.stage_chua_xac_dinh ?? 0, color: '#64748b', pct: funnel.total_leads > 0 ? Math.round(((funnel.stage_chua_xac_dinh ?? 0) / funnel.total_leads) * 100) : 0 },
+      { label: '3. Chăm sóc dài hạn', val: funnel.stage_cham_soc_dai_han ?? 0, color: '#3b82f6', pct: funnel.total_leads > 0 ? Math.round(((funnel.stage_cham_soc_dai_han ?? 0) / funnel.total_leads) * 100) : 0 },
+      { label: '4. Quan tâm (M_QL)', val: funnel.stage_quan_tam ?? 0, color: '#f59e0b', pct: funnel.total_leads > 0 ? Math.round(((funnel.stage_quan_tam ?? 0) / funnel.total_leads) * 100) : 0 },
+      { label: '5. Đồng ý gặp', val: funnel.stage_dong_y_gap ?? 0, color: '#8b5cf6', pct: funnel.total_leads > 0 ? Math.round(((funnel.stage_dong_y_gap ?? 0) / funnel.total_leads) * 100) : 0 },
+      { label: '6. Đã gặp (S_QL)', val: funnel.stage_da_gap ?? 0, color: '#06b6d4', pct: funnel.total_leads > 0 ? Math.round(((funnel.stage_da_gap ?? 0) / funnel.total_leads) * 100) : 0 },
+      { label: '7. Booking', val: funnel.stage_booking ?? 0, color: '#10b981', pct: funnel.total_leads > 0 ? Math.round(((funnel.stage_booking ?? 0) / funnel.total_leads) * 100) : 0 },
+      { label: '8. Đặt cọc', val: funnel.stage_dat_coc ?? 0, color: '#a31422', pct: funnel.total_leads > 0 ? Math.round(((funnel.stage_dat_coc ?? 0) / funnel.total_leads) * 100) : 0 }
     ];
 
     return (
@@ -1449,7 +1450,7 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
                 { label: 'Tương tác lần 1', val: `${rates.tuong_tac_lan_1 || 0}%`, formula: 'M_QL / Tổng Lead', color: '#3b82f6' },
                 { label: 'Tỉ lệ đốt lửa', val: `${rates.ti_le_dot_lua || 0}%`, formula: 'S_QL / M_QL', color: '#f59e0b' },
                 { label: 'Tỉ lệ chốt', val: `${rates.ti_le_chot || 0}%`, formula: 'Giao dịch / S_QL', color: '#10b981' },
-                { label: 'Chuyển đổi chung', val: `${rates.chuyen_doi_chung || 0}%`, formula: 'Giao dịch / QL', color: '#a31422' }
+                { label: 'Chuyển đổi chung', val: `${rates.chuyen_doi_chung || 0}%`, formula: 'Giao dịch / (Tổng Lead - Not Lead)', color: '#a31422' }
               ].map((m, idx) => (
                 <div
                   key={idx}
@@ -1850,7 +1851,7 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
           { color: '#ef4444', text: `Not Lead: ${kpis.not_lead_count || 0}` }
         ],
         footerHighlight: `CPQL ${formatVND(Number(kpis.cpql || 0))}`,
-        footerText: 'chi phí trung bình / 1 QL'
+        footerText: 'CS dài hạn trở lên (Chi phí / QL)'
       },
       {
         id: 'mkt-mql-sql-gd',
@@ -1879,30 +1880,30 @@ export const CrmPerformanceDashboard: React.FC<CrmPerformanceDashboardProps> = (
       },
       {
         code: 'CPQL',
-        title: 'Chi phí / Qualified Lead',
+        title: 'Chi phí / QL (CPQL)',
         value: formatVND(Number(kpis.cpql || 0)),
-        sub: `${Number(kpis.ql_count || 0).toLocaleString('vi-VN')} QL (${kpis.ql_rate || 0}%)`,
+        sub: `${Number(kpis.ql_count || 0).toLocaleString('vi-VN')} QL (CS dài hạn trở lên • ${kpis.ql_rate || 0}%)`,
         color: '#10b981'
       },
       {
         code: 'CPMQL',
-        title: 'Chi phí / Quan tâm (M_QL)',
+        title: 'Chi phí / MQL (CPMQL)',
         value: formatVND(Number(kpis.cpmql || 0)),
-        sub: `${Number(kpis.m_ql_count || 0).toLocaleString('vi-VN')} M_QL (${rates.tuong_tac_lan_1 || 0}%)`,
+        sub: `${Number(kpis.m_ql_count || 0).toLocaleString('vi-VN')} M_QL (Quan tâm trở lên • ${rates.tuong_tac_lan_1 || 0}%)`,
         color: '#f59e0b'
       },
       {
         code: 'CP-ĐYG',
         title: 'Chi phí / Đồng ý gặp',
         value: formatVND(Number(kpis.cpdyg || 0)),
-        sub: `${Number(kpis.dong_y_gap_count || 0).toLocaleString('vi-VN')} Khách hẹn gặp`,
+        sub: `${Number(kpis.dong_y_gap_count || 0).toLocaleString('vi-VN')} Đồng ý gặp trở lên`,
         color: '#8b5cf6'
       },
       {
         code: 'CPSQL',
-        title: 'Chi phí / Đã gặp (S_QL)',
+        title: 'Chi phí / SQL (CPSQL)',
         value: formatVND(Number(kpis.cpsql || 0)),
-        sub: `${Number(kpis.s_ql_count || 0).toLocaleString('vi-VN')} Khách đã gặp`,
+        sub: `${Number(kpis.s_ql_count || 0).toLocaleString('vi-VN')} S_QL (Đã gặp trở lên)`,
         color: '#a31422'
       }
     ];
