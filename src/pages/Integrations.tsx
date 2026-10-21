@@ -372,11 +372,10 @@ function createJsonResponse(obj) {
  */
 function normalizePhone(phone) {
   if (!phone) return "";
-  var clean = phone.toString().replace(/[\\s\\-\\.\\+\\(\\)]/g, "");
-  if (clean.indexOf("84") === 0) {
-    clean = "0" + clean.substr(2);
-  }
-  return clean;
+  var raw = phone.toString().trim().replace(/^(p:|tel:|phone:)\\s*/i, "");
+  var hasPlus = raw.indexOf("+") === 0;
+  var clean = raw.replace(/[^\\d]/g, "");
+  return hasPlus ? ("+" + clean) : clean;
 }
 }`;
 

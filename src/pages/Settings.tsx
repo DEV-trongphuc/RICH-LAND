@@ -424,10 +424,11 @@ const SettingsInner = () => {
   const [capiStuckAlertThresholdHours, setCapiStuckAlertThresholdHours] = useState<number>(24);
 
   const [pipelineStatusHierarchy, setPipelineStatusHierarchy] = useState<string[]>([
-    'chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'
+    'chua_xac_dinh', 'cham_soc_dai_han', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'
   ]);
   const [pipelineStatusLabels, setPipelineStatusLabels] = useState<Record<string, string>>({
     chua_xac_dinh: 'Chưa xác định',
+    cham_soc_dai_han: 'Chăm sóc dài hạn',
     quan_tam: 'Quan tâm',
     dong_y_gap: 'Thiện chí',
     thien_chi: 'Thiện chí',
@@ -1099,8 +1100,16 @@ const SettingsInner = () => {
         if (json.data.databank_applicable_sources !== undefined) setDatabankApplicableSources(json.data.databank_applicable_sources);
         if (json.data.pipeline_status_hierarchy) {
           try {
-            const parsed = JSON.parse(json.data.pipeline_status_hierarchy);
-            if (Array.isArray(parsed)) setPipelineStatusHierarchy(parsed);
+            let parsed = JSON.parse(json.data.pipeline_status_hierarchy);
+            if (Array.isArray(parsed)) {
+              if (!parsed.includes('cham_soc_dai_han')) {
+                const cxdIdx = parsed.indexOf('chua_xac_dinh');
+                parsed = cxdIdx !== -1
+                  ? [...parsed.slice(0, cxdIdx + 1), 'cham_soc_dai_han', ...parsed.slice(cxdIdx + 1)]
+                  : ['cham_soc_dai_han', ...parsed];
+              }
+              setPipelineStatusHierarchy(parsed);
+            }
           } catch { /* ignore */ }
         }
         if (json.data.pipeline_status_labels) {

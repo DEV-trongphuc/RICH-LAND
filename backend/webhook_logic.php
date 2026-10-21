@@ -39,38 +39,54 @@ function normalizePhone($phoneRaw)
         $phone = end($validParts);
     }
 
-    // Keep only digits and leading +
+    // Strip any prefix on extracted part
+    $phone = preg_replace('/^(p:|tel:|phone:)\s*/i', '', trim($phone));
+
+    // Preserve leading + and exact area/country code (DO NOT convert +84/84 -> 0 or prepend 0)
     $hasPlusPrefix = (strpos($phone, '+') !== false && strpos(ltrim($phone), '+') === 0);
     $clean = preg_replace('/[^\d]/', '', $phone);
+    if ($clean === '') {
+        return '';
+    }
 
-    if ($hasPlusPrefix) {
-        // If it starts with +84, it's Vietnamese, convert to leading 0
-        if (strpos($clean, '84') === 0) {
-            $rest = substr($clean, 2);
-            if (strpos($rest, '0') === 0) {
-                return $rest;
+    return $hasPlusPrefix ? ('+' . $clean) : $clean;
+}
+
+if (!function_exists('getPhoneLookupVariants')) {
+    function getPhoneLookupVariants($phoneRaw)
+    {
+        $norm = normalizePhone($phoneRaw);
+        if ($norm === '') {
+            return [];
+        }
+        $variants = [$norm];
+        $digits = preg_replace('/[^\d]/', '', $norm);
+        if ($digits !== '' && !in_array($digits, $variants, true)) {
+            $variants[] = $digits;
+        }
+        $plusDigits = '+' . $digits;
+        if ($digits !== '' && !in_array($plusDigits, $variants, true)) {
+            $variants[] = $plusDigits;
+        }
+        if (strpos($digits, '84') === 0 && strlen($digits) >= 10) {
+            $rest = substr($digits, 2);
+            $zeroForm = (strpos($rest, '0') === 0) ? $rest : ('0' . $rest);
+            if (!in_array($zeroForm, $variants, true)) {
+                $variants[] = $zeroForm;
             }
-            return '0' . $rest;
+        } elseif (strpos($digits, '0') === 0 && strlen($digits) >= 9) {
+            $rest = substr($digits, 1);
+            $vnPlus84 = '+84' . $rest;
+            $vn84 = '84' . $rest;
+            if (!in_array($vnPlus84, $variants, true)) {
+                $variants[] = $vnPlus84;
+            }
+            if (!in_array($vn84, $variants, true)) {
+                $variants[] = $vn84;
+            }
         }
-        return '+' . $clean; // Keep other country codes as foreign numbers
+        return $variants;
     }
-
-    // Handle Vietnamese numbers starting with 84 (without leading +)
-    if (strpos($clean, '84') === 0) {
-        $rest = substr($clean, 2);
-        if (strpos($rest, '0') === 0) {
-            $clean = $rest;
-        } elseif (strlen($clean) === 10 || strlen($clean) === 11 || strlen($clean) === 9) {
-            $clean = '0' . $rest;
-        }
-    }
-
-    // If it does not start with 0, prepend 0 (Vietnamese numbers missing leading 0, e.g. 90555555 -> 090555555)
-    if (!empty($clean) && strpos($clean, '0') !== 0) {
-        return '0' . $clean;
-    }
-
-    return $clean;
 }
 
 /**
@@ -363,9 +379,10 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $part = trim($part);
             if (empty($part))
                 continue;
-            $norm = normalizePhone($part);
-            if (!empty($norm) && !in_array($norm, $phones)) {
-                $phones[] = $norm;
+            foreach (getPhoneLookupVariants($part) as $norm) {
+                if (!empty($norm) && !in_array($norm, $phones, true)) {
+                    $phones[] = $norm;
+                }
             }
         }
     }
@@ -1830,15 +1847,19 @@ function isLeadBlocked($conn, $phone, $email) {
     if (empty($phone) && empty($email)) {
         return false;
     }
+    $phoneVariants = !empty($phone) ? getPhoneLookupVariants($phone) : [];
+    $phonePlaceholders = !empty($phoneVariants) ? implode(',', array_fill(0, count($phoneVariants), '?')) : '';
     
     try {
         // 1. Check blocked_leads table
         $query = "SELECT id FROM blocked_leads WHERE 1=2";
         $params = [];
         
-        if (!empty($phone)) {
-            $query .= " OR (phone IS NOT NULL AND phone != '' AND phone = ?)";
-            $params[] = $phone;
+        if (!empty($phoneVariants)) {
+            $query .= " OR (phone IS NOT NULL AND phone != '' AND phone IN ($phonePlaceholders))";
+            foreach ($phoneVariants as $pv) {
+                $params[] = $pv;
+            }
         }
         if (!empty($email)) {
             $query .= " OR (email IS NOT NULL AND email != '' AND email = ?)";
@@ -1870,9 +1891,11 @@ function isLeadBlocked($conn, $phone, $email) {
         // 2. Check persons table: is_blocked = 1 (Ban lead on all fronts per approved Not Lead)
         $pQuery = "SELECT id FROM persons WHERE is_blocked = 1 AND (1=2";
         $pParams = [];
-        if (!empty($phone)) {
-            $pQuery .= " OR phone = ?";
-            $pParams[] = $phone;
+        if (!empty($phoneVariants)) {
+            $pQuery .= " OR phone IN ($phonePlaceholders)";
+            foreach ($phoneVariants as $pv) {
+                $pParams[] = $pv;
+            }
         }
         if (!empty($email)) {
             $pQuery .= " OR email = ?";
@@ -1902,9 +1925,11 @@ function isLeadBlocked($conn, $phone, $email) {
         // 3. Check data_reports: status IN ('approved', 'approved_no_comp')
         $rQuery = "SELECT dr.id FROM data_reports dr JOIN leads l ON dr.lead_id = l.id WHERE dr.status IN ('approved', 'approved_no_comp') AND (1=2";
         $rParams = [];
-        if (!empty($phone)) {
-            $rQuery .= " OR l.phone = ?";
-            $rParams[] = $phone;
+        if (!empty($phoneVariants)) {
+            $rQuery .= " OR l.phone IN ($phonePlaceholders)";
+            foreach ($phoneVariants as $pv) {
+                $rParams[] = $pv;
+            }
         }
         if (!empty($email)) {
             $rQuery .= " OR l.email = ?";
@@ -4977,30 +5002,49 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
     $type = $lead['type'] ?? '';
     $note = $lead['note'] ?? '';
 
-    // 2. Ensure Person
-    $stmtPerson = $conn->prepare("
-        INSERT INTO persons (phone, email, full_name) 
-        VALUES (?, ?, ?) 
-        ON DUPLICATE KEY UPDATE 
-            email = IF(email IS NULL OR email = '', VALUES(email), email), 
-            full_name = IF(full_name IS NULL OR full_name = '', VALUES(full_name), full_name)
-    ");
-    if ($stmtPerson) {
-        $stmtPerson->bind_param("sss", $phone, $email, $name);
-        $stmtPerson->execute();
-        $stmtPerson->close();
+    // 2. Ensure Person (match across area/country code variants first so we link to the same master person while preserving incoming phone format)
+    $person_id = null;
+    $phoneVariants = getPhoneLookupVariants($phone);
+    if (!empty($phoneVariants)) {
+        $pPlaceholders = implode(',', array_fill(0, count($phoneVariants), '?'));
+        $stmtFindP = $conn->prepare("SELECT id, phone FROM persons WHERE phone IN ($pPlaceholders) ORDER BY (phone = ?) DESC, id ASC LIMIT 1");
+        if ($stmtFindP) {
+            $bindParams = array_merge($phoneVariants, [$phone]);
+            $stmtFindP->bind_param(str_repeat("s", count($bindParams)), ...$bindParams);
+            $stmtFindP->execute();
+            $foundP = $stmtFindP->get_result()->fetch_assoc();
+            $stmtFindP->close();
+            if ($foundP) {
+                $person_id = (int)$foundP['id'];
+            }
+        }
     }
 
-    // Get Person ID
-    $stmtGet = $conn->prepare("SELECT id FROM persons WHERE phone = ? LIMIT 1");
-    if (!$stmtGet) return;
-    $stmtGet->bind_param("s", $phone);
-    $stmtGet->execute();
-    $person = $stmtGet->get_result()->fetch_assoc();
-    $stmtGet->close();
+    if (!$person_id) {
+        $stmtPerson = $conn->prepare("
+            INSERT INTO persons (phone, email, full_name) 
+            VALUES (?, ?, ?) 
+            ON DUPLICATE KEY UPDATE 
+                email = IF(email IS NULL OR email = '', VALUES(email), email), 
+                full_name = IF(full_name IS NULL OR full_name = '', VALUES(full_name), full_name)
+        ");
+        if ($stmtPerson) {
+            $stmtPerson->bind_param("sss", $phone, $email, $name);
+            $stmtPerson->execute();
+            $stmtPerson->close();
+        }
 
-    if (!$person) return;
-    $person_id = $person['id'];
+        // Get Person ID
+        $stmtGet = $conn->prepare("SELECT id FROM persons WHERE phone = ? LIMIT 1");
+        if (!$stmtGet) return;
+        $stmtGet->bind_param("s", $phone);
+        $stmtGet->execute();
+        $person = $stmtGet->get_result()->fetch_assoc();
+        $stmtGet->close();
+
+        if (!$person) return;
+        $person_id = $person['id'];
+    }
 
     // Update Lead with person_id
     $stmtUpLead = $conn->prepare("UPDATE leads SET person_id = ? WHERE id = ?");

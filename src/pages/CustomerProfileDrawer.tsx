@@ -237,7 +237,8 @@ const DEFAULT_PIPELINE_STAGES = [
   { id: 'thien_chi', name: 'Thiện Chí', color: '#D56F00', order_index: 4 },
   { id: 'da_gap', name: 'Đã gặp', color: '#C50E0E', order_index: 5 },
   { id: 'booking', name: 'Booking', color: '#0770E0', order_index: 6 },
-  { id: 'dat_coc', name: 'Đặt cọc', color: '#00A81D', order_index: 7 }
+  { id: 'dat_coc', name: 'Đặt cọc', color: '#00A81D', order_index: 7 },
+  { id: 'dong_deal', name: 'Đóng deal', color: '#00A81D', order_index: 8 }
 ];
 
 export const getPrettyStageName = (slug: string, rawLabel?: string): string => {
@@ -4125,7 +4126,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               }
               if (res.data.pipeline_status_hierarchy) {
                 try {
-                  const hierarchy = JSON.parse(res.data.pipeline_status_hierarchy);
+                  let hierarchy = JSON.parse(res.data.pipeline_status_hierarchy);
                   let labels: Record<string, string> = {};
                   if (res.data.pipeline_status_labels) {
                     try {
@@ -4133,10 +4134,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     } catch (e) {}
                   }
                   if (Array.isArray(hierarchy) && hierarchy.length > 0) {
+                    if (!hierarchy.includes('cham_soc_dai_han')) {
+                      const cxdIdx = hierarchy.indexOf('chua_xac_dinh');
+                      hierarchy = cxdIdx !== -1
+                        ? [...hierarchy.slice(0, cxdIdx + 1), 'cham_soc_dai_han', ...hierarchy.slice(cxdIdx + 1)]
+                        : ['cham_soc_dai_han', ...hierarchy];
+                    }
                     const mappedStages = hierarchy.map((slug: string, idx: number) => ({
                       id: slug,
                       name: getPrettyStageName(slug, labels[slug]),
                       color: getStageColor(slug),
+                      isNurture: slug === 'cham_soc_dai_han',
+                      isNotLead: slug === 'not_lead',
                       order_index: idx
                     }));
                     setPipelineStages(mappedStages);
@@ -6119,11 +6128,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: isMobileOrTablet ? '0.35rem 0.5rem' : '0.35rem 2.25rem', gap: '8px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
         <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
         {(() => {
-          const linearStages = DEFAULT_PIPELINE_STAGES.filter((st) => st.id !== 'not_lead');
+          const linearStages = (pipelineStages.length > 0 ? pipelineStages : DEFAULT_PIPELINE_STAGES).filter((st) => st.id !== 'not_lead');
           const currentStatus = String(formData.pipeline_status || 'chua_xac_dinh');
+          const normCurrent = currentStatus === 'dong_y_gap' ? 'thien_chi' : (currentStatus === 'da_coc' ? 'dat_coc' : (currentStatus === 'thanh_cong' ? 'dong_deal' : currentStatus));
 
           return linearStages.map((st) => {
-            const isCurrent = String(st.id) === currentStatus || (st.id === 'thien_chi' && currentStatus === 'dong_y_gap');
+            const normStId = st.id === 'dong_y_gap' ? 'thien_chi' : (st.id === 'da_coc' ? 'dat_coc' : (st.id === 'thanh_cong' ? 'dong_deal' : String(st.id)));
+            const isCurrent = normStId === normCurrent;
             const isNurture = st.id === 'cham_soc_dai_han';
             const stColor = getStageColor(st.id);
 
@@ -7167,7 +7178,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>Trạng thái:</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   {(() => {
-                                    const currentStageObj = pipelineStages.find(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
+                                    const rawCurrentStatus = String(formData.pipeline_status || 'chua_xac_dinh');
+                                    const normCurrent = rawCurrentStatus === 'dong_y_gap' ? 'thien_chi' : (rawCurrentStatus === 'da_coc' ? 'dat_coc' : (rawCurrentStatus === 'thanh_cong' ? 'dong_deal' : rawCurrentStatus));
+                                    const currentStageObj = pipelineStages.find(s => {
+                                      const normId = s.id === 'dong_y_gap' ? 'thien_chi' : (s.id === 'da_coc' ? 'dat_coc' : (s.id === 'thanh_cong' ? 'dong_deal' : String(s.id)));
+                                      return normId === normCurrent;
+                                    });
                                     const stColor = currentStageObj ? overridePurpleColor(currentStageObj.color) : 'var(--color-text-muted)';
                                     return (
                                       <button 
@@ -15212,11 +15228,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto' }} className="no-scrollbar">
               {(() => {
-                const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
-                return pipelineStages.map((st, idx) => {
-                  const isCurrent = String(st.id) === String(formData.pipeline_status || 'chua_xac_dinh');
-                  const isBackward = idx < currentIdx;
-                  const stColor = overridePurpleColor(st.color);
+                const visibleStages = (pipelineStages.length > 0 ? pipelineStages : DEFAULT_PIPELINE_STAGES).filter(st => st.id !== 'not_lead');
+                const rawCurrentStatus = String(formData.pipeline_status || 'chua_xac_dinh');
+                const normCurrent = rawCurrentStatus === 'dong_y_gap' ? 'thien_chi' : (rawCurrentStatus === 'da_coc' ? 'dat_coc' : (rawCurrentStatus === 'thanh_cong' ? 'dong_deal' : rawCurrentStatus));
+                const isFromOutside = normCurrent === 'cham_soc_dai_han' || normCurrent === 'not_lead';
+                const mainFlowStages = visibleStages.filter(s => s.id !== 'cham_soc_dai_han').map(s => s.id === 'dong_y_gap' ? 'thien_chi' : (s.id === 'da_coc' ? 'dat_coc' : (s.id === 'thanh_cong' ? 'dong_deal' : String(s.id))));
+                const currMainIdx = mainFlowStages.indexOf(normCurrent);
+
+                return visibleStages.map((st) => {
+                  const normStId = st.id === 'dong_y_gap' ? 'thien_chi' : (st.id === 'da_coc' ? 'dat_coc' : (st.id === 'thanh_cong' ? 'dong_deal' : String(st.id)));
+                  const isCurrent = normStId === normCurrent;
+                  const isNurture = st.id === 'cham_soc_dai_han';
+                  const targetMainIdx = mainFlowStages.indexOf(normStId);
+                  const isFromDeposit = normCurrent.includes('coc') || normCurrent === 'dat_coc';
+                  const isToSuccess = normStId === 'dong_deal';
+                  const isCancellation = isFromDeposit && !isToSuccess;
+                  const isBackward = !isNurture && !isFromOutside && !allowPipelineBackward && !isCancellation && currMainIdx !== -1 && targetMainIdx !== -1 && targetMainIdx < currMainIdx;
+                  const stColor = overridePurpleColor(st.color || getStageColor(st.id));
                   return (
                     <button
                       key={st.id}
@@ -15224,7 +15252,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       onClick={() => {
                         setShowMobilePipelineSelector(false);
                         if (isCurrent || isBackward) return;
-                        handleStageTransition(String(st.id), st.name);
+                        handleStageTransition(String(st.id), getPrettyStageName(st.id, st.name));
                       }}
                       style={{
                         display: 'flex',
@@ -15232,7 +15260,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         justifyContent: 'space-between',
                         padding: '12px 16px',
                         borderRadius: '12px',
-                        border: isCurrent ? `1.5px solid ${stColor}` : '1px solid var(--color-border-light)',
+                        border: isCurrent ? `1.5px solid ${stColor}` : (isNurture ? `1px dashed ${stColor}66` : '1px solid var(--color-border-light)'),
                         background: isCurrent ? `${stColor}10` : 'var(--color-bg-alt)',
                         color: isCurrent ? stColor : 'var(--color-text)',
                         fontWeight: isCurrent ? 800 : 600,
@@ -15244,7 +15272,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         boxSizing: 'border-box'
                       }}
                     >
-                      <span>{st.name}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        {st.name}
+                        {isNurture && <span style={{ fontSize: '0.75rem', color: stColor, opacity: 0.9 }}>★</span>}
+                      </span>
                       {isCurrent && <UserCheck size={16} />}
                     </button>
                   );

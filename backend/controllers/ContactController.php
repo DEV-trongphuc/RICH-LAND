@@ -614,13 +614,15 @@ class ContactController {
         if ($phone) {
             require_once __DIR__ . '/../webhook_logic.php';
             $phone = normalizePhone($phone);
+            $phoneVariants = function_exists('getPhoneLookupVariants') ? getPhoneLookupVariants($phone) : [$phone];
+            $phIn = implode(',', array_fill(0, count($phoneVariants), '?'));
             
-            $check = $this->db->prepare("SELECT id, source, created_at, pipeline_status FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
-            $check->execute([$auth['tenant_id'], $phone, $phone]);
+            $check = $this->db->prepare("SELECT id, source, created_at, pipeline_status FROM contacts WHERE tenant_id=? AND (phone IN ($phIn) OR mobile IN ($phIn)) AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
+            $check->execute(array_merge([$auth['tenant_id']], $phoneVariants, $phoneVariants));
             $existing = $check->fetch();
             if (!$existing) {
-                $checkL = $this->db->prepare("SELECT id, source, created_at, status as pipeline_status FROM leads WHERE phone=? ORDER BY id DESC LIMIT 1");
-                $checkL->execute([$phone]);
+                $checkL = $this->db->prepare("SELECT id, source, created_at, status as pipeline_status FROM leads WHERE phone IN ($phIn) ORDER BY id DESC LIMIT 1");
+                $checkL->execute($phoneVariants);
                 $existing = $checkL->fetch();
             }
             if ($existing) {

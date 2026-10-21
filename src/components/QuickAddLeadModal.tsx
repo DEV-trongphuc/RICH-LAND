@@ -10,23 +10,16 @@ import { useAuthStore } from '../store/authStore';
 
 const beautifyPhone = (phoneStr: string): string => {
   if (!phoneStr) return '';
-  let cleaned = phoneStr.trim().replace(/[\s\.\-\(\)]/g, '');
-  if (cleaned.startsWith('+84')) {
-    cleaned = '0' + cleaned.slice(3);
-  } else if (cleaned.startsWith('84') && (cleaned.length === 11 || cleaned.length === 12)) {
-    cleaned = '0' + cleaned.slice(2);
-  } else if (cleaned.length === 9 && /^[1-9]/.test(cleaned)) {
-    cleaned = '0' + cleaned;
-  }
-  return cleaned;
+  const trimmed = phoneStr.trim().replace(/^(p:|tel:|phone:)\s*/i, '');
+  const hasPlus = trimmed.startsWith('+');
+  const digits = trimmed.replace(/\D/g, '');
+  if (!digits) return '';
+  return hasPlus ? `+${digits}` : digits;
 };
 
 const isValidPhone = (phone: string): boolean => {
   if (!phone) return false;
-  if (phone.startsWith('+')) {
-    return /^\+\d{8,15}$/.test(phone);
-  }
-  return /^(03|05|07|08|09)\d{8}$/.test(phone);
+  return /^\+?\d{8,15}$/.test(phone.trim());
 };
 
 const removeAccents = (str: string): string => {
@@ -185,7 +178,7 @@ export const QuickAddLeadModal = () => {
       if (broaderMatches) {
         for (const m of broaderMatches) {
           const digits = m.replace(/\D/g, '');
-          if (digits.length >= 9 && digits.length <= 12) {
+          if (digits.length >= 8 && digits.length <= 15) {
             return beautifyPhone(m);
           }
         }
