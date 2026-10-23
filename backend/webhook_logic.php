@@ -2219,10 +2219,20 @@ if (!function_exists('saveMappedExtendedFields')) {
                 }
 
                 if (!empty($cUpdates)) {
-                    $cSql = "UPDATE contacts SET " . implode(", ", $cUpdates) . " WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)";
-                    $cTypes .= "ss";
-                    $cParams[] = $cPhone;
-                    $cParams[] = $cEmail;
+                    $cWhere = ["lead_id = ?"];
+                    $cTypes .= "i";
+                    $cParams[] = (int)$leadId;
+                    if (!empty($cPhone)) {
+                        $cWhere[] = "(phone IS NOT NULL AND phone != '' AND phone = ?)";
+                        $cTypes .= "s";
+                        $cParams[] = $cPhone;
+                    }
+                    if (!empty($cEmail)) {
+                        $cWhere[] = "(email IS NOT NULL AND email != '' AND email = ?)";
+                        $cTypes .= "s";
+                        $cParams[] = $cEmail;
+                    }
+                    $cSql = "UPDATE contacts SET " . implode(", ", $cUpdates) . " WHERE " . implode(" OR ", $cWhere);
 
                     $cStmt = $conn->prepare($cSql);
                     if ($cStmt) {
@@ -4990,7 +5000,7 @@ function ensurePersonAndContact($conn, $leadId, $oldConsultantId = null) {
     if (!$lead) return;
 
     $phone = normalizePhone($lead['phone']);
-    $email = $lead['email'] ?? '';
+    $email = trim($lead['email'] ?? '') !== '' ? trim($lead['email']) : null;
     if (isLeadBlocked($conn, $phone, $email)) {
         return;
     }

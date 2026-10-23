@@ -1059,9 +1059,22 @@ if ($isSilent == 1) {
                 $updPropL->execute();
                 $updPropL->close();
             }
-            $updPropC = $conn->prepare("UPDATE contacts SET property_type = COALESCE(?, property_type), loai_hinh = COALESCE(?, loai_hinh), app_lienhe = COALESCE(?, app_lienhe) WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
+            $cWhere1 = ["lead_id = ?"];
+            $cTypes1 = "sssi";
+            $cParams1 = [$propTypeVal, $propTypeVal, $appLienHeVal, (int)$leadId];
+            if (!empty($phone)) {
+                $cWhere1[] = "(phone IS NOT NULL AND phone != '' AND phone = ?)";
+                $cTypes1 .= "s";
+                $cParams1[] = $phone;
+            }
+            if (!empty($email)) {
+                $cWhere1[] = "(email IS NOT NULL AND email != '' AND email = ?)";
+                $cTypes1 .= "s";
+                $cParams1[] = $email;
+            }
+            $updPropC = $conn->prepare("UPDATE contacts SET property_type = COALESCE(?, property_type), loai_hinh = COALESCE(?, loai_hinh), app_lienhe = COALESCE(?, app_lienhe) WHERE " . implode(" OR ", $cWhere1));
             if ($updPropC) {
-                $updPropC->bind_param("sssss", $propTypeVal, $propTypeVal, $appLienHeVal, $phone, $email);
+                $updPropC->bind_param($cTypes1, ...$cParams1);
                 $updPropC->execute();
                 $updPropC->close();
             }
@@ -1544,9 +1557,22 @@ try {
             $updProj->execute();
             $updProj->close();
         }
-        $updContact = $conn->prepare("UPDATE contacts SET project_id = COALESCE(?, project_id), preferred_location = IF(? != '', ?, preferred_location) WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
+        $cWhereP = ["lead_id = ?"];
+        $cTypesP = "issi";
+        $cParamsP = [$project_id, $preferred_location, $preferred_location, (int)$leadId];
+        if (!empty($phone)) {
+            $cWhereP[] = "(phone IS NOT NULL AND phone != '' AND phone = ?)";
+            $cTypesP .= "s";
+            $cParamsP[] = $phone;
+        }
+        if (!empty($email)) {
+            $cWhereP[] = "(email IS NOT NULL AND email != '' AND email = ?)";
+            $cTypesP .= "s";
+            $cParamsP[] = $email;
+        }
+        $updContact = $conn->prepare("UPDATE contacts SET project_id = COALESCE(?, project_id), preferred_location = IF(? != '', ?, preferred_location) WHERE " . implode(" OR ", $cWhereP));
         if ($updContact) {
-            $updContact->bind_param("issss", $project_id, $preferred_location, $preferred_location, $phone, $email);
+            $updContact->bind_param($cTypesP, ...$cParamsP);
             $updContact->execute();
             $updContact->close();
         }
@@ -1562,9 +1588,22 @@ try {
             $updPropL->execute();
             $updPropL->close();
         }
-        $updPropC = $conn->prepare("UPDATE contacts SET property_type = COALESCE(?, property_type), loai_hinh = COALESCE(?, loai_hinh), app_lienhe = COALESCE(?, app_lienhe) WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)");
+        $cWhere2 = ["lead_id = ?"];
+        $cTypes2 = "sssi";
+        $cParams2 = [$propTypeVal, $propTypeVal, $appLienHeVal, (int)$leadId];
+        if (!empty($phone)) {
+            $cWhere2[] = "(phone IS NOT NULL AND phone != '' AND phone = ?)";
+            $cTypes2 .= "s";
+            $cParams2[] = $phone;
+        }
+        if (!empty($email)) {
+            $cWhere2[] = "(email IS NOT NULL AND email != '' AND email = ?)";
+            $cTypes2 .= "s";
+            $cParams2[] = $email;
+        }
+        $updPropC = $conn->prepare("UPDATE contacts SET property_type = COALESCE(?, property_type), loai_hinh = COALESCE(?, loai_hinh), app_lienhe = COALESCE(?, app_lienhe) WHERE " . implode(" OR ", $cWhere2));
         if ($updPropC) {
-            $updPropC->bind_param("sssss", $propTypeVal, $propTypeVal, $appLienHeVal, $phone, $email);
+            $updPropC->bind_param($cTypes2, ...$cParams2);
             $updPropC->execute();
             $updPropC->close();
         }

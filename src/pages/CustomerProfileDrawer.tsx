@@ -8205,36 +8205,84 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {/* Dự án & Chiến dịch (Quan hệ Cha - Con) */}
                           <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: '8px', marginBottom: 0, width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
-                                <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Dự án nguồn</label>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Dự án quan tâm</span>
-                              </div>
-                              <CustomSelect
-                                searchable
-                                placeholder="Chọn dự án..."
-                                options={[
-                                  { value: '', label: '— Chọn dự án —' },
-                                  ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
-                                ]}
-                                value={String(formData.project_id || '')}
-                                onChange={val => {
-                                  const selectedId = val ? Number(val) : null;
-                                  let nextCampaignId = formData.campaign_id;
-                                  if (!selectedId) {
-                                    nextCampaignId = null;
-                                  } else if (nextCampaignId) {
-                                    const campObj = allowedCampaigns.find(c => String(c.id) === String(nextCampaignId) || (c.code && String(c.code) === String(nextCampaignId)));
-                                    if (campObj && campObj.project_id && Number(campObj.project_id) !== selectedId) {
-                                      nextCampaignId = null;
-                                    }
-                                  }
-                                  setFormData((prev: any) => ({
-                                    ...prev,
-                                    project_id: selectedId,
-                                    campaign_id: nextCampaignId
-                                  }));
-                                }}
-                              />
+                              {(() => {
+                                const originProjectId = (formData as any).lead_project_id || (contact as any)?.lead_project_id || null;
+                                const originProjectName =
+                                  (formData as any).lead_project_name ||
+                                  (contact as any)?.lead_project_name ||
+                                  (originProjectId ? projectsList.find(p => Number(p.id) === Number(originProjectId))?.name : '') ||
+                                  (formData.project_id ? projectsList.find(p => Number(p.id) === Number(formData.project_id))?.name : '') ||
+                                  webhookData.parsed['du_an'] ||
+                                  webhookData.parsed['duan'] ||
+                                  '';
+                                const isMktStaticProject = !isSelfCreated || Boolean(originProjectId || (formData as any).lead_project_name || (contact as any)?.lead_project_name);
+
+                                if (isMktStaticProject) {
+                                  return (
+                                    <>
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
+                                        <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Dự án nguồn</label>
+                                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                          <Lock size={10} /> Cố định MKT
+                                        </span>
+                                      </div>
+                                      <div style={{
+                                        background: 'var(--color-bg-subtle, #f8fafc)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '6px',
+                                        padding: '4px 10px',
+                                        height: '32px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        fontSize: '0.8125rem',
+                                        fontWeight: 700,
+                                        color: 'var(--color-text)',
+                                        cursor: 'not-allowed',
+                                        userSelect: 'none'
+                                      }}>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{originProjectName || '—'}</span>
+                                        <Lock size={12} style={{ color: 'var(--color-text-muted)', opacity: 0.6, flexShrink: 0 }} />
+                                      </div>
+                                    </>
+                                  );
+                                }
+
+                                return (
+                                  <>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', minHeight: '18px' }}>
+                                      <label className="form-label" style={{ fontSize: '0.75rem', margin: 0, fontWeight: 700 }}>Dự án nguồn</label>
+                                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Dự án quan tâm</span>
+                                    </div>
+                                    <CustomSelect
+                                      searchable
+                                      placeholder="Chọn dự án..."
+                                      options={[
+                                        { value: '', label: '— Chọn dự án —' },
+                                        ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
+                                      ]}
+                                      value={String(formData.project_id || '')}
+                                      onChange={val => {
+                                        const selectedId = val ? Number(val) : null;
+                                        let nextCampaignId = formData.campaign_id;
+                                        if (!selectedId) {
+                                          nextCampaignId = null;
+                                        } else if (nextCampaignId) {
+                                          const campObj = allowedCampaigns.find(c => String(c.id) === String(nextCampaignId) || (c.code && String(c.code) === String(nextCampaignId)));
+                                          if (campObj && campObj.project_id && Number(campObj.project_id) !== selectedId) {
+                                            nextCampaignId = null;
+                                          }
+                                        }
+                                        setFormData((prev: any) => ({
+                                          ...prev,
+                                          project_id: selectedId,
+                                          campaign_id: nextCampaignId
+                                        }));
+                                      }}
+                                    />
+                                  </>
+                                );
+                              })()}
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -8252,13 +8300,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
                               {(() => {
                                 const currentCampVal = formData.campaign_id ? String(formData.campaign_id) : '';
-                                const filteredCamps = formData.project_id
-                                  ? allowedCampaigns.filter(c => !c.project_id || Number(c.project_id) === Number(formData.project_id) || String(c.id) === currentCampVal)
+                                const effectiveProjId = (formData as any).lead_project_id || (contact as any)?.lead_project_id || formData.project_id;
+                                const filteredCamps = effectiveProjId
+                                  ? allowedCampaigns.filter(c => !c.project_id || Number(c.project_id) === Number(effectiveProjId) || String(c.id) === currentCampVal)
                                   : allowedCampaigns;
                                 const campOptions = filteredCamps.map(c => {
                                   const pName = projectsList.find(p => Number(p.id) === Number(c.project_id))?.name || c.project_name;
                                   const baseLabel = c.code && c.name && String(c.name) !== String(c.code) ? `${c.name} (${c.code})` : (c.name || c.code || String(c.id));
-                                  const labelText = (!formData.project_id && pName) ? `${baseLabel} • ${pName}` : baseLabel;
+                                  const labelText = (!effectiveProjId && pName) ? `${baseLabel} • ${pName}` : baseLabel;
                                   return {
                                     value: String(c.id),
                                     label: labelText,
@@ -8277,8 +8326,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     value={effectiveCampVal}
                                     onChange={val => {
                                       const nextCampaign = val ? String(val) : null;
-                                      let nextProjectId = formData.project_id;
-                                      if (nextCampaign) {
+                                      let nextProjectId = effectiveProjId || formData.project_id;
+                                      if (nextCampaign && !effectiveProjId) {
                                         const campObj = allowedCampaigns.find(c => String(c.id) === nextCampaign || (c.code && String(c.code) === nextCampaign));
                                         if (campObj && campObj.project_id) {
                                           nextProjectId = Number(campObj.project_id);
@@ -8307,7 +8356,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                             {(() => {
                               const FORM_SPEC = [
-                                { key: 'lead_project_origin', label: 'Dự án gốc (MKT)' },
                                 { key: 'lead_campaign_origin', label: 'Chiến dịch gốc (MKT)' },
                                 { key: 'ad_name', label: 'Mẫu quảng cáo', fullWidth: true },
                                 { key: 'form_name', label: 'Tên Form', fullWidth: true },
